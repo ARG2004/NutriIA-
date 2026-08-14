@@ -45,17 +45,20 @@ jobs:
             security default-keychain -s $KEYCHAIN_PATH || true
 
             CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-            echo "$BUILD_CERTIFICATE_BASE64" | base64 -D -o $CERTIFICATE_PATH 2>/dev/null || echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+            echo "$BUILD_CERTIFICATE_BASE64" | tr -d '\r\n ' | base64 --decode -o $CERTIFICATE_PATH 2>/dev/null || echo "$BUILD_CERTIFICATE_BASE64" | tr -d '\r\n ' | base64 -D -o $CERTIFICATE_PATH 2>/dev/null || echo "$BUILD_CERTIFICATE_BASE64" | base64 -d -o $CERTIFICATE_PATH 2>/dev/null || true
+            echo "Tamaño del certificado p12 decodificado: $(wc -c < $CERTIFICATE_PATH) bytes."
 
-            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A -T /usr/bin/codesign -T /usr/bin/security || true
+            echo "Importando certificado en llavero de seguridad..."
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A -T /usr/bin/codesign -T /usr/bin/security || security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A || true
             security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A 2>/dev/null || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
             echo "=== IDENTIDADES DE FIRMA DISPONIBLES EN KEYCHAIN ==="
-            security find-identity -v -p codesigning || true
+            security find-identity -v $KEYCHAIN_PATH || true
+            security find-identity -v || true
 
             PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
-            echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -D -o $PP_PATH 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+            echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '\r\n ' | base64 --decode -o $PP_PATH 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '\r\n ' | base64 -D -o $PP_PATH 2>/dev/null || true
             mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
             cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
           fi
@@ -70,8 +73,8 @@ jobs:
           else
             echo "Configurando clave API de App Store Connect para despliegue en TestFlight..."
             mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys
-            echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 -D -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
-            echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 -D -o ~/.private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.private_keys/AuthKey_${KEY_ID}.p8
+            echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 -D -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || true
+            echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 --decode -o ~/.private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 -D -o ~/.private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || true
           fi
 
       - name: 7. Build iOS Multiplatform Framework
@@ -115,7 +118,7 @@ jobs:
               # Garantizar incrustación de embedded.mobileprovision en el paquete
               PP_PATH="build/Payload/NutriIA.app/embedded.mobileprovision"
               if [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
-                echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -D -o "$PP_PATH" 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+                echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '\r\n ' | base64 --decode -o "$PP_PATH" 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '\r\n ' | base64 -D -o "$PP_PATH" 2>/dev/null || true
                 echo "embedded.mobileprovision generado con éxito ($(wc -c < "$PP_PATH") bytes)."
               fi
 
@@ -128,12 +131,15 @@ jobs:
 
               # Firmar binario nativo y frameworks con certificado oficial de Apple
               KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-              IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH 2>/dev/null | grep "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+              IDENTITY=$(security find-identity -v $KEYCHAIN_PATH 2>/dev/null | grep -i "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
               if [ -z "$IDENTITY" ]; then
-                IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+                IDENTITY=$(security find-identity -v 2>/dev/null | grep -i "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
               fi
               if [ -z "$IDENTITY" ]; then
-                IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+                IDENTITY=$(security find-identity -v $KEYCHAIN_PATH 2>/dev/null | grep -v "0 valid identities found" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+              fi
+              if [ -z "$IDENTITY" ]; then
+                IDENTITY=$(security find-identity -v 2>/dev/null | grep -v "0 valid identities found" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
               fi
 
               echo "Identidad de firma seleccionada: '$IDENTITY'"
