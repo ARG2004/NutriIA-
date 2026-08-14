@@ -49,7 +49,17 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
 
-      - name: 6. Upload Android APK Artifact
+      - name: 6. Setup App Store Connect API Key (If Configured)
+        if: ${{ secrets.APPSTORE_PRIVATE_KEY != '' }}
+        env:
+          APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+        run: |
+          echo "Configurando clave API de App Store Connect para despliegue en TestFlight..."
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+
+      - name: 7. Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NutrIA-Android-APK
