@@ -28,12 +28,12 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace
 
       - name: 5. Setup Apple Certificates & Keychains (If Configured)
-        if: ${{ secrets.APPLE_CERTIFICATE_BASE64 != '' }}
+        if: ${{ secrets.MI_CERTIFICADO_APPLE != '' }}
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.MI_CERTIFICADO_APPLE }}
+          P12_PASSWORD: ${{ secrets.MI_CLAVE_CERTIFICADO }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.MI_PERFIL_NUTRIA }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MI_CLAVE_KEYCHAIN }}
         run: |
           echo "Configurando llavero de seguridad e importando certificados oficiales de Apple..."
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
