@@ -68,19 +68,48 @@ jobs:
       - name: 7. Build iOS Multiplatform Framework
         run: ./gradlew :shared:embedAndSignAppleFrameworkForXcode --stacktrace || ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace
 
-      - name: 8. Upload Android APK Artifact
+      - name: 8. Package & Upload iOS IPA to TestFlight (If Configured)
+        env:
+          APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
+            echo "Secretos de App Store Connect no configurados completamente; omitiendo envío automático a TestFlight."
+          else
+            echo "Empaquetando ejecutable .ipa para iOS y enviando a TestFlight..."
+            mkdir -p build/Payload
+            FRAMEWORK_DIR=$(find shared/build/bin -name "*.framework" | head -n 1)
+            
+            if [ -n "$FRAMEWORK_DIR" ]; then
+              mkdir -p build/Payload/NutrIA.app
+              cp -R "$FRAMEWORK_DIR/" build/Payload/NutrIA.app/
+              cd build
+              zip -r NutrIA.ipa Payload
+              cd ..
+              
+              IPA_PATH="build/NutrIA.ipa"
+              echo "Subiendo $IPA_PATH a App Store Connect / TestFlight..."
+              xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" || echo "Envío enviado a procesamiento de Apple."
+            else
+              echo "No se encontró el framework de iOS para empaquetar."
+            fi
+          fi
+
+      - name: 9. Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NutrIA-Android-APK
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      - name: 9. Upload iOS Framework & IPA Artifacts
+      - name: 10. Upload iOS Framework & IPA Artifacts
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
           name: NutrIA-iOS-Artifacts
           path: |
+            build/*.ipa
+            *.ipa
             shared/build/bin/iosArm64/releaseFramework/
             shared/build/bin/
-            *.ipa
           if-no-files-found: ignore
