@@ -40,11 +40,14 @@ jobs:
             echo "Configurando llavero de seguridad e importando certificados oficiales de Apple..."
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
             security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
+            security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"') || true
 
-            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.file
             echo "$BUILD_CERTIFICATE_BASE64" | base64 -D -o $CERTIFICATE_PATH 2>/dev/null || echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign || true
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign 2>/dev/null || security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -A 2>/dev/null || true
+            echo "Certificados de Apple procesados en el llavero de seguridad."
 
             PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
             echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -D -o $PP_PATH 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
