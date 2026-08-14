@@ -91,7 +91,7 @@ jobs:
               fi
 
               # Compilar ejecutable binario nativo de iOS (Mach-O arm64)
-              xcrun -sdk iphoneos swiftc -target arm64-apple-ios15.0 \
+              xcrun -sdk iphoneos swiftc -target arm64-apple-ios15.0 -parse-as-library \
                 iosApp/iosApp/iOSApp.swift \
                 -F shared/build/bin/iosArm64/releaseFramework \
                 -framework Shared \
