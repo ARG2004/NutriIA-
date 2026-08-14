@@ -114,8 +114,21 @@ jobs:
                 echo "embedded.mobileprovision generado con éxito ($(wc -c < "$PP_PATH") bytes)."
               fi
 
-              # Firmar binario nativo
-              codesign --force --deep -s - build/Payload/NutrIA.app || true
+              # Firmar binario nativo y frameworks con certificado oficial de Apple
+              KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+              IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH 2>/dev/null | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+              if [ -z "$IDENTITY" ]; then
+                IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+              fi
+
+              if [ -n "$IDENTITY" ]; then
+                echo "Firmando app con certificado oficial de Apple: $IDENTITY"
+                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutrIA.app/Frameworks/Shared.framework 2>/dev/null || true
+                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutrIA.app
+              else
+                echo "ADVERTENCIA: Firmando ad-hoc."
+                codesign --force --deep -s - build/Payload/NutrIA.app || true
+              fi
 
               cd build
               zip -r NutrIA.ipa Payload
