@@ -61,8 +61,9 @@ jobs:
             echo "No se detectó APPSTORE_PRIVATE_KEY; omitiendo configuración de API Key."
           else
             echo "Configurando clave API de App Store Connect para despliegue en TestFlight..."
-            mkdir -p ~/.appstoreconnect/private_keys
+            mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys
             echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+            echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.private_keys/AuthKey_${KEY_ID}.p8
           fi
 
       - name: 7. Build iOS Multiplatform Framework
@@ -87,13 +88,23 @@ jobs:
               if [ -f "iosApp/iosApp/Info.plist" ]; then
                 cp iosApp/iosApp/Info.plist build/Payload/NutrIA.app/Info.plist
               fi
+
+              # Copiar perfil de provisión al app bundle
+              PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
+              if [ -f "$PP_PATH" ]; then
+                cp "$PP_PATH" build/Payload/NutrIA.app/embedded.mobileprovision
+              fi
+
+              # Firmar binario
+              codesign --force --deep -s - build/Payload/NutrIA.app || true
+
               cd build
               zip -r NutrIA.ipa Payload
               cd ..
               
               IPA_PATH="build/NutrIA.ipa"
-              echo "Subiendo $IPA_PATH a App Store Connect / TestFlight..."
-              xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" || echo "Subida finalizada a procesamiento de Apple."
+              echo "Subiendo $IPA_PATH a App Store Connect / TestFlight con clave $KEY_ID e Issuer $ISSUER_ID..."
+              xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" --verbose || echo "Comando de subida finalizado."
             else
               echo "No se encontró el framework de iOS para empaquetar."
             fi
