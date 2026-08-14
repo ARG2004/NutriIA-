@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "NutriIA"
 include(":app")
- 
+include(":shared")

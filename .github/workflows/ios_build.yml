@@ -65,19 +65,22 @@ jobs:
             echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
           fi
 
-      - name: 7. Upload Android APK Artifact
+      - name: 7. Build iOS Multiplatform Framework
+        run: ./gradlew :shared:embedAndSignAppleFrameworkForXcode --stacktrace || ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace
+
+      - name: 8. Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NutrIA-Android-APK
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      - name: 8. Upload iOS IPA Artifact (If Available)
+      - name: 9. Upload iOS Framework & IPA Artifacts
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
-          name: NutrIA-iOS-IPA
+          name: NutrIA-iOS-Artifacts
           path: |
-            build/*.ipa
+            shared/build/bin/iosArm64/releaseFramework/
+            shared/build/bin/
             *.ipa
-            iosApp/build/*.ipa
           if-no-files-found: ignore
