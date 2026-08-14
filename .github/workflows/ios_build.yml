@@ -41,12 +41,18 @@ jobs:
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
             security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
+            security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"') || true
+            security default-keychain -s $KEYCHAIN_PATH || true
+
             CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
             echo "$BUILD_CERTIFICATE_BASE64" | base64 -D -o $CERTIFICATE_PATH 2>/dev/null || echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A -T /usr/bin/codesign || security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A || true
+
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A -T /usr/bin/codesign -T /usr/bin/security || true
+            security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A 2>/dev/null || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
-            echo "Identidades de firma detectadas en el llavero de seguridad:"
-            security find-identity -v -p codesigning $KEYCHAIN_PATH || true
+
+            echo "=== IDENTIDADES DE FIRMA DISPONIBLES EN KEYCHAIN ==="
+            security find-identity -v -p codesigning || true
 
             PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
             echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -D -o $PP_PATH 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
@@ -113,17 +119,33 @@ jobs:
                 echo "embedded.mobileprovision generado con éxito ($(wc -c < "$PP_PATH") bytes)."
               fi
 
+              # Extraer entitlements de embedded.mobileprovision para firma de producción
+              if [ -f "$PP_PATH" ]; then
+                security cms -D -i "$PP_PATH" > build/Payload/provision.plist 2>/dev/null || true
+                /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' build/Payload/provision.plist > build/Payload/entitlements.plist 2>/dev/null || true
+                echo "Entitlements extraídos del perfil de provisión."
+              fi
+
               # Firmar binario nativo y frameworks con certificado oficial de Apple
               KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-              IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH 2>/dev/null | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+              IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH 2>/dev/null | grep "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+              if [ -z "$IDENTITY" ]; then
+                IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
+              fi
               if [ -z "$IDENTITY" ]; then
                 IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
               fi
 
+              echo "Identidad de firma seleccionada: '$IDENTITY'"
+
               if [ -n "$IDENTITY" ]; then
                 echo "Firmando app con certificado oficial de Apple: $IDENTITY"
                 codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app/Frameworks/Shared.framework 2>/dev/null || true
-                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app
+                if [ -f "build/Payload/entitlements.plist" ]; then
+                  codesign --force --deep --options runtime --entitlements build/Payload/entitlements.plist -s "$IDENTITY" build/Payload/NutriIA.app
+                else
+                  codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app
+                fi
               else
                 echo "ADVERTENCIA: Firmando ad-hoc."
                 codesign --force --deep -s - build/Payload/NutriIA.app || true
