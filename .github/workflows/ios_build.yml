@@ -28,36 +28,42 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace
 
       - name: 5. Setup Apple Certificates & Keychains (If Configured)
-        if: ${{ secrets.MI_CERTIFICADO_APPLE != '' }}
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.MI_CERTIFICADO_APPLE }}
           P12_PASSWORD: ${{ secrets.MI_CLAVE_CERTIFICADO }}
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.MI_PERFIL_NUTRIA }}
           KEYCHAIN_PASSWORD: ${{ secrets.MI_CLAVE_KEYCHAIN }}
         run: |
-          echo "Configurando llavero de seguridad e importando certificados oficiales de Apple..."
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          if [ -z "$BUILD_CERTIFICATE_BASE64" ]; then
+            echo "No se detectó MI_CERTIFICADO_APPLE; omitiendo configuración de firma."
+          else
+            echo "Configurando llavero de seguridad e importando certificados oficiales de Apple..."
+            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+            security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-          security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign
+            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+            echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign || true
 
-          PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
-          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+            PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
+            echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+          fi
 
       - name: 6. Setup App Store Connect API Key (If Configured)
-        if: ${{ secrets.APPSTORE_PRIVATE_KEY != '' }}
         env:
           APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
         run: |
-          echo "Configurando clave API de App Store Connect para despliegue en TestFlight..."
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+          if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ]; then
+            echo "No se detectó APPSTORE_PRIVATE_KEY; omitiendo configuración de API Key."
+          else
+            echo "Configurando clave API de App Store Connect para despliegue en TestFlight..."
+            mkdir -p ~/.appstoreconnect/private_keys
+            echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+          fi
 
       - name: 7. Upload Android APK Artifact
         uses: actions/upload-artifact@v4
