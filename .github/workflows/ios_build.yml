@@ -87,10 +87,10 @@ jobs:
             FRAMEWORK_DIR=$(find shared/build/bin -name "*.framework" | head -n 1)
             
             if [ -n "$FRAMEWORK_DIR" ]; then
-              mkdir -p build/Payload/NutrIA.app/Frameworks
-              cp -R "$FRAMEWORK_DIR" build/Payload/NutrIA.app/Frameworks/
+              mkdir -p build/Payload/NutriIA.app/Frameworks
+              cp -R "$FRAMEWORK_DIR" build/Payload/NutriIA.app/Frameworks/
               if [ -f "iosApp/iosApp/Info.plist" ]; then
-                cp iosApp/iosApp/Info.plist build/Payload/NutrIA.app/Info.plist
+                cp iosApp/iosApp/Info.plist build/Payload/NutriIA.app/Info.plist
               fi
 
               # Compilar ejecutable binario nativo de iOS (Mach-O arm64)
@@ -102,13 +102,13 @@ jobs:
                 -framework UIKit \
                 -framework Foundation \
                 -Xlinker -rpath -Xlinker @executable_path/Frameworks \
-                -o build/Payload/NutrIA.app/NutrIA
+                -o build/Payload/NutriIA.app/NutriIA
 
-              chmod +x build/Payload/NutrIA.app/NutrIA
-              echo "Ejecutable binario creado con éxito ($(wc -c < build/Payload/NutrIA.app/NutrIA) bytes)."
+              chmod +x build/Payload/NutriIA.app/NutriIA
+              echo "Ejecutable binario creado con éxito ($(wc -c < build/Payload/NutriIA.app/NutriIA) bytes)."
 
               # Garantizar incrustación de embedded.mobileprovision en el paquete
-              PP_PATH="build/Payload/NutrIA.app/embedded.mobileprovision"
+              PP_PATH="build/Payload/NutriIA.app/embedded.mobileprovision"
               if [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
                 echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -D -o "$PP_PATH" 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
                 echo "embedded.mobileprovision generado con éxito ($(wc -c < "$PP_PATH") bytes)."
@@ -123,18 +123,18 @@ jobs:
 
               if [ -n "$IDENTITY" ]; then
                 echo "Firmando app con certificado oficial de Apple: $IDENTITY"
-                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutrIA.app/Frameworks/Shared.framework 2>/dev/null || true
-                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutrIA.app
+                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app/Frameworks/Shared.framework 2>/dev/null || true
+                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app
               else
                 echo "ADVERTENCIA: Firmando ad-hoc."
-                codesign --force --deep -s - build/Payload/NutrIA.app || true
+                codesign --force --deep -s - build/Payload/NutriIA.app || true
               fi
 
               cd build
-              zip -r NutrIA.ipa Payload
+              zip -r NutriIA.ipa Payload
               cd ..
               
-              IPA_PATH="build/NutrIA.ipa"
+              IPA_PATH="build/NutriIA.ipa"
               echo "Subiendo $IPA_PATH a App Store Connect / TestFlight con clave $KEY_ID e Issuer $ISSUER_ID..."
               xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" --verbose || echo "Comando de subida finalizado."
             else
