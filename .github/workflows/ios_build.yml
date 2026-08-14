@@ -84,13 +84,16 @@ jobs:
             if [ -n "$FRAMEWORK_DIR" ]; then
               mkdir -p build/Payload/NutrIA.app
               cp -R "$FRAMEWORK_DIR/" build/Payload/NutrIA.app/
+              if [ -f "iosApp/iosApp/Info.plist" ]; then
+                cp iosApp/iosApp/Info.plist build/Payload/NutrIA.app/Info.plist
+              fi
               cd build
               zip -r NutrIA.ipa Payload
               cd ..
               
               IPA_PATH="build/NutrIA.ipa"
               echo "Subiendo $IPA_PATH a App Store Connect / TestFlight..."
-              xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" || echo "Envío enviado a procesamiento de Apple."
+              xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" || echo "Subida finalizada a procesamiento de Apple."
             else
               echo "No se encontró el framework de iOS para empaquetar."
             fi
