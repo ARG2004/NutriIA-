@@ -25,6 +25,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: 4. Build Android Debug APK (Sanity Check)
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.java.home=$JAVA_HOME"
         run: ./gradlew assembleDebug --stacktrace
 
       - name: 5. Setup Apple Certificates & Keychains (If Configured)
