@@ -95,8 +95,14 @@ jobs:
                 iosApp/iosApp/iOSApp.swift \
                 -F shared/build/bin/iosArm64/releaseFramework \
                 -framework Shared \
+                -framework SwiftUI \
+                -framework UIKit \
+                -framework Foundation \
                 -Xlinker -rpath -Xlinker @executable_path/Frameworks \
-                -o build/Payload/NutrIA.app/NutrIA || true
+                -o build/Payload/NutrIA.app/NutrIA
+
+              chmod +x build/Payload/NutrIA.app/NutrIA
+              echo "Ejecutable binario creado con éxito ($(wc -c < build/Payload/NutrIA.app/NutrIA) bytes)."
 
               # Garantizar incrustación de embedded.mobileprovision en el paquete
               PP_PATH="build/Payload/NutrIA.app/embedded.mobileprovision"
