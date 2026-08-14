@@ -43,11 +43,11 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
             CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-            echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+            echo "$BUILD_CERTIFICATE_BASE64" | base64 -D -o $CERTIFICATE_PATH 2>/dev/null || echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
             security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign || true
 
             PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
-            echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+            echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -D -o $PP_PATH 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
             mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
             cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
           fi
@@ -62,8 +62,8 @@ jobs:
           else
             echo "Configurando clave API de App Store Connect para despliegue en TestFlight..."
             mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys
-            echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
-            echo -n "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.private_keys/AuthKey_${KEY_ID}.p8
+            echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 -D -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+            echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 -D -o ~/.private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | base64 --decode -o ~/.private_keys/AuthKey_${KEY_ID}.p8
           fi
 
       - name: 7. Build iOS Multiplatform Framework
@@ -74,6 +74,7 @@ jobs:
           APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.MI_PERFIL_NUTRIA }}
         run: |
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
             echo "Secretos de App Store Connect no configurados completamente; omitiendo envío automático a TestFlight."
@@ -97,10 +98,11 @@ jobs:
                 -Xlinker -rpath -Xlinker @executable_path/Frameworks \
                 -o build/Payload/NutrIA.app/NutrIA || true
 
-              # Copiar perfil de provisión al app bundle
-              PP_PATH=$RUNNER_TEMP/downloaded_profile.mobileprovision
-              if [ -f "$PP_PATH" ]; then
-                cp "$PP_PATH" build/Payload/NutrIA.app/embedded.mobileprovision
+              # Garantizar incrustación de embedded.mobileprovision en el paquete
+              PP_PATH="build/Payload/NutrIA.app/embedded.mobileprovision"
+              if [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
+                echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -D -o "$PP_PATH" 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+                echo "embedded.mobileprovision generado con éxito ($(wc -c < "$PP_PATH") bytes)."
               fi
 
               # Firmar binario nativo
