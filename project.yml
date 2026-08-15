@@ -30,5 +30,4 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
     dependencies:
       - framework: shared/build/bin/iosArm64/releaseFramework/Shared.framework
-        embed: true
-        codeSign: true
+        embed: false
