@@ -22,11 +22,13 @@ open class Date(var time: Long = 0L) : Comparable<Date> {
 
 class Locale(val language: String, val country: String = "") {
     companion object {
+        val US = Locale("en", "US")
         val ENGLISH = Locale("en", "US")
         val ROOT = Locale("", "")
         private var defaultLocale = Locale("es", "MX")
         fun getDefault(): Locale = defaultLocale
         fun setDefault(loc: Locale) { defaultLocale = loc }
+        fun forLanguageTag(tag: String): Locale = Locale(tag)
     }
 }
 
@@ -65,12 +67,20 @@ class Calendar private constructor() {
         HOUR_OF_DAY -> 12
         MINUTE -> 0
         SECOND -> 0
+        MILLISECOND -> 0
         else -> 0
     }
     fun add(field: Int, amount: Int) {
         val cur = get(field)
         fields[field] = cur + amount
     }
+    fun getActualMaximum(field: Int): Int = when (field) {
+        DAY_OF_MONTH -> 31
+        MONTH -> 11
+        else -> 31
+    }
+    fun after(other: Any?): Boolean = false
+    fun before(other: Any?): Boolean = false
 
     companion object {
         const val YEAR = 1
@@ -79,6 +89,7 @@ class Calendar private constructor() {
         const val HOUR_OF_DAY = 11
         const val MINUTE = 12
         const val SECOND = 13
+        const val MILLISECOND = 14
 
         fun getInstance(): Calendar = Calendar()
         fun getInstance(timeZone: TimeZone): Calendar = Calendar()

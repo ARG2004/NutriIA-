@@ -267,7 +267,7 @@ class PacienteExpedienteViewModel : ViewModel() {
             .collection("hijos")
             .document(childId)
             .collection("solidos")
-            .addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snap, err ->
+            .addSnapshotListener { snap, err ->
                 if (err != null) { Log.e("Expediente", "Error listener alimentos", err); return@addSnapshotListener }
                 val solidosMapeados = snap?.documents?.mapNotNull { doc ->
                     runCatching {
@@ -304,7 +304,7 @@ class PacienteExpedienteViewModel : ViewModel() {
             .collection("hijos")
             .document(childId)
             .collection("consultas")
-            .addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snap, err ->
+            .addSnapshotListener { snap, err ->
                 if (err != null) { Log.e("Expediente", "Error listener notas", err); return@addSnapshotListener }
                 val notas = snap?.documents?.mapNotNull { d ->
                     val tipo = d.getString("tipo") ?: ""
@@ -327,7 +327,7 @@ class PacienteExpedienteViewModel : ViewModel() {
             .collection("hijos")
             .document(childId)
             .collection("consultas")
-            .addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snap, err ->
+            .addSnapshotListener { snap, err ->
                 if (err != null) { Log.e("Expediente", "Error listener entradas", err); return@addSnapshotListener }
                 val entradas = snap?.documents?.mapNotNull { d ->
                     val tipo = d.getString("tipo") ?: ""
@@ -601,7 +601,7 @@ class PacienteExpedienteViewModel : ViewModel() {
             .collection("hijos")
             .document(childId)
             .collection("crecimiento")
-            .addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snap, err ->
+            .addSnapshotListener { snap, err ->
                 if (err != null) { Log.e("Expediente", "Error listener crecimiento", err); return@addSnapshotListener }
                 val lista = snap?.documents?.mapNotNull { doc ->
                     runCatching {

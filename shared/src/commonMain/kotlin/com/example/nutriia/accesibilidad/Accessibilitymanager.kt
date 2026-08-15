@@ -57,23 +57,26 @@ enum class IdiomaVoz(
     )
 }
 
+import android.speech.tts.Voice
+import androidx.datastore.preferences.core.Preferences
+
 // ─── Repositorio ──────────────────────────────────────────────────────────────
 class AccessibilityRepository(private val context: Context) {
 
     val modeFlow: Flow<AccessibilityMode> = context.accessibilityDataStore.data
-        .map { prefs ->
+        .map { prefs: Preferences ->
             runCatching { AccessibilityMode.valueOf(prefs[MODE_KEY] ?: "NORMAL") }
                 .getOrDefault(AccessibilityMode.NORMAL)
         }
 
     val langFlow: Flow<IdiomaVoz> = context.accessibilityDataStore.data
-        .map { prefs ->
+        .map { prefs: Preferences ->
             runCatching { IdiomaVoz.valueOf(prefs[LANG_KEY] ?: "ESPANOL_MX") }
                 .getOrDefault(IdiomaVoz.ESPANOL_MX)
         }
 
     val primeraVezFlow: Flow<Boolean> = context.accessibilityDataStore.data
-        .map { prefs -> prefs[PRIMERA_VEZ] ?: true }
+        .map { prefs: Preferences -> prefs[PRIMERA_VEZ] ?: true }
 
     suspend fun saveMode(mode: AccessibilityMode) {
         context.accessibilityDataStore.edit { it[MODE_KEY] = mode.name }
@@ -123,9 +126,9 @@ class NutriTTS(context: Context, private var idioma: IdiomaVoz = IdiomaVoz.ESPAN
     }
 
     private fun aplicarIdioma(idioma: IdiomaVoz) {
-        val voces = tts?.voices
-            ?.filter { it.locale.language == idioma.localeTTS.language }
-            ?.sortedByDescending { it.quality }
+        val voces: List<Voice> = tts?.voices
+            ?.filter { voice: Voice -> voice.locale.language == idioma.localeTTS.language }
+            ?.sortedByDescending { voice: Voice -> voice.quality }
             ?: emptyList()
  
         val vozElegida = voces.firstOrNull {
@@ -193,9 +196,10 @@ class NutriTTS(context: Context, private var idioma: IdiomaVoz = IdiomaVoz.ESPAN
     fun probarVoz() = hablarLocalizado(Voz.PRUEBA_VOZ, VozEn.PRUEBA_VOZ)
     fun silenciar() = tts?.stop()
 
-    fun obtenerVocesDisponibles(): List<String> =
-        (tts?.voices?.filter { it.locale.language == idioma.localeTTS.language }
-            ?.map { "${it.name} — ${it.locale}" } ?: emptyList())
+    fun obtenerVocesDisponibles(): List<String> {
+        val v: List<Voice> = tts?.voices?.filter { voice: Voice -> voice.locale.language == idioma.localeTTS.language } ?: emptyList()
+        return v.map { voice: Voice -> "${voice.name} — ${voice.locale}" }
+    }
 
     fun liberar() {
         tts?.stop(); tts?.shutdown(); tts = null; ready = false

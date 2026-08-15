@@ -13,7 +13,9 @@ open class ViewModel {
     open fun onCleared() {}
 }
 
-open class AndroidViewModel(val application: android.app.Application) : ViewModel()
+open class AndroidViewModel(val application: android.app.Application = android.app.Application()) : ViewModel() {
+    fun <T : android.app.Application> getApplication(): T = application as T
+}
 
 interface LifecycleOwner
 

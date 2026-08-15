@@ -6,6 +6,34 @@ import android.content.Intent
 open class Application : Context()
 open class Activity : Context()
 
+class DatePickerDialog(
+    context: Context,
+    val listener: OnDateSetListener? = null,
+    year: Int = 2026,
+    month: Int = 0,
+    dayOfMonth: Int = 1
+) {
+    fun interface OnDateSetListener {
+        fun onDateSet(view: Any?, year: Int, month: Int, dayOfMonth: Int)
+    }
+    fun setOnDismissListener(listener: Any?) {}
+    fun show() {}
+}
+
+class TimePickerDialog(
+    context: Context,
+    val listener: OnTimeSetListener? = null,
+    hourOfDay: Int = 12,
+    minute: Int = 0,
+    is24HourView: Boolean = true
+) {
+    fun interface OnTimeSetListener {
+        fun onTimeSet(view: Any?, hourOfDay: Int, minute: Int)
+    }
+    fun setOnDismissListener(listener: Any?) {}
+    fun show() {}
+}
+
 class AlarmManager {
     fun setExactAndAllowWhileIdle(type: Int, triggerAtMillis: Long, operation: PendingIntent) {}
     fun cancel(operation: PendingIntent) {}
@@ -15,7 +43,11 @@ class AlarmManager {
 }
 
 class NotificationChannel(id: String, name: CharSequence, importance: Int) {
-    fun setDescription(description: String) {}
+    var description: String = ""
+    var enableVibration: Boolean = true
+    var enableLights: Boolean = true
+    var vibrationPattern: LongArray? = null
+    fun setDescription(desc: String) { description = desc }
 }
 
 class NotificationManager {

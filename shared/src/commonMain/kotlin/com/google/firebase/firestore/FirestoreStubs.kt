@@ -1,33 +1,37 @@
 package com.google.firebase.firestore
 
-import com.google.firebase.auth.Task
+import com.google.android.gms.tasks.Task
+import java.util.Date
 
 class Timestamp(val seconds: Long = 0L, val nanoseconds: Int = 0) {
-    fun toDate(): Any = this
+    fun toDate(): Date = Date(seconds * 1000)
     companion object {
         fun now(): Timestamp = Timestamp(0L, 0)
     }
 }
 
+enum class MetadataChanges { EXCLUDE, INCLUDE }
+
 class DocumentSnapshot(
     val id: String = "doc_id",
-    private val data: Map<String, Any?> = emptyMap()
+    val data: Map<String, Any?>? = emptyMap()
 ) {
+    val reference: DocumentReference get() = DocumentReference(id)
     fun exists(): Boolean = true
     fun getData(): Map<String, Any?>? = data
     fun data(): Map<String, Any?>? = data
-    fun get(field: String): Any? = data[field]
-    fun getString(field: String): String? = data[field] as? String
-    fun getLong(field: String): Long? = (data[field] as? Number)?.toLong()
-    fun getDouble(field: String): Double? = (data[field] as? Number)?.toDouble()
-    fun getBoolean(field: String): Boolean? = data[field] as? Boolean
-    fun getTimestamp(field: String): Timestamp? = data[field] as? Timestamp
+    fun get(field: String): Any? = data?.get(field)
+    fun getString(field: String): String? = data?.get(field) as? String
+    fun getLong(field: String): Long? = (data?.get(field) as? Number)?.toLong()
+    fun getDouble(field: String): Double? = (data?.get(field) as? Number)?.toDouble()
+    fun getBoolean(field: String): Boolean? = data?.get(field) as? Boolean
+    fun getTimestamp(field: String): Timestamp? = data?.get(field) as? Timestamp
     inline fun <reified T> toObject(clazz: Any? = null): T? = null
 }
 
 class QueryDocumentSnapshot(
     id: String = "query_doc_id",
-    data: Map<String, Any?> = emptyMap()
+    data: Map<String, Any?>? = emptyMap()
 ) : DocumentSnapshot(id, data)
 
 class QuerySnapshot(
@@ -54,8 +58,12 @@ open class Query {
     open fun orderBy(field: String): Query = this
     open fun orderBy(field: String, direction: Query.Direction): Query = this
     open fun limit(limit: Long): Query = this
-    open fun get(source: Source = Source.DEFAULT): Task<QuerySnapshot> = Task(QuerySnapshot())
+    open fun get(source: Source = Source.DEFAULT): Task<QuerySnapshot> = Task()
     open fun addSnapshotListener(listener: (QuerySnapshot?, Exception?) -> Unit): ListenerRegistration {
+        listener(QuerySnapshot(), null)
+        return object : ListenerRegistration { override fun remove() {} }
+    }
+    open fun addSnapshotListener(metadataChanges: MetadataChanges, listener: (QuerySnapshot?, Exception?) -> Unit): ListenerRegistration {
         listener(QuerySnapshot(), null)
         return object : ListenerRegistration { override fun remove() {} }
     }
@@ -65,17 +73,22 @@ open class Query {
 
 class CollectionReference(val path: String = "") : Query() {
     fun document(path: String = ""): DocumentReference = DocumentReference(path)
-    fun add(data: Any): Task<DocumentReference> = Task(DocumentReference())
+    fun add(data: Any): Task<DocumentReference> = Task()
 }
 
 class DocumentReference(val id: String = "doc_ref") {
-    fun get(source: Source = Source.DEFAULT): Task<DocumentSnapshot> = Task(DocumentSnapshot(id))
-    fun set(data: Any, options: SetOptions? = null): Task<Void> = Task(null)
-    fun update(data: Map<String, Any?>): Task<Void> = Task(null)
-    fun update(field: String, value: Any?, vararg moreFieldsAndValues: Any?): Task<Void> = Task(null)
-    fun delete(): Task<Void> = Task(null)
+    val reference: DocumentReference get() = this
+    fun get(source: Source = Source.DEFAULT): Task<DocumentSnapshot> = Task()
+    fun set(data: Any, options: SetOptions? = null): Task<Unit> = Task()
+    fun update(data: Map<String, Any?>): Task<Unit> = Task()
+    fun update(field: String, value: Any?, vararg moreFieldsAndValues: Any?): Task<Unit> = Task()
+    fun delete(): Task<Unit> = Task()
     fun collection(collectionPath: String): CollectionReference = CollectionReference(collectionPath)
     fun addSnapshotListener(listener: (DocumentSnapshot?, Exception?) -> Unit): ListenerRegistration {
+        listener(DocumentSnapshot(id), null)
+        return object : ListenerRegistration { override fun remove() {} }
+    }
+    fun addSnapshotListener(metadataChanges: MetadataChanges, listener: (DocumentSnapshot?, Exception?) -> Unit): ListenerRegistration {
         listener(DocumentSnapshot(id), null)
         return object : ListenerRegistration { override fun remove() {} }
     }
@@ -100,8 +113,8 @@ class FieldValue {
 
 class FirebaseFirestore private constructor() {
     fun collection(collectionPath: String): CollectionReference = CollectionReference(collectionPath)
-    fun collectionGroup(collectionId: String): Query = Query()
     fun document(documentPath: String): DocumentReference = DocumentReference(documentPath)
+    fun clearPersistence(): Task<Unit> = Task()
 
     companion object {
         private val instance = FirebaseFirestore()

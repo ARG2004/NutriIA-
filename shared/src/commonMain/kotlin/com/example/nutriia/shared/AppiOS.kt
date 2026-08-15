@@ -402,22 +402,39 @@ fun NutriIAiOSApp() {
                     Screen.DIRECTORIO_GINECOLOGOS -> DirectorioGinecologosScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
 
                     Screen.PACIENTE_EXPEDIENTE -> pacienteSeleccionado?.let { pac ->
-                        PacienteExpedienteScreen(paciente = pac, onNavigateBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST })
+                        PacienteExpedienteScreen(
+                            ownerUid = pac.id,
+                            childId = pac.id,
+                            childNombre = pac.nombre,
+                            padreNombre = "Tutor del Paciente",
+                            onBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST },
+                            sharedViewModel = sharedVm
+                        )
                     } ?: run { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
 
                     Screen.EXPEDIENTE_EMBARAZO -> pacienteSeleccionado?.let { pac ->
-                        PacienteExpedienteEmbarazoScreen(paciente = pac, onNavigateBack = { currentScreen = Screen.DASHBOARD_GINECOLOGO })
+                        PacienteExpedienteEmbarazoScreen(
+                            mamaUid = pac.id,
+                            mamaNombre = pac.nombre,
+                            onBack = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+                        )
                     } ?: run { currentScreen = Screen.DASHBOARD_GINECOLOGO }
 
                     Screen.CONFIGURACION -> ConfiguracionScreen(
-                        onVolver = { currentScreen = pantallaOrigenConfig },
+                        children = children,
+                        nombrePadre = loginViewModel.nombreUsuario.ifBlank { "Usuario NutriIA" },
+                        emailPadre = loginViewModel.emailUsuario.ifBlank { "usuario@nutriia.com" },
+                        rol = loginViewModel.rolUsuario.ifBlank { "padre" },
+                        onBack = { currentScreen = pantallaOrigenConfig },
                         onEditarPerfil = { currentScreen = Screen.EDITAR_PERFIL },
-                        onEditarRegion = {
-                            val child = activeChild
-                            if (child != null) {
-                                hijoParaEditar = child
-                                currentScreen = Screen.EDITAR_REGION
-                            }
+                        onEditarHijo = { child ->
+                            hijoParaEditar = child
+                            currentScreen = Screen.EDITAR_REGION
+                        },
+                        onAgregarHijo = {
+                            isAddingChild = true
+                            saltarAccesibilidadEnQuiz = false
+                            currentScreen = Screen.QUIZ
                         },
                         onCerrarSesion = {
                             loginViewModel.cerrarSesion()
@@ -426,8 +443,10 @@ fun NutriIAiOSApp() {
                     )
                     Screen.AYUDA -> HelpScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
                     Screen.BIOMETRIC_ACTIVATION -> BiometricActivationScreen(
-                        onActivationSuccess = { currentScreen = Screen.DASHBOARD_PARENT },
-                        onSkip = { currentScreen = Screen.DASHBOARD_PARENT }
+                        uid = loginViewModel.uidUsuario,
+                        rol = loginViewModel.rolUsuario,
+                        onActivado = { currentScreen = Screen.DASHBOARD_PARENT },
+                        onOmitido = { currentScreen = Screen.DASHBOARD_PARENT }
                     )
                     else -> NutriIADashboardScreen(
                         children = children,

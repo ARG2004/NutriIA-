@@ -78,7 +78,7 @@ jobs:
           fi
 
       - name: 7. Build iOS Multiplatform Framework
-        run: ./gradlew :shared:embedAndSignAppleFrameworkForXcode --stacktrace || ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace
+        run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace -DKONAN_ARCH=arm64
 
       - name: 8. Package & Upload iOS IPA to TestFlight (If Configured)
         env:
@@ -117,7 +117,7 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH || true
 
-            BUILD_NUM="34"
+            BUILD_NUM="35"
             echo "=== Archivando con xcodebuild (Build $BUILD_NUM) ==="
             xcodebuild archive \
               -project iosApp.xcodeproj \

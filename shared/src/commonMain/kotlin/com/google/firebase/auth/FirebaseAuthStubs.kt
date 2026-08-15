@@ -1,6 +1,14 @@
 package com.google.firebase.auth
 
 import android.net.Uri
+import com.google.android.gms.tasks.Task
+
+open class AuthCredential
+
+object EmailAuthProvider {
+    const val PROVIDER_ID = "password"
+    fun getCredential(email: String, password: String): AuthCredential = AuthCredential()
+}
 
 class FirebaseUser(
     val uid: String = "ios_user_default",
@@ -9,7 +17,10 @@ class FirebaseUser(
     val photoUrl: Uri? = null
 ) {
     fun isEmailVerified(): Boolean = true
-    fun reload(): Any? = null
+    fun reload(): Task<Unit> = Task()
+    fun reauthenticate(credential: AuthCredential): Task<Unit> = Task()
+    fun updatePassword(newPassword: String): Task<Unit> = Task()
+    fun delete(): Task<Unit> = Task()
 }
 
 class AuthResult(
@@ -19,19 +30,32 @@ class AuthResult(
 class FirebaseAuth private constructor() {
     var currentUser: FirebaseUser? = FirebaseUser()
 
+    fun interface AuthStateListener {
+        fun onAuthStateChanged(auth: FirebaseAuth)
+    }
+
+    private val authStateListeners = mutableListOf<AuthStateListener>()
+
+    fun addAuthStateListener(listener: AuthStateListener) {
+        authStateListeners.add(listener)
+        listener.onAuthStateChanged(this)
+    }
+
+    fun removeAuthStateListener(listener: AuthStateListener) {
+        authStateListeners.remove(listener)
+    }
+
     fun signInWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
         currentUser = FirebaseUser(email = email)
-        return Task(AuthResult(currentUser))
+        return Task()
     }
 
     fun createUserWithEmailAndPassword(email: String, password: String): Task<AuthResult> {
         currentUser = FirebaseUser(email = email)
-        return Task(AuthResult(currentUser))
+        return Task()
     }
 
-    fun sendPasswordResetEmail(email: String): Task<Unit> {
-        return Task(Unit)
-    }
+    fun sendPasswordResetEmail(email: String): Task<Unit> = Task()
 
     fun signOut() {
         currentUser = null
@@ -41,21 +65,4 @@ class FirebaseAuth private constructor() {
         private val instance = FirebaseAuth()
         fun getInstance(): FirebaseAuth = instance
     }
-}
-
-class Task<T>(private val result: T? = null) {
-    fun addOnSuccessListener(listener: (T) -> Unit): Task<T> {
-        result?.let { listener(it) }
-        return this
-    }
-    fun addOnFailureListener(listener: (Exception) -> Unit): Task<T> {
-        return this
-    }
-    fun addOnCompleteListener(listener: (Task<T>) -> Unit): Task<T> {
-        listener(this)
-        return this
-    }
-    fun isSuccessful(): Boolean = true
-    fun getResult(): T? = result
-    fun getException(): Exception? = null
 }
