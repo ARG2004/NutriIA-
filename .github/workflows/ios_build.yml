@@ -85,93 +85,63 @@ jobs:
           APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.MI_PERFIL_NUTRIIA || secrets.MI_PERFIL_NUTRIA }}
         run: |
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
-            echo "Secretos de App Store Connect no configurados completamente; omitiendo envío automático a TestFlight."
+            echo "Secretos de App Store Connect no configurados; omitiendo envío a TestFlight."
           else
-            echo "Empaquetando ejecutable .ipa para iOS y enviando a TestFlight..."
-            mkdir -p build/Payload
-            FRAMEWORK_DIR=$(find shared/build/bin -name "*.framework" | head -n 1)
-            
-            if [ -n "$FRAMEWORK_DIR" ]; then
-              mkdir -p build/Payload/NutriIA.app
-              if [ -f "iosApp/iosApp/Info.plist" ]; then
-                cp iosApp/iosApp/Info.plist build/Payload/NutriIA.app/Info.plist
-              fi
-              # Copiar íconos PNG ya comprometidos en el repositorio
-              cp iosApp/iosApp/AppIcon*.png build/Payload/NutriIA.app/ 2>/dev/null || true
-              cp iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/*.png build/Payload/NutriIA.app/ 2>/dev/null || true
+            echo "Instalando xcodegen para generar proyecto Xcode..."
+            brew install xcodegen
 
+            echo "Generando iosApp.xcodeproj desde project.yml..."
+            xcodegen generate
 
-              # Compilar ejecutable binario nativo de iOS (Mach-O arm64)
-              xcrun -sdk iphoneos swiftc -target arm64-apple-ios15.0 -parse-as-library \
-                iosApp/iosApp/iOSApp.swift \
-                -F shared/build/bin/iosArm64/releaseFramework \
-                -framework Shared \
-                -framework SwiftUI \
-                -framework UIKit \
-                -framework Foundation \
-                -Xlinker -rpath -Xlinker @executable_path/Frameworks \
-                -o build/Payload/NutriIA.app/NutriIA
+            echo "Obteniendo identidad de firma del keychain..."
+            IDENTITY=$(security find-identity -v | grep -E "Apple Distribution|iPhone Distribution" | grep -o '"[^"]*"' | head -1 | tr -d '"')
+            echo "Identidad: $IDENTITY"
 
-              chmod +x build/Payload/NutriIA.app/NutriIA
-              echo "Ejecutable binario creado con éxito ($(wc -c < build/Payload/NutriIA.app/NutriIA) bytes)."
+            echo "Obteniendo UUID del perfil de aprovisionamiento instalado..."
+            PP_FILE=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null | head -1)
+            security cms -D -i "$PP_FILE" > /tmp/pp_decoded.plist 2>/dev/null
+            PP_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /tmp/pp_decoded.plist 2>/dev/null || echo "")
+            echo "UUID del perfil: $PP_UUID"
 
-              # Garantizar incrustación de embedded.mobileprovision en el paquete
-              PP_PATH="build/Payload/NutriIA.app/embedded.mobileprovision"
-              if [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
-                echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '\r\n ' | base64 --decode -o "$PP_PATH" 2>/dev/null || echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '\r\n ' | base64 -D -o "$PP_PATH" 2>/dev/null || true
-                echo "embedded.mobileprovision generado con éxito ($(wc -c < "$PP_PATH") bytes)."
-              fi
+            echo "Preparando exportOptions.plist con firma manual..."
+            cp iosApp/exportOptions.plist /tmp/exportOptions.plist
+            /usr/libexec/PlistBuddy -c "Set :signingStyle manual" /tmp/exportOptions.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" /tmp/exportOptions.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.arg.nutriia string $PP_UUID" /tmp/exportOptions.plist 2>/dev/null || true
 
-              # Extraer entitlements de embedded.mobileprovision para firma de producción
-              if [ -f "$PP_PATH" ]; then
-                security cms -D -i "$PP_PATH" > build/Payload/provision.plist 2>/dev/null || true
-                /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' build/Payload/provision.plist > build/Payload/entitlements.plist 2>/dev/null || true
-                plutil -convert xml1 build/Payload/entitlements.plist 2>/dev/null || true
-                echo "Entitlements extraídos del perfil de provisión."
-              fi
+            echo "=== Archivando con xcodebuild ==="
+            xcodebuild archive \
+              -project iosApp.xcodeproj \
+              -scheme NutriIA \
+              -configuration Release \
+              -archivePath $RUNNER_TEMP/NutriIA.xcarchive \
+              -sdk iphoneos \
+              ONLY_ACTIVE_ARCH=NO \
+              ARCHS=arm64 \
+              CODE_SIGN_IDENTITY="$IDENTITY" \
+              CODE_SIGN_STYLE=Manual \
+              PROVISIONING_PROFILE="$PP_UUID" \
+              DEVELOPMENT_TEAM=X423NH338U
 
-              # Firmar binario nativo y frameworks con certificado oficial de Apple
-              KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-              IDENTITY=$(security find-identity -v $KEYCHAIN_PATH 2>/dev/null | grep -i "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
-              if [ -z "$IDENTITY" ]; then
-                IDENTITY=$(security find-identity -v 2>/dev/null | grep -i "Apple Distribution" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
-              fi
-              if [ -z "$IDENTITY" ]; then
-                IDENTITY=$(security find-identity -v $KEYCHAIN_PATH 2>/dev/null | grep -v "0 valid identities found" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
-              fi
-              if [ -z "$IDENTITY" ]; then
-                IDENTITY=$(security find-identity -v 2>/dev/null | grep -v "0 valid identities found" | grep -o '"[^"]*"' | head -n 1 | tr -d '"')
-              fi
+            echo "=== Exportando IPA ==="
+            xcodebuild -exportArchive \
+              -archivePath $RUNNER_TEMP/NutriIA.xcarchive \
+              -exportPath $RUNNER_TEMP/ipa-export \
+              -exportOptionsPlist /tmp/exportOptions.plist
 
-              echo "Identidad de firma seleccionada: '$IDENTITY'"
+            IPA_PATH=$(find $RUNNER_TEMP/ipa-export -name "*.ipa" | head -1)
+            echo "IPA generado en: $IPA_PATH"
 
-              if [ -n "$IDENTITY" ]; then
-                echo "Firmando app con certificado oficial de Apple: $IDENTITY"
-                codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app/Frameworks/Shared.framework 2>/dev/null || true
-                if [ -f "build/Payload/entitlements.plist" ]; then
-                  codesign --force --deep --options runtime --entitlements build/Payload/entitlements.plist -s "$IDENTITY" build/Payload/NutriIA.app || codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app
-                else
-                  codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app
-                fi
-              else
-                echo "ADVERTENCIA: Firmando ad-hoc."
-                codesign --force --deep -s - build/Payload/NutriIA.app || true
-              fi
-
-              cd build
-              zip -r NutriIA.ipa Payload
-              cd ..
-              
-              IPA_PATH="build/NutriIA.ipa"
-              echo "Subiendo $IPA_PATH a App Store Connect / TestFlight con clave $KEY_ID e Issuer $ISSUER_ID..."
-              xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" --verbose || echo "Comando de subida finalizado."
-            else
-              echo "No se encontró el framework de iOS para empaquetar."
-            fi
+            echo "=== Subiendo a TestFlight ==="
+            xcrun altool --upload-app --type ios \
+              --file "$IPA_PATH" \
+              --apiKey "$KEY_ID" \
+              --apiIssuer "$ISSUER_ID" \
+              --verbose || echo "Subida finalizada."
           fi
+
 
       - name: 9. Upload Android APK Artifact
         uses: actions/upload-artifact@v4

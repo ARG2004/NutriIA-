@@ -1,0 +1,36 @@
+﻿name: iosApp
+options:
+  bundleIdPrefix: com.arg
+  deploymentTarget:
+    iOS: '15.0'
+  createIntermediateGroups: true
+
+targets:
+  NutriIA:
+    type: application
+    platform: iOS
+    deploymentTarget: '15.0'
+    sources:
+      - path: iosApp/iosApp
+        excludes:
+          - Assets.xcassets
+          - '*.png'
+          - Info.plist
+    resources:
+      - iosApp/iosApp/Assets.xcassets
+    info:
+      path: iosApp/iosApp/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.arg.nutriia
+        DEVELOPMENT_TEAM: X423NH338U
+        CODE_SIGN_STYLE: Manual
+        IPHONEOS_DEPLOYMENT_TARGET: '15.0'
+        SWIFT_VERSION: '5.0'
+        TARGETED_DEVICE_FAMILY: '1'
+        FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
+        LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
+    dependencies:
+      - framework: shared/build/bin/iosArm64/releaseFramework/Shared.framework
+        embed: true
+        codeSign: true

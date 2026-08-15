@@ -47,6 +47,8 @@
 	<array>
 		<integer>1</integer>
 	</array>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
