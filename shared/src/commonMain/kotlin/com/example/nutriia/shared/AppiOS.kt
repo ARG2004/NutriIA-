@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,7 +34,7 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PALETA OFICIAL DE NUTRIA (IDÉNTICA A ANDROID)
+// PALETA OFICIAL DE NUTRIA (100% IDÉNTICA A ANDROID)
 // ═══════════════════════════════════════════════════════════════════════════
 val NutriaGreen      = Color(0xFF689F38)
 val NutriaDarkGreen  = Color(0xFF33691E)
@@ -45,9 +46,6 @@ val NutriaPink       = Color(0xFFEC9BBF)
 val NutriaBlue       = Color(0xFF64B5F6)
 val NutriaGineRosa   = Color(0xFFF06292)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ENUM SCREEN EXACTO DE MAINACTIVITY.KT
-// ═══════════════════════════════════════════════════════════════════════════
 enum class Screen {
     ACCESIBILIDAD_INICIAL, LOGIN, REGISTER_TYPE, REGISTER_PARENT, REGISTER_NUTRITIONIST, REGISTER_MAMA_PRIMERIZA,
     REGISTER_GINECOLOGO,
@@ -68,7 +66,6 @@ fun AppiOS() {
     var userName by rememberSaveable { mutableStateOf("Familia Rivera") }
     var childName by rememberSaveable { mutableStateOf("Mateo Rivera") }
 
-    // Simulación del arranque con SplashOverlay (igual a MainActivity.kt)
     LaunchedEffect(Unit) {
         delay(1600)
         showSplash = false
@@ -124,7 +121,7 @@ fun AppiOS() {
                             onRegistered = { name, email ->
                                 userName = name
                                 userEmail = email
-                                currentScreen = Screen.DASHBOARD_PARENT
+                                currentScreen = Screen.DASHBOARD_NUTRITIONIST
                             },
                             onBack = { currentScreen = Screen.REGISTER_TYPE }
                         )
@@ -133,7 +130,7 @@ fun AppiOS() {
                             onRegistered = { name, email ->
                                 userName = name
                                 userEmail = email
-                                currentScreen = Screen.DASHBOARD_PARENT
+                                currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
                             },
                             onBack = { currentScreen = Screen.REGISTER_TYPE }
                         )
@@ -142,7 +139,7 @@ fun AppiOS() {
                             onRegistered = { name, email ->
                                 userName = name
                                 userEmail = email
-                                currentScreen = Screen.DASHBOARD_PARENT
+                                currentScreen = Screen.DASHBOARD_GINECOLOGO
                             },
                             onBack = { currentScreen = Screen.REGISTER_TYPE }
                         )
@@ -159,6 +156,33 @@ fun AppiOS() {
                         ) {
                             NutriIADashboardParentView(
                                 childName = childName,
+                                onNavigate = { currentScreen = it },
+                                onLogout = { currentScreen = Screen.LOGIN }
+                            )
+                        }
+                        Screen.DASHBOARD_MAMA_PRIMERIZA -> MainAppScaffold(
+                            currentTab = Screen.DASHBOARD_PARENT,
+                            onTabSelected = { currentScreen = it }
+                        ) {
+                            DashboardMamaPrimerizaView(
+                                onNavigate = { currentScreen = it },
+                                onLogout = { currentScreen = Screen.LOGIN }
+                            )
+                        }
+                        Screen.DASHBOARD_NUTRITIONIST -> MainAppScaffold(
+                            currentTab = Screen.DASHBOARD_PARENT,
+                            onTabSelected = { currentScreen = it }
+                        ) {
+                            DashboardNutritionistView(
+                                onNavigate = { currentScreen = it },
+                                onLogout = { currentScreen = Screen.LOGIN }
+                            )
+                        }
+                        Screen.DASHBOARD_GINECOLOGO -> MainAppScaffold(
+                            currentTab = Screen.DASHBOARD_PARENT,
+                            onTabSelected = { currentScreen = it }
+                        ) {
+                            DashboardGinecologistView(
                                 onNavigate = { currentScreen = it },
                                 onLogout = { currentScreen = Screen.LOGIN }
                             )
@@ -256,9 +280,6 @@ fun AppiOS() {
                 }
             }
 
-            // ═══════════════════════════════════════════════════════════════════
-            // SPLASHOVERLAY IDÉNTICO AL DE MAINACTIVITY.KT
-            // ═══════════════════════════════════════════════════════════════════
             AnimatedVisibility(
                 visible = showSplash,
                 enter = fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) + scaleIn(initialScale = 0.94f, animationSpec = tween(400, easing = FastOutSlowInEasing)),
@@ -1007,7 +1028,76 @@ fun NutriIADashboardParentView(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 7. VISTAS DE LOS 11 MÓDULOS DEL PADRE
+// 7. DASHBOARDS DE OTROS ROLES (MAMÁ PRIMERIZA, NUTRIÓLOGO, GINECÓLOGO)
+// ═══════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun DashboardMamaPrimerizaView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item {
+            Text("🤰 Mi Embarazo Semana a Semana", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+            Text("Semana 24 de gestación • Segundo Trimestre", fontSize = 13.sp, color = Color.Gray)
+        }
+        item {
+            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = NutriaPink), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Bebé: Tamaño de una Mazorca de Maíz 🌽", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Peso estimado: 600g • Longitud: 30cm", fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
+                }
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DashModuleCard("Nutrición Embarazo", "Ácido fólico y hierro", Icons.Rounded.Spa, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NUTRIENTES) }
+                DashModuleCard("Citas Prenatales", "Calendario y ecografías", Icons.Rounded.CalendarMonth, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.RECORDATORIOS) }
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardNutritionistView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item {
+            Text("🩺 Directorio Clínico Nutricional", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+            Text("Expedientes de Pacientes Pediátricos Activos", fontSize = 13.sp, color = Color.Gray)
+        }
+        item {
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Paciente: Mateo Rivera (6m)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Estado Nutricional: Eutrófico (Percentil 50 OMS)", fontSize = 12.sp, color = NutriaGreen)
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = { onNavigate(Screen.CRECIMIENTO) }, colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen)) {
+                        Text("Ver Expediente & Curvas")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardGinecologistView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item {
+            Text("🏥 Panel Obstétrico y Control Prenatal", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+            Text("Seguimiento Materno-Fetal", fontSize = 13.sp, color = Color.Gray)
+        }
+        item {
+            Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Paciente: María García (Semana 24)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Presión arterial: 110/70 • Ganancia ponderal adecuada", fontSize = 12.sp, color = NutriaDarkGreen)
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. VISTAS DE LOS 11 MÓDULOS DEL PADRE CON LÓGICA CLÍNICA REAL
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
