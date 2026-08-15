@@ -1,7 +1,3 @@
-package android.view
-
-open class ViewGroup
-
 package android.view.accessibility
 
 class AccessibilityManager {
