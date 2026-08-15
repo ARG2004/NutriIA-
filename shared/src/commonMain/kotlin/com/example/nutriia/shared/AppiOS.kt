@@ -25,36 +25,37 @@ fun AppiOS() {
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(24.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(Color(0xFF2E7D32), RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "🌱",
-                    fontSize = 40.sp
-                )
-            }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(Color(0xFF2E7D32), RoundedCornerShape(20.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🌱",
+                            fontSize = 40.sp
+                        )
+                    }
 
-            Text(
-                text = "NutrIA para iOS",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1B5E20)
-            )
+                    Text(
+                        text = "NutrIA para iOS",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1B5E20)
+                    )
 
-            Text(
-                text = "Asistente Nutricional con Inteligencia Artificial OMS & Lactancia",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                fontWeight = FontWeight.Medium
-            )
+                    Text(
+                        text = "Asistente Nutricional con Inteligencia Artificial OMS & Lactancia",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
