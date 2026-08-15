@@ -1,5 +1,7 @@
 package com.example.nutriia.shared
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,11 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -103,6 +107,14 @@ fun NutriIAiOSApp() {
     val teleconsultaVm: TeleconsultaViewModel = remember { TeleconsultaViewModel() }
     val accessibilityVm: AccessibilityViewModel = remember { AccessibilityViewModel() }
 
+    val accessibilityMode by accessibilityVm.mode.collectAsState()
+    val primeraVez by accessibilityVm.primeraVez.collectAsState()
+    val primeraVezCargada by accessibilityVm.primeraVezCargada.collectAsState()
+
+    var isCheckingInitialSession by remember { mutableStateOf(true) }
+    var showLoginSplash by remember { mutableStateOf(false) }
+    var showResumeSplash by remember { mutableStateOf(false) }
+
     var currentScreen by rememberSaveable { mutableStateOf(Screen.LOGIN) }
     var children by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var activeChildIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -120,301 +132,411 @@ fun NutriIAiOSApp() {
 
     val scope = rememberCoroutineScope()
 
+    // ─── Control de Sesión Inicial y Primera Vez (Accesibilidad) ───────────
+    LaunchedEffect(primeraVezCargada) {
+        if (!primeraVezCargada) return@LaunchedEffect
+        delay(1200) // Animación del Splash inicial
+        if (primeraVez) {
+            currentScreen = Screen.ACCESIBILIDAD_INICIAL
+        } else {
+            currentScreen = Screen.LOGIN
+        }
+        isCheckingInitialSession = false
+    }
+
     NutriIATheme {
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (currentScreen) {
-                Screen.ACCESIBILIDAD_INICIAL -> OnboardingQuizScreen(
-                    soloAccesibilidad = true,
-                    onQuizComplete = { },
-                    onAccesibilidadCompletada = {
-                        accessibilityVm.marcarPrimeraVezCompletada()
-                        currentScreen = Screen.REGISTER_TYPE
-                    }
-                )
-                Screen.LOGIN -> NutriaLoginScreen(
-                    viewModel = loginViewModel,
-                    onNavigateAsParent = {
-                        currentScreen = if (children.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
-                    },
-                    onNavigateAsNutritionist = { currentScreen = Screen.DASHBOARD_NUTRITIONIST },
-                    onNavigateToRegister = { currentScreen = Screen.REGISTER_TYPE },
-                    onNavigateToBiometricActivation = { _, _ -> currentScreen = Screen.BIOMETRIC_ACTIVATION }
-                )
-                Screen.REGISTER_TYPE -> RegisterTypeScreen(
-                    onNavigateBack        = { currentScreen = Screen.LOGIN },
-                    onSelectParent        = { currentScreen = Screen.REGISTER_PARENT },
-                    onSelectNutritionist  = { currentScreen = Screen.REGISTER_NUTRITIONIST },
-                    onSelectMamaPrimeriza = { currentScreen = Screen.REGISTER_MAMA_PRIMERIZA },
-                    onSelectGinecologo    = { currentScreen = Screen.REGISTER_GINECOLOGO }
-                )
-                Screen.REGISTER_PARENT -> ParentRegisterScreen(
-                    onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
-                    onRegisterSuccess = { data ->
-                        prefilledChildName = data.childName
-                        saltarAccesibilidadEnQuiz = true
-                        currentScreen = Screen.QUIZ
-                    }
-                )
-                Screen.REGISTER_MAMA_PRIMERIZA -> MamaPrimerizaRegisterScreen(
-                    onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
-                    onRegisterSuccess = { data ->
-                        nombreMama = data.name
-                        semanasEmbarazo = data.semanas
-                        currentScreen = Screen.QUIZ_MAMA_PRIMERIZA
-                    }
-                )
-                Screen.REGISTER_NUTRITIONIST -> NutritionistRegisterScreen(
-                    onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
-                    onRegisterSuccess = { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
-                )
-                Screen.REGISTER_GINECOLOGO -> GinecologistRegisterScreen(
-                    onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
-                    onRegisterSuccess = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
-                )
-
-                // Quizzes
-                Screen.QUIZ -> OnboardingQuizScreen(
-                    isAddingChild = isAddingChild,
-                    prefilledChildName = prefilledChildName,
-                    saltarAccesibilidad = saltarAccesibilidadEnQuiz,
-                    onQuizComplete = { newProfile ->
-                        children = children + newProfile
-                        isAddingChild = false
-                        prefilledChildName = ""
-                        saltarAccesibilidadEnQuiz = false
-                        activeChildIndex = children.lastIndex
-                        loginViewModel.guardarHijo(newProfile)
-                        currentScreen = Screen.DASHBOARD_PARENT
-                    },
-                    onCancel = {
-                        isAddingChild = false
-                        prefilledChildName = ""
-                        saltarAccesibilidadEnQuiz = false
-                        currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT
-                    }
-                )
-                Screen.QUIZ_MAMA_PRIMERIZA -> EmbarazoQuizScreen(
-                    semanasIniciales = semanasEmbarazo,
-                    onQuizComplete = { perfil ->
-                        perfilEmbarazo = perfil
-                        currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
-                        loginViewModel.guardarPerfilEmbarazo(perfil)
-                    },
-                    onCancel = { currentScreen = Screen.LOGIN }
-                )
-
-                // Dashboards
-                Screen.DASHBOARD_PARENT -> NutriIADashboardScreen(
-                    children = children,
-                    initialPageIndex = activeChildIndex,
-                    esNutriologo = false,
-                    onPageChange = { index -> activeChildIndex = index },
-                    onLogout = {
-                        accessibilityVm.silenciar()
-                        loginViewModel.cerrarSesion()
-                        sharedVm.limpiarPerfil()
-                        children = emptyList()
-                        activeChildIndex = 0
-                        saltarAccesibilidadEnQuiz = false
-                        currentScreen = Screen.LOGIN
-                    },
-                    onConfiguracion = {
-                        pantallaOrigenConfig = Screen.DASHBOARD_PARENT
-                        currentScreen = Screen.CONFIGURACION
-                    },
-                    onAddChild = {
-                        isAddingChild = true
-                        saltarAccesibilidadEnQuiz = false
-                        currentScreen = Screen.QUIZ
-                    },
-                    onOpenLactancia = { idx -> activeChildIndex = idx; currentScreen = Screen.LACTANCIA },
-                    onOpenSolidos = { idx -> activeChildIndex = idx; currentScreen = Screen.SOLIDOS },
-                    onOpenCrecimiento = { idx -> activeChildIndex = idx; currentScreen = Screen.CRECIMIENTO },
-                    onOpenSueno = { idx -> activeChildIndex = idx; currentScreen = Screen.SUENO },
-                    onOpenMicronutrientes = { idx -> activeChildIndex = idx; currentScreen = Screen.NUTRIENTES },
-                    onOpenPediatra = { idx -> activeChildIndex = idx; currentScreen = Screen.PEDIATRA_DASHBOARD },
-                    onOpenChatIA = { idx -> activeChildIndex = idx; currentScreen = Screen.CHAT_IA },
-                    onOpenDiario = { idx -> activeChildIndex = idx; currentScreen = Screen.DIARIO_VISUAL },
-                    onOpenRecordatorios = { idx -> activeChildIndex = idx; currentScreen = Screen.RECORDATORIOS },
-                    onAyuda = { currentScreen = Screen.AYUDA }
-                )
-                Screen.DASHBOARD_NUTRITIONIST -> NutritionistDashboardScreen(
-                    teleconsultaViewModel = teleconsultaVm,
-                    onLogout = {
-                        accessibilityVm.silenciar()
-                        loginViewModel.cerrarSesion()
-                        currentScreen = Screen.LOGIN
-                    },
-                    onPatientClick = { paciente ->
-                        pacienteSeleccionado = paciente
-                        currentScreen = Screen.PACIENTE_EXPEDIENTE
-                    },
-                    onNewPlan = {},
-                    onViewAllPatients = {}
-                )
-                Screen.DASHBOARD_MAMA_PRIMERIZA -> {
-                    val p = perfilEmbarazo
-                    if (p != null) {
-                        EmbarazoDashboardScreen(
-                            nombreMama = nombreMama.ifBlank { loginViewModel.nombreUsuario },
-                            perfil = p,
-                            onLogout = {
-                                accessibilityVm.silenciar()
-                                loginViewModel.cerrarSesion()
-                                perfilEmbarazo = null
-                                nombreMama = ""
-                                currentScreen = Screen.LOGIN
-                            },
-                            onConfiguracion = {
-                                pantallaOrigenConfig = Screen.DASHBOARD_MAMA_PRIMERIZA
-                                currentScreen = Screen.CONFIGURACION
-                            },
-                            onOpenVinculacionGinecologo = { currentScreen = Screen.VINCULACION_GINECOLOGO },
-                            onOpenChatBot = { currentScreen = Screen.CHAT_IA },
-                            onOpenNutricion = { currentScreen = Screen.NUTRICION_EMBARAZO },
-                            onOpenRecordatorios = { currentScreen = Screen.RECORDATORIOS },
-                            onOpenCitas = { currentScreen = Screen.CITAS_EMBARAZO },
-                            onOpenAnalisisIA = { currentScreen = Screen.DIARIO_VISUAL }
-                        )
-                    } else {
-                        EmbarazoQuizScreen(
-                            semanasIniciales = semanasEmbarazo,
-                            onQuizComplete = { perfil ->
-                                perfilEmbarazo = perfil
-                                currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
-                                loginViewModel.guardarPerfilEmbarazo(perfil)
-                            },
-                            onCancel = { currentScreen = Screen.LOGIN }
-                        )
-                    }
-                }
-                Screen.DASHBOARD_GINECOLOGO -> GinecologoDashboardScreen(
-                    onLogout = {
-                        accessibilityVm.silenciar()
-                        loginViewModel.cerrarSesion()
-                        currentScreen = Screen.LOGIN
-                    },
-                    onPacienteClick = { paciente ->
-                        pacienteSeleccionado = PacienteResumen(
-                            id = paciente.pacienteUid,
-                            nombre = paciente.pacienteNombre,
-                            edad = "${paciente.semanasGestacion} semanas",
-                            genero = "Femenino",
-                            ultimaConsulta = "Hoy",
-                            tieneAlerta = false
-                        )
-                        currentScreen = Screen.EXPEDIENTE_EMBARAZO
-                    },
-                    onConfiguracion = {
-                        pantallaOrigenConfig = Screen.DASHBOARD_GINECOLOGO
-                        currentScreen = Screen.CONFIGURACION
-                    },
-                    onVerDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS }
-                )
-
-                // Módulos Clínicos
-                Screen.LACTANCIA -> activeChild?.let { child ->
-                    LactanciaScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
-                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-
-                Screen.SOLIDOS -> activeChild?.let { child ->
-                    SolidosScreen(uid = loginViewModel.uidUsuario, childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
-                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-
-                Screen.CRECIMIENTO -> activeChild?.let { child ->
-                    CrecimientoScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), sexo = child.sexo, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
-                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-
-                Screen.NUTRIENTES -> activeChild?.let { child ->
-                    NutrientesScreen(childId = child.id, childName = child.name, mesesEdad = mesesDeVida(child.birthDate), onBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
-                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-
-                Screen.CHAT_IA -> {
-                    val rol = loginViewModel.rolUsuario
-                    if (rol == "mama_primeriza") {
-                        NutriChatScreen(childName = "Mi Bebé", onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }, onNavigateToAnalisis = null)
-                    } else {
-                        activeChild?.let { child ->
-                            NutriChatScreen(childName = child.name, onBack = { currentScreen = Screen.DASHBOARD_PARENT }, onNavigateToAnalisis = { currentScreen = Screen.DIARIO_VISUAL })
-                        } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-                    }
-                }
-
-                Screen.DIARIO_VISUAL -> activeChild?.let { child ->
-                    AnalisisScreen(child = child, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
-                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-
-                Screen.RECORDATORIOS -> {
-                    val rol = loginViewModel.rolUsuario
-                    if (rol == "mama_primeriza") {
-                        AlertasScreen(childId = null, childName = "Mi Embarazo", onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
-                    } else {
-                        activeChild?.let { child ->
-                            AlertasScreen(childId = child.id, childName = child.name, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
-                        } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-                    }
-                }
-
-                Screen.PEDIATRA_DASHBOARD -> activeChild?.let { child ->
-                    PediatraScreen(childId = child.id, childName = child.name, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
-                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
-
-                Screen.NUTRICION_EMBARAZO -> EmbarazoNutricionScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
-                Screen.CITAS_EMBARAZO -> CitasEmbarazoScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
-                Screen.VINCULACION_GINECOLOGO -> VinculacionGinecologoScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }, onVerDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS })
-                Screen.DIRECTORIO_GINECOLOGOS -> DirectorioGinecologosScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
-
-                Screen.PACIENTE_EXPEDIENTE -> pacienteSeleccionado?.let { pac ->
-                    PacienteExpedienteScreen(paciente = pac, onNavigateBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST })
-                } ?: run { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
-
-                Screen.EXPEDIENTE_EMBARAZO -> pacienteSeleccionado?.let { pac ->
-                    PacienteExpedienteEmbarazoScreen(paciente = pac, onNavigateBack = { currentScreen = Screen.DASHBOARD_GINECOLOGO })
-                } ?: run { currentScreen = Screen.DASHBOARD_GINECOLOGO }
-
-                Screen.CONFIGURACION -> ConfiguracionScreen(
-                    onVolver = { currentScreen = pantallaOrigenConfig },
-                    onEditarPerfil = { currentScreen = Screen.EDITAR_PERFIL },
-                    onEditarRegion = {
-                        val child = activeChild
-                        if (child != null) {
-                            hijoParaEditar = child
-                            currentScreen = Screen.EDITAR_REGION
+        CompositionLocalProvider(LocalAccessibilityMode provides accessibilityMode) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (currentScreen) {
+                    Screen.ACCESIBILIDAD_INICIAL -> OnboardingQuizScreen(
+                        soloAccesibilidad = true,
+                        onQuizComplete = { },
+                        onAccesibilidadCompletada = {
+                            accessibilityVm.marcarPrimeraVezCompletada()
+                            currentScreen = Screen.LOGIN
                         }
-                    },
-                    onCerrarSesion = {
-                        loginViewModel.cerrarSesion()
-                        currentScreen = Screen.LOGIN
+                    )
+                    Screen.LOGIN -> NutriaLoginScreen(
+                        viewModel = loginViewModel,
+                        onNavigateAsParent = {
+                            showLoginSplash = true
+                            currentScreen = if (children.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
+                            scope.launch {
+                                delay(1200)
+                                showLoginSplash = false
+                            }
+                        },
+                        onNavigateAsNutritionist = {
+                            showLoginSplash = true
+                            currentScreen = Screen.DASHBOARD_NUTRITIONIST
+                            scope.launch {
+                                delay(1200)
+                                showLoginSplash = false
+                            }
+                        },
+                        onNavigateToRegister = { currentScreen = Screen.REGISTER_TYPE },
+                        onNavigateToBiometricActivation = { _, _ -> currentScreen = Screen.BIOMETRIC_ACTIVATION }
+                    )
+                    Screen.REGISTER_TYPE -> RegisterTypeScreen(
+                        onNavigateBack        = { currentScreen = Screen.LOGIN },
+                        onSelectParent        = { currentScreen = Screen.REGISTER_PARENT },
+                        onSelectNutritionist  = { currentScreen = Screen.REGISTER_NUTRITIONIST },
+                        onSelectMamaPrimeriza = { currentScreen = Screen.REGISTER_MAMA_PRIMERIZA },
+                        onSelectGinecologo    = { currentScreen = Screen.REGISTER_GINECOLOGO }
+                    )
+                    Screen.REGISTER_PARENT -> ParentRegisterScreen(
+                        onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
+                        onRegisterSuccess = { data ->
+                            prefilledChildName = data.childName
+                            saltarAccesibilidadEnQuiz = true
+                            currentScreen = Screen.QUIZ
+                        }
+                    )
+                    Screen.REGISTER_MAMA_PRIMERIZA -> MamaPrimerizaRegisterScreen(
+                        onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
+                        onRegisterSuccess = { data ->
+                            nombreMama = data.name
+                            semanasEmbarazo = data.semanas
+                            currentScreen = Screen.QUIZ_MAMA_PRIMERIZA
+                        }
+                    )
+                    Screen.REGISTER_NUTRITIONIST -> NutritionistRegisterScreen(
+                        onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
+                        onRegisterSuccess = { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
+                    )
+                    Screen.REGISTER_GINECOLOGO -> GinecologistRegisterScreen(
+                        onNavigateBack    = { currentScreen = Screen.REGISTER_TYPE },
+                        onRegisterSuccess = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+                    )
+
+                    // Quizzes
+                    Screen.QUIZ -> OnboardingQuizScreen(
+                        isAddingChild = isAddingChild,
+                        prefilledChildName = prefilledChildName,
+                        saltarAccesibilidad = saltarAccesibilidadEnQuiz,
+                        onQuizComplete = { newProfile ->
+                            children = children + newProfile
+                            isAddingChild = false
+                            prefilledChildName = ""
+                            saltarAccesibilidadEnQuiz = false
+                            activeChildIndex = children.lastIndex
+                            loginViewModel.guardarHijo(newProfile)
+                            currentScreen = Screen.DASHBOARD_PARENT
+                        },
+                        onCancel = {
+                            isAddingChild = false
+                            prefilledChildName = ""
+                            saltarAccesibilidadEnQuiz = false
+                            currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT
+                        }
+                    )
+                    Screen.QUIZ_MAMA_PRIMERIZA -> EmbarazoQuizScreen(
+                        semanasIniciales = semanasEmbarazo,
+                        onQuizComplete = { perfil ->
+                            perfilEmbarazo = perfil
+                            currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
+                            loginViewModel.guardarPerfilEmbarazo(perfil)
+                        },
+                        onCancel = { currentScreen = Screen.LOGIN }
+                    )
+
+                    // Dashboards
+                    Screen.DASHBOARD_PARENT -> NutriIADashboardScreen(
+                        children = children,
+                        initialPageIndex = activeChildIndex,
+                        esNutriologo = false,
+                        onPageChange = { index -> activeChildIndex = index },
+                        onLogout = {
+                            accessibilityVm.silenciar()
+                            loginViewModel.cerrarSesion()
+                            sharedVm.limpiarPerfil()
+                            children = emptyList()
+                            activeChildIndex = 0
+                            saltarAccesibilidadEnQuiz = false
+                            currentScreen = Screen.LOGIN
+                        },
+                        onConfiguracion = {
+                            pantallaOrigenConfig = Screen.DASHBOARD_PARENT
+                            currentScreen = Screen.CONFIGURACION
+                        },
+                        onAddChild = {
+                            isAddingChild = true
+                            saltarAccesibilidadEnQuiz = false
+                            currentScreen = Screen.QUIZ
+                        },
+                        onOpenLactancia = { idx -> activeChildIndex = idx; currentScreen = Screen.LACTANCIA },
+                        onOpenSolidos = { idx -> activeChildIndex = idx; currentScreen = Screen.SOLIDOS },
+                        onOpenCrecimiento = { idx -> activeChildIndex = idx; currentScreen = Screen.CRECIMIENTO },
+                        onOpenSueno = { idx -> activeChildIndex = idx; currentScreen = Screen.SUENO },
+                        onOpenMicronutrientes = { idx -> activeChildIndex = idx; currentScreen = Screen.NUTRIENTES },
+                        onOpenPediatra = { idx -> activeChildIndex = idx; currentScreen = Screen.PEDIATRA_DASHBOARD },
+                        onOpenChatIA = { idx -> activeChildIndex = idx; currentScreen = Screen.CHAT_IA },
+                        onOpenDiario = { idx -> activeChildIndex = idx; currentScreen = Screen.DIARIO_VISUAL },
+                        onOpenRecordatorios = { idx -> activeChildIndex = idx; currentScreen = Screen.RECORDATORIOS },
+                        onAyuda = { currentScreen = Screen.AYUDA }
+                    )
+                    Screen.DASHBOARD_NUTRITIONIST -> NutritionistDashboardScreen(
+                        teleconsultaViewModel = teleconsultaVm,
+                        onLogout = {
+                            accessibilityVm.silenciar()
+                            loginViewModel.cerrarSesion()
+                            currentScreen = Screen.LOGIN
+                        },
+                        onPatientClick = { paciente ->
+                            pacienteSeleccionado = paciente
+                            currentScreen = Screen.PACIENTE_EXPEDIENTE
+                        },
+                        onNewPlan = {},
+                        onViewAllPatients = {}
+                    )
+                    Screen.DASHBOARD_MAMA_PRIMERIZA -> {
+                        val p = perfilEmbarazo
+                        if (p != null) {
+                            EmbarazoDashboardScreen(
+                                nombreMama = nombreMama.ifBlank { loginViewModel.nombreUsuario },
+                                perfil = p,
+                                onLogout = {
+                                    accessibilityVm.silenciar()
+                                    loginViewModel.cerrarSesion()
+                                    perfilEmbarazo = null
+                                    nombreMama = ""
+                                    currentScreen = Screen.LOGIN
+                                },
+                                onConfiguracion = {
+                                    pantallaOrigenConfig = Screen.DASHBOARD_MAMA_PRIMERIZA
+                                    currentScreen = Screen.CONFIGURACION
+                                },
+                                onOpenVinculacionGinecologo = { currentScreen = Screen.VINCULACION_GINECOLOGO },
+                                onOpenChatBot = { currentScreen = Screen.CHAT_IA },
+                                onOpenNutricion = { currentScreen = Screen.NUTRICION_EMBARAZO },
+                                onOpenRecordatorios = { currentScreen = Screen.RECORDATORIOS },
+                                onOpenCitas = { currentScreen = Screen.CITAS_EMBARAZO },
+                                onOpenAnalisisIA = { currentScreen = Screen.DIARIO_VISUAL }
+                            )
+                        } else {
+                            EmbarazoQuizScreen(
+                                semanasIniciales = semanasEmbarazo,
+                                onQuizComplete = { perfil ->
+                                    perfilEmbarazo = perfil
+                                    currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
+                                    loginViewModel.guardarPerfilEmbarazo(perfil)
+                                },
+                                onCancel = { currentScreen = Screen.LOGIN }
+                            )
+                        }
                     }
-                )
-                Screen.AYUDA -> HelpScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
-                Screen.BIOMETRIC_ACTIVATION -> BiometricActivationScreen(
-                    onActivationSuccess = { currentScreen = Screen.DASHBOARD_PARENT },
-                    onSkip = { currentScreen = Screen.DASHBOARD_PARENT }
-                )
-                else -> NutriIADashboardScreen(
-                    children = children,
-                    initialPageIndex = activeChildIndex,
-                    esNutriologo = false,
-                    onPageChange = { index -> activeChildIndex = index },
-                    onLogout = {
-                        loginViewModel.cerrarSesion()
-                        currentScreen = Screen.LOGIN
-                    },
-                    onConfiguracion = { currentScreen = Screen.CONFIGURACION },
-                    onAddChild = { currentScreen = Screen.QUIZ },
-                    onOpenLactancia = { currentScreen = Screen.LACTANCIA },
-                    onOpenSolidos = { currentScreen = Screen.SOLIDOS },
-                    onOpenCrecimiento = { currentScreen = Screen.CRECIMIENTO },
-                    onOpenSueno = { currentScreen = Screen.SUENO },
-                    onOpenMicronutrientes = { currentScreen = Screen.NUTRIENTES },
-                    onOpenPediatra = { currentScreen = Screen.PEDIATRA_DASHBOARD },
-                    onOpenChatIA = { currentScreen = Screen.CHAT_IA },
-                    onOpenDiario = { currentScreen = Screen.DIARIO_VISUAL },
-                    onOpenRecordatorios = { currentScreen = Screen.RECORDATORIOS },
-                    onAyuda = { currentScreen = Screen.AYUDA }
-                )
+                    Screen.DASHBOARD_GINECOLOGO -> GinecologoDashboardScreen(
+                        onLogout = {
+                            accessibilityVm.silenciar()
+                            loginViewModel.cerrarSesion()
+                            currentScreen = Screen.LOGIN
+                        },
+                        onPacienteClick = { paciente ->
+                            pacienteSeleccionado = PacienteResumen(
+                                id = paciente.pacienteUid,
+                                nombre = paciente.pacienteNombre,
+                                edad = "${paciente.semanasGestacion} semanas",
+                                genero = "Femenino",
+                                ultimaConsulta = "Hoy",
+                                tieneAlerta = false
+                            )
+                            currentScreen = Screen.EXPEDIENTE_EMBARAZO
+                        },
+                        onConfiguracion = {
+                            pantallaOrigenConfig = Screen.DASHBOARD_GINECOLOGO
+                            currentScreen = Screen.CONFIGURACION
+                        },
+                        onVerDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS }
+                    )
+
+                    // Módulos Clínicos
+                    Screen.LACTANCIA -> activeChild?.let { child ->
+                        LactanciaScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                    } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+
+                    Screen.SOLIDOS -> activeChild?.let { child ->
+                        SolidosScreen(uid = loginViewModel.uidUsuario, childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
+                    } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+
+                    Screen.CRECIMIENTO -> activeChild?.let { child ->
+                        CrecimientoScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), sexo = child.sexo, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                    } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+
+                    Screen.NUTRIENTES -> activeChild?.let { child ->
+                        NutrientesScreen(childId = child.id, childName = child.name, mesesEdad = mesesDeVida(child.birthDate), onBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
+                    } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+
+                    Screen.CHAT_IA -> {
+                        val rol = loginViewModel.rolUsuario
+                        if (rol == "mama_primeriza") {
+                            NutriChatScreen(childName = "Mi Bebé", onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }, onNavigateToAnalisis = null)
+                        } else {
+                            activeChild?.let { child ->
+                                NutriChatScreen(childName = child.name, onBack = { currentScreen = Screen.DASHBOARD_PARENT }, onNavigateToAnalisis = { currentScreen = Screen.DIARIO_VISUAL })
+                            } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+                        }
+                    }
+
+                    Screen.DIARIO_VISUAL -> activeChild?.let { child ->
+                        AnalisisScreen(child = child, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                    } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+
+                    Screen.RECORDATORIOS -> {
+                        val rol = loginViewModel.rolUsuario
+                        if (rol == "mama_primeriza") {
+                            AlertasScreen(childId = null, childName = "Mi Embarazo", onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
+                        } else {
+                            activeChild?.let { child ->
+                                AlertasScreen(childId = child.id, childName = child.name, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+                        }
+                    }
+
+                    Screen.PEDIATRA_DASHBOARD -> activeChild?.let { child ->
+                        PediatraScreen(childId = child.id, childName = child.name, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                    } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+
+                    Screen.NUTRICION_EMBARAZO -> EmbarazoNutricionScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
+                    Screen.CITAS_EMBARAZO -> CitasEmbarazoScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
+                    Screen.VINCULACION_GINECOLOGO -> VinculacionGinecologoScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }, onVerDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS })
+                    Screen.DIRECTORIO_GINECOLOGOS -> DirectorioGinecologosScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
+
+                    Screen.PACIENTE_EXPEDIENTE -> pacienteSeleccionado?.let { pac ->
+                        PacienteExpedienteScreen(paciente = pac, onNavigateBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST })
+                    } ?: run { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
+
+                    Screen.EXPEDIENTE_EMBARAZO -> pacienteSeleccionado?.let { pac ->
+                        PacienteExpedienteEmbarazoScreen(paciente = pac, onNavigateBack = { currentScreen = Screen.DASHBOARD_GINECOLOGO })
+                    } ?: run { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+
+                    Screen.CONFIGURACION -> ConfiguracionScreen(
+                        onVolver = { currentScreen = pantallaOrigenConfig },
+                        onEditarPerfil = { currentScreen = Screen.EDITAR_PERFIL },
+                        onEditarRegion = {
+                            val child = activeChild
+                            if (child != null) {
+                                hijoParaEditar = child
+                                currentScreen = Screen.EDITAR_REGION
+                            }
+                        },
+                        onCerrarSesion = {
+                            loginViewModel.cerrarSesion()
+                            currentScreen = Screen.LOGIN
+                        }
+                    )
+                    Screen.AYUDA -> HelpScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                    Screen.BIOMETRIC_ACTIVATION -> BiometricActivationScreen(
+                        onActivationSuccess = { currentScreen = Screen.DASHBOARD_PARENT },
+                        onSkip = { currentScreen = Screen.DASHBOARD_PARENT }
+                    )
+                    else -> NutriIADashboardScreen(
+                        children = children,
+                        initialPageIndex = activeChildIndex,
+                        esNutriologo = false,
+                        onPageChange = { index -> activeChildIndex = index },
+                        onLogout = {
+                            loginViewModel.cerrarSesion()
+                            currentScreen = Screen.LOGIN
+                        },
+                        onConfiguracion = { currentScreen = Screen.CONFIGURACION },
+                        onAddChild = { currentScreen = Screen.QUIZ },
+                        onOpenLactancia = { currentScreen = Screen.LACTANCIA },
+                        onOpenSolidos = { currentScreen = Screen.SOLIDOS },
+                        onOpenCrecimiento = { currentScreen = Screen.CRECIMIENTO },
+                        onOpenSueno = { currentScreen = Screen.SUENO },
+                        onOpenMicronutrientes = { currentScreen = Screen.NUTRIENTES },
+                        onOpenPediatra = { currentScreen = Screen.PEDIATRA_DASHBOARD },
+                        onOpenChatIA = { currentScreen = Screen.CHAT_IA },
+                        onOpenDiario = { currentScreen = Screen.DIARIO_VISUAL },
+                        onOpenRecordatorios = { currentScreen = Screen.RECORDATORIOS },
+                        onAyuda = { currentScreen = Screen.AYUDA }
+                    )
+                }
+
+                // ─── Splash Overlay Animado (Arranque y Transiciones) ─────────
+                AnimatedVisibility(
+                    visible = showResumeSplash || showLoginSplash || isCheckingInitialSession,
+                    enter = fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing)) + scaleIn(initialScale = 0.94f, animationSpec = tween(400, easing = FastOutSlowInEasing)),
+                    exit = fadeOut(animationSpec = tween(450, easing = FastOutSlowInEasing)) + scaleOut(targetScale = 1.06f, animationSpec = tween(450, easing = FastOutSlowInEasing))
+                ) {
+                    SplashOverlay()
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun SplashOverlay(
+    mensaje: String = "Iniciando NutriIA..."
+) {
+    var animIn by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { animIn = true }
+
+    val alphaAnim by animateFloatAsState(
+        targetValue = if (animIn) 1f else 0f,
+        animationSpec = tween(350, easing = FastOutSlowInEasing),
+        label = "splashAlpha"
+    )
+    val scaleAnim by animateFloatAsState(
+        targetValue = if (animIn) 1f else 0.93f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "splashScale"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "splashPulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.035f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .graphicsLayer {
+                alpha = alphaAnim
+                scaleX = scaleAnim
+                scaleY = scaleAnim
+            }
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .graphicsLayer {
+                        scaleX = pulseScale
+                        scaleY = pulseScale
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                NutriaSplashMascota(modifier = Modifier.size(180.dp))
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            CircularProgressIndicator(
+                color = Color(0xFF689F38),
+                modifier = Modifier.size(44.dp),
+                strokeWidth = 4.dp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = mensaje,
+                color = Color(0xFF555555),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
