@@ -99,6 +99,9 @@ jobs:
               if [ -f "iosApp/iosApp/Info.plist" ]; then
                 cp iosApp/iosApp/Info.plist build/Payload/NutriIA.app/Info.plist
               fi
+              if [ -d "iosApp/iosApp/Assets.xcassets" ]; then
+                xcrun actool iosApp/iosApp/Assets.xcassets --compile build/Payload/NutriIA.app --platform iphoneos --minimum-deployment-target 15.0 --app-icon AppIcon --output-format human-readable-text || true
+              fi
               if [ -f "iosApp/iosApp/AppIcon.png" ]; then
                 cp iosApp/iosApp/*.png build/Payload/NutriIA.app/ 2>/dev/null || true
               fi
@@ -166,7 +169,7 @@ jobs:
               
               IPA_PATH="build/NutriIA.ipa"
               echo "Subiendo $IPA_PATH a App Store Connect / TestFlight con clave $KEY_ID e Issuer $ISSUER_ID..."
-              timeout 300 xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" --verbose 2>&1 || xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" || echo "Comando de subida finalizado."
+              xcrun altool --upload-app --type ios --file "$IPA_PATH" --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID" --verbose || echo "Comando de subida finalizado."
             else
               echo "No se encontró el framework de iOS para empaquetar."
             fi
