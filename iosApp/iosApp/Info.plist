@@ -47,14 +47,10 @@
 	<array>
 		<integer>1</integer>
 	</array>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
 		<dict>
-			<key>CFBundleIconName</key>
-			<string>AppIcon</string>
 			<key>CFBundleIconFiles</key>
 			<array>
 				<string>AppIcon20x20</string>
