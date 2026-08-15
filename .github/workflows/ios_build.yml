@@ -127,8 +127,15 @@ jobs:
               # Extraer entitlements de embedded.mobileprovision para firma de producción
               if [ -f "$PP_PATH" ]; then
                 security cms -D -i "$PP_PATH" > build/Payload/provision.plist 2>/dev/null || true
-                /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' build/Payload/provision.plist > build/Payload/entitlements.plist 2>/dev/null || true
-                echo "Entitlements extraídos del perfil de provisión."
+                /usr/libexec/PlistBuddy -x -c 'Print :Entitlements' build/Payload/provision.plist > build/Payload/entitlements_raw.plist 2>/dev/null || true
+                if [ -s "build/Payload/entitlements_raw.plist" ]; then
+                  echo '<?xml version="1.0" encoding="UTF-8"?>' > build/Payload/entitlements.plist
+                  echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> build/Payload/entitlements.plist
+                  echo '<plist version="1.0">' >> build/Payload/entitlements.plist
+                  cat build/Payload/entitlements_raw.plist >> build/Payload/entitlements.plist
+                  echo '</plist>' >> build/Payload/entitlements.plist
+                  echo "Entitlements extraídos del perfil de provisión."
+                fi
               fi
 
               # Firmar binario nativo y frameworks con certificado oficial de Apple
@@ -150,7 +157,7 @@ jobs:
                 echo "Firmando app con certificado oficial de Apple: $IDENTITY"
                 codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app/Frameworks/Shared.framework 2>/dev/null || true
                 if [ -f "build/Payload/entitlements.plist" ]; then
-                  codesign --force --deep --options runtime --entitlements build/Payload/entitlements.plist -s "$IDENTITY" build/Payload/NutriIA.app
+                  codesign --force --deep --options runtime --entitlements build/Payload/entitlements.plist -s "$IDENTITY" build/Payload/NutriIA.app || codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app
                 else
                   codesign --force --deep --options runtime -s "$IDENTITY" build/Payload/NutriIA.app
                 fi
