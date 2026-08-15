@@ -2,86 +2,134 @@ package com.example.nutriia.shared
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlin.random.Random
 
-enum class IOSScreen {
-    SPLASH, LOGIN, DASHBOARD, LACTANCIA, CHAT_IA, CRECIMIENTO, PERFIL
+// ═══════════════════════════════════════════════════════════════════════════
+// PALETA DE COLORES OFICIAL DE NUTRIA
+// ═══════════════════════════════════════════════════════════════════════════
+val NutriaGreen     = Color(0xFF689F38)
+val NutriaDarkGreen = Color(0xFF33691E)
+val NutriaOrange    = Color(0xFFFF8F00)
+val NutriaBgCrema   = Color(0xFFF8F9F3)
+val NutriaSoftPurple= Color(0xFF9C8FE0)
+val NutriaSoftTeal  = Color(0xFF4DB6AC)
+val NutriaPink      = Color(0xFFEC9BBF)
+val NutriaBlue      = Color(0xFF64B5F6)
+val NutriaGineRosa  = Color(0xFFF06292)
+
+enum class Screen {
+    LOGIN, REGISTER_TYPE, REGISTER_FORM, DASHBOARD, LACTANCIA, CHAT_IA, CRECIMIENTO, PERFIL
 }
 
 @Composable
 fun AppiOS() {
-    var currentScreen by remember { mutableStateOf(IOSScreen.SPLASH) }
+    var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
+    var selectedRole by remember { mutableStateOf("Padre") }
+    var userEmail by remember { mutableStateOf("familia@nutriia.com") }
 
     MaterialTheme(
         colorScheme = lightColorScheme(
-            primary = Color(0xFF2E7D32),
+            primary = NutriaGreen,
             onPrimary = Color.White,
             primaryContainer = Color(0xFFE8F5E9),
-            onPrimaryContainer = Color(0xFF1B5E20),
-            secondary = Color(0xFF00796B),
-            surface = Color(0xFFF9FAFC),
-            onSurface = Color(0xFF1A1C1E)
+            onPrimaryContainer = NutriaDarkGreen,
+            secondary = NutriaOrange,
+            surface = NutriaBgCrema,
+            onSurface = Color(0xFF1C1B1F)
         )
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface
+            color = NutriaBgCrema
         ) {
-            Crossfade(targetState = currentScreen, animationSpec = tween(300)) { screen ->
+            Crossfade(targetState = currentScreen, animationSpec = tween(250)) { screen ->
                 when (screen) {
-                    IOSScreen.SPLASH -> SplashScreen(onFinish = { currentScreen = IOSScreen.DASHBOARD })
-                    IOSScreen.LOGIN -> LoginScreen(
-                        onLoginSuccess = { currentScreen = IOSScreen.DASHBOARD },
-                        onSkip = { currentScreen = IOSScreen.DASHBOARD }
+                    Screen.LOGIN -> NutriaLoginScreen(
+                        onLoginSuccess = { email ->
+                            userEmail = email.ifBlank { "familia@nutriia.com" }
+                            currentScreen = Screen.DASHBOARD
+                        },
+                        onNavigateToRegister = { currentScreen = Screen.REGISTER_TYPE }
                     )
-                    IOSScreen.DASHBOARD -> MainAppContainer(
-                        currentTab = IOSScreen.DASHBOARD,
+                    Screen.REGISTER_TYPE -> RegisterTypeScreen(
+                        onRoleSelected = { role ->
+                            selectedRole = role
+                            currentScreen = Screen.REGISTER_FORM
+                        },
+                        onBackToLogin = { currentScreen = Screen.LOGIN }
+                    )
+                    Screen.REGISTER_FORM -> RegisterFormScreen(
+                        role = selectedRole,
+                        onRegistered = { email ->
+                            userEmail = email
+                            currentScreen = Screen.DASHBOARD
+                        },
+                        onBack = { currentScreen = Screen.REGISTER_TYPE }
+                    )
+                    Screen.DASHBOARD -> MainAppScaffold(
+                        currentTab = Screen.DASHBOARD,
                         onTabSelected = { currentScreen = it }
                     ) {
-                        DashboardContent(onNavigate = { currentScreen = it })
+                        DashboardView(
+                            userEmail = userEmail,
+                            onNavigate = { currentScreen = it }
+                        )
                     }
-                    IOSScreen.LACTANCIA -> MainAppContainer(
-                        currentTab = IOSScreen.LACTANCIA,
+                    Screen.LACTANCIA -> MainAppScaffold(
+                        currentTab = Screen.LACTANCIA,
                         onTabSelected = { currentScreen = it }
                     ) {
-                        LactanciaContent(onBack = { currentScreen = IOSScreen.DASHBOARD })
+                        LactanciaView(onBack = { currentScreen = Screen.DASHBOARD })
                     }
-                    IOSScreen.CHAT_IA -> MainAppContainer(
-                        currentTab = IOSScreen.CHAT_IA,
+                    Screen.CHAT_IA -> MainAppScaffold(
+                        currentTab = Screen.CHAT_IA,
                         onTabSelected = { currentScreen = it }
                     ) {
-                        ChatIAContent(onBack = { currentScreen = IOSScreen.DASHBOARD })
+                        NutriChatIAView(onBack = { currentScreen = Screen.DASHBOARD })
                     }
-                    IOSScreen.CRECIMIENTO -> MainAppContainer(
-                        currentTab = IOSScreen.CRECIMIENTO,
+                    Screen.CRECIMIENTO -> MainAppScaffold(
+                        currentTab = Screen.CRECIMIENTO,
                         onTabSelected = { currentScreen = it }
                     ) {
-                        CrecimientoContent(onBack = { currentScreen = IOSScreen.DASHBOARD })
+                        CrecimientoOMSView(onBack = { currentScreen = Screen.DASHBOARD })
                     }
-                    IOSScreen.PERFIL -> MainAppContainer(
-                        currentTab = IOSScreen.PERFIL,
+                    Screen.PERFIL -> MainAppScaffold(
+                        currentTab = Screen.PERFIL,
                         onTabSelected = { currentScreen = it }
                     ) {
-                        PerfilContent(onLogout = { currentScreen = IOSScreen.LOGIN })
+                        PerfilView(
+                            userEmail = userEmail,
+                            role = selectedRole,
+                            onLogout = { currentScreen = Screen.LOGIN }
+                        )
                     }
                 }
             }
@@ -89,87 +137,396 @@ fun AppiOS() {
     }
 }
 
-// ----------------------------------------------------
-// 1. Splash Screen
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. PANTALLA DE LOGIN REAL (IDÉNTICA A ANDROID)
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun SplashScreen(onFinish: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition()
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
+fun NutriaLoginScreen(
+    onLoginSuccess: (String) -> Unit,
+    onNavigateToRegister: () -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var showReset by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
+    var resetMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        delay(2000)
-        onFinish()
-    }
+    var startAnimation by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { startAnimation = true }
+    val entranceAlpha by animateFloatAsState(if (startAnimation) 1f else 0f, tween(800), label = "alpha")
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF43A047))
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(NutriaBgCrema)) {
+        AnimatedMinimalistBackground()
+
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .alpha(entranceAlpha),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(90.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
+            Spacer(Modifier.height(50.dp))
+
+            // Logo & Slogan
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(3.dp, NutriaGreen, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🌱", fontSize = 52.sp)
+                }
+                Spacer(Modifier.height(14.dp))
                 Text(
-                    text = "🌱",
-                    fontSize = 48.sp,
-                    modifier = Modifier.animateContentSize()
+                    text = "NutrIA",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = NutriaDarkGreen
+                )
+                Text(
+                    text = "Nutre su hoy, protege su mañana",
+                    fontSize = 14.sp,
+                    color = NutriaDarkGreen,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.3.sp
                 )
             }
 
-            Text(
-                text = "NutrIA",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+            Spacer(Modifier.height(28.dp))
 
-            Text(
-                text = "Nutrición Infantil & Lactancia Materna OMS",
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.9f),
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp)
-            )
+            // Tarjeta de Iniciar Sesión
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Iniciar Sesión",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = NutriaDarkGreen
+                    )
+                    Spacer(Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
-            CircularProgressIndicator(
-                color = Color.White,
-                strokeWidth = 3.dp,
-                modifier = Modifier.size(28.dp)
+                    // Campo Correo
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        placeholder = { Text("Correo Electrónico", color = Color.Gray) },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Rounded.Email, null, tint = NutriaGreen) },
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NutriaGreen,
+                            unfocusedBorderColor = Color(0xFFEEEEEE),
+                            focusedContainerColor = Color(0xFFFAFAFA),
+                            unfocusedContainerColor = Color(0xFFFAFAFA)
+                        )
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    // Campo Contraseña
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        placeholder = { Text("Contraseña", color = Color.Gray) },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Rounded.Lock, null, tint = NutriaGreen) },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    if (passwordVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    null,
+                                    tint = Color.Gray
+                                )
+                            }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NutriaGreen,
+                            unfocusedBorderColor = Color(0xFFEEEEEE),
+                            focusedContainerColor = Color(0xFFFAFAFA),
+                            unfocusedContainerColor = Color(0xFFFAFAFA)
+                        )
+                    )
+
+                    // Olvidaste contraseña
+                    TextButton(
+                        onClick = { showReset = true },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("¿Olvidaste tu contraseña?", color = Color.Gray, fontSize = 12.sp)
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Botón ENTRAR
+                    Button(
+                        onClick = {
+                            isLoading = true
+                            onLoginSuccess(email)
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NutriaGreen,
+                            disabledContainerColor = Color.LightGray
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("ENTRAR", fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 15.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Crear cuenta
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Text("¿Nuevo en NutrIA?", color = Color.Gray, fontSize = 14.sp)
+                TextButton(onClick = onNavigateToRegister) {
+                    Text("Crea una cuenta", color = NutriaDarkGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+
+            Spacer(Modifier.height(30.dp))
+        }
+
+        // Modal Recuperar Contraseña
+        if (showReset) {
+            AlertDialog(
+                onDismissRequest = { showReset = false; resetMessage = null },
+                title = { Text("Recuperar contraseña", fontWeight = FontWeight.Bold, color = NutriaDarkGreen) },
+                text = {
+                    Column {
+                        Text("Escribe tu correo y te enviaremos las instrucciones.", color = Color.Gray, fontSize = 13.sp)
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = resetEmail,
+                            onValueChange = { resetEmail = it },
+                            placeholder = { Text("ejemplo@correo.com") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        resetMessage?.let {
+                            Spacer(Modifier.height(8.dp))
+                            Text(it, color = NutriaGreen, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        resetMessage = "Correo de recuperación enviado con éxito."
+                    }) { Text("Enviar", color = NutriaGreen, fontWeight = FontWeight.Bold) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showReset = false; resetMessage = null }) {
+                        Text("Cancelar", color = Color.Gray)
+                    }
+                },
+                shape = RoundedCornerShape(24.dp)
             )
         }
     }
 }
 
-// ----------------------------------------------------
-// 2. Main App Container con Bottom Navigation
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. PANTALLA DE SELECCIÓN DE ROL DE REGISTRO
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun MainAppContainer(
-    currentTab: IOSScreen,
-    onTabSelected: (IOSScreen) -> Unit,
+fun RegisterTypeScreen(
+    onRoleSelected: (String) -> Unit,
+    onBackToLogin: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        IconButton(
+            onClick = onBackToLogin,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaDarkGreen)
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = "¿Cómo deseas unirte?",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = NutriaDarkGreen
+        )
+        Text(
+            text = "Selecciona tu rol para personalizar tu experiencia clínica y nutricional.",
+            fontSize = 13.sp,
+            color = Color.Gray
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        val roles = listOf(
+            Triple("Padre / Madre de Familia", "Seguimiento nutricional, crecimiento y lactancia", NutriaGreen),
+            Triple("Nutriólogo Clínico", "Directorio, expedientes y cálculo de dietas", NutriaSoftTeal),
+            Triple("Mamá Primeriza", "Guía paso a paso desde el embarazo hasta la lactancia", NutriaPink),
+            Triple("Ginecólogo Obstetra", "Control prenatal y seguimiento materno-fetal", NutriaGineRosa)
+        )
+
+        roles.forEach { (title, subtitle, color) ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clickable { onRoleSelected(title) },
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(color.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            when (title) {
+                                "Padre / Madre de Familia" -> "👨‍👩‍👧"
+                                "Nutriólogo Clínico" -> "🩺"
+                                "Mamá Primeriza" -> "🤰"
+                                else -> "🏥"
+                            },
+                            fontSize = 24.sp
+                        )
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+                        Spacer(Modifier.height(2.dp))
+                        Text(subtitle, fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+                    }
+                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = color)
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. FORMULARIO DE REGISTRO
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun RegisterFormScreen(
+    role: String,
+    onRegistered: (String) -> Unit,
+    onBack: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaDarkGreen)
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("Registro como $role", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Completa tus datos para crear tu cuenta.", fontSize = 13.sp, color = Color.Gray)
+
+        Spacer(Modifier.height(24.dp))
+
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                OutlinedTextField(
+                    value = name, onValueChange = { name = it },
+                    label = { Text("Nombre Completo") },
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = email, onValueChange = { email = it },
+                    label = { Text("Correo Electrónico") },
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = password, onValueChange = { password = it },
+                    label = { Text("Contraseña") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = { onRegistered(email.ifBlank { "usuario@nutriia.com" }) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Text("Crear Cuenta", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. SCAFFOLD PRINCIPAL CON BOTTOM NAVIGATION BAR
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun MainAppScaffold(
+    currentTab: Screen,
+    onTabSelected: (Screen) -> Unit,
     content: @Composable () -> Unit
 ) {
     Scaffold(
@@ -178,62 +535,61 @@ fun MainAppContainer(
                 containerColor = Color.White,
                 tonalElevation = 8.dp
             ) {
-                val tabs = listOf(
-                    Triple(IOSScreen.DASHBOARD, "Inicio", "🏠"),
-                    Triple(IOSScreen.LACTANCIA, "Lactancia", "🤱"),
-                    Triple(IOSScreen.CHAT_IA, "NutriIA Chat", "💬"),
-                    Triple(IOSScreen.CRECIMIENTO, "Crecimiento", "📈"),
-                    Triple(IOSScreen.PERFIL, "Perfil", "👤")
+                val items = listOf(
+                    Triple(Screen.DASHBOARD, "Inicio", "🏠"),
+                    Triple(Screen.LACTANCIA, "Lactancia", "🤱"),
+                    Triple(Screen.CHAT_IA, "NutriIA Chat", "💬"),
+                    Triple(Screen.CRECIMIENTO, "Crecimiento", "📈"),
+                    Triple(Screen.PERFIL, "Perfil", "👤")
                 )
 
-                tabs.forEach { (tab, label, emoji) ->
+                items.forEach { (tab, label, emoji) ->
                     NavigationBarItem(
                         selected = currentTab == tab,
                         onClick = { onTabSelected(tab) },
                         icon = {
-                            Text(text = emoji, fontSize = if (currentTab == tab) 22.sp else 18.sp)
+                            Text(emoji, fontSize = if (currentTab == tab) 22.sp else 18.sp)
                         },
                         label = {
                             Text(
                                 text = label,
                                 fontSize = 11.sp,
                                 fontWeight = if (currentTab == tab) FontWeight.Bold else FontWeight.Normal,
-                                color = if (currentTab == tab) Color(0xFF2E7D32) else Color.Gray
+                                color = if (currentTab == tab) NutriaDarkGreen else Color.Gray
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF2E7D32),
+                            selectedIconColor = NutriaGreen,
                             indicatorColor = Color(0xFFE8F5E9)
                         )
                     )
                 }
             }
         }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             content()
         }
     }
 }
 
-// ----------------------------------------------------
-// 3. Dashboard Content
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. DASHBOARD REAL DE NUTRIA
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun DashboardContent(onNavigate: (IOSScreen) -> Unit) {
+fun DashboardView(
+    userEmail: String,
+    onNavigate: (Screen) -> Unit
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(NutriaBgCrema)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Cabecera con selector de hijo
         item {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -242,21 +598,21 @@ fun DashboardContent(onNavigate: (IOSScreen) -> Unit) {
                 Column {
                     Text(
                         text = "¡Hola, Familia! 🌿",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1B5E20)
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = NutriaDarkGreen
                     )
                     Text(
-                        text = "Seguimiento nutricional activo",
-                        fontSize = 13.sp,
+                        text = "Plan Nutricional Activo OMS",
+                        fontSize = 12.sp,
                         color = Color.Gray
                     )
                 }
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFE8F5E9)),
+                        .background(NutriaGreen.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("👶", fontSize = 24.sp)
@@ -264,120 +620,96 @@ fun DashboardContent(onNavigate: (IOSScreen) -> Unit) {
             }
         }
 
+        // Tarjeta del Bebé Activo
         item {
-            // Banner Guías OMS
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2E7D32)),
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = NutriaGreen),
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Estándares OMS & Lactancia",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Algoritmos validados para cada etapa del desarrollo infantil.",
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
+                        Text("Mateo Rivera", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Spacer(Modifier.height(4.dp))
+                        Text("6 meses y 15 días • Alimentación Complementaria", fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
+                        Spacer(Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ChipInfo(label = "7.8 kg", subtitle = "Peso")
+                            ChipInfo(label = "67.0 cm", subtitle = "Talla")
+                            ChipInfo(label = "42.5 cm", subtitle = "C. Cefálico")
+                        }
                     }
-                    Text("📋", fontSize = 36.sp)
                 }
             }
         }
 
+        // Módulos
         item {
-            Text(
-                text = "Módulos Principales",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF2C3E50)
-            )
+            Text("Módulos Principales", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
         }
 
         item {
-            // Grid de módulos
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ModuleCard(
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DashModuleCard(
                     title = "Lactancia Materna",
-                    subtitle = "Cronómetro & tomas",
+                    subtitle = "Cronómetro y tomas",
                     emoji = "🤱",
-                    color = Color(0xFFFFF3E0),
-                    iconColor = Color(0xFFE65100),
+                    color = NutriaOrange.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(IOSScreen.LACTANCIA) }
+                    onClick = { onNavigate(Screen.LACTANCIA) }
                 )
-                ModuleCard(
+                DashModuleCard(
                     title = "NutriChat IA",
-                    subtitle = "Asistente clínico",
+                    subtitle = "Consultas clínicas OMS",
                     emoji = "💬",
-                    color = Color(0xFFE8F5E9),
-                    iconColor = Color(0xFF1B5E20),
+                    color = NutriaGreen.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(IOSScreen.CHAT_IA) }
+                    onClick = { onNavigate(Screen.CHAT_IA) }
                 )
             }
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ModuleCard(
-                    title = "Crecimiento",
-                    subtitle = "Percentiles OMS",
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DashModuleCard(
+                    title = "Curvas OMS",
+                    subtitle = "Percentiles y peso",
                     emoji = "📈",
-                    color = Color(0xFFE3F2FD),
-                    iconColor = Color(0xFF0D47A1),
+                    color = NutriaBlue.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(IOSScreen.CRECIMIENTO) }
+                    onClick = { onNavigate(Screen.CRECIMIENTO) }
                 )
-                ModuleCard(
-                    title = "Alimentación",
-                    subtitle = "Guías & Sólidos",
+                DashModuleCard(
+                    title = "Sólidos & BLW",
+                    subtitle = "Guías de introducción",
                     emoji = "🥑",
-                    color = Color(0xFFF3E5F5),
-                    iconColor = Color(0xFF4A148C),
+                    color = NutriaSoftPurple.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(IOSScreen.CRECIMIENTO) }
+                    onClick = { onNavigate(Screen.CRECIMIENTO) }
                 )
             }
         }
 
+        // Consejo del día
         item {
-            // Consejo del día
             Card(
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("💡", fontSize = 20.sp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Recomendación de hoy",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1B5E20)
-                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Recomendación de la OMS", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "La lactancia a libre demanda fortalece el vínculo afectivo y asegura la ingesta calórica adecuada durante los primeros meses.",
+                        "A los 6 meses, los alimentos deben ser ricos en hierro y zinc, como carnes magras, legumbres y cereales fortificados.",
                         fontSize = 13.sp,
                         color = Color(0xFF555555),
                         lineHeight = 18.sp
@@ -389,54 +721,58 @@ fun DashboardContent(onNavigate: (IOSScreen) -> Unit) {
 }
 
 @Composable
-fun ModuleCard(
-    title: String,
-    subtitle: String,
-    emoji: String,
-    color: Color,
-    iconColor: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = modifier
-            .clickable(onClick = onClick)
+fun ChipInfo(label: String, subtitle: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.White.copy(alpha = 0.25f))
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(emoji, fontSize = 22.sp)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF2C3E50)
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                fontSize = 11.sp,
-                color = Color.Gray
-            )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text(subtitle, color = Color.White.copy(alpha = 0.8f), fontSize = 9.sp)
         }
     }
 }
 
-// ----------------------------------------------------
-// 4. Lactancia Screen con Cronómetro
-// ----------------------------------------------------
 @Composable
-fun LactanciaContent(onBack: () -> Unit) {
+fun DashModuleCard(
+    title: String,
+    subtitle: String,
+    emoji: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(color),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(emoji, fontSize = 24.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, fontSize = 11.sp, color = Color.Gray)
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. LACTANCIA VIEW CON CRONÓMETRO REAL
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun LactanciaView(onBack: () -> Unit) {
     var isRunningLeft by remember { mutableStateOf(false) }
     var isRunningRight by remember { mutableStateOf(false) }
     var secondsLeft by remember { mutableStateOf(0) }
@@ -456,7 +792,7 @@ fun LactanciaContent(onBack: () -> Unit) {
         }
     }
 
-    fun formatTime(sec: Int): String {
+    fun fmt(sec: Int): String {
         val m = sec / 60
         val s = sec % 60
         return "${if (m < 10) "0$m" else "$m"}:${if (s < 10) "0$s" else "$s"}"
@@ -465,161 +801,91 @@ fun LactanciaContent(onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF9FAFC))
+            .background(NutriaBgCrema)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "🤱 Registro de Lactancia",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B5E20)
-        )
+        Text("🤱 Registro de Lactancia", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
 
-        Text(
-            text = "Controla el tiempo de succión de cada lado.",
-            fontSize = 13.sp,
-            color = Color.Gray
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Lado Izquierdo
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Seno Izquierdo
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = if (isRunningLeft) Color(0xFFE8F5E9) else Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("Lado Izquierdo", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = formatTime(secondsLeft),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E7D32)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Seno Izquierdo", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(fmt(secondsLeft), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = NutriaGreen)
+                    Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = {
                             isRunningLeft = !isRunningLeft
                             if (isRunningLeft) isRunningRight = false
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isRunningLeft) Color(0xFFC62828) else Color(0xFF2E7D32)
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = if (isRunningLeft) Color(0xFFC62828) else NutriaGreen)
                     ) {
                         Text(if (isRunningLeft) "Pausar" else "Iniciar")
                     }
                 }
             }
 
-            // Lado Derecho
+            // Seno Derecho
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = if (isRunningRight) Color(0xFFE8F5E9) else Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("Lado Derecho", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = formatTime(secondsRight),
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2E7D32)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Seno Derecho", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(fmt(secondsRight), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = NutriaGreen)
+                    Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = {
                             isRunningRight = !isRunningRight
                             if (isRunningRight) isRunningLeft = false
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isRunningRight) Color(0xFFC62828) else Color(0xFF2E7D32)
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = if (isRunningRight) Color(0xFFC62828) else NutriaGreen)
                     ) {
                         Text(if (isRunningRight) "Pausar" else "Iniciar")
                     }
                 }
             }
         }
-
-        // Historial rápido
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Últimas tomas registradas",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2C3E50)
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Text("• Hoy 08:30 AM — 15 min (Izquierdo)", fontSize = 13.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Hoy 05:45 AM — 20 min (Ambos lados)", fontSize = 13.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Ayer 11:15 PM — 12 min (Derecho)", fontSize = 13.sp, color = Color.Gray)
-            }
-        }
     }
 }
 
-// ----------------------------------------------------
-// 5. NutriChat IA Screen
-// ----------------------------------------------------
-data class ChatMessage(val text: String, val isUser: Boolean)
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. NUTRI-CHAT IA VIEW
+// ═══════════════════════════════════════════════════════════════════════════
+data class Message(val text: String, val isUser: Boolean)
 
 @Composable
-fun ChatIAContent(onBack: () -> Unit) {
+fun NutriChatIAView(onBack: () -> Unit) {
     var messages by remember {
         mutableStateOf(
             listOf(
-                ChatMessage("¡Hola! Soy tu asistente de nutrición NutrIA con protocolos OMS. ¿En qué te puedo orientar hoy?", false)
+                Message("¡Hola! Soy tu asistente de nutrición NutrIA basado en guías OMS. ¿Cómo te puedo orientar?", false)
             )
         )
     }
-    var inputText by remember { mutableStateOf("") }
+    var input by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(NutriaBgCrema)
             .padding(16.dp)
     ) {
-        Text(
-            text = "💬 Asistente NutriIA",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B5E20)
-        )
-        Text(
-            text = "Consultas sobre alimentación, lactancia y percentiles.",
-            fontSize = 12.sp,
-            color = Color.Gray
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        Text("💬 Asistente NutriIA", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Spacer(Modifier.height(10.dp))
 
-        // Mensajes
         LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(messages) { msg ->
@@ -628,21 +894,15 @@ fun ChatIAContent(onBack: () -> Unit) {
                     contentAlignment = if (msg.isUser) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
                     Card(
-                        shape = RoundedCornerShape(
-                            topStart = 14.dp,
-                            topEnd = 14.dp,
-                            bottomStart = if (msg.isUser) 14.dp else 2.dp,
-                            bottomEnd = if (msg.isUser) 2.dp else 14.dp
-                        ),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (msg.isUser) Color(0xFF2E7D32) else Color.White
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            containerColor = if (msg.isUser) NutriaGreen else Color.White
+                        )
                     ) {
                         Text(
                             text = msg.text,
-                            fontSize = 14.sp,
                             color = if (msg.isUser) Color.White else Color(0xFF2C3E50),
+                            fontSize = 14.sp,
                             modifier = Modifier.padding(12.dp)
                         )
                     }
@@ -650,263 +910,152 @@ fun ChatIAContent(onBack: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
 
-        // Preguntas sugeridas
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val suggestions = listOf(
-                "¿Cuándo iniciar sólidos?",
-                "Signos de hambre",
-                "Conservar leche materna"
-            )
-            items(suggestions) { sug ->
-                SuggestionChip(
-                    onClick = {
-                        messages = messages + ChatMessage(sug, true)
-                        messages = messages + ChatMessage(
-                            when (sug) {
-                                "¿Cuándo iniciar sólidos?" -> "La OMS recomienda lactancia materna exclusiva hasta los 6 meses de edad. A partir de los 6 meses se introducen alimentos complementarios seguros."
-                                "Signos de hambre" -> "Llevarse las manos a la boca, girar la cabeza buscando el pecho y movimientos de succión son signos tempranos de hambre."
-                                else -> "La leche materna extraída se conserva hasta 4 horas a temperatura ambiente y hasta 4 días en refrigerador estándar."
-                            },
-                            false
-                        )
-                    },
-                    label = { Text(sug, fontSize = 11.sp) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Input
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedTextField(
-                value = inputText,
-                onValueChange = { inputText = it },
-                placeholder = { Text("Escribe una duda...", fontSize = 13.sp) },
+                value = input,
+                onValueChange = { input = it },
+                placeholder = { Text("Escribe una consulta...") },
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.weight(1f),
-                maxLines = 1
+                singleLine = true
             )
             Button(
                 onClick = {
-                    if (inputText.isNotBlank()) {
-                        val text = inputText
-                        inputText = ""
-                        messages = messages + ChatMessage(text, true)
-                        messages = messages + ChatMessage("Entendido. Siguiendo las pautas pediátricas de la OMS, evaluamos este requerimiento de acuerdo a los meses de desarrollo del bebé.", false)
+                    if (input.isNotBlank()) {
+                        val q = input
+                        input = ""
+                        messages = messages + Message(q, true)
+                        messages = messages + Message("Entendido. Siguiendo las directrices OMS, evaluamos esto de acuerdo a la etapa del lactante.", false)
                     }
                 },
                 shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen)
             ) {
-                Text("➤", fontSize = 16.sp)
+                Text("➤")
             }
         }
     }
 }
 
-// ----------------------------------------------------
-// 6. Crecimiento Screen
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. CRECIMIENTO OMS VIEW
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun CrecimientoContent(onBack: () -> Unit) {
+fun CrecimientoOMSView(onBack: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF9FAFC))
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "📈 Curvas de Crecimiento OMS",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B5E20)
-        )
-        Text(
-            text = "Percentiles estandarizados de peso y talla.",
-            fontSize = 13.sp,
-            color = Color.Gray
-        )
+        Text("📈 Curvas de Crecimiento OMS", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
 
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Estado Actual del Bebé", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    MetricItem(label = "Peso", value = "7.2 kg", subtitle = "Percentil 50 (Normal)")
-                    MetricItem(label = "Talla", value = "65.5 cm", subtitle = "Percentil 55 (Normal)")
-                    MetricItem(label = "C. Cefálico", value = "42.0 cm", subtitle = "Percentil 50")
-                }
-            }
-        }
-
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("✅", fontSize = 28.sp)
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Desarrollo Óptimo",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1B5E20)
-                    )
-                    Text(
-                        text = "La curva de ganancia ponderal sigue la trayectoria esperada por los estándares internacionales.",
-                        fontSize = 12.sp,
-                        color = Color(0xFF2E7D32)
-                    )
+                Text("Percentiles Actuales", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Peso", fontSize = 12.sp, color = Color.Gray)
+                        Text("7.8 kg", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
+                        Text("Percentil 50", fontSize = 10.sp, color = Color.Gray)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Talla", fontSize = 12.sp, color = Color.Gray)
+                        Text("67.0 cm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
+                        Text("Percentil 55", fontSize = 10.sp, color = Color.Gray)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Cefálico", fontSize = 12.sp, color = Color.Gray)
+                        Text("42.5 cm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
+                        Text("Percentil 50", fontSize = 10.sp, color = Color.Gray)
+                    }
                 }
             }
         }
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. PERFIL VIEW
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun MetricItem(label: String, value: String, subtitle: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, fontSize = 12.sp, color = Color.Gray)
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(text = subtitle, fontSize = 10.sp, color = Color.Gray)
-    }
-}
-
-// ----------------------------------------------------
-// 7. Perfil Screen
-// ----------------------------------------------------
-@Composable
-fun PerfilContent(onLogout: () -> Unit) {
+fun PerfilView(
+    userEmail: String,
+    role: String,
+    onLogout: () -> Unit
+) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF9FAFC))
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "👤 Perfil de Usuario",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B5E20)
-        )
+        Text("👤 Perfil de Usuario", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
 
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth()
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF2E7D32)),
+                    modifier = Modifier.size(54.dp).clip(CircleShape).background(NutriaGreen),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("ARG", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("🌱", fontSize = 28.sp)
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(Modifier.width(16.dp))
                 Column {
-                    Text("Familia Rivera", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    Text("Rol: Mamá / Papá", fontSize = 13.sp, color = Color.Gray)
-                    Text("Bebé: 6 meses", fontSize = 13.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.Medium)
+                    Text(userEmail, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("Rol: $role", fontSize = 13.sp, color = Color.Gray)
                 }
             }
         }
 
-        Card(
+        Button(
+            onClick = onLogout,
             shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Configuración de la App", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(10.dp))
-                Text("• Versión: 2.1.2 (iOS Native Framework)", fontSize = 13.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Motor: Compose Multiplatform + Skiko", fontSize = 13.sp, color = Color.Gray)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("• Guías clínicas: OMS 2026", fontSize = 13.sp, color = Color.Gray)
-            }
+            Text("Cerrar Sesión", fontWeight = FontWeight.Bold)
         }
     }
 }
 
-// ----------------------------------------------------
-// 8. Login Screen
-// ----------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════════
+// 10. FONDO ANIMADO MINIMALISTA (IDÉNTICO A ANDROID)
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit, onSkip: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF9FAFC))
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF2E7D32)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("🌱", fontSize = 36.sp)
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Bienvenido a NutrIA",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B5E20)
-        )
-        Text(
-            text = "Ingresa para acceder a tus registros",
-            fontSize = 13.sp,
-            color = Color.Gray
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = onLoginSuccess,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Continuar como Familia", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
+fun AnimatedMinimalistBackground() {
+    val it = rememberInfiniteTransition(label = "bg")
+    val icons = listOf(Icons.Rounded.Eco, Icons.Rounded.Spa, Icons.Rounded.Psychology, Icons.Rounded.LocalFlorist)
+    Box(modifier = Modifier.fillMaxSize()) {
+        repeat(8) { idx ->
+            val sx = remember { Random.nextFloat() }
+            val sy = remember { Random.nextFloat() }
+            val ty by it.animateFloat(0f, 40f, infiniteRepeatable(tween(7000 + idx * 500, easing = EaseInOutSine), RepeatMode.Reverse), label = "y")
+            val rz by it.animateFloat(-8f, 8f, infiniteRepeatable(tween(8000 + idx * 500, easing = EaseInOutSine), RepeatMode.Reverse), label = "r")
+            Icon(
+                icons[idx % icons.size],
+                null,
+                modifier = Modifier
+                    .offset((sx * 360).dp, (sy * 700).dp)
+                    .graphicsLayer {
+                        translationY = ty
+                        rotationZ = rz
+                        alpha = 0.04f
+                    }
+                    .size(70.dp),
+                tint = Color.Black
+            )
         }
     }
 }
