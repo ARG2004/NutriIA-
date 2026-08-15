@@ -335,25 +335,14 @@ fun SplashOverlay(
             .clickable(enabled = false) {},
         contentAlignment = Alignment.Center
     ) {
-        Box(
+        NutriaSplashMascota(
             modifier = Modifier
-                .size(160.dp)
+                .size(260.dp)
                 .graphicsLayer {
                     scaleX = pulseScale
                     scaleY = pulseScale
                 }
-                .clip(CircleShape)
-                .background(Color(0xFFE8F5E9))
-                .border(3.dp, NutriaGreen, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.Eco,
-                contentDescription = null,
-                tint = NutriaGreen,
-                modifier = Modifier.size(90.dp)
-            )
-        }
+        )
 
         Column(
             modifier = Modifier
@@ -409,34 +398,14 @@ fun NutriaLoginScreen(
                 .alpha(entranceAlpha),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(50.dp))
+            Spacer(Modifier.height(40.dp))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .border(3.dp, NutriaGreen, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.Eco,
-                        contentDescription = "Logo NutrIA",
-                        tint = NutriaGreen,
-                        modifier = Modifier.size(54.dp)
-                    )
-                }
-                Spacer(Modifier.height(14.dp))
-                Text(
-                    text = "NutrIA",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = NutriaDarkGreen
-                )
+                NutriaMascotaHeader(modifier = Modifier.size(240.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = "Nutre su hoy, protege su mañana",
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     color = NutriaDarkGreen,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.3.sp
