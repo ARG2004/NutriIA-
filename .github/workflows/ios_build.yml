@@ -100,7 +100,7 @@ jobs:
                 cp iosApp/iosApp/Info.plist build/Payload/NutriIA.app/Info.plist
               fi
               if [ -d "iosApp/iosApp/Assets.xcassets" ]; then
-                xcrun actool iosApp/iosApp/Assets.xcassets --compile build/Payload/NutriIA.app --platform iphoneos --minimum-deployment-target 15.0 --app-icon AppIcon --output-format human-readable-text --info-plist-additions build/Payload/icon_plist.plist 2>&1 || true
+                xcrun actool iosApp/iosApp/Assets.xcassets --compile build/Payload/NutriIA.app --platform iphoneos --minimum-deployment-target 15.0 --app-icon AppIcon --output-format human-readable-text --info-plist-additions build/Payload/icon_plist.plist --product-type com.apple.product-type.application 2>&1 || true
                 if [ -f "build/Payload/icon_plist.plist" ]; then
                   /usr/libexec/PlistBuddy -c 'Merge build/Payload/icon_plist.plist' build/Payload/NutriIA.app/Info.plist 2>/dev/null || true
                 fi
