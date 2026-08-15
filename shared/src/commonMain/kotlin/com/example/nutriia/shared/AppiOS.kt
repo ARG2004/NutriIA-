@@ -578,7 +578,7 @@ fun SplashOverlay(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PANTALLA: ACCESIBILIDAD INICIAL
+// PANTALLA: ACCESIBILIDAD INICIAL (100% IDÉNTICA A ANDROID)
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AccesibilidadInicialScreen(
@@ -586,76 +586,196 @@ fun AccesibilidadInicialScreen(
     onModeSelected: (AccessibilityMode) -> Unit,
     onSkip: () -> Unit
 ) {
+    var idiomaSeleccionado by remember { mutableStateOf("ESPANOL_MX") }
+    var modoActual by remember(currentMode) { mutableStateOf(currentMode) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(NutriaBgCrema)
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(20.dp))
+        // Botón superior Cancelar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onSkip) {
+                Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Cancelar", color = Color.Gray, fontSize = 13.sp)
+            }
+        }
+
+        // Header oficial de NutriIA
         Box(
             modifier = Modifier
-                .size(70.dp)
+                .size(64.dp)
                 .clip(CircleShape)
-                .background(NutriaGreen.copy(alpha = 0.15f)),
+                .background(NutriaGreen.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.AccessibilityNew, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(40.dp))
+            Icon(Icons.Rounded.Eco, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(36.dp))
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Text("NutriIA", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+        Text("Tu asistente de nutrición infantil", fontSize = 13.sp, color = Color.Gray)
+
+        Spacer(Modifier.height(20.dp))
+
+        // Encabezado de la pregunta de accesibilidad
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(NutriaGreen.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Accessibility, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text("¿Cómo usas la app?", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                Text("Adaptamos Nutri/IA a tus necesidades", fontSize = 12.sp, color = Color.Gray)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
-        Text("Accesibilidad NutrIA", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
-        Text("Personaliza tu interacción para una experiencia inclusiva y accesible.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
 
-        Spacer(Modifier.height(24.dp))
-
-        val modes = listOf(
-            A11yOption(AccessibilityMode.NORMAL, "Modo Estándar", "Interacción visual táctil convencional", Icons.Rounded.PhoneIphone, NutriaGreen),
-            A11yOption(AccessibilityMode.BLIND, "Asistencia por Voz", "Lector en pantalla y comandos de voz guiados", Icons.Rounded.RecordVoiceOver, NutriaOrange),
-            A11yOption(AccessibilityMode.MUTE, "Modo Visual", "Interacción asistida sin necesidad de dictado", Icons.Rounded.Visibility, NutriaSoftTeal),
-            A11yOption(AccessibilityMode.DEAF, "Subtítulos & Haptic", "Alertas vibratorias y transcripción visual", Icons.Rounded.Hearing, NutriaSoftPurple),
-            A11yOption(AccessibilityMode.COLOR_BLIND, "Alto Contraste", "Paleta adaptada para daltonismo", Icons.Rounded.Palette, NutriaDarkGreen)
+        // Opciones oficiales de Accesibilidad de Android
+        val opcionesAccesibilidad = listOf(
+            Triple(AccessibilityMode.NORMAL, "Estándar", "Experiencia completa sin adaptaciones"),
+            Triple(AccessibilityMode.BLIND, "Modo para personas ciegas", "Lector de pantalla, voz y alto contraste"),
+            Triple(AccessibilityMode.MUTE, "Modo para personas mudas", "Sin entrada de voz, teclado visual siempre visible")
         )
 
-        modes.forEach { option ->
+        opcionesAccesibilidad.forEach { (mode, label, description) ->
+            val isSelected = modoActual == mode
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
-                    .clickable { onModeSelected(option.mode) },
+                    .clickable {
+                        modoActual = mode
+                        onModeSelected(mode)
+                    },
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = if (currentMode == option.mode) Color(0xFFE8F5E9) else Color.White),
-                border = if (currentMode == option.mode) BorderStroke(2.dp, NutriaGreen) else null,
+                colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFF1F8E9) else Color.White),
+                border = BorderStroke(1.5.dp, if (isSelected) NutriaGreen else Color.LightGray.copy(alpha = 0.4f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(option.color.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(option.icon, contentDescription = null, tint = option.color, modifier = Modifier.size(24.dp))
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(if (isSelected) NutriaGreen.copy(0.15f) else Color(0xFFF5F5F5)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                when (mode) {
+                                    AccessibilityMode.NORMAL -> Icons.Rounded.CheckCircle
+                                    AccessibilityMode.BLIND -> Icons.Rounded.Visibility
+                                    else -> Icons.Rounded.VolumeOff
+                                },
+                                contentDescription = null,
+                                tint = if (isSelected) NutriaGreen else Color.Gray,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (isSelected) NutriaGreen else NutriaDarkGreen)
+                            Spacer(Modifier.height(2.dp))
+                            Text(description, fontSize = 11.sp, color = Color.Gray)
+                        }
                     }
-                    Spacer(Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(option.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
-                        Text(option.subtitle, fontSize = 12.sp, color = Color.Gray)
-                    }
-                    if (currentMode == option.mode) {
-                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = NutriaGreen)
+                    if (isSelected) {
+                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(22.dp))
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(20.dp))
-        TextButton(onClick = onSkip) {
-            Text("Omitir por ahora", color = Color.Gray, fontSize = 14.sp)
+        Spacer(Modifier.height(24.dp))
+
+        // Sección: Idioma de la voz
+        Text("Idioma de la voz", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen, modifier = Modifier.align(Alignment.Start))
+        Spacer(Modifier.height(10.dp))
+
+        val opcionesIdioma = listOf(
+            Triple("ESPANOL_MX", "Español Latinoamérica", "Voz en español de México y Latinoamérica"),
+            Triple("ESPANOL_US", "Español Estados Unidos", "Voz en español neutro de Estados Unidos")
+        )
+
+        opcionesIdioma.forEach { (key, label, description) ->
+            val isSelected = idiomaSeleccionado == key
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 5.dp)
+                    .clickable { idiomaSeleccionado = key },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFF1F8E9) else Color.White),
+                border = BorderStroke(1.5.dp, if (isSelected) NutriaGreen else Color.LightGray.copy(alpha = 0.4f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE8F5E9)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Language, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                            Text(description, fontSize = 10.sp, color = Color.Gray)
+                        }
+                    }
+                    if (isSelected) {
+                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
         }
+
+        Spacer(Modifier.height(28.dp))
+
+        // Botón verde oficial "Continuar ->"
+        Button(
+            onClick = { onModeSelected(modoActual) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Continuar", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = Color.White)
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
     }
 }
 
