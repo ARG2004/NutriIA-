@@ -5,13 +5,12 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,31 +18,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PALETA DE COLORES OFICIAL DE NUTRIA
+// PALETA OFICIAL DE NUTRIA (IDÉNTICA A ANDROID)
 // ═══════════════════════════════════════════════════════════════════════════
-val NutriaGreen     = Color(0xFF689F38)
-val NutriaDarkGreen = Color(0xFF33691E)
-val NutriaOrange    = Color(0xFFFF8F00)
-val NutriaBgCrema   = Color(0xFFF8F9F3)
-val NutriaSoftPurple= Color(0xFF9C8FE0)
-val NutriaSoftTeal  = Color(0xFF4DB6AC)
-val NutriaPink      = Color(0xFFEC9BBF)
-val NutriaBlue      = Color(0xFF64B5F6)
-val NutriaGineRosa  = Color(0xFFF06292)
+val NutriaGreen      = Color(0xFF689F38)
+val NutriaDarkGreen  = Color(0xFF33691E)
+val NutriaOrange     = Color(0xFFFF8F00)
+val NutriaBgCrema    = Color(0xFFF8F9F3)
+val NutriaSoftPurple = Color(0xFF9C8FE0)
+val NutriaSoftTeal   = Color(0xFF4DB6AC)
+val NutriaPink       = Color(0xFFEC9BBF)
+val NutriaBlue       = Color(0xFF64B5F6)
+val NutriaGineRosa   = Color(0xFFF06292)
 
 enum class Screen {
     LOGIN, REGISTER_TYPE, REGISTER_FORM, DASHBOARD, LACTANCIA, CHAT_IA, CRECIMIENTO, PERFIL
@@ -138,7 +135,7 @@ fun AppiOS() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. PANTALLA DE LOGIN REAL (IDÉNTICA A ANDROID)
+// 1. PANTALLA DE LOGIN CON ÍCONOS OFICIALES DE ANDROID
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun NutriaLoginScreen(
@@ -170,17 +167,22 @@ fun NutriaLoginScreen(
         ) {
             Spacer(Modifier.height(50.dp))
 
-            // Logo & Slogan
+            // Logo Vectorial Oficial
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(100.dp)
+                        .size(96.dp)
                         .clip(CircleShape)
                         .background(Color.White)
                         .border(3.dp, NutriaGreen, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🌱", fontSize = 52.sp)
+                    Icon(
+                        Icons.Rounded.Eco,
+                        contentDescription = "Logo NutrIA",
+                        tint = NutriaGreen,
+                        modifier = Modifier.size(54.dp)
+                    )
                 }
                 Spacer(Modifier.height(14.dp))
                 Text(
@@ -219,13 +221,13 @@ fun NutriaLoginScreen(
                     )
                     Spacer(Modifier.height(24.dp))
 
-                    // Campo Correo
+                    // Campo Correo con Icono Vectorial
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
                         placeholder = { Text("Correo Electrónico", color = Color.Gray) },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Rounded.Email, null, tint = NutriaGreen) },
+                        leadingIcon = { Icon(Icons.Rounded.Email, contentDescription = "Email", tint = NutriaGreen) },
                         shape = RoundedCornerShape(16.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -238,18 +240,18 @@ fun NutriaLoginScreen(
 
                     Spacer(Modifier.height(14.dp))
 
-                    // Campo Contraseña
+                    // Campo Contraseña con Icono Vectorial
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         placeholder = { Text("Contraseña", color = Color.Gray) },
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Rounded.Lock, null, tint = NutriaGreen) },
+                        leadingIcon = { Icon(Icons.Rounded.Lock, contentDescription = "Contraseña", tint = NutriaGreen) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     if (passwordVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                                    null,
+                                    contentDescription = "Mostrar contraseña",
                                     tint = Color.Gray
                                 )
                             }
@@ -275,7 +277,7 @@ fun NutriaLoginScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Botón ENTRAR
+                    // Botón ENTRAR con ArrowForward Vectorial
                     Button(
                         onClick = {
                             isLoading = true
@@ -296,7 +298,7 @@ fun NutriaLoginScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("ENTRAR", fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 15.sp)
                                 Spacer(Modifier.width(8.dp))
-                                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
@@ -357,7 +359,7 @@ fun NutriaLoginScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 2. PANTALLA DE SELECCIÓN DE ROL DE REGISTRO
+// 2. SELECCIÓN DE ROL CON ÍCONOS VECTORIALES OFICIALES
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun RegisterTypeScreen(
@@ -378,7 +380,7 @@ fun RegisterTypeScreen(
                 .clip(CircleShape)
                 .background(Color.White)
         ) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaDarkGreen)
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
         }
 
         Spacer(Modifier.height(20.dp))
@@ -398,18 +400,18 @@ fun RegisterTypeScreen(
         Spacer(Modifier.height(24.dp))
 
         val roles = listOf(
-            Triple("Padre / Madre de Familia", "Seguimiento nutricional, crecimiento y lactancia", NutriaGreen),
-            Triple("Nutriólogo Clínico", "Directorio, expedientes y cálculo de dietas", NutriaSoftTeal),
-            Triple("Mamá Primeriza", "Guía paso a paso desde el embarazo hasta la lactancia", NutriaPink),
-            Triple("Ginecólogo Obstetra", "Control prenatal y seguimiento materno-fetal", NutriaGineRosa)
+            RoleItem("Padre / Madre de Familia", "Seguimiento nutricional, crecimiento y lactancia", Icons.Rounded.FamilyRestroom, NutriaGreen),
+            RoleItem("Nutriólogo Clínico", "Directorio, expedientes y cálculo de dietas", Icons.Rounded.MedicalServices, NutriaSoftTeal),
+            RoleItem("Mamá Primeriza", "Guía paso a paso desde el embarazo hasta la lactancia", Icons.Rounded.PregnantWoman, NutriaPink),
+            RoleItem("Ginecólogo Obstetra", "Control prenatal y seguimiento materno-fetal", Icons.Rounded.LocalHospital, NutriaGineRosa)
         )
 
-        roles.forEach { (title, subtitle, color) ->
+        roles.forEach { role ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
-                    .clickable { onRoleSelected(title) },
+                    .clickable { onRoleSelected(role.title) },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -422,31 +424,25 @@ fun RegisterTypeScreen(
                         modifier = Modifier
                             .size(50.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(color.copy(alpha = 0.15f)),
+                            .background(role.color.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            when (title) {
-                                "Padre / Madre de Familia" -> "👨‍👩‍👧"
-                                "Nutriólogo Clínico" -> "🩺"
-                                "Mamá Primeriza" -> "🤰"
-                                else -> "🏥"
-                            },
-                            fontSize = 24.sp
-                        )
+                        Icon(role.icon, contentDescription = null, tint = role.color, modifier = Modifier.size(28.dp))
                     }
                     Spacer(Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+                        Text(role.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
                         Spacer(Modifier.height(2.dp))
-                        Text(subtitle, fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+                        Text(role.subtitle, fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
                     }
-                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = color)
+                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = role.color)
                 }
             }
         }
     }
 }
+
+data class RoleItem(val title: String, val subtitle: String, val icon: ImageVector, val color: Color)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 3. FORMULARIO DE REGISTRO
@@ -472,7 +468,7 @@ fun RegisterFormScreen(
             onClick = onBack,
             modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)
         ) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaDarkGreen)
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
         }
 
         Spacer(Modifier.height(20.dp))
@@ -521,7 +517,7 @@ fun RegisterFormScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4. SCAFFOLD PRINCIPAL CON BOTTOM NAVIGATION BAR
+// 4. BOTTOM NAVIGATION SCALADO CON ÍCONOS VECTORIALES OFICIALES
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun MainAppScaffold(
@@ -535,27 +531,27 @@ fun MainAppScaffold(
                 containerColor = Color.White,
                 tonalElevation = 8.dp
             ) {
-                val items = listOf(
-                    Triple(Screen.DASHBOARD, "Inicio", "🏠"),
-                    Triple(Screen.LACTANCIA, "Lactancia", "🤱"),
-                    Triple(Screen.CHAT_IA, "NutriIA Chat", "💬"),
-                    Triple(Screen.CRECIMIENTO, "Crecimiento", "📈"),
-                    Triple(Screen.PERFIL, "Perfil", "👤")
+                val navItems = listOf(
+                    NavTabItem(Screen.DASHBOARD, "Inicio", Icons.Rounded.Home),
+                    NavTabItem(Screen.LACTANCIA, "Lactancia", Icons.Rounded.Favorite),
+                    NavTabItem(Screen.CHAT_IA, "NutriIA Chat", Icons.Rounded.ChatBubble),
+                    NavTabItem(Screen.CRECIMIENTO, "Crecimiento", Icons.AutoMirrored.Rounded.ShowChart),
+                    NavTabItem(Screen.PERFIL, "Perfil", Icons.Rounded.Person)
                 )
 
-                items.forEach { (tab, label, emoji) ->
+                navItems.forEach { item ->
                     NavigationBarItem(
-                        selected = currentTab == tab,
-                        onClick = { onTabSelected(tab) },
+                        selected = currentTab == item.screen,
+                        onClick = { onTabSelected(item.screen) },
                         icon = {
-                            Text(emoji, fontSize = if (currentTab == tab) 22.sp else 18.sp)
+                            Icon(item.icon, contentDescription = item.label)
                         },
                         label = {
                             Text(
-                                text = label,
+                                text = item.label,
                                 fontSize = 11.sp,
-                                fontWeight = if (currentTab == tab) FontWeight.Bold else FontWeight.Normal,
-                                color = if (currentTab == tab) NutriaDarkGreen else Color.Gray
+                                fontWeight = if (currentTab == item.screen) FontWeight.Bold else FontWeight.Normal,
+                                color = if (currentTab == item.screen) NutriaDarkGreen else Color.Gray
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
@@ -573,8 +569,10 @@ fun MainAppScaffold(
     }
 }
 
+data class NavTabItem(val screen: Screen, val label: String, val icon: ImageVector)
+
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. DASHBOARD REAL DE NUTRIA
+// 5. DASHBOARD REAL CON ÍCONOS VECTORIALES DE ANDROID
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun DashboardView(
@@ -615,7 +613,7 @@ fun DashboardView(
                         .background(NutriaGreen.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("👶", fontSize = 24.sp)
+                    Icon(Icons.Rounded.ChildCare, contentDescription = "Perfil Bebé", tint = NutriaGreen, modifier = Modifier.size(28.dp))
                 }
             }
         }
@@ -657,7 +655,8 @@ fun DashboardView(
                 DashModuleCard(
                     title = "Lactancia Materna",
                     subtitle = "Cronómetro y tomas",
-                    emoji = "🤱",
+                    icon = Icons.Rounded.Favorite,
+                    iconTint = NutriaOrange,
                     color = NutriaOrange.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
                     onClick = { onNavigate(Screen.LACTANCIA) }
@@ -665,7 +664,8 @@ fun DashboardView(
                 DashModuleCard(
                     title = "NutriChat IA",
                     subtitle = "Consultas clínicas OMS",
-                    emoji = "💬",
+                    icon = Icons.Rounded.ChatBubble,
+                    iconTint = NutriaGreen,
                     color = NutriaGreen.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
                     onClick = { onNavigate(Screen.CHAT_IA) }
@@ -678,7 +678,8 @@ fun DashboardView(
                 DashModuleCard(
                     title = "Curvas OMS",
                     subtitle = "Percentiles y peso",
-                    emoji = "📈",
+                    icon = Icons.AutoMirrored.Rounded.ShowChart,
+                    iconTint = NutriaBlue,
                     color = NutriaBlue.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
                     onClick = { onNavigate(Screen.CRECIMIENTO) }
@@ -686,7 +687,8 @@ fun DashboardView(
                 DashModuleCard(
                     title = "Sólidos & BLW",
                     subtitle = "Guías de introducción",
-                    emoji = "🥑",
+                    icon = Icons.Rounded.Restaurant,
+                    iconTint = NutriaSoftPurple,
                     color = NutriaSoftPurple.copy(alpha = 0.12f),
                     modifier = Modifier.weight(1f),
                     onClick = { onNavigate(Screen.CRECIMIENTO) }
@@ -703,7 +705,7 @@ fun DashboardView(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("💡", fontSize = 20.sp)
+                        Icon(Icons.Rounded.Lightbulb, contentDescription = null, tint = NutriaOrange)
                         Spacer(Modifier.width(8.dp))
                         Text("Recomendación de la OMS", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
                     }
@@ -739,7 +741,8 @@ fun ChipInfo(label: String, subtitle: String) {
 fun DashModuleCard(
     title: String,
     subtitle: String,
-    emoji: String,
+    icon: ImageVector,
+    iconTint: Color,
     color: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -758,7 +761,7 @@ fun DashModuleCard(
                     .background(color),
                 contentAlignment = Alignment.Center
             ) {
-                Text(emoji, fontSize = 24.sp)
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
             }
             Spacer(Modifier.height(12.dp))
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
@@ -805,7 +808,7 @@ fun LactanciaView(onBack: () -> Unit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("🤱 Registro de Lactancia", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Registro de Lactancia", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             // Seno Izquierdo
@@ -881,7 +884,7 @@ fun NutriChatIAView(onBack: () -> Unit) {
             .background(NutriaBgCrema)
             .padding(16.dp)
     ) {
-        Text("💬 Asistente NutriIA", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Asistente NutriIA", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         Spacer(Modifier.height(10.dp))
 
         LazyColumn(
@@ -937,7 +940,7 @@ fun NutriChatIAView(onBack: () -> Unit) {
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen)
             ) {
-                Text("➤")
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = "Enviar", tint = Color.White)
             }
         }
     }
@@ -952,7 +955,7 @@ fun CrecimientoOMSView(onBack: () -> Unit) {
         modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("📈 Curvas de Crecimiento OMS", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Curvas de Crecimiento OMS", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
 
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -997,7 +1000,7 @@ fun PerfilView(
         modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("👤 Perfil de Usuario", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Perfil de Usuario", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
 
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -1009,7 +1012,7 @@ fun PerfilView(
                     modifier = Modifier.size(54.dp).clip(CircleShape).background(NutriaGreen),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🌱", fontSize = 28.sp)
+                    Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
                 }
                 Spacer(Modifier.width(16.dp))
                 Column {
