@@ -126,10 +126,16 @@ jobs:
               -sdk iphoneos \
               ONLY_ACTIVE_ARCH=NO \
               ARCHS=arm64 \
+              MARKETING_VERSION="2.0.0" \
+              CURRENT_PROJECT_VERSION="2" \
               CODE_SIGN_IDENTITY="$IDENTITY" \
               CODE_SIGN_STYLE=Manual \
               PROVISIONING_PROFILE="$PP_UUID" \
               DEVELOPMENT_TEAM=X423NH338U
+
+            echo "=== Versión dentro del xcarchive ==="
+            /usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleShortVersionString" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist || true
+            /usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleVersion" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist || true
 
             echo "=== Exportando IPA ==="
             xcodebuild -exportArchive \
