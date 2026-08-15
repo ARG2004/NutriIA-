@@ -32,10 +32,11 @@ import com.example.nutriia.embarazo.TrimestreEmbarazo
 import com.example.nutriia.embarazo.GananciaPesoCalculator
 import com.example.nutriia.embarazo.SintomasAnalyzer
 import com.example.nutriia.nutriente.recomendacionOMSParaEdad
+import com.example.nutriia.nutriente.RangoEdad
 import com.example.nutriia.crecimiento.Sexo
-import com.example.nutriia.crecimiento.TABLA_OMS_PESO_NINOS
-import com.example.nutriia.crecimiento.TABLA_OMS_PESO_NINAS
-import com.example.nutriia.crecimiento.evaluarIMC
+import com.example.nutriia.crecimiento.OMS_PESO_NINOS
+import com.example.nutriia.crecimiento.OMS_PESO_NINAS
+import com.example.nutriia.crecimiento.interpretarIMC
 import com.example.nutriia.crecimiento.MedicionCrecimiento
 import com.example.nutriia.data.ChildProfile
 
@@ -185,10 +186,10 @@ fun GrowthCurvesScreen(onNavigateBack: () -> Unit) {
                             val m = edadMeses.toIntOrNull() ?: 12
                             if (p > 0 && t > 0) {
                                 val imc = p / ((t / 100.0) * (t / 100.0))
-                                val interp = evaluarIMC(m, imc, sexo)
+                                val interp = interpretarIMC(imc, m, sexo)
                                 resultadoIMC = "IMC: ${imc.toString().take(4)} — ${interp.categoria}"
 
-                                val tabla = if (sexo == Sexo.NINO) TABLA_OMS_PESO_NINOS else TABLA_OMS_PESO_NINAS
+                                val tabla = if (sexo == Sexo.NINO) OMS_PESO_NINOS else OMS_PESO_NINAS
                                 val ref = tabla.find { it.meses == m } ?: tabla.last()
                                 percentilOMS = "Mediana OMS (p50) a los $m meses: ${ref.p50} kg (p3: ${ref.p3} kg, p97: ${ref.p97} kg)"
                             }
@@ -324,7 +325,7 @@ fun NutrientCalcScreen(onNavigateBack: () -> Unit) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Guía oficial OMS para esta etapa:", fontWeight = FontWeight.Bold, color = ModDark)
                     Spacer(Modifier.height(6.dp))
-                    Text("• Rango de edad: ${recOMS.rango.label}", fontSize = 13.sp)
+                    Text("• Rango de edad: ${recOMS.rangoEdad.label}", fontSize = 13.sp)
                     Text("• Grasas objetivo: ${estimado.grasasEstimadas.toInt()} g / día", fontSize = 13.sp)
                     Text("• Zinc: ${estimado.zincEstimado} mg / día", fontSize = 13.sp)
                     Text("• Vitamina A: ${estimado.vitaminaAEstimada.toInt()} µg / día", fontSize = 13.sp)
@@ -538,10 +539,10 @@ fun EmbarazoNutricionScreen(onNavigateBack: () -> Unit) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Requerimiento prenatal:", fontWeight = FontWeight.Bold, color = ModDark)
                     Spacer(Modifier.height(4.dp))
-                    Text("• Kcal extras: +${macros.kcalExtra} kcal/día", fontSize = 13.sp)
-                    Text("• Proteína total: ${macros.proteinaG} g/día", fontSize = 13.sp)
+                    Text("• Kcal extras: +${macros.caloriasExtra} kcal/día", fontSize = 13.sp)
+                    Text("• Proteína total: ${macros.proteinasG} g/día", fontSize = 13.sp)
                     Text("• Hierro elemental: ${macros.hierroMg} mg/día", fontSize = 13.sp)
-                    Text("• Ácido fólico: ${macros.folatoUg} µg/día", fontSize = 13.sp)
+                    Text("• Ácido fólico: ${macros.acidoFolicoUg} µg/día", fontSize = 13.sp)
                     Text("• Hidratación: ${macros.aguaLitros} L de agua/día", fontSize = 13.sp)
                 }
             }

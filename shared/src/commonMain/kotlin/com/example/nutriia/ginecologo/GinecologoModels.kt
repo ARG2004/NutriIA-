@@ -1,6 +1,6 @@
 package com.example.nutriia.ginecologo
 
-import com.google.firebase.Timestamp
+import com.example.nutriia.shared.Timestamp
 
 // ─── Estado de la vinculación de embarazo ──────────────────────────────────────
 enum class EstadoVinculacionEmbarazo { PENDIENTE, ACTIVO, RECHAZADO, REVOCADO }

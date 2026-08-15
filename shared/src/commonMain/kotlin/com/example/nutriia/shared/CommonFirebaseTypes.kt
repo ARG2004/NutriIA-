@@ -4,4 +4,8 @@ package com.example.nutriia.shared
 data class Timestamp(
     val seconds: Long = 0L,
     val nanoseconds: Int = 0
-)
+) {
+    companion object {
+        fun now(): Timestamp = Timestamp(0L, 0)
+    }
+}
