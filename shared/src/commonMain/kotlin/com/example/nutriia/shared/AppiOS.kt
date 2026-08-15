@@ -46,6 +46,11 @@ enum class Screen {
 }
 
 @Composable
+fun AppiOS() {
+    NutriIAiOSApp()
+}
+
+@Composable
 fun NutriIAiOSApp() {
     var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
 

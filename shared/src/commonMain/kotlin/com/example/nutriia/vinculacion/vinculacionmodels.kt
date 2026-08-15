@@ -1,5 +1,5 @@
 package com.example.nutriia.vinculacion
-import com.google.firebase.Timestamp
+import com.example.nutriia.shared.Timestamp
 
 // ─── Estado de la vinculación ─────────────────────────────────────────────────
 enum class EstadoVinculacion { PENDIENTE, ACTIVO, RECHAZADO, REVOCADO }

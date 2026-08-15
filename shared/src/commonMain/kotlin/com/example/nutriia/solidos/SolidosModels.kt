@@ -1,7 +1,6 @@
 package com.example.nutriia.solidos
 
-import com.example.nutriia.sueldo.Alergeno
-import com.google.firebase.Timestamp
+import com.example.nutriia.shared.Timestamp
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS — MÓDULO SÓLIDOS
