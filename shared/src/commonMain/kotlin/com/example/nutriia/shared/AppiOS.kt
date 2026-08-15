@@ -1533,63 +1533,63 @@ fun NutriIADashboardParentView(
             }
         }
 
-        // Botón Destacado de NutriChat IA
+        // Botón Destacado de NutriBot (Exacto a Dashboard.kt)
         item {
             Button(
                 onClick = { onNavigate(Screen.CHAT_IA) },
                 shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NutriaDarkGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Psychology, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Consultar Asistente Clínico NutriIA", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Consultar NutriBot", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }
 
         item {
-            Text("Módulos de Nutrición y Desarrollo", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+            Text("Módulos de Seguimiento", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
         }
 
-        // Fila 1: Lactancia y Sólidos BLW
+        // Fila 1: Lactancia y Alimentación (Exacto a Dashboard.kt)
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashModuleCard("Lactancia Materna", "Cronómetro y tomas", Icons.Rounded.Favorite, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.LACTANCIA) }
-                DashModuleCard("Sólidos & BLW", "Guías de introducción", Icons.Rounded.Restaurant, NutriaSoftPurple, NutriaSoftPurple.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.SOLIDOS) }
+                DashModuleCard("Lactancia", "Cronómetro y tomas", Icons.Rounded.ChildCare, NutriaPink, NutriaPink.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.LACTANCIA) }
+                DashModuleCard("Alimentación", "Guías y alimentos BLW", Icons.Rounded.Restaurant, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.SOLIDOS) }
             }
         }
 
-        // Fila 2: Curvas OMS y Micronutrientes
+        // Fila 2: Crecimiento y Sueño (Exacto a Dashboard.kt)
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashModuleCard("Curvas OMS", "Percentiles y peso", Icons.AutoMirrored.Rounded.ShowChart, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.CRECIMIENTO) }
-                DashModuleCard("Micronutrientes", "Hierro, Zinc y Vitamina D", Icons.Rounded.Spa, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NUTRIENTES) }
+                DashModuleCard("Crecimiento", "Percentiles OMS", Icons.AutoMirrored.Rounded.ShowChart, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.CRECIMIENTO) }
+                DashModuleCard("Sueño", "Ventanas de vigilia", Icons.Rounded.Bedtime, NutriaSoftPurple, NutriaSoftPurple.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.SUENO) }
             }
         }
 
-        // Fila 3: Neurodesarrollo y Registro de Sueño
+        // Fila 3: Nutrientes y Pediatra / Nutriólogo (Exacto a Dashboard.kt)
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Nutrientes", "Hierro, Zinc y Vitamina D", Icons.Rounded.Medication, NutriaSoftTeal, NutriaSoftTeal.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NUTRIENTES) }
+                DashModuleCard("Pediatra /\nNutriólogo", "Teleconsulta y citas", Icons.Rounded.MedicalServices, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.PEDIATRA_DASHBOARD) }
+            }
+        }
+
+        // Fila 4: Análisis NutriIA y Alertas (Exacto a Dashboard.kt)
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Análisis NutriIA", "Diario visual de fotos", Icons.Rounded.PhotoCamera, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.DIARIO_VISUAL) }
+                DashModuleCard("Alertas", "Vacunas y recordatorios", Icons.Rounded.NotificationsActive, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.RECORDATORIOS) }
+            }
+        }
+
+        // Fila 5: Neurodesarrollo y Plan Semanal
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 DashModuleCard("Neurodesarrollo", "Hitos motores y cognitivos", Icons.Rounded.Psychology, NutriaSoftPurple, NutriaSoftPurple.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NEURODESARROLLO) }
-                DashModuleCard("Registro de Sueño", "Siestas y vigilia", Icons.Rounded.Bedtime, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.SUENO) }
-            }
-        }
-
-        // Fila 4: Diario Visual y Recordatorios
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashModuleCard("Diario Visual", "Registro fotográfico", Icons.Rounded.PhotoCamera, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.DIARIO_VISUAL) }
-                DashModuleCard("Recordatorios", "Vacunas y alertas", Icons.Rounded.Notifications, NutriaPink, NutriaPink.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.RECORDATORIOS) }
-            }
-        }
-
-        // Fila 5: Teleconsulta con Pediatra & Plan Semanal
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashModuleCard("Pediatra & Citas", "Teleconsulta médica", Icons.Rounded.MedicalServices, NutriaSoftTeal, NutriaSoftTeal.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.PEDIATRA_DASHBOARD) }
                 DashModuleCard("Plan Semanal", "Menús por edad OMS", Icons.Rounded.CalendarToday, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.MEAL_PLANNING) }
             }
         }
