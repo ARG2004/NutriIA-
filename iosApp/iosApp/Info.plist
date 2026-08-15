@@ -17,8 +17,10 @@
 	<key>CFBundleShortVersionString</key>
 	<string>2.1.4</string>
 	<key>CFBundleVersion</key>
-	<string>8</string>
+	<string>9</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
