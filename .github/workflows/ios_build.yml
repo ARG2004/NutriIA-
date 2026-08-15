@@ -99,9 +99,9 @@ jobs:
               if [ -f "iosApp/iosApp/Info.plist" ]; then
                 cp iosApp/iosApp/Info.plist build/Payload/NutriIA.app/Info.plist
               fi
-              # Copiar íconos PNG directamente al bundle (método garantizado para validación de Apple)
-              echo "Copiando íconos de iPhone directamente al bundle de la app..."
-              python3 -c "
+              # Generar íconos PNG directamente desde el ícono fuente de Android
+              echo "Generando íconos de iPhone directamente desde el ícono fuente..."
+              cat > /tmp/gen_icons.py << 'PYEOF'
 from PIL import Image
 import os
 src = 'app/src/main/ic_launcher-playstore.png'
@@ -124,8 +124,9 @@ for name, size in icons.items():
   bg.paste(resized, mask=resized.split()[3] if resized.mode=='RGBA' else None)
   bg.save(os.path.join(dest, name))
   print(f'Created {name} {size[0]}x{size[1]}px')
-print('All icons copied successfully!')
-"
+print('All icons generated successfully!')
+PYEOF
+              python3 /tmp/gen_icons.py
               echo "Actualizando CFBundleIconFiles en Info.plist con nombres exactos..."
               /usr/libexec/PlistBuddy -c 'Delete :CFBundleIconFiles' build/Payload/NutriIA.app/Info.plist 2>/dev/null || true
               /usr/libexec/PlistBuddy -c 'Delete :CFBundleIcons' build/Payload/NutriIA.app/Info.plist 2>/dev/null || true
