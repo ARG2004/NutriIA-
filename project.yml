@@ -18,8 +18,8 @@ targets:
     info:
       path: iosApp/iosApp/Info.plist
       properties:
-        CFBundleShortVersionString: '2.1.3'
-        CFBundleVersion: '6'
+        CFBundleShortVersionString: '2.1.4'
+        CFBundleVersion: '7'
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arg.nutriia
@@ -31,8 +31,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
-        CURRENT_PROJECT_VERSION: '6'
-        MARKETING_VERSION: '2.1.3'
+        CURRENT_PROJECT_VERSION: '7'
+        MARKETING_VERSION: '2.1.4'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
     dependencies:
