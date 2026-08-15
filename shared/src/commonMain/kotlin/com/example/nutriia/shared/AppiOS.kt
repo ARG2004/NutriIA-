@@ -80,11 +80,11 @@ fun NutriIAiOSApp() {
             )
             Screen.REGISTER_PARENT -> ParentRegisterScreen(
                 onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
-                onRegister     = { currentScreen = Screen.DASHBOARD_PARENT }
+                onRegister     = { currentScreen = Screen.QUIZ }
             )
             Screen.REGISTER_MAMA_PRIMERIZA -> MamaPrimerizaRegisterScreen(
                 onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
-                onRegister     = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                onRegister     = { currentScreen = Screen.QUIZ_MAMA_PRIMERIZA }
             )
             Screen.REGISTER_NUTRITIONIST -> ProfessionalRegisterScreen(
                 onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
@@ -93,6 +93,16 @@ fun NutriIAiOSApp() {
             Screen.REGISTER_GINECOLOGO -> ProfessionalRegisterScreen(
                 onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
                 onRegister     = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+            )
+
+            // Quizzes de Onboarding
+            Screen.QUIZ -> OnboardingQuizScreen(
+                onQuizComplete = { currentScreen = Screen.DASHBOARD_PARENT },
+                onCancel = { currentScreen = Screen.LOGIN }
+            )
+            Screen.QUIZ_MAMA_PRIMERIZA -> EmbarazoQuizScreen(
+                onQuizComplete = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA },
+                onCancel = { currentScreen = Screen.LOGIN }
             )
 
             // Dashboards
@@ -113,8 +123,7 @@ fun NutriIAiOSApp() {
                 onLogout   = { currentScreen = Screen.LOGIN }
             )
 
-            // Módulos
-            Screen.ACCESIBILIDAD_INICIAL,
+            // Módulos clínicos
             Screen.CONFIGURACION        -> AccessibilityConfigScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
