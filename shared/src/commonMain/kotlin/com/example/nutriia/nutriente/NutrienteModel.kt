@@ -1,6 +1,13 @@
 package com.example.nutriia.nutriente
 
+import java.util.UUID
+
 // ─── Rangos de edad según OMS ─────────────────────────────────────────────────
+// 0–6 meses: lactancia exclusiva
+// 6–8 meses: inicio alimentación complementaria (2–3 comidas/día)
+// 9–23 meses: 3–4 comidas/día + 1–2 snacks
+// 24+ meses: dieta variada
+
 enum class RangoEdad(val label: String, val mesesMin: Int, val mesesMax: Int) {
     CERO_SEIS(     "0 – 6 meses",   0,   6),
     SEIS_OCHO(     "6 – 8 meses",   6,   8),
@@ -12,6 +19,7 @@ fun rangoEdadDesde(meses: Int): RangoEdad =
     RangoEdad.entries.lastOrNull { meses >= it.mesesMin } ?: RangoEdad.CERO_SEIS
 
 // ─── Macronutrientes ──────────────────────────────────────────────────────────
+
 data class Macronutrientes(
     val calorias:      Double = 0.0,   // kcal
     val proteinas:     Double = 0.0,   // g
@@ -20,6 +28,7 @@ data class Macronutrientes(
 )
 
 // ─── Micronutrientes ──────────────────────────────────────────────────────────
+
 data class Micronutrientes(
     val hierro:     Double = 0.0,   // mg
     val calcio:     Double = 0.0,   // mg
@@ -29,15 +38,17 @@ data class Micronutrientes(
 )
 
 // ─── Recomendación OMS por rango ─────────────────────────────────────────────
+
 data class RecomendacionOMS(
     val rangoEdad:      RangoEdad,
-    val comidasPorDia:  IntRange,
-    val snacksPorDia:   IntRange,
+    val comidasPorDia:  IntRange,          // ej. 2..3
+    val snacksPorDia:   IntRange,          // ej. 0..1
     val macros:         Macronutrientes,
     val micros:         Micronutrientes,
-    val notas:          List<String>
+    val notas:          List<String>       // tips textuales de la OMS
 )
 
+// Tabla estática de referencia OMS
 val recomendacionesOMS: Map<RangoEdad, RecomendacionOMS> = mapOf(
     RangoEdad.CERO_SEIS to RecomendacionOMS(
         rangoEdad     = RangoEdad.CERO_SEIS,
@@ -73,8 +84,8 @@ val recomendacionesOMS: Map<RangoEdad, RecomendacionOMS> = mapOf(
         notas = listOf(
             "Aumentar variedad y consistencia de los alimentos.",
             "3–4 comidas principales + 1–2 snacks nutritivos.",
-            "Usar alimentos enriquecidos si es necesario.",
-            "Durante la enfermedad, aumentar líquidos."
+            "Usar alimentos enriquecidos o suplementos de vitaminas/minerales si es necesario.",
+            "Durante la enfermedad, aumentar líquidos y ofrecer alimentos favoritos blandos."
         )
     ),
     RangoEdad.VEINTICUATRO_MAS to RecomendacionOMS(
@@ -91,20 +102,18 @@ val recomendacionesOMS: Map<RangoEdad, RecomendacionOMS> = mapOf(
     )
 )
 
-fun recomendacionOMSParaEdad(meses: Int): RecomendacionOMS =
-    recomendacionesOMS[rangoEdadDesde(meses)] ?: recomendacionesOMS.values.first()
-
 // ─── Registro diario de nutrientes ───────────────────────────────────────────
+
 data class RegistroNutrientes(
-    val id:          String          = "",
+    val id:          String          = UUID.randomUUID().toString(),
     val childId:     String          = "",
-    val fecha:       String          = "",
-    val comida:      String          = "",
+    val fecha:       String          = "",    // "DD/MM/YYYY"
+    val comida:      String          = "",    // "Desayuno", "Almuerzo", etc.
     val alimento:    String          = "",
     val macros:      Macronutrientes = Macronutrientes(),
     val micros:      Micronutrientes = Micronutrientes(),
     val notas:       String          = "",
-    val creadoEn:    Long            = 0L
+    val creadoEn:    Long            = System.currentTimeMillis()
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"       to id,
@@ -126,7 +135,9 @@ data class RegistroNutrientes(
             "zinc"      to micros.zinc
         ),
         "notas"    to notas,
-        "creadoEn" to creadoEn
+        "creadoEn" to creadoEn,
+        "fechaCreacion" to com.example.nutriia.utils.FechaUtils.formatearFecha(java.util.Date(creadoEn)),
+        "horaCreacion"  to com.example.nutriia.utils.FechaUtils.formatearHora(java.util.Date(creadoEn))
     )
 
     companion object {
@@ -135,7 +146,7 @@ data class RegistroNutrientes(
             val m = map["macros"] as? Map<String, Any?> ?: emptyMap()
             val n = map["micros"] as? Map<String, Any?> ?: emptyMap()
             return RegistroNutrientes(
-                id       = map["id"]       as? String ?: "",
+                id       = map["id"]       as? String ?: UUID.randomUUID().toString(),
                 childId  = map["childId"]  as? String ?: "",
                 fecha    = map["fecha"]    as? String ?: "",
                 comida   = map["comida"]   as? String ?: "",
@@ -154,7 +165,7 @@ data class RegistroNutrientes(
                     zinc      = (n["zinc"]      as? Number)?.toDouble() ?: 0.0
                 ),
                 notas    = map["notas"]    as? String ?: "",
-                creadoEn = (map["creadoEn"] as? Number)?.toLong() ?: 0L
+                creadoEn = (map["creadoEn"] as? Number)?.toLong() ?: System.currentTimeMillis()
             )
         }
     }

@@ -2,6 +2,9 @@ package com.example.nutriia.sueldo
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS DE DIETA — NutriIA
+//
+// NivelIngreso, RegionMexico, PerfilIngreso y ConstantesEconomicas
+// siguen viviendo en Nivelingreso.kt — no se duplican aquí.
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── Alérgenos ──────────────────────────────────────────────────────────────
@@ -65,6 +68,9 @@ data class ComidasDiarias(
     val colacion2:        String,
     val cena:             String,
     val costoEstimadoDia: Double,
+    // ── Nutrientes estimados del día ──────────────────────────────────────
+    // Default 0.0 → compatibilidad total con código existente de DietaEngine.
+    // NutriEstimadoEngine.estimarDia() los llena al generar el plan semanal.
     val caloriasEstimadas:  Double = 0.0,
     val proteinasEstimadas: Double = 0.0,
     val grasasEstimadas:    Double = 0.0,

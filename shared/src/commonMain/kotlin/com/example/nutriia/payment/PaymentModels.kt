@@ -1,6 +1,6 @@
 package com.example.nutriia.payment
 
-import com.example.nutriia.shared.Timestamp
+import com.google.firebase.Timestamp
 
 enum class EstadoPago { PENDIENTE, COMPLETADO, FALLIDO, REEMBOLSADO }
 

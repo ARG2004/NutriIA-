@@ -1,6 +1,6 @@
 package com.example.nutriia.lactancia
 
-import com.example.nutriia.shared.Timestamp
+import com.google.firebase.Timestamp
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS — MODULO LACTANCIA

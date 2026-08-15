@@ -1,21 +1,44 @@
 package com.example.nutriia.crecimiento
 
+import com.google.firebase.Timestamp
+
 // ═══════════════════════════════════════════════════════════════════════════
-// MODELOS — CRECIMIENTO OMS OFICIAL
+// MODELOS — CRECIMIENTO
+//
+// FUENTES OFICIALES OMS:
+//   • 0–60 meses  → WHO Child Growth Standards 2006
+//     https://www.who.int/tools/child-growth-standards
+//   • 61–144 meses → WHO Growth Reference 2007 (5–19 años)
+//     https://www.who.int/tools/growth-reference-data-for-5to19-years
+//     de Onis M et al. Bull World Health Organ 2007;85(9):660-667.
+//     https://pmc.ncbi.nlm.nih.gov/articles/PMC2636412/
+//
+// Tablas descargadas directamente de cdn.who.int (PDFs oficiales):
+//   Peso niños   (5–10 a): cdn.who.int/.../wfa-boys--5-10years-per.pdf
+//   Peso niñas   (5–10 a): cdn.who.int/.../wfa-girls-5-10years-per.pdf
+//   Talla niños  (5–19 a): cdn.who.int/.../hfa-boys-5-19years-per.pdf
+//   Talla niñas  (5–19 a): cdn.who.int/.../hfa-girls-5-19years-per.pdf
+//   IMC niños    (5–19 a): cdn.who.int/.../bmifa-boys-5-19years-per.pdf
+//   IMC niñas    (5–19 a): cdn.who.int/.../bmifa-girls-5-19years-per.pdf
+//
+// Nota sobre peso ≥ 10 años:
+//   La OMS solo publica peso-para-edad hasta 10 años (120 meses) porque
+//   más allá el peso solo no distingue talla vs masa. Para > 120 m se
+//   usa IMC-para-edad como indicador primario de estado nutricional.
 // ═══════════════════════════════════════════════════════════════════════════
 
 enum class Sexo { NINO, NINA }
 
 data class MedicionCrecimiento(
-    val id:        String  = "",
-    val childId:   String  = "",
-    val userId:    String  = "",
-    val fecha:     String  = "",
-    val pesoKg:    Double  = 0.0,
-    val tallaCm:   Double  = 0.0,
-    val circCefCm: Double  = 0.0,
-    val notas:     String  = "",
-    val creadoEn:  Long    = 0L
+    val id:        String     = "",
+    val childId:   String     = "",
+    val userId:    String     = "",
+    val fecha:     String     = "",
+    val pesoKg:    Double     = 0.0,
+    val tallaCm:   Double     = 0.0,
+    val circCefCm: Double     = 0.0,
+    val notas:     String     = "",
+    val creadoEn:  Timestamp? = null
 ) {
     val imc: Double get() =
         if (tallaCm > 0) pesoKg / ((tallaCm / 100.0) * (tallaCm / 100.0)) else 0.0

@@ -1,9 +1,13 @@
 package com.example.nutriia.embarazo
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.sueldo.Alergeno
+import com.example.nutriia.ui.theme.parsearAlergenos   // reutilizar el existente, NO duplicar
 
+@Parcelize
 data class PerfilEmbarazo(
     val semanas:                Int          = 1,
     val condiciones:            List<String> = emptyList(),
@@ -17,7 +21,11 @@ data class PerfilEmbarazo(
     val pesoPregestacionalKg:   Double       = 0.0,
     val esGemelar:              Boolean      = false,
     val otrasCondicionesTexto:  String       = ""
-) {
+) : Parcelable {
+
+    val alergenosParsados: List<Alergeno> get() =
+        if (allergiesDetail.isNotBlank()) parsearAlergenos(allergiesDetail) else emptyList()
+
     val imcPregestacional: Double get() =
         if (tallaM > 0) pesoPregestacionalKg / (tallaM * tallaM) else 0.0
 
@@ -49,8 +57,8 @@ data class PerfilEmbarazo(
                                         } ?: RegionMexico.CENTRO,
             allergiesDetail         = map["allergiesDetail"] as? String ?: "",
             edad                    = (map["edad"] as? Long)?.toInt() ?: (map["edad"] as? Int) ?: 0,
-            tallaM                  = (map["tallaM"] as? Double) ?: (map["tallaM"] as? Long)?.toDouble() ?: 0.0,
-            pesoPregestacionalKg    = (map["pesoPregestacionalKg"] as? Double) ?: (map["pesoPregestacionalKg"] as? Long)?.toDouble() ?: 0.0,
+            tallaM                  = (map["tallaM"] as? Double) ?: (map["tallaM"] as? Long)?.toDouble() ?: (map["tallaM"] as? Float)?.toDouble() ?: 0.0,
+            pesoPregestacionalKg    = (map["pesoPregestacionalKg"] as? Double) ?: (map["pesoPregestacionalKg"] as? Long)?.toDouble() ?: (map["pesoPregestacionalKg"] as? Float)?.toDouble() ?: 0.0,
             esGemelar               = map["esGemelar"] as? Boolean ?: false,
             otrasCondicionesTexto   = map["otrasCondicionesTexto"] as? String ?: ""
         )

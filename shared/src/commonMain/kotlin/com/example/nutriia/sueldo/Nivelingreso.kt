@@ -56,7 +56,9 @@ enum class NivelIngreso(
     }
 
     companion object {
+        // Salario mínimo general 2026 — DOF 09/12/2025 — CONASAMI
         const val SALARIO_MINIMO_MENSUAL_2026: Int = 9_582
+
         fun fromIndex(i: Int) = entries.first { it.index == i }
     }
 }

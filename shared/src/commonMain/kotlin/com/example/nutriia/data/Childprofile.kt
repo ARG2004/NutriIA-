@@ -33,9 +33,10 @@ data class ChildProfile(
                 val p = birthDate.split("-").map { it.toInt() }
                 Triple(p[2], p[1], p[0])
             }
-            val anioActual = 2026
-            val mesActual = 8
-            var meses = (anioActual - anio) * 12 + (mesActual - mes)
+            val hoy = java.util.Calendar.getInstance()
+            val nac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
+            var meses = (hoy.get(java.util.Calendar.YEAR) - nac.get(java.util.Calendar.YEAR)) * 12
+            meses += hoy.get(java.util.Calendar.MONTH) - nac.get(java.util.Calendar.MONTH)
             if (meses < 0) 0 else meses
         } catch (_: Exception) { 6 }
     }
