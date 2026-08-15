@@ -13,11 +13,8 @@ targets:
     sources:
       - path: iosApp/iosApp
         excludes:
-          - Assets.xcassets
           - '*.png'
           - Info.plist
-    resources:
-      - iosApp/iosApp/Assets.xcassets
     info:
       path: iosApp/iosApp/Info.plist
     settings:
