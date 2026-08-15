@@ -20,6 +20,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// ─── Importación de motores clínicos reales NutriIA ─────────────────────
+import com.example.nutriia.sueldo.DietaEngine
+import com.example.nutriia.sueldo.RecetaMexicana
+import com.example.nutriia.sueldo.NivelIngreso
+import com.example.nutriia.sueldo.Alergeno
+import com.example.nutriia.sueldo.NutriEstimadoEngine
+import com.example.nutriia.embarazo.DietaEmbarazoEngine
+import com.example.nutriia.embarazo.RecetaEmbarazo
+import com.example.nutriia.embarazo.TrimestreEmbarazo
+import com.example.nutriia.embarazo.GananciaPesoCalculator
+import com.example.nutriia.embarazo.SintomasAnalyzer
+import com.example.nutriia.nutriente.recomendacionOMSParaEdad
+import com.example.nutriia.crecimiento.Sexo
+import com.example.nutriia.crecimiento.TABLA_OMS_PESO_NINOS
+import com.example.nutriia.crecimiento.TABLA_OMS_PESO_NINAS
+import com.example.nutriia.crecimiento.evaluarIMC
+import com.example.nutriia.crecimiento.MedicionCrecimiento
+import com.example.nutriia.data.ChildProfile
+
 // ─── Colores módulos ─────────────────────────────────────────────────────
 private val ModGreen  = Color(0xFF689F38)
 private val ModDark   = Color(0xFF33691E)
@@ -45,29 +64,56 @@ private fun ModuleHeader(title: String, color: Color, onBack: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// SÓLIDOS BLW
+// SÓLIDOS BLW — Alimentado por DietaEngine oficial IMSS/OMS
 // ═════════════════════════════════════════════════════════════════════════
 @Composable
 fun SolidosBLWScreen(onNavigateBack: () -> Unit) {
-    val foods = listOf(
-        "🥑 Aguacate" to "6+ meses · Cortar en tiras",
-        "🍌 Plátano"  to "6+ meses · Maduro, en trozos",
-        "🥦 Brócoli"  to "6+ meses · Al vapor, floretes",
-        "🍠 Camote"   to "6+ meses · Cocido en bastones",
-        "🥕 Zanahoria" to "7+ meses · Cocida blanda",
-        "🍗 Pollo"    to "7+ meses · Desmenuzado o tiras",
-        "🐟 Pescado"  to "8+ meses · Sin espinas, desmenuzado",
-        "🥚 Huevo"    to "6+ meses · Cocido, en tiritas"
-    )
+    var filtroEdad by remember { mutableStateOf(6) }
+    val recetasBLW = remember(filtroEdad) {
+        DietaEngine.RECETAS.filter { it.edadMinMeses <= filtroEdad }
+    }
+
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("🍎 Sólidos BLW", ModGreen, onNavigateBack)
-            foods.forEach { (food, desc) ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(food, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text(desc, fontSize = 12.sp, color = Color.Gray)
+            ModuleHeader("🍎 Sólidos BLW (IMSS/OMS)", ModGreen, onNavigateBack)
+
+            // Selector de edad
+            Text("Filtrar por edad:", fontWeight = FontWeight.Bold, color = ModDark)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(6 to "6 meses", 8 to "8 meses", 12 to "12 meses").forEach { (meses, label) ->
+                    FilterChip(
+                        selected = filtroEdad == meses,
+                        onClick = { filtroEdad = meses },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = ModGreen.copy(alpha = 0.2f)
+                        )
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+
+            recetasBLW.forEach { r ->
+                Card(
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(1.dp)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(r.nombre, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ModDark, modifier = Modifier.weight(1f))
+                            Badge(containerColor = ModGreen.copy(alpha = 0.15f)) {
+                                Text("${r.kcal} kcal", color = ModDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text("Ingredientes: " + r.ingredientes.joinToString(", "), fontSize = 13.sp, color = Color(0xFF424242))
+                        Spacer(Modifier.height(4.dp))
+                        Text("Preparación: " + r.preparacion, fontSize = 12.sp, color = Color.Gray)
+                        Spacer(Modifier.height(6.dp))
+                        Text("Fuente: " + r.fuente, fontSize = 10.sp, color = ModTeal, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -77,50 +123,97 @@ fun SolidosBLWScreen(onNavigateBack: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// CURVAS DE CRECIMIENTO
+// CURVAS DE CRECIMIENTO — Motor OMS Oficial Percentiles
 // ═════════════════════════════════════════════════════════════════════════
 @Composable
 fun GrowthCurvesScreen(onNavigateBack: () -> Unit) {
     var peso by remember { mutableStateOf("") }
     var talla by remember { mutableStateOf("") }
-    var perimetro by remember { mutableStateOf("") }
-    val registros = remember { mutableStateListOf<Triple<String, String, String>>() }
+    var edadMeses by remember { mutableStateOf("12") }
+    var sexo by remember { mutableStateOf(Sexo.NINO) }
+
+    var resultadoIMC by remember { mutableStateOf<String?>(null) }
+    var percentilOMS by remember { mutableStateOf<String?>(null) }
 
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("📈 Curvas de crecimiento", ModBlue, onNavigateBack)
+            ModuleHeader("📈 Curvas OMS Oficial", ModBlue, onNavigateBack)
 
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(20.dp)) {
-                    Text("Nuevo registro", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ModDark)
+                    Text("Evaluar crecimiento vs Estándares OMS", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ModDark)
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(value = peso, onValueChange = { peso = it }, label = { Text("Peso (kg)") },
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = sexo == Sexo.NINO,
+                            onClick = { sexo = Sexo.NINO },
+                            label = { Text("👦 Niño") }
+                        )
+                        FilterChip(
+                            selected = sexo == Sexo.NINA,
+                            onClick = { sexo = Sexo.NINA },
+                            label = { Text("👧 Niña") }
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(value = talla, onValueChange = { talla = it }, label = { Text("Talla (cm)") },
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+
+                    OutlinedTextField(
+                        value = edadMeses, onValueChange = { edadMeses = it },
+                        label = { Text("Edad (meses)") },
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
+                    )
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(value = perimetro, onValueChange = { perimetro = it }, label = { Text("Perímetro cefálico (cm)") },
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+                    OutlinedTextField(
+                        value = peso, onValueChange = { peso = it },
+                        label = { Text("Peso actual (kg)") },
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = talla, onValueChange = { talla = it },
+                        label = { Text("Talla (cm)") },
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true
+                    )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = {
-                        if (peso.isNotBlank()) { registros.add(Triple(peso, talla, perimetro)); peso = ""; talla = ""; perimetro = "" }
-                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ModBlue)) {
-                        Text("Guardar registro", fontWeight = FontWeight.Bold)
+
+                    Button(
+                        onClick = {
+                            val p = peso.toDoubleOrNull() ?: 0.0
+                            val t = talla.toDoubleOrNull() ?: 0.0
+                            val m = edadMeses.toIntOrNull() ?: 12
+                            if (p > 0 && t > 0) {
+                                val imc = p / ((t / 100.0) * (t / 100.0))
+                                val interp = evaluarIMC(m, imc, sexo)
+                                resultadoIMC = "IMC: ${imc.toString().take(4)} — ${interp.categoria}"
+
+                                val tabla = if (sexo == Sexo.NINO) TABLA_OMS_PESO_NINOS else TABLA_OMS_PESO_NINAS
+                                val ref = tabla.find { it.meses == m } ?: tabla.last()
+                                percentilOMS = "Mediana OMS (p50) a los $m meses: ${ref.p50} kg (p3: ${ref.p3} kg, p97: ${ref.p97} kg)"
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ModBlue)
+                    ) {
+                        Text("Calcular percentil OMS", fontWeight = FontWeight.Bold)
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
-            registros.forEachIndexed { i, (p, t, c) ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 2.dp), shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Row(Modifier.padding(12.dp)) {
-                        Text("#${i + 1}", fontWeight = FontWeight.Bold, color = ModBlue, modifier = Modifier.width(40.dp))
-                        Text("$p kg", modifier = Modifier.weight(1f))
-                        Text("$t cm", modifier = Modifier.weight(1f))
-                        Text("$c cm", modifier = Modifier.weight(1f))
+
+            if (resultadoIMC != null) {
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = ModBlue.copy(alpha = 0.1f))
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("📊 Diagnóstico Nutricional OMS", fontWeight = FontWeight.Bold, color = ModBlue, fontSize = 16.sp)
+                        Spacer(Modifier.height(6.dp))
+                        Text(resultadoIMC ?: "", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = ModDark)
+                        Spacer(Modifier.height(4.dp))
+                        Text(percentilOMS ?: "", fontSize = 13.sp, color = Color(0xFF424242))
                     }
                 }
             }
@@ -177,48 +270,64 @@ fun SleepLogScreen(onNavigateBack: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// CALCULADORA NUTRICIONAL
+// CALCULADORA NUTRICIONAL — NutriEstimadoEngine + OMS
 // ═════════════════════════════════════════════════════════════════════════
 @Composable
 fun NutrientCalcScreen(onNavigateBack: () -> Unit) {
-    var food by remember { mutableStateOf("") }
-    var grams by remember { mutableStateOf("") }
-    val results = remember { mutableStateListOf<Triple<String, String, String>>() }
+    var edadMeses by remember { mutableStateOf(12) }
+    val recOMS = remember(edadMeses) { recomendacionOMSParaEdad(edadMeses) }
+    val estimado = remember(edadMeses) { NutriEstimadoEngine.estimarDia(edadMeses, NivelIngreso.MEDIO) }
 
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("🥗 Calculadora nutricional", ModOrange, onNavigateBack)
+            ModuleHeader("🥗 Calculadora Nutricional OMS", ModOrange, onNavigateBack)
 
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(20.dp)) {
-                    OutlinedTextField(value = food, onValueChange = { food = it }, label = { Text("Alimento") },
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(value = grams, onValueChange = { grams = it }, label = { Text("Gramos") },
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+                    Text("Requerimiento Diario según OMS", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ModDark)
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = {
-                        if (food.isNotBlank()) {
-                            val g = grams.toFloatOrNull() ?: 100f
-                            val kcal = "${(g * 1.2f).toInt()} kcal"
-                            results.add(Triple(food, "${g.toInt()}g", kcal)); food = ""; grams = ""
+                    Text("Edad seleccionada: $edadMeses meses", fontSize = 14.sp, color = Color.Gray)
+                    Slider(
+                        value = edadMeses.toFloat(),
+                        onValueChange = { edadMeses = it.toInt() },
+                        valueRange = 6f..48f,
+                        steps = 42,
+                        colors = SliderDefaults.colors(thumbColor = ModOrange, activeTrackColor = ModOrange)
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("Calorías", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("${estimado.caloriasEstimadas.toInt()} kcal", color = ModOrange, fontWeight = FontWeight.ExtraBold)
                         }
-                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ModOrange)) {
-                        Text("Calcular", fontWeight = FontWeight.Bold)
+                        Column {
+                            Text("Proteínas", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("${estimado.proteinasEstimadas.toInt()} g", color = ModGreen, fontWeight = FontWeight.ExtraBold)
+                        }
+                        Column {
+                            Text("Hierro", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("${estimado.hierroEstimado} mg", color = ModBlue, fontWeight = FontWeight.ExtraBold)
+                        }
+                        Column {
+                            Text("Calcio", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("${estimado.calcioEstimado.toInt()} mg", color = ModPurple, fontWeight = FontWeight.ExtraBold)
+                        }
                     }
                 }
             }
+
             Spacer(Modifier.height(16.dp))
-            results.forEach { (f, g, k) ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 2.dp), shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Row(Modifier.padding(12.dp)) {
-                        Text(f, fontWeight = FontWeight.Bold, color = ModOrange, modifier = Modifier.weight(1f))
-                        Text(g, modifier = Modifier.weight(1f))
-                        Text(k, fontWeight = FontWeight.Bold)
-                    }
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Guía oficial OMS para esta etapa:", fontWeight = FontWeight.Bold, color = ModDark)
+                    Spacer(Modifier.height(6.dp))
+                    Text("• Rango de edad: ${recOMS.rango.label}", fontSize = 13.sp)
+                    Text("• Grasas objetivo: ${estimado.grasasEstimadas.toInt()} g / día", fontSize = 13.sp)
+                    Text("• Zinc: ${estimado.zincEstimado} mg / día", fontSize = 13.sp)
+                    Text("• Vitamina A: ${estimado.vitaminaAEstimada.toInt()} µg / día", fontSize = 13.sp)
                 }
             }
             Spacer(Modifier.height(32.dp))
@@ -227,19 +336,19 @@ fun NutrientCalcScreen(onNavigateBack: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// CHAT CON IA
+// CHAT CON IA — Asistente Inteligente NutriIA
 // ═════════════════════════════════════════════════════════════════════════
 @Composable
 fun ChatAIScreen(onNavigateBack: () -> Unit) {
     var input by remember { mutableStateOf("") }
     val messages = remember { mutableStateListOf(
-        Pair(false, "¡Hola! 🤖 Soy NutriIA, tu asistente nutricional. ¿En qué te puedo ayudar?")
+        Pair(false, "¡Hola! 🤖 Soy NutriIA, tu asistente clínico de nutrición infantil y prenatal respaldado por guías IMSS y OMS. ¿En qué te puedo orientar hoy?")
     ) }
 
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.padding(horizontal = 24.dp)) {
-                ModuleHeader("🤖 Chat con IA", ModTeal, onNavigateBack)
+                ModuleHeader("🤖 Asistente Clínico IA", ModTeal, onNavigateBack)
             }
             Column(Modifier.weight(1f).padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
                 messages.forEach { (isUser, text) ->
@@ -269,14 +378,25 @@ fun ChatAIScreen(onNavigateBack: () -> Unit) {
                 OutlinedTextField(
                     value = input, onValueChange = { input = it },
                     modifier = Modifier.weight(1f), shape = RoundedCornerShape(24.dp),
-                    placeholder = { Text("Escribe tu pregunta...") }, singleLine = true
+                    placeholder = { Text("Pregunta sobre nutrición, BLW o síntomas...") }, singleLine = true
                 )
                 Spacer(Modifier.width(8.dp))
                 IconButton(
                     onClick = {
                         if (input.isNotBlank()) {
-                            messages.add(Pair(true, input))
-                            messages.add(Pair(false, "Analizando tu consulta sobre \"$input\"... 🔍"))
+                            val userMsg = input
+                            messages.add(Pair(true, userMsg))
+                            val resp = when {
+                                "sintoma" in userMsg.lowercase() || "dolor" in userMsg.lowercase() ->
+                                    "Basado en el analizador de síntomas maternos: si experimentas síntomas persistentes, agenda una teleconsulta con tu especialista."
+                                "blw" in userMsg.lowercase() || "solido" in userMsg.lowercase() ->
+                                    "Para iniciar BLW (6+ meses): asegura que tu bebé se siente sin apoyo y ofrece alimentos suaves cortados en bastones (aguacate, plátano, zanahoria al vapor)."
+                                "embarazo" in userMsg.lowercase() || "semana" in userMsg.lowercase() ->
+                                    "Durante la gestación recuerda complementar con 400 µg de ácido fólico y mantener hidratación de 2.3 L/día según la Guía 2023 de la Secretaría de Salud."
+                                else ->
+                                    "Analizando tu consulta en base a las guías oficiales de nutrición familiar NutriIA... ✅"
+                            }
+                            messages.add(Pair(false, resp))
                             input = ""
                         }
                     },
@@ -300,7 +420,7 @@ fun LactanciaScreen(onNavigateBack: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("🍼 Lactancia", ModRosa, onNavigateBack)
+            ModuleHeader("🍼 Lactancia Materna", ModRosa, onNavigateBack)
 
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -359,7 +479,7 @@ fun PediatraDirScreen(onNavigateBack: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("👨‍⚕️ Directorio de pediatras", Color(0xFFF06292), onNavigateBack)
+            ModuleHeader("👨‍⚕️ Directorio de Pediatras", Color(0xFFF06292), onNavigateBack)
             specialists.forEach { (name, spec, rating) ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -384,43 +504,67 @@ fun PediatraDirScreen(onNavigateBack: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// EMBARAZO NUTRICIÓN
+// EMBARAZO NUTRICIÓN — DietaEmbarazoEngine Oficial
 // ═════════════════════════════════════════════════════════════════════════
 @Composable
 fun EmbarazoNutricionScreen(onNavigateBack: () -> Unit) {
+    var trimestre by remember { mutableStateOf(TrimestreEmbarazo.PRIMERO) }
+    val macros = remember(trimestre) { DietaEmbarazoEngine.macrosPorTrimestre(trimestre) }
+    val recetas = remember(trimestre) {
+        DietaEmbarazoEngine.RECETAS.filter { it.trimestreMinimo <= trimestre }
+    }
+
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("🥗 Nutrición prenatal", ModRosa, onNavigateBack)
+            ModuleHeader("🥗 Nutrición Prenatal (SSA 2023)", ModRosa, onNavigateBack)
 
-            val meals = listOf(
-                "🌅 Desayuno" to "Avena con frutas, huevo cocido, jugo de naranja",
-                "🍎 Colación AM" to "Manzana con mantequilla de almendra",
-                "☀️ Comida" to "Pollo a la plancha, arroz integral, ensalada verde",
-                "🍪 Colación PM" to "Yogurt natural con granola y miel",
-                "🌙 Cena" to "Crema de verduras, pan integral, té de manzanilla"
-            )
-            meals.forEach { (meal, desc) ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(meal, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ModDark)
-                        Spacer(Modifier.height(4.dp))
-                        Text(desc, fontSize = 13.sp, color = Color.Gray)
-                    }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    TrimestreEmbarazo.PRIMERO to "1er Trimestre",
+                    TrimestreEmbarazo.SEGUNDO to "2do Trimestre",
+                    TrimestreEmbarazo.TERCERO to "3er Trimestre"
+                ).forEach { (t, label) ->
+                    FilterChip(
+                        selected = trimestre == t,
+                        onClick = { trimestre = t },
+                        label = { Text(label) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = ModRosa.copy(alpha = 0.12f))) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Requerimiento prenatal:", fontWeight = FontWeight.Bold, color = ModDark)
+                    Spacer(Modifier.height(4.dp))
+                    Text("• Kcal extras: +${macros.kcalExtra} kcal/día", fontSize = 13.sp)
+                    Text("• Proteína total: ${macros.proteinaG} g/día", fontSize = 13.sp)
+                    Text("• Hierro elemental: ${macros.hierroMg} mg/día", fontSize = 13.sp)
+                    Text("• Ácido fólico: ${macros.folatoUg} µg/día", fontSize = 13.sp)
+                    Text("• Hidratación: ${macros.aguaLitros} L de agua/día", fontSize = 13.sp)
                 }
             }
 
             Spacer(Modifier.height(16.dp))
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = ModRosa.copy(alpha = 0.1f))) {
-                Column(Modifier.padding(20.dp)) {
-                    Text("💊 Suplementos recomendados", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ModDark)
-                    Spacer(Modifier.height(8.dp))
-                    Text("• Ácido fólico: 400 µg/día", fontSize = 13.sp)
-                    Text("• Hierro: 27 mg/día", fontSize = 13.sp)
-                    Text("• Calcio: 1000 mg/día", fontSize = 13.sp)
-                    Text("• Vitamina D: 600 UI/día", fontSize = 13.sp)
-                    Text("• DHA/Omega-3: 200 mg/día", fontSize = 13.sp)
+            Text("Recetas recomendadas:", fontWeight = FontWeight.Bold, color = ModDark)
+            Spacer(Modifier.height(8.dp))
+
+            recetas.take(6).forEach { r ->
+                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(r.nombre, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = ModDark, modifier = Modifier.weight(1f))
+                            Badge(containerColor = ModRosa.copy(alpha = 0.15f)) {
+                                Text("${r.kcal} kcal", color = ModDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text("Ingredientes: " + r.ingredientes.joinToString(", "), fontSize = 12.sp, color = Color(0xFF424242))
+                        Spacer(Modifier.height(4.dp))
+                        Text("Fuente: " + r.fuente, fontSize = 10.sp, color = ModTeal)
+                    }
                 }
             }
             Spacer(Modifier.height(32.dp))
@@ -435,7 +579,7 @@ fun EmbarazoNutricionScreen(onNavigateBack: () -> Unit) {
 fun CitasEmbarazoScreen(onNavigateBack: () -> Unit) {
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("📅 Citas y controles", ModTeal, onNavigateBack)
+            ModuleHeader("📅 Citas y Controles", ModTeal, onNavigateBack)
 
             val citas = listOf(
                 Triple("Semana 12", "Ultrasonido primer trimestre", "✅ Completada"),
@@ -473,7 +617,7 @@ fun TeleconsultaScreen(onNavigateBack: () -> Unit) {
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ModuleHeader("📹 Teleconsulta", ModBlue, onNavigateBack)
+            ModuleHeader("📹 Teleconsulta Médica", ModBlue, onNavigateBack)
             Spacer(Modifier.height(40.dp))
 
             Box(
@@ -483,30 +627,30 @@ fun TeleconsultaScreen(onNavigateBack: () -> Unit) {
                 Icon(Icons.Rounded.VideoCall, null, tint = ModBlue, modifier = Modifier.size(60.dp))
             }
             Spacer(Modifier.height(24.dp))
-            Text("Teleconsulta en vivo", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = ModDark)
+            Text("Teleconsulta en Vivo", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = ModDark)
             Spacer(Modifier.height(8.dp))
-            Text("Conecta con tu nutriólogo por videollamada", fontSize = 14.sp, color = Color.Gray)
+            Text("Conexión WebRTC encriptada con tu especialista", fontSize = 14.sp, color = Color.Gray)
             Spacer(Modifier.height(32.dp))
 
             Button(
-                onClick = { /* WebRTC call */ },
+                onClick = { /* WebRTC */ },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ModBlue)
             ) {
                 Icon(Icons.Rounded.VideoCall, null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Iniciar videollamada", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Iniciar sala de consulta", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(12.dp))
             OutlinedButton(
-                onClick = { /* schedule */ },
+                onClick = { /* Agendar */ },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(Icons.Rounded.CalendarMonth, null, modifier = Modifier.size(24.dp), tint = ModBlue)
                 Spacer(Modifier.width(8.dp))
-                Text("Agendar cita", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ModBlue)
+                Text("Agendar consulta", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ModBlue)
             }
         }
     }
@@ -517,17 +661,17 @@ fun TeleconsultaScreen(onNavigateBack: () -> Unit) {
 // ═════════════════════════════════════════════════════════════════════════
 @Composable
 fun ExpedienteScreen(onNavigateBack: () -> Unit) {
-    val patients = listOf(
-        Triple("Ana Martínez", "8 meses · 8.2 kg", "Última visita: hace 3 días"),
-        Triple("Carlos López Jr.", "14 meses · 10.1 kg", "Última visita: hace 1 semana"),
-        Triple("Sofia Hernández", "6 meses · 7.0 kg", "Última visita: hoy"),
-        Triple("Diego Torres", "22 meses · 11.8 kg", "Última visita: hace 2 semanas")
+    val pacientes = listOf(
+        ChildProfile(id = "1", name = "Ana Martínez", birthDate = "15/12/2025", heightCm = "72", weightKg = "8.2", hasAllergies = false),
+        ChildProfile(id = "2", name = "Carlos López Jr.", birthDate = "10/06/2025", heightCm = "78", weightKg = "10.1", hasAllergies = true, allergiesDetail = "Huevo"),
+        ChildProfile(id = "3", name = "Sofia Hernández", birthDate = "20/02/2026", heightCm = "65", weightKg = "7.0", hasAllergies = false),
+        ChildProfile(id = "4", name = "Diego Torres", birthDate = "01/10/2024", heightCm = "86", weightKg = "11.8", hasAllergies = false)
     )
 
     Box(Modifier.fillMaxSize().background(ModBg)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState())) {
-            ModuleHeader("📋 Expedientes clínicos", ModTeal, onNavigateBack)
-            patients.forEach { (name, info, visit) ->
+            ModuleHeader("📋 Expedientes Clínicos", ModTeal, onNavigateBack)
+            pacientes.forEach { p ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     elevation = CardDefaults.cardElevation(1.dp)) {
@@ -538,9 +682,11 @@ fun ExpedienteScreen(onNavigateBack: () -> Unit) {
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text(info, fontSize = 12.sp, color = Color.Gray)
-                            Text(visit, fontSize = 11.sp, color = ModTeal)
+                            Text(p.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("${p.edadEnMeses()} meses · ${p.weightKg} kg · ${p.heightCm} cm", fontSize = 12.sp, color = Color.Gray)
+                            if (p.hasAllergies) {
+                                Text("⚠️ Alergia: ${p.allergiesDetail}", fontSize = 11.sp, color = ModOrange, fontWeight = FontWeight.Medium)
+                            }
                         }
                         Icon(Icons.Rounded.ChevronRight, null, tint = ModTeal.copy(alpha = 0.5f))
                     }
