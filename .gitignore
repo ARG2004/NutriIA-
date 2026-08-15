@@ -20,3 +20,10 @@ local.properties
 /app/debug/
 /app/build/
 
+# Certificate & Private Key Security
+*.p12
+*.cer
+*.key
+*.csr
+*.certSigningRequest
+cert_base64.txt
