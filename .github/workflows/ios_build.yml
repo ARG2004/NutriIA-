@@ -85,6 +85,7 @@ jobs:
           APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MI_CLAVE_KEYCHAIN }}
         run: |
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
             echo "Secretos de App Store Connect no configurados; omitiendo envío a TestFlight."
@@ -110,6 +111,11 @@ jobs:
             /usr/libexec/PlistBuddy -c "Set :signingStyle manual" /tmp/exportOptions.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" /tmp/exportOptions.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.arg.nutriia string $PP_UUID" /tmp/exportOptions.plist 2>/dev/null || true
+
+            echo "=== Desbloqueando keychain antes de archivar ==="
+            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
+            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH || true
 
             echo "=== Archivando con xcodebuild ==="
             xcodebuild archive \
