@@ -1,19 +1,17 @@
-import SwiftUI
+import UIKit
 import Shared
 
 @main
-struct iOSApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    var window: UIWindow?
 
-struct ContentView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        window = UIWindow(frame: UIScreen.main.bounds)
+        window?.rootViewController = MainViewControllerKt.MainViewController()
+        window?.makeKeyAndVisible()
+        return true
     }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
