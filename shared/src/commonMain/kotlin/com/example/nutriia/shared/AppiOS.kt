@@ -3,6 +3,8 @@ package com.example.nutriia.shared
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,12 +16,15 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun AppiOS() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF9FAFC)),
-        contentAlignment = Alignment.Center
-    ) {
+    MaterialTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFFF9FAFC)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -50,6 +55,7 @@ fun AppiOS() {
                 color = Color.Gray,
                 fontWeight = FontWeight.Medium
             )
+            }
         }
     }
 }
