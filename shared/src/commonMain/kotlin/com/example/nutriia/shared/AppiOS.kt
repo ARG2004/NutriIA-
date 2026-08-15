@@ -81,6 +81,19 @@ data class ChildData(
     val bmiPercentile: String
 )
 
+data class RoleItem(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val color: Color
+)
+
+data class NavTabItem(
+    val screen: Screen,
+    val label: String,
+    val icon: ImageVector
+)
+
 @Composable
 fun AppiOS() {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.ACCESIBILIDAD_INICIAL) }
