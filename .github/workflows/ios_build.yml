@@ -126,18 +126,18 @@ jobs:
               -sdk iphoneos \
               ONLY_ACTIVE_ARCH=NO \
               ARCHS=arm64 \
-              MARKETING_VERSION="2.1.7" \
-              CURRENT_PROJECT_VERSION="12" \
+              MARKETING_VERSION="2.1.8" \
+              CURRENT_PROJECT_VERSION="13" \
               CODE_SIGN_IDENTITY="$IDENTITY" \
               CODE_SIGN_STYLE=Manual \
               PROVISIONING_PROFILE="$PP_UUID" \
               DEVELOPMENT_TEAM=X423NH338U
 
-            echo "=== Forzando versión 2.1.7 (build 12) en el xcarchive ==="
-            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleShortVersionString 2.1.7" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleShortVersionString string 2.1.7" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleVersion 12" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleVersion string 12" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 2.1.7" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 12" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
+            echo "=== Forzando versión 2.1.8 (build 13) en el xcarchive ==="
+            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleShortVersionString 2.1.8" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleShortVersionString string 2.1.8" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleVersion 13" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleVersion string 13" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 2.1.8" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 13" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
 
             echo "=== Re-firmando app tras actualizar Plist ==="
             codesign --force --sign "$IDENTITY" --timestamp=none $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app || true
