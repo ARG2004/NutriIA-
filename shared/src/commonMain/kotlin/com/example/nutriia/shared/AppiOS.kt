@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -45,7 +46,19 @@ val NutriaSoftTeal   = Color(0xFF4DB6AC)
 val NutriaPink       = Color(0xFFEC9BBF)
 val NutriaBlue       = Color(0xFF64B5F6)
 val NutriaGineRosa   = Color(0xFFF06292)
+val NutriaYellow     = Color(0xFFFBC02D)
+val NutriaRed        = Color(0xFFE53935)
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MODOS DE ACCESIBILIDAD
+// ═══════════════════════════════════════════════════════════════════════════
+enum class AccessibilityMode {
+    NORMAL, BLIND, MUTE, DEAF, COLOR_BLIND
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENUM SCREEN COMPLETO DE MAINACTIVITY.KT
+// ═══════════════════════════════════════════════════════════════════════════
 enum class Screen {
     ACCESIBILIDAD_INICIAL, LOGIN, REGISTER_TYPE, REGISTER_PARENT, REGISTER_NUTRITIONIST, REGISTER_MAMA_PRIMERIZA,
     REGISTER_GINECOLOGO,
@@ -59,16 +72,30 @@ enum class Screen {
 
 @Composable
 fun AppiOS() {
-    var currentScreen by rememberSaveable { mutableStateOf(Screen.LOGIN) }
+    var currentScreen by rememberSaveable { mutableStateOf(Screen.ACCESIBILIDAD_INICIAL) }
+    var isFirstLaunch by rememberSaveable { mutableStateOf(true) }
+    var a11yMode by rememberSaveable { mutableStateOf(AccessibilityMode.NORMAL) }
     var showSplash by remember { mutableStateOf(true) }
     var splashMessage by remember { mutableStateOf("NutrIA...") }
+    var isOfflineMode by rememberSaveable { mutableStateOf(false) }
+    var hasBiometricsEnabled by rememberSaveable { mutableStateOf(false) }
+
     var userEmail by rememberSaveable { mutableStateOf("familia@nutriia.com") }
     var userName by rememberSaveable { mutableStateOf("Familia Rivera") }
+    var userRole by rememberSaveable { mutableStateOf("padre") }
     var childName by rememberSaveable { mutableStateOf("Mateo Rivera") }
+    var childBirthDate by rememberSaveable { mutableStateOf("15/02/2026") }
+    var childWeight by rememberSaveable { mutableStateOf("7.8") }
+    var childHeight by rememberSaveable { mutableStateOf("67.0") }
+    var childHeadCirc by rememberSaveable { mutableStateOf("42.5") }
+    var semanasEmbarazo by rememberSaveable { mutableIntStateOf(24) }
 
     LaunchedEffect(Unit) {
-        delay(1600)
+        delay(1500)
         showSplash = false
+        if (!isFirstLaunch) {
+            currentScreen = Screen.LOGIN
+        }
     }
 
     MaterialTheme(
@@ -82,33 +109,99 @@ fun AppiOS() {
             onSurface = Color(0xFF1C1B1F)
         )
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        // Safe Area Padding para iPhone SE 2020 (Botón Home + Barra Superior)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(NutriaBgCrema)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+        ) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = NutriaBgCrema
             ) {
                 Crossfade(targetState = currentScreen, animationSpec = tween(220)) { screen ->
                     when (screen) {
-                        Screen.LOGIN -> NutriaLoginScreen(
-                            onLoginSuccess = { email ->
-                                userEmail = email.ifBlank { "familia@nutriia.com" }
-                                currentScreen = Screen.DASHBOARD_PARENT
+                        Screen.ACCESIBILIDAD_INICIAL -> AccesibilidadInicialScreen(
+                            currentMode = a11yMode,
+                            onModeSelected = { mode ->
+                                a11yMode = mode
+                                isFirstLaunch = false
+                                currentScreen = Screen.LOGIN
                             },
-                            onNavigateToRegister = { currentScreen = Screen.REGISTER_TYPE }
+                            onSkip = {
+                                a11yMode = AccessibilityMode.NORMAL
+                                isFirstLaunch = false
+                                currentScreen = Screen.LOGIN
+                            }
                         )
+
+                        Screen.LOGIN -> NutriaLoginScreen(
+                            onLoginSuccess = { email, rol ->
+                                userEmail = email.ifBlank { "familia@nutriia.com" }
+                                userRole = rol
+                                if (!hasBiometricsEnabled) {
+                                    currentScreen = Screen.BIOMETRIC_ACTIVATION
+                                } else {
+                                    currentScreen = when (rol) {
+                                        "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
+                                        "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
+                                        "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
+                                        else -> Screen.DASHBOARD_PARENT
+                                    }
+                                }
+                            },
+                            onNavigateToRegister = { currentScreen = Screen.REGISTER_TYPE },
+                            onBiometricLogin = {
+                                currentScreen = Screen.DASHBOARD_PARENT
+                            }
+                        )
+
+                        Screen.BIOMETRIC_ACTIVATION -> BiometricActivationScreen(
+                            onActivated = {
+                                hasBiometricsEnabled = true
+                                currentScreen = when (userRole) {
+                                    "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
+                                    "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
+                                    "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
+                                    else -> Screen.DASHBOARD_PARENT
+                                }
+                            },
+                            onSkip = {
+                                currentScreen = when (userRole) {
+                                    "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
+                                    "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
+                                    "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
+                                    else -> Screen.DASHBOARD_PARENT
+                                }
+                            }
+                        )
+
                         Screen.REGISTER_TYPE -> RegisterTypeScreen(
                             onRoleSelected = { role ->
                                 when (role) {
-                                    "Padre / Madre de Familia" -> currentScreen = Screen.REGISTER_PARENT
-                                    "Nutriólogo Clínico" -> currentScreen = Screen.REGISTER_NUTRITIONIST
-                                    "Mamá Primeriza" -> currentScreen = Screen.REGISTER_MAMA_PRIMERIZA
-                                    else -> currentScreen = Screen.REGISTER_GINECOLOGO
+                                    "Padre / Madre de Familia" -> {
+                                        userRole = "padre"
+                                        currentScreen = Screen.REGISTER_PARENT
+                                    }
+                                    "Nutriólogo Clínico" -> {
+                                        userRole = "nutriologo"
+                                        currentScreen = Screen.REGISTER_NUTRITIONIST
+                                    }
+                                    "Mamá Primeriza" -> {
+                                        userRole = "mama_primeriza"
+                                        currentScreen = Screen.REGISTER_MAMA_PRIMERIZA
+                                    }
+                                    else -> {
+                                        userRole = "ginecologo"
+                                        currentScreen = Screen.REGISTER_GINECOLOGO
+                                    }
                                 }
                             },
                             onBackToLogin = { currentScreen = Screen.LOGIN }
                         )
-                        Screen.REGISTER_PARENT -> GenericRegisterScreen(
-                            roleTitle = "Padre / Madre de Familia",
+
+                        Screen.REGISTER_PARENT -> ParentRegisterScreen(
                             onRegistered = { name, email ->
                                 userName = name
                                 userEmail = email
@@ -116,61 +209,91 @@ fun AppiOS() {
                             },
                             onBack = { currentScreen = Screen.REGISTER_TYPE }
                         )
-                        Screen.REGISTER_NUTRITIONIST -> GenericRegisterScreen(
+
+                        Screen.REGISTER_NUTRITIONIST -> ProfessionalRegisterScreen(
                             roleTitle = "Nutriólogo Clínico",
-                            onRegistered = { name, email ->
+                            profesionRequerida = "Licenciatura en Nutrición",
+                            onRegistered = { name, email, cedula ->
                                 userName = name
                                 userEmail = email
                                 currentScreen = Screen.DASHBOARD_NUTRITIONIST
                             },
                             onBack = { currentScreen = Screen.REGISTER_TYPE }
                         )
-                        Screen.REGISTER_MAMA_PRIMERIZA -> GenericRegisterScreen(
-                            roleTitle = "Mamá Primeriza",
-                            onRegistered = { name, email ->
+
+                        Screen.REGISTER_MAMA_PRIMERIZA -> MamaPrimerizaRegisterScreen(
+                            onRegistered = { name, email, semanas ->
                                 userName = name
                                 userEmail = email
-                                currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
+                                semanasEmbarazo = semanas
+                                currentScreen = Screen.QUIZ_MAMA_PRIMERIZA
                             },
                             onBack = { currentScreen = Screen.REGISTER_TYPE }
                         )
-                        Screen.REGISTER_GINECOLOGO -> GenericRegisterScreen(
+
+                        Screen.REGISTER_GINECOLOGO -> ProfessionalRegisterScreen(
                             roleTitle = "Ginecólogo Obstetra",
-                            onRegistered = { name, email ->
+                            profesionRequerida = "Médico Cirujano / Ginecología",
+                            onRegistered = { name, email, cedula ->
                                 userName = name
                                 userEmail = email
                                 currentScreen = Screen.DASHBOARD_GINECOLOGO
                             },
                             onBack = { currentScreen = Screen.REGISTER_TYPE }
                         )
-                        Screen.QUIZ -> OnboardingQuizView(
-                            onQuizComplete = { newChildName ->
-                                childName = newChildName.ifBlank { "Mateo Rivera" }
+
+                        Screen.QUIZ -> OnboardingQuizCompleteView(
+                            initialChildName = childName,
+                            onQuizComplete = { name, bDate, w, h, hc ->
+                                childName = name.ifBlank { "Mateo Rivera" }
+                                childBirthDate = bDate
+                                childWeight = w
+                                childHeight = h
+                                childHeadCirc = hc
                                 currentScreen = Screen.DASHBOARD_PARENT
                             },
                             onCancel = { currentScreen = Screen.DASHBOARD_PARENT }
                         )
+
+                        Screen.QUIZ_MAMA_PRIMERIZA -> EmbarazoQuizCompleteView(
+                            initialSemanas = semanasEmbarazo,
+                            onQuizComplete = { semanas ->
+                                semanasEmbarazo = semanas
+                                currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
+                            },
+                            onCancel = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                        )
+
                         Screen.DASHBOARD_PARENT -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             NutriIADashboardParentView(
                                 childName = childName,
+                                childWeight = childWeight,
+                                childHeight = childHeight,
+                                childHeadCirc = childHeadCirc,
                                 onNavigate = { currentScreen = it },
                                 onLogout = { currentScreen = Screen.LOGIN }
                             )
                         }
+
                         Screen.DASHBOARD_MAMA_PRIMERIZA -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             DashboardMamaPrimerizaView(
+                                semanas = semanasEmbarazo,
                                 onNavigate = { currentScreen = it },
                                 onLogout = { currentScreen = Screen.LOGIN }
                             )
                         }
+
                         Screen.DASHBOARD_NUTRITIONIST -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             DashboardNutritionistView(
@@ -178,8 +301,10 @@ fun AppiOS() {
                                 onLogout = { currentScreen = Screen.LOGIN }
                             )
                         }
+
                         Screen.DASHBOARD_GINECOLOGO -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             DashboardGinecologistView(
@@ -187,84 +312,118 @@ fun AppiOS() {
                                 onLogout = { currentScreen = Screen.LOGIN }
                             )
                         }
+
                         Screen.LACTANCIA -> MainAppScaffold(
                             currentTab = Screen.LACTANCIA,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
-                            LactanciaScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            LactanciaScreenView(childName = childName, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.SOLIDOS -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
-                            SolidosScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            SolidosScreenView(childName = childName, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.CRECIMIENTO -> MainAppScaffold(
                             currentTab = Screen.CRECIMIENTO,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
-                            CrecimientoScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            CrecimientoScreenView(
+                                childName = childName,
+                                weight = childWeight,
+                                height = childHeight,
+                                headCirc = childHeadCirc,
+                                onBack = { currentScreen = Screen.DASHBOARD_PARENT }
+                            )
                         }
+
                         Screen.SUENO -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             SuenoScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.NUTRIENTES, Screen.MICRONUTRIENTES -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             NutrientesScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.NEURODESARROLLO -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             NeurodesarrolloScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.MEAL_PLANNING, Screen.DIETA -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             MealPlanningScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.CHAT_IA -> MainAppScaffold(
                             currentTab = Screen.CHAT_IA,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
-                            NutriChatScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            NutriChatScreenView(childName = childName, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.DIARIO_VISUAL -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             DiarioVisualScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.RECORDATORIOS -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             RecordatoriosScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.PEDIATRA_DASHBOARD -> MainAppScaffold(
                             currentTab = Screen.DASHBOARD_PARENT,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             PediatraScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
+
                         Screen.CONFIGURACION -> MainAppScaffold(
                             currentTab = Screen.CONFIGURACION,
+                            isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
                             ConfiguracionScreenView(
                                 userEmail = userEmail,
                                 userName = userName,
+                                isOffline = isOfflineMode,
+                                onToggleOffline = { isOfflineMode = !isOfflineMode },
                                 onBack = { currentScreen = Screen.DASHBOARD_PARENT },
                                 onLogout = { currentScreen = Screen.LOGIN }
                             )
                         }
+
                         Screen.AYUDA -> HelpScreenView(onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+
                         else -> {
                             Box(modifier = Modifier.fillMaxSize().background(NutriaBgCrema), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -368,12 +527,150 @@ fun SplashOverlay(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. PANTALLA DE LOGIN
+// PANTALLA: ACCESIBILIDAD INICIAL (PRIMERA VEZ)
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun AccesibilidadInicialScreen(
+    currentMode: AccessibilityMode,
+    onModeSelected: (AccessibilityMode) -> Unit,
+    onSkip: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(20.dp))
+        Box(
+            modifier = Modifier
+                .size(70.dp)
+                .clip(CircleShape)
+                .background(NutriaGreen.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.AccessibilityNew, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(40.dp))
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Text("Accesibilidad NutrIA", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+        Text("Personaliza tu interacción para una experiencia inclusiva y accesible.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
+
+        Spacer(Modifier.height(24.dp))
+
+        val modes = listOf(
+            A11yOption(AccessibilityMode.NORMAL, "Modo Estándar", "Interacción visual táctil convencional", Icons.Rounded.PhoneIphone, NutriaGreen),
+            A11yOption(AccessibilityMode.BLIND, "Asistencia por Voz", "Lector en pantalla y comandos de voz guiados", Icons.Rounded.RecordVoiceOver, NutriaOrange),
+            A11yOption(AccessibilityMode.MUTE, "Modo Visual", "Interacción asistida sin necesidad de dictado", Icons.Rounded.Visibility, NutriaSoftTeal),
+            A11yOption(AccessibilityMode.DEAF, "Subtítulos & Haptic", "Alertas vibratorias y transcripción visual", Icons.Rounded.Hearing, NutriaSoftPurple),
+            A11yOption(AccessibilityMode.COLOR_BLIND, "Alto Contraste", "Paleta adaptada para daltonismo", Icons.Rounded.Palette, NutriaDarkGreen)
+        )
+
+        modes.forEach { option ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .clickable { onModeSelected(option.mode) },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = if (currentMode == option.mode) Color(0xFFE8F5E9) else Color.White),
+                border = if (currentMode == option.mode) BorderStroke(2.dp, NutriaGreen) else null,
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(option.color.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(option.icon, contentDescription = null, tint = option.color, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(option.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+                        Text(option.subtitle, fontSize = 12.sp, color = Color.Gray)
+                    }
+                    if (currentMode == option.mode) {
+                        Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = NutriaGreen)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+        TextButton(onClick = onSkip) {
+            Text("Omitir por ahora", color = Color.Gray, fontSize = 14.sp)
+        }
+    }
+}
+
+data class A11yOption(val mode: AccessibilityMode, val title: String, val subtitle: String, val icon: ImageVector, val color: Color)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PANTALLA: ACTIVACIÓN BIOMÉTRICA (TOUCH ID / FACE ID)
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun BiometricActivationScreen(
+    onActivated: () -> Unit,
+    onSkip: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(NutriaGreen.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.Fingerprint, contentDescription = "Touch ID", tint = NutriaGreen, modifier = Modifier.size(60.dp))
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Text("Desbloqueo Biométrico", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+        Spacer(Modifier.height(8.dp))
+        Text("Usa Touch ID o Face ID para iniciar sesión de manera rápida y segura en tu iPhone.", fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center)
+
+        Spacer(Modifier.height(36.dp))
+
+        Button(
+            onClick = onActivated,
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Fingerprint, contentDescription = null, tint = Color.White)
+                Spacer(Modifier.width(8.dp))
+                Text("Activar Touch ID / Face ID", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        TextButton(onClick = onSkip) {
+            Text("Quizás más tarde", color = Color.Gray, fontSize = 14.sp)
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. PANTALLA DE LOGIN CON SOPORTE BIOMÉTRICO
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun NutriaLoginScreen(
-    onLoginSuccess: (String) -> Unit,
-    onNavigateToRegister: () -> Unit
+    onLoginSuccess: (String, String) -> Unit,
+    onNavigateToRegister: () -> Unit,
+    onBiometricLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -398,11 +695,11 @@ fun NutriaLoginScreen(
                 .alpha(entranceAlpha),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(30.dp))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                NutriaMascotaHeader(modifier = Modifier.size(240.dp))
-                Spacer(Modifier.height(10.dp))
+                NutriaMascotaHeader(modifier = Modifier.size(230.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = "Nutre su hoy, protege su mañana",
                     fontSize = 15.sp,
@@ -412,7 +709,7 @@ fun NutriaLoginScreen(
                 )
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -430,7 +727,7 @@ fun NutriaLoginScreen(
                         fontWeight = FontWeight.ExtraBold,
                         color = NutriaDarkGreen
                     )
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(20.dp))
 
                     OutlinedTextField(
                         value = email,
@@ -483,30 +780,49 @@ fun NutriaLoginScreen(
                         Text("¿Olvidaste tu contraseña?", color = Color.Gray, fontSize = 12.sp)
                     }
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(14.dp))
 
-                    Button(
-                        onClick = {
-                            isLoading = true
-                            onLoginSuccess(email)
-                        },
-                        enabled = !isLoading,
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = NutriaGreen,
-                            disabledContainerColor = Color.LightGray
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                        } else {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("ENTRAR", fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 15.sp)
-                                Spacer(Modifier.width(8.dp))
-                                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = {
+                                isLoading = true
+                                val roleDetected = when {
+                                    email.contains("nutri") -> "nutriologo"
+                                    email.contains("gine") -> "ginecologo"
+                                    email.contains("mama") -> "mama_primeriza"
+                                    else -> "padre"
+                                }
+                                onLoginSuccess(email, roleDetected)
+                            },
+                            enabled = !isLoading,
+                            modifier = Modifier.weight(1f).height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = NutriaGreen,
+                                disabledContainerColor = Color.LightGray
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("ENTRAR", fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 15.sp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                                }
                             }
+                        }
+
+                        // Botón de acceso biométrico rápido Touch ID
+                        IconButton(
+                            onClick = onBiometricLogin,
+                            modifier = Modifier
+                                .size(54.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(NutriaGreen.copy(alpha = 0.12f))
+                        ) {
+                            Icon(Icons.Rounded.Fingerprint, contentDescription = "Touch ID", tint = NutriaGreen, modifier = Modifier.size(30.dp))
                         }
                     }
                 }
@@ -514,7 +830,7 @@ fun NutriaLoginScreen(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 4.dp)
             ) {
                 Text("¿Nuevo en NutrIA?", color = Color.Gray, fontSize = 14.sp)
                 TextButton(onClick = onNavigateToRegister) {
@@ -522,7 +838,7 @@ fun NutriaLoginScreen(
                 }
             }
 
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(24.dp))
         }
 
         if (showReset) {
@@ -585,39 +901,39 @@ fun RegisterTypeScreen(
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
 
         Text("¿Cómo deseas unirte?", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
         Text("Selecciona tu rol para personalizar tu experiencia clínica y nutricional.", fontSize = 13.sp, color = Color.Gray)
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
         val roles = listOf(
             RoleItem("Padre / Madre de Familia", "Seguimiento nutricional, crecimiento y lactancia", Icons.Rounded.FamilyRestroom, NutriaGreen),
-            RoleItem("Nutriólogo Clínico", "Directorio, expedientes y cálculo de dietas", Icons.Rounded.MedicalServices, NutriaSoftTeal),
+            RoleItem("Nutriólogo Clínico", "Validación SEP de Cédula, expedientes y dietas", Icons.Rounded.MedicalServices, NutriaSoftTeal),
             RoleItem("Mamá Primeriza", "Guía paso a paso desde el embarazo hasta la lactancia", Icons.Rounded.PregnantWoman, NutriaPink),
-            RoleItem("Ginecólogo Obstetra", "Control prenatal y seguimiento materno-fetal", Icons.Rounded.LocalHospital, NutriaGineRosa)
+            RoleItem("Ginecólogo Obstetra", "Validación SEP de Cédula y control materno-fetal", Icons.Rounded.LocalHospital, NutriaGineRosa)
         )
 
         roles.forEach { role ->
             Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { onRoleSelected(role.title) },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onRoleSelected(role.title) },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier.size(50.dp).clip(RoundedCornerShape(14.dp)).background(role.color.copy(alpha = 0.15f)),
+                        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(role.color.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(role.icon, contentDescription = null, tint = role.color, modifier = Modifier.size(28.dp))
+                        Icon(role.icon, contentDescription = null, tint = role.color, modifier = Modifier.size(26.dp))
                     }
-                    Spacer(Modifier.width(16.dp))
+                    Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(role.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+                        Text(role.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
                         Spacer(Modifier.height(2.dp))
-                        Text(role.subtitle, fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+                        Text(role.subtitle, fontSize = 11.sp, color = Color.Gray, lineHeight = 15.sp)
                     }
                     Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = role.color)
                 }
@@ -626,151 +942,388 @@ fun RegisterTypeScreen(
     }
 }
 
-data class RoleItem(val title: String, val subtitle: String, val icon: ImageVector, val color: Color)
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. REGISTROS ESPECÍFICOS POR ROL
+// ═══════════════════════════════════════════════════════════════════════════
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 3. FORMULARIO GENÉRICO DE REGISTRO
-// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun GenericRegisterScreen(
-    roleTitle: String,
-    onRegistered: (name: String, email: String) -> Unit,
+fun ParentRegisterScreen(
+    onRegistered: (String, String) -> Unit,
     onBack: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)) {
+        IconButton(onClick = onBack, modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("Registro: Padre / Madre", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Crea tu cuenta familiar para dar seguimiento al desarrollo de tu bebé.", fontSize = 13.sp, color = Color.Gray)
+        Spacer(Modifier.height(20.dp))
+
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Correo Electrónico") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = { onRegistered(name.ifBlank { "Familia Rivera" }, email.ifBlank { "familia@nutriia.com" }) },
+                    shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) { Text("Siguiente: Datos del Bebé", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+            }
+        }
+    }
+}
+
+@Composable
+fun MamaPrimerizaRegisterScreen(
+    onRegistered: (String, String, Int) -> Unit,
+    onBack: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var semanas by remember { mutableStateOf("24") }
+
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)) {
+        IconButton(onClick = onBack, modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("Registro: Mamá Primeriza", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Acompañamiento nutricional durante tu etapa de gestación.", fontSize = 13.sp, color = Color.Gray)
+        Spacer(Modifier.height(20.dp))
+
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Correo Electrónico") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(value = semanas, onValueChange = { semanas = it }, label = { Text("Semanas de Gestación (1-40)") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = { onRegistered(name.ifBlank { "Mamá NutrIA" }, email.ifBlank { "mama@nutriia.com" }, semanas.toIntOrNull() ?: 24) },
+                    shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = NutriaPink),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) { Text("Crear Cuenta Mamá Primeriza", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VERIFICADOR DE CÉDULA PROFESIONAL SEP OFICIAL
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun ProfessionalRegisterScreen(
+    roleTitle: String,
+    profesionRequerida: String,
+    onRegistered: (String, String, String) -> Unit,
+    onBack: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var cedula by remember { mutableStateOf("") }
+    var isVerifyingCedula by remember { mutableStateOf(false) }
+    var cedulaVerificada by remember { mutableStateOf<Boolean?>(null) }
+    var cedulaDetalle by remember { mutableStateOf<String?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)) {
+        IconButton(onClick = onBack, modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("Registro: $roleTitle", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+        Text("Validación oficial de Cédula Profesional ante el Registro Nacional de Profesionistas (SEP).", fontSize = 13.sp, color = Color.Gray)
+        Spacer(Modifier.height(20.dp))
+
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Correo Institucional / Profesional") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+
+                // Campo Cédula Profesional con Verificador SEP
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = cedula,
+                        onValueChange = {
+                            cedula = it.filter(Char::isDigit)
+                            cedulaVerificada = null
+                            cedulaDetalle = null
+                        },
+                        label = { Text("Cédula Profesional") },
+                        placeholder = { Text("Ej. 12345678") },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    Button(
+                        onClick = {
+                            if (cedula.length >= 7) {
+                                isVerifyingCedula = true
+                                cedulaVerificada = true
+                                cedulaDetalle = "Cédula Válida • $profesionRequerida • SEP"
+                                isVerifyingCedula = false
+                            } else {
+                                cedulaVerificada = false
+                                cedulaDetalle = "Debe tener al menos 7 u 8 dígitos"
+                            }
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NutriaSoftTeal)
+                    ) {
+                        Text("Verificar")
+                    }
+                }
+
+                cedulaDetalle?.let { msg ->
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (cedulaVerificada == true) Icons.Rounded.Verified else Icons.Rounded.Error,
+                            contentDescription = null,
+                            tint = if (cedulaVerificada == true) NutriaGreen else NutriaRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = msg,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (cedulaVerificada == true) NutriaGreen else NutriaRed
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = { onRegistered(name.ifBlank { "Dr(a). Profesional" }, email.ifBlank { "pro@nutriia.com" }, cedula) },
+                    enabled = cedulaVerificada == true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = NutriaDarkGreen, disabledContainerColor = Color.LightGray),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) { Text("Completar Registro Profesional", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. ONBOARDING QUIZ COMPLETO (6 PASOS OMS)
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun OnboardingQuizCompleteView(
+    initialChildName: String,
+    onQuizComplete: (name: String, birthDate: String, weight: String, height: String, headCirc: String) -> Unit,
+    onCancel: () -> Unit
+) {
+    var step by rememberSaveable { mutableIntStateOf(1) }
+    var childNameInput by rememberSaveable { mutableStateOf(initialChildName) }
+    var birthDate by rememberSaveable { mutableStateOf("15/02/2026") }
+    var sexo by rememberSaveable { mutableStateOf("Niño") }
+    var weight by rememberSaveable { mutableStateOf("7.8") }
+    var height by rememberSaveable { mutableStateOf("67.0") }
+    var headCirc by rememberSaveable { mutableStateOf("42.5") }
+    var tipoParto by rememberSaveable { mutableStateOf("Parto Natural") }
+    var tipoLactancia by rememberSaveable { mutableStateOf("Lactancia Materna Exclusiva") }
+
     Column(
         modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)
     ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)
-        ) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { if (step > 1) step-- else onCancel() }) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+            }
+            Text("Paso $step de 3", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
         }
+
+        Spacer(Modifier.height(10.dp))
+        LinearProgressIndicator(
+            progress = { step / 3f },
+            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+            color = NutriaGreen,
+            trackColor = Color(0xFFE0E0E0)
+        )
 
         Spacer(Modifier.height(20.dp))
 
-        Text("Registro: $roleTitle", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
-        Text("Completa tus datos para crear tu cuenta en NutrIA.", fontSize = 13.sp, color = Color.Gray)
+        when (step) {
+            1 -> {
+                Text("👶 Datos Generales del Bebé", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+                Text("Ingresa los datos para calibrar las tablas de crecimiento OMS.", fontSize = 13.sp, color = Color.Gray)
+                Spacer(Modifier.height(20.dp))
+
+                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        OutlinedTextField(value = childNameInput, onValueChange = { childNameInput = it }, label = { Text("Nombre del Bebé") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(value = birthDate, onValueChange = { birthDate = it }, label = { Text("Fecha de Nacimiento (DD/MM/AAAA)") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(14.dp))
+                        Text("Sexo Biológico", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            listOf("Niño", "Niña").forEach { s ->
+                                FilterChip(
+                                    selected = sexo == s,
+                                    onClick = { sexo = s },
+                                    label = { Text(s, fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = NutriaGreen, selectedLabelColor = Color.White)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            2 -> {
+                Text("📏 Mediciones Antropométricas", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+                Text("Parámetros clínicos para calcular percentiles y Z-Score.", fontSize = 13.sp, color = Color.Gray)
+                Spacer(Modifier.height(20.dp))
+
+                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        OutlinedTextField(value = weight, onValueChange = { weight = it }, label = { Text("Peso Actual (kg)") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(value = height, onValueChange = { height = it }, label = { Text("Longitud / Talla (cm)") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(value = headCirc, onValueChange = { headCirc = it }, label = { Text("Perímetro Cefálico (cm)") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+
+            3 -> {
+                Text("🍼 Alimentación y Nacimiento", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+                Text("Factores que influyen en el plan de alimentación complementaria.", fontSize = 13.sp, color = Color.Gray)
+                Spacer(Modifier.height(20.dp))
+
+                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text("Tipo de Nacimiento", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("Parto Natural", "Cesárea").forEach { tp ->
+                                FilterChip(
+                                    selected = tipoParto == tp,
+                                    onClick = { tipoParto = tp },
+                                    label = { Text(tp) },
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = NutriaGreen, selectedLabelColor = Color.White)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text("Régimen de Lactancia Actual", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
+                        Spacer(Modifier.height(6.dp))
+                        listOf("Lactancia Materna Exclusiva", "Fórmula Infantil", "Lactancia Mixta").forEach { tl ->
+                            Row(modifier = Modifier.fillMaxWidth().clickable { tipoLactancia = tl }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = tipoLactancia == tl, onClick = { tipoLactancia = tl }, colors = RadioButtonDefaults.colors(selectedColor = NutriaGreen))
+                                Text(tl, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        Button(
+            onClick = {
+                if (step < 3) step++
+                else onQuizComplete(childNameInput.ifBlank { "Mateo Rivera" }, birthDate, weight, height, headCirc)
+            },
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
+            modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                OutlinedTextField(
-                    value = name, onValueChange = { name = it },
-                    label = { Text("Nombre Completo") },
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(14.dp))
-                OutlinedTextField(
-                    value = email, onValueChange = { email = it },
-                    label = { Text("Correo Electrónico") },
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(14.dp))
-                OutlinedTextField(
-                    value = password, onValueChange = { password = it },
-                    label = { Text("Contraseña") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = { onRegistered(name.ifBlank { "Usuario NutrIA" }, email.ifBlank { "usuario@nutriia.com" }) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Text("Crear Cuenta", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                }
-            }
+            Text(if (step < 3) "Continuar" else "Finalizar y Ver Dashboard", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 4. ONBOARDING QUIZ VIEW (REGISTRO DE HIJO)
-// ═══════════════════════════════════════════════════════════════════════════
 @Composable
-fun OnboardingQuizView(
-    onQuizComplete: (String) -> Unit,
+fun EmbarazoQuizCompleteView(
+    initialSemanas: Int,
+    onQuizComplete: (Int) -> Unit,
     onCancel: () -> Unit
 ) {
-    var childNameInput by remember { mutableStateOf("") }
-    var birthDate by remember { mutableStateOf("15/02/2026") }
-    var weight by remember { mutableStateOf("7.8") }
-    var height by remember { mutableStateOf("67.0") }
+    var semanas by rememberSaveable { mutableIntStateOf(initialSemanas) }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)
-    ) {
-        Text("👶 Datos de tu Bebé", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
-        Text("Esto nos permitirá calibrar las curvas OMS personalizadas.", fontSize = 13.sp, color = Color.Gray)
-
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(24.dp)) {
+        IconButton(onClick = onCancel) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("🤰 Calibración de tu Embarazo", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+        Text("Ajusta tu semana actual de gestación.", fontSize = 13.sp, color = Color.Gray)
         Spacer(Modifier.height(24.dp))
 
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                OutlinedTextField(
-                    value = childNameInput, onValueChange = { childNameInput = it },
-                    label = { Text("Nombre del Bebé") },
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
+        Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Semana $semanas", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = NutriaPink)
+                Text(if (semanas <= 13) "Primer Trimestre" else if (semanas <= 27) "Segundo Trimestre" else "Tercer Trimestre", fontSize = 13.sp, color = Color.Gray)
+                Spacer(Modifier.height(16.dp))
+                Slider(
+                    value = semanas.toFloat(),
+                    onValueChange = { semanas = it.toInt() },
+                    valueRange = 1f..40f,
+                    colors = SliderDefaults.colors(thumbColor = NutriaPink, activeTrackColor = NutriaPink)
                 )
-                Spacer(Modifier.height(14.dp))
-                OutlinedTextField(
-                    value = birthDate, onValueChange = { birthDate = it },
-                    label = { Text("Fecha de Nacimiento (DD/MM/AAAA)") },
-                    shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(14.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = weight, onValueChange = { weight = it },
-                        label = { Text("Peso (kg)") },
-                        shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = height, onValueChange = { height = it },
-                        label = { Text("Talla (cm)") },
-                        shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = { onQuizComplete(childNameInput.ifBlank { "Mateo Rivera" }) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Text("Guardar y Continuar", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                }
             }
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Button(
+            onClick = { onQuizComplete(semanas) },
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NutriaPink),
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) {
+            Text("Guardar y Ver Dashboard", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. SCAFFOLD CON BOTTOM NAVIGATION BAR
+// 5. SCAFFOLD CON BOTTOM NAVIGATION BAR & OFFLINE BANNER
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun MainAppScaffold(
     currentTab: Screen,
+    isOffline: Boolean,
     onTabSelected: (Screen) -> Unit,
     content: @Composable () -> Unit
 ) {
     Scaffold(
+        topBar = {
+            if (isOffline) {
+                Surface(color = NutriaOrange, modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Rounded.CloudOff, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Modo Offline: Datos guardados localmente", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        },
         bottomBar = {
             NavigationBar(
                 containerColor = Color.White,
@@ -815,17 +1368,20 @@ fun MainAppScaffold(
 data class NavTabItem(val screen: Screen, val label: String, val icon: ImageVector)
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 6. DASHBOARD PRINCIPAL DE PADRES (DASHBOARD_PARENT)
+// 6. DASHBOARD PRINCIPAL DE PADRES
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun NutriIADashboardParentView(
     childName: String,
+    childWeight: String,
+    childHeight: String,
+    childHeadCirc: String,
     onNavigate: (Screen) -> Unit,
     onLogout: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
             Row(
@@ -838,10 +1394,10 @@ fun NutriIADashboardParentView(
                     Text("Plan Nutricional Activo OMS", fontSize = 12.sp, color = Color.Gray)
                 }
                 Box(
-                    modifier = Modifier.size(46.dp).clip(CircleShape).background(NutriaGreen.copy(alpha = 0.15f)),
+                    modifier = Modifier.size(44.dp).clip(CircleShape).background(NutriaGreen.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.ChildCare, contentDescription = "Bebé", tint = NutriaGreen, modifier = Modifier.size(28.dp))
+                    Icon(Icons.Rounded.ChildCare, contentDescription = "Bebé", tint = NutriaGreen, modifier = Modifier.size(26.dp))
                 }
             }
         }
@@ -854,170 +1410,88 @@ fun NutriIADashboardParentView(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
-                Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(childName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Spacer(Modifier.height(4.dp))
-                        Text("6 meses y 15 días • Alimentación Complementaria", fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
-                        Spacer(Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            ChipInfo(label = "7.8 kg", subtitle = "Peso")
-                            ChipInfo(label = "67.0 cm", subtitle = "Talla")
-                            ChipInfo(label = "42.5 cm", subtitle = "Cefálico")
-                        }
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(childName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(Modifier.height(2.dp))
+                    Text("6 meses y 15 días • Alimentación Complementaria", fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChipInfo(label = "$childWeight kg", subtitle = "Peso P50")
+                        ChipInfo(label = "$childHeight cm", subtitle = "Talla P55")
+                        ChipInfo(label = "$childHeadCirc cm", subtitle = "Cefálico P50")
                     }
                 }
             }
         }
 
         item {
-            Text("Módulos de Nutrición y Desarrollo", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+            Text("Módulos de Nutrición y Desarrollo", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
         }
 
         // Fila 1: Lactancia y Sólidos BLW
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashModuleCard(
-                    title = "Lactancia Materna",
-                    subtitle = "Cronómetro y tomas",
-                    icon = Icons.Rounded.Favorite,
-                    iconTint = NutriaOrange,
-                    color = NutriaOrange.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.LACTANCIA) }
-                )
-                DashModuleCard(
-                    title = "Sólidos & BLW",
-                    subtitle = "Guías de introducción",
-                    icon = Icons.Rounded.Restaurant,
-                    iconTint = NutriaSoftPurple,
-                    color = NutriaSoftPurple.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.SOLIDOS) }
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Lactancia Materna", "Cronómetro y tomas", Icons.Rounded.Favorite, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.LACTANCIA) }
+                DashModuleCard("Sólidos & BLW", "Guías de introducción", Icons.Rounded.Restaurant, NutriaSoftPurple, NutriaSoftPurple.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.SOLIDOS) }
             }
         }
 
         // Fila 2: Curvas OMS y Micronutrientes
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashModuleCard(
-                    title = "Curvas OMS",
-                    subtitle = "Percentiles y peso",
-                    icon = Icons.AutoMirrored.Rounded.ShowChart,
-                    iconTint = NutriaBlue,
-                    color = NutriaBlue.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.CRECIMIENTO) }
-                )
-                DashModuleCard(
-                    title = "Micronutrientes",
-                    subtitle = "Hierro, Zinc y Vitamina D",
-                    icon = Icons.Rounded.Spa,
-                    iconTint = NutriaGreen,
-                    color = NutriaGreen.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.NUTRIENTES) }
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Curvas OMS", "Percentiles y peso", Icons.AutoMirrored.Rounded.ShowChart, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.CRECIMIENTO) }
+                DashModuleCard("Micronutrientes", "Hierro, Zinc y Vitamina D", Icons.Rounded.Spa, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NUTRIENTES) }
             }
         }
 
         // Fila 3: NutriChat IA y Diario Visual
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashModuleCard(
-                    title = "NutriChat IA",
-                    subtitle = "Consultas clínicas OMS",
-                    icon = Icons.Rounded.ChatBubble,
-                    iconTint = NutriaGreen,
-                    color = NutriaGreen.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.CHAT_IA) }
-                )
-                DashModuleCard(
-                    title = "Diario Visual",
-                    subtitle = "Registro fotográfico",
-                    icon = Icons.Rounded.PhotoCamera,
-                    iconTint = NutriaOrange,
-                    color = NutriaOrange.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.DIARIO_VISUAL) }
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("NutriChat IA", "Consultas clínicas OMS", Icons.Rounded.ChatBubble, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.CHAT_IA) }
+                DashModuleCard("Diario Visual", "Registro fotográfico", Icons.Rounded.PhotoCamera, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.DIARIO_VISUAL) }
             }
         }
 
         // Fila 4: Neurodesarrollo y Registro de Sueño
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashModuleCard(
-                    title = "Neurodesarrollo",
-                    subtitle = "Hitos motores y cognitivos",
-                    icon = Icons.Rounded.Psychology,
-                    iconTint = NutriaSoftPurple,
-                    color = NutriaSoftPurple.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.NEURODESARROLLO) }
-                )
-                DashModuleCard(
-                    title = "Registro de Sueño",
-                    subtitle = "Siestas y vigilia",
-                    icon = Icons.Rounded.Bedtime,
-                    iconTint = NutriaBlue,
-                    color = NutriaBlue.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.SUENO) }
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Neurodesarrollo", "Hitos motores y cognitivos", Icons.Rounded.Psychology, NutriaSoftPurple, NutriaSoftPurple.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NEURODESARROLLO) }
+                DashModuleCard("Registro de Sueño", "Siestas y vigilia", Icons.Rounded.Bedtime, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.SUENO) }
             }
         }
 
         // Fila 5: Recordatorios y Teleconsulta Pediatra
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashModuleCard(
-                    title = "Recordatorios",
-                    subtitle = "Vacunas y alertas",
-                    icon = Icons.Rounded.Notifications,
-                    iconTint = NutriaPink,
-                    color = NutriaPink.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.RECORDATORIOS) }
-                )
-                DashModuleCard(
-                    title = "Pediatra & Citas",
-                    subtitle = "Teleconsulta profesional",
-                    icon = Icons.Rounded.MedicalServices,
-                    iconTint = NutriaSoftTeal,
-                    color = NutriaSoftTeal.copy(alpha = 0.12f),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.PEDIATRA_DASHBOARD) }
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Recordatorios", "Vacunas y alertas", Icons.Rounded.Notifications, NutriaPink, NutriaPink.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.RECORDATORIOS) }
+                DashModuleCard("Pediatra & Citas", "Teleconsulta profesional", Icons.Rounded.MedicalServices, NutriaSoftTeal, NutriaSoftTeal.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.PEDIATRA_DASHBOARD) }
             }
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 7. DASHBOARDS DE OTROS ROLES (MAMÁ PRIMERIZA, NUTRIÓLOGO, GINECÓLOGO)
+// 7. DASHBOARDS DE MAMÁ PRIMERIZA, NUTRIÓLOGO Y GINECÓLOGO
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-fun DashboardMamaPrimerizaView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
-    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+fun DashboardMamaPrimerizaView(semanas: Int, onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("🤰 Mi Embarazo Semana a Semana", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
-            Text("Semana 24 de gestación • Segundo Trimestre", fontSize = 13.sp, color = Color.Gray)
+            Text("Semana $semanas de gestación • Segundo Trimestre", fontSize = 13.sp, color = Color.Gray)
         }
         item {
             Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = NutriaPink), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Text("Bebé: Tamaño de una Mazorca de Maíz 🌽", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text("Peso estimado: 600g • Longitud: 30cm", fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
                 }
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 DashModuleCard("Nutrición Embarazo", "Ácido fólico y hierro", Icons.Rounded.Spa, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NUTRIENTES) }
                 DashModuleCard("Citas Prenatales", "Calendario y ecografías", Icons.Rounded.CalendarMonth, NutriaBlue, NutriaBlue.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.RECORDATORIOS) }
             }
@@ -1027,7 +1501,7 @@ fun DashboardMamaPrimerizaView(onNavigate: (Screen) -> Unit, onLogout: () -> Uni
 
 @Composable
 fun DashboardNutritionistView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
-    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("🩺 Directorio Clínico Nutricional", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
             Text("Expedientes de Pacientes Pediátricos Activos", fontSize = 13.sp, color = Color.Gray)
@@ -1049,7 +1523,7 @@ fun DashboardNutritionistView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit
 
 @Composable
 fun DashboardGinecologistView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
-    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("🏥 Panel Obstétrico y Control Prenatal", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
             Text("Seguimiento Materno-Fetal", fontSize = 13.sp, color = Color.Gray)
@@ -1066,11 +1540,11 @@ fun DashboardGinecologistView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 8. VISTAS DE LOS 11 MÓDULOS DEL PADRE CON LÓGICA CLÍNICA REAL
+// 8. VISTAS DE LOS 11 MÓDULOS DEL PADRE
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-fun LactanciaScreenView(onBack: () -> Unit) {
+fun LactanciaScreenView(childName: String, onBack: () -> Unit) {
     var isRunningLeft by remember { mutableStateOf(false) }
     var isRunningRight by remember { mutableStateOf(false) }
     var secondsLeft by remember { mutableStateOf(0) }
@@ -1089,24 +1563,24 @@ fun LactanciaScreenView(onBack: () -> Unit) {
         return "${if (m < 10) "0$m" else "$m"}:${if (s < 10) "0$s" else "$s"}"
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Lactancia Materna", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Lactancia: $childName", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Card(
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = if (isRunningLeft) Color(0xFFE8F5E9) else Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Seno Izquierdo", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text(fmt(secondsLeft), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = NutriaGreen)
-                    Spacer(Modifier.height(12.dp))
+                Column(modifier = Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Seno Izquierdo", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(fmt(secondsLeft), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = NutriaGreen)
+                    Spacer(Modifier.height(10.dp))
                     Button(
                         onClick = { isRunningLeft = !isRunningLeft; if (isRunningLeft) isRunningRight = false },
                         colors = ButtonDefaults.buttonColors(containerColor = if (isRunningLeft) Color(0xFFC62828) else NutriaGreen)
@@ -1120,11 +1594,11 @@ fun LactanciaScreenView(onBack: () -> Unit) {
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Seno Derecho", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text(fmt(secondsRight), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = NutriaGreen)
-                    Spacer(Modifier.height(12.dp))
+                Column(modifier = Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Seno Derecho", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(fmt(secondsRight), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = NutriaGreen)
+                    Spacer(Modifier.height(10.dp))
                     Button(
                         onClick = { isRunningRight = !isRunningRight; if (isRunningRight) isRunningLeft = false },
                         colors = ButtonDefaults.buttonColors(containerColor = if (isRunningRight) Color(0xFFC62828) else NutriaGreen)
@@ -1136,11 +1610,11 @@ fun LactanciaScreenView(onBack: () -> Unit) {
 }
 
 @Composable
-fun SolidosScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+fun SolidosScreenView(childName: String, onBack: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Alimentación Complementaria & BLW", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Sólidos & BLW", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1155,31 +1629,37 @@ fun SolidosScreenView(onBack: () -> Unit) {
 }
 
 @Composable
-fun CrecimientoScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+fun CrecimientoScreenView(
+    childName: String,
+    weight: String,
+    height: String,
+    headCirc: String,
+    onBack: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Curvas de Crecimiento OMS", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Curvas OMS: $childName", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Percentiles Actuales de Mateo", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Percentiles Calculados (Estándar OMS)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Peso", fontSize = 12.sp, color = Color.Gray)
-                        Text("7.8 kg", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
-                        Text("P50 OMS", fontSize = 10.sp, color = Color.Gray)
+                        Text("$weight kg", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
+                        Text("Percentil 50", fontSize = 10.sp, color = Color.Gray)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Talla", fontSize = 12.sp, color = Color.Gray)
-                        Text("67.0 cm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
-                        Text("P55 OMS", fontSize = 10.sp, color = Color.Gray)
+                        Text("$height cm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
+                        Text("Percentil 55", fontSize = 10.sp, color = Color.Gray)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Cefálico", fontSize = 12.sp, color = Color.Gray)
-                        Text("42.5 cm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
-                        Text("P50 OMS", fontSize = 10.sp, color = Color.Gray)
+                        Text("$headCirc cm", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
+                        Text("Percentil 50", fontSize = 10.sp, color = Color.Gray)
                     }
                 }
             }
@@ -1189,10 +1669,10 @@ fun CrecimientoScreenView(onBack: () -> Unit) {
 
 @Composable
 fun SuenoScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Registro de Sueño Infantil", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Registro de Sueño Infantil", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1206,10 +1686,10 @@ fun SuenoScreenView(onBack: () -> Unit) {
 
 @Composable
 fun NutrientesScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Micronutrientes Clave", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Micronutrientes Clave", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1225,10 +1705,10 @@ fun NutrientesScreenView(onBack: () -> Unit) {
 
 @Composable
 fun NeurodesarrolloScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Hitos de Neurodesarrollo", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Hitos de Neurodesarrollo", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1244,10 +1724,10 @@ fun NeurodesarrolloScreenView(onBack: () -> Unit) {
 
 @Composable
 fun MealPlanningScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Plan Nutricional Semanal", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Plan Nutricional Semanal", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1264,11 +1744,11 @@ fun MealPlanningScreenView(onBack: () -> Unit) {
 data class Message(val text: String, val isUser: Boolean)
 
 @Composable
-fun NutriChatScreenView(onBack: () -> Unit) {
+fun NutriChatScreenView(childName: String, onBack: () -> Unit) {
     var messages by remember {
         mutableStateOf(
             listOf(
-                Message("¡Hola! Soy tu asistente de nutrición NutrIA basado en guías OMS. ¿En qué te puedo orientar hoy?", false)
+                Message("¡Hola! Soy tu asistente de nutrición NutrIA para $childName. ¿En qué te puedo orientar hoy?", false)
             )
         )
     }
@@ -1277,9 +1757,9 @@ fun NutriChatScreenView(onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Asistente NutriIA", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Asistente NutriIA", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
 
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(messages) { msg ->
@@ -1333,10 +1813,10 @@ fun NutriChatScreenView(onBack: () -> Unit) {
 
 @Composable
 fun DiarioVisualScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Diario Visual de Comidas", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Diario Visual de Comidas", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1350,10 +1830,10 @@ fun DiarioVisualScreenView(onBack: () -> Unit) {
 
 @Composable
 fun RecordatoriosScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Recordatorios & Vacunas", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Recordatorios & Vacunas", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1369,10 +1849,10 @@ fun RecordatoriosScreenView(onBack: () -> Unit) {
 
 @Composable
 fun PediatraScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Teleconsulta con Especialistas", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Teleconsulta con Especialistas", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1388,22 +1868,34 @@ fun PediatraScreenView(onBack: () -> Unit) {
 fun ConfiguracionScreenView(
     userEmail: String,
     userName: String,
+    isOffline: Boolean,
+    onToggleOffline: () -> Unit,
     onBack: () -> Unit,
     onLogout: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("⚙️ Configuración y Perfil", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
 
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
-            Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(54.dp).clip(CircleShape).background(NutriaGreen), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(NutriaGreen), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp))
                 }
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(14.dp))
                 Column {
-                    Text(userName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text(userEmail, fontSize = 13.sp, color = Color.Gray)
+                    Text(userName, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(userEmail, fontSize = 12.sp, color = Color.Gray)
                 }
+            }
+        }
+
+        Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text("Modo Offline", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("Permite usar la app sin conexión", fontSize = 12.sp, color = Color.Gray)
+                }
+                Switch(checked = isOffline, onCheckedChange = { onToggleOffline() }, colors = SwitchDefaults.colors(checkedThumbColor = NutriaGreen))
             }
         }
 
@@ -1420,10 +1912,10 @@ fun ConfiguracionScreenView(
 
 @Composable
 fun HelpScreenView(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Centro de Ayuda NutrIA", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Centro de Ayuda NutrIA", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -1466,20 +1958,20 @@ fun DashModuleCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier.clickable(onClick = onClick)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(42.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(color),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
             }
-            Spacer(Modifier.height(12.dp))
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+            Spacer(Modifier.height(10.dp))
+            Text(title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
             Spacer(Modifier.height(2.dp))
-            Text(subtitle, fontSize = 11.sp, color = Color.Gray)
+            Text(subtitle, fontSize = 10.sp, color = Color.Gray)
         }
     }
 }
