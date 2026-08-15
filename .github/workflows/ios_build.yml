@@ -95,10 +95,12 @@ jobs:
             FRAMEWORK_DIR=$(find shared/build/bin -name "*.framework" | head -n 1)
             
             if [ -n "$FRAMEWORK_DIR" ]; then
-              mkdir -p build/Payload/NutriIA.app/Frameworks
-              cp -R "$FRAMEWORK_DIR" build/Payload/NutriIA.app/Frameworks/
+              mkdir -p build/Payload/NutriIA.app
               if [ -f "iosApp/iosApp/Info.plist" ]; then
                 cp iosApp/iosApp/Info.plist build/Payload/NutriIA.app/Info.plist
+              fi
+              if [ -f "iosApp/iosApp/AppIcon.png" ]; then
+                cp iosApp/iosApp/*.png build/Payload/NutriIA.app/ 2>/dev/null || true
               fi
 
               # Compilar ejecutable binario nativo de iOS (Mach-O arm64)
