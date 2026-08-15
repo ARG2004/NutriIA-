@@ -1,10 +1,10 @@
 [versions]
 agp = "8.4.0"            # ← corregida
-coreKtx = "1.13.1"    # ← corregida
+coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
-lifecycleRuntimeKtx = "2.6.1"
+lifecycleRuntimeKtx = "2.8.4"
 activityCompose = "1.8.0"
 kotlin = "2.1.20"
 ksp = "2.1.20-1.0.31"
@@ -13,7 +13,6 @@ animationCoreLint = "1.10.3"
 remoteCreationCore = "1.0.0-alpha04"
 firebaseAuthKtx = "24.0.1"
 firebaseFirestoreKtx = "26.1.0"
-coreKtxVersion = "1.13.1"   # ← corregida
 coreSplashScreen = "1.0.1"
 appcompat = "1.7.0"
 constraintlayout = "2.2.1"
@@ -39,7 +38,6 @@ androidx-compose-animation-core-lint = { group = "androidx.compose.animation", n
 androidx-compose-remote-creation-core = { group = "androidx.compose.remote", name = "remote-creation-core", version.ref = "remoteCreationCore" }
 firebase-auth-ktx = { group = "com.google.firebase", name = "firebase-auth-ktx", version.ref = "firebaseAuthKtx" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtxVersion" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashScreen" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
