@@ -578,7 +578,20 @@ fun SplashOverlay(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PANTALLA: ACCESIBILIDAD INICIAL (100% IDÉNTICA A ANDROID)
+// TEXTOS OFICIALES DE VOZ DE NUTRIA
+// ═══════════════════════════════════════════════════════════════════════════
+object Voz {
+    const val MODO_CIEGO = "Hola, soy Nutr IA, tu nutria nutriologa favorita. Acabo de activar mi modo especial para ti. Voy a leer todo en voz alta y el microfono se activara solo en cada campo. Juntos vamos a cuidar la nutricion de tu familia."
+    const val MODO_MUDO = "Modo para personas mudas activado. El teclado estara siempre visible para ti."
+    const val MODO_NORMAL = "Modo estandar activado. Bienvenido a Nutr IA."
+    const val ACCESIBILIDAD_INTRO = "Hola, bienvenido a Nutr IA, tu asistente de nutricion infantil. Antes de empezar, cuentame como usas el telefono para adaptarme a ti. Selecciona Estandar, Modo ciego o Modo mudo. Toca la opcion que va contigo y presiona Continuar."
+    const val LOGIN_INTRO = "Que bueno verte de nuevo. Escribe tu correo y tu clave en los dos campos. El boton verde Entrar esta justo debajo."
+    const val LOGIN_EXITO = "Listo, ya entre. Vamos a ver como esta la nutricion de tu familia."
+    const val QUIZ_BIENVENIDA = "Ahora lo mas importante: conocer a tu pequeño o pequeña. Voy a pedirte cuatro datos: nombre, fecha de nacimiento, peso y talla."
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PANTALLA: ACCESIBILIDAD INICIAL (100% IDÉNTICA A ANDROID CON VOZ TTS NATIVA)
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AccesibilidadInicialScreen(
@@ -588,6 +601,11 @@ fun AccesibilidadInicialScreen(
 ) {
     var idiomaSeleccionado by remember { mutableStateOf("ESPANOL_MX") }
     var modoActual by remember(currentMode) { mutableStateOf(currentMode) }
+    val ttsBridge = remember { com.example.nutriia.accesibilidad.NutriTTSBridge() }
+
+    LaunchedEffect(Unit) {
+        ttsBridge.speak(Voz.ACCESIBILIDAD_INTRO)
+    }
 
     Column(
         modifier = Modifier
@@ -602,7 +620,10 @@ fun AccesibilidadInicialScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            TextButton(onClick = onSkip) {
+            TextButton(onClick = {
+                ttsBridge.stop()
+                onSkip()
+            }) {
                 Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Cancelar", color = Color.Gray, fontSize = 13.sp)
@@ -2321,6 +2342,7 @@ fun BrailleKeyboard(
 ) {
     var puntosSeleccionados by remember { mutableStateOf(setOf<Int>()) }
     val letraActual = TABLA_BRAILLE_VERIFICADA[puntosSeleccionados].takeIf { puntosSeleccionados.isNotEmpty() }
+    val ttsBridge = remember { com.example.nutriia.accesibilidad.NutriTTSBridge() }
 
     Column(
         modifier = modifier
@@ -2360,6 +2382,7 @@ fun BrailleKeyboard(
                         seleccionado = puntosSeleccionados.contains(p),
                         onToggle = {
                             puntosSeleccionados = if (puntosSeleccionados.contains(p)) puntosSeleccionados - p else puntosSeleccionados + p
+                            ttsBridge.speak("Punto $p")
                         }
                     )
                 }
@@ -2372,6 +2395,7 @@ fun BrailleKeyboard(
                         seleccionado = puntosSeleccionados.contains(p),
                         onToggle = {
                             puntosSeleccionados = if (puntosSeleccionados.contains(p)) puntosSeleccionados - p else puntosSeleccionados + p
+                            ttsBridge.speak("Punto $p")
                         }
                     )
                 }
@@ -2386,7 +2410,10 @@ fun BrailleKeyboard(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
-                onClick = { puntosSeleccionados = emptySet() },
+                onClick = {
+                    puntosSeleccionados = emptySet()
+                    ttsBridge.speak("Limpiado")
+                },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
             ) {
@@ -2397,6 +2424,7 @@ fun BrailleKeyboard(
                 onClick = {
                     letraActual?.let { l ->
                         onTextoChange(textoActual + l)
+                        ttsBridge.speak("Letra $l")
                         puntosSeleccionados = emptySet()
                     }
                 },
@@ -2408,7 +2436,10 @@ fun BrailleKeyboard(
             }
 
             Button(
-                onClick = { onTextoChange(textoActual + " ") },
+                onClick = {
+                    onTextoChange(textoActual + " ")
+                    ttsBridge.speak("Espacio")
+                },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF37474F))
             ) {
@@ -2419,6 +2450,7 @@ fun BrailleKeyboard(
                 onClick = {
                     if (textoActual.isNotEmpty()) {
                         onTextoChange(textoActual.dropLast(1))
+                        ttsBridge.speak("Borrado")
                     }
                 },
                 modifier = Modifier.weight(1f),
