@@ -8,7 +8,7 @@ on:
 jobs:
   build-and-verify:
     name: Build & Verify NutrIA (Android & iOS Cloud Pipeline)
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: 1. Checkout Repository
