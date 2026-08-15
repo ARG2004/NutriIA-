@@ -99,47 +99,10 @@ jobs:
               if [ -f "iosApp/iosApp/Info.plist" ]; then
                 cp iosApp/iosApp/Info.plist build/Payload/NutriIA.app/Info.plist
               fi
-              # Generar íconos PNG directamente desde el ícono fuente de Android
-              echo "Generando íconos de iPhone directamente desde el ícono fuente..."
-              cat > /tmp/gen_icons.py << 'PYEOF'
-from PIL import Image
-import os
-src = 'app/src/main/ic_launcher-playstore.png'
-img = Image.open(src).convert('RGBA')
-dest = 'build/Payload/NutriIA.app'
-icons = {
-  'Icon-60@2x.png': (120,120),
-  'Icon-60@3x.png': (180,180),
-  'Icon-40@2x.png': (80,80),
-  'Icon-40@3x.png': (120,120),
-  'Icon-29@2x.png': (58,58),
-  'Icon-29@3x.png': (87,87),
-  'Icon-20@2x.png': (40,40),
-  'Icon-20@3x.png': (60,60),
-  'Icon-1024.png': (1024,1024),
-}
-for name, size in icons.items():
-  resized = img.resize(size, Image.LANCZOS)
-  bg = Image.new('RGB', size, (255,255,255))
-  bg.paste(resized, mask=resized.split()[3] if resized.mode=='RGBA' else None)
-  bg.save(os.path.join(dest, name))
-  print(f'Created {name} {size[0]}x{size[1]}px')
-print('All icons generated successfully!')
-PYEOF
-              python3 /tmp/gen_icons.py
-              echo "Actualizando CFBundleIconFiles en Info.plist con nombres exactos..."
-              /usr/libexec/PlistBuddy -c 'Delete :CFBundleIconFiles' build/Payload/NutriIA.app/Info.plist 2>/dev/null || true
-              /usr/libexec/PlistBuddy -c 'Delete :CFBundleIcons' build/Payload/NutriIA.app/Info.plist 2>/dev/null || true
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons dict' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons:CFBundlePrimaryIcon dict' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName string AppIcon' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles array' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles: string Icon-20' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles: string Icon-29' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles: string Icon-40' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconFiles: string Icon-60' build/Payload/NutriIA.app/Info.plist
-              /usr/libexec/PlistBuddy -c 'Add :CFBundleIconName string AppIcon' build/Payload/NutriIA.app/Info.plist 2>/dev/null || true
-              echo "Info.plist actualizado con lista de íconos."
+              # Copiar íconos PNG ya comprometidos en el repositorio
+              cp iosApp/iosApp/AppIcon*.png build/Payload/NutriIA.app/ 2>/dev/null || true
+              cp iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/*.png build/Payload/NutriIA.app/ 2>/dev/null || true
+
 
               # Compilar ejecutable binario nativo de iOS (Mach-O arm64)
               xcrun -sdk iphoneos swiftc -target arm64-apple-ios15.0 -parse-as-library \
