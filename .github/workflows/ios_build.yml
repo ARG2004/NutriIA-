@@ -117,7 +117,8 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH || true
 
-            echo "=== Archivando con xcodebuild ==="
+            BUILD_NUM="22"
+            echo "=== Archivando con xcodebuild (Build $BUILD_NUM) ==="
             xcodebuild archive \
               -project iosApp.xcodeproj \
               -scheme NutriIA \
@@ -127,17 +128,17 @@ jobs:
               ONLY_ACTIVE_ARCH=NO \
               ARCHS=arm64 \
               MARKETING_VERSION="2.2.5" \
-              CURRENT_PROJECT_VERSION="20" \
+              CURRENT_PROJECT_VERSION="$BUILD_NUM" \
               CODE_SIGN_IDENTITY="$IDENTITY" \
               CODE_SIGN_STYLE=Manual \
               PROVISIONING_PROFILE="$PP_UUID" \
               DEVELOPMENT_TEAM=X423NH338U
 
-            echo "=== Forzando versión 2.2.5 (build 20) en el xcarchive ==="
+            echo "=== Forzando versión 2.2.5 (build $BUILD_NUM) en el xcarchive ==="
             /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleShortVersionString 2.2.5" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleShortVersionString string 2.2.5" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleVersion 20" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleVersion string 20" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleVersion $BUILD_NUM" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleVersion string $BUILD_NUM" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 2.2.5" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion 20" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
 
             echo "=== Re-firmando app tras actualizar Plist ==="
             codesign --force --sign "$IDENTITY" --timestamp=none $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app || true
