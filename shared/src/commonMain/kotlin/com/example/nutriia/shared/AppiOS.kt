@@ -1071,7 +1071,7 @@ fun NutriaLoginScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 2. SELECCIÓN DE ROL DE REGISTRO
+// 1. PANTALLA DE SELECCIÓN DE TIPO DE CUENTA (100% IDÉNTICA A ANDROID)
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun RegisterTypeScreen(
@@ -1083,231 +1083,614 @@ fun RegisterTypeScreen(
             .fillMaxSize()
             .background(NutriaBgCrema)
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        IconButton(
-            onClick = onBackToLogin,
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)
+        Spacer(Modifier.height(44.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            IconButton(
+                onClick = onBackToLogin,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Volver", tint = NutriaGreen)
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(NutriaGreen.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+            Icon(Icons.Rounded.PersonAdd, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(36.dp))
         }
 
         Spacer(Modifier.height(16.dp))
+        Text("Crear cuenta", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+        Spacer(Modifier.height(4.dp))
+        Text("¿Cómo vas a usar NutriIA?", fontSize = 15.sp, color = Color.Gray, textAlign = TextAlign.Center)
 
-        Text("¿Cómo deseas unirte?", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
-        Text("Selecciona tu rol para personalizar tu experiencia clínica y nutricional.", fontSize = 13.sp, color = Color.Gray)
+        Spacer(Modifier.height(28.dp))
 
-        Spacer(Modifier.height(20.dp))
-
-        val roles = listOf(
-            RoleItem("Padre / Madre de Familia", "Seguimiento nutricional, crecimiento y lactancia", Icons.Rounded.FamilyRestroom, NutriaGreen),
-            RoleItem("Nutriólogo Clínico", "Validación SEP de Cédula, expedientes y dietas", Icons.Rounded.MedicalServices, NutriaSoftTeal),
-            RoleItem("Mamá Primeriza", "Guía paso a paso desde el embarazo hasta la lactancia", Icons.Rounded.PregnantWoman, NutriaPink),
-            RoleItem("Ginecólogo Obstetra", "Validación SEP de Cédula y control materno-fetal", Icons.Rounded.LocalHospital, NutriaGineRosa)
+        AccountTypeCard(
+            title = "Soy Padre / Madre",
+            subtitle = "Registra a tu hijo/a y lleva su seguimiento nutricional personalizado.",
+            icon = Icons.Rounded.FamilyRestroom,
+            iconColor = NutriaGreen,
+            badge = "Familia",
+            badgeColor = NutriaGreen,
+            onClick = { onRoleSelected("Padre / Madre de Familia") }
         )
 
-        roles.forEach { role ->
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onRoleSelected(role.title) },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(role.color.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(role.icon, contentDescription = null, tint = role.color, modifier = Modifier.size(26.dp))
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(role.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
-                        Spacer(Modifier.height(2.dp))
-                        Text(role.subtitle, fontSize = 11.sp, color = Color.Gray, lineHeight = 15.sp)
-                    }
-                    Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = role.color)
-                }
+        Spacer(Modifier.height(12.dp))
+
+        AccountTypeCard(
+            title = "Mamá Primeriza",
+            subtitle = "Seguimiento especializado durante tu embarazo y nutrición prenatal.",
+            icon = Icons.Rounded.Favorite,
+            iconColor = NutriaPink,
+            badge = "Embarazo",
+            badgeColor = NutriaPink,
+            onClick = { onRoleSelected("Mamá Primeriza") }
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        AccountTypeCard(
+            title = "Soy Nutriólogo/a",
+            subtitle = "Gestiona pacientes, planes de alimentación y seguimiento clínico.",
+            icon = Icons.Rounded.MedicalServices,
+            iconColor = NutriaSoftTeal,
+            badge = "Profesional",
+            badgeColor = NutriaSoftTeal,
+            onClick = { onRoleSelected("Nutriólogo Clínico") }
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        AccountTypeCard(
+            title = "Soy Ginecólogo/a",
+            subtitle = "Especialista en salud femenina y seguimiento del embarazo.",
+            icon = Icons.Rounded.Female,
+            iconColor = NutriaGineRosa,
+            badge = "Profesional",
+            badgeColor = NutriaGineRosa,
+            onClick = { onRoleSelected("Ginecólogo Obstetra") }
+        )
+
+        Spacer(Modifier.height(28.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("¿Ya tienes cuenta? ", color = Color.Gray, fontSize = 14.sp)
+            TextButton(onClick = onBackToLogin) {
+                Text("Inicia sesión", color = NutriaDarkGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
+        }
+
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun AccountTypeCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconColor: Color,
+    badge: String,
+    badgeColor: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(iconColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(28.dp))
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = NutriaDarkGreen)
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(badgeColor.copy(alpha = 0.12f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(badge, fontSize = 10.sp, color = badgeColor, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(subtitle, fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
+            }
+            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = iconColor.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 3. REGISTROS ESPECÍFICOS POR ROL
+// 2. REGISTRO PADRE / MADRE (100% IDÉNTICO A ANDROID)
 // ═══════════════════════════════════════════════════════════════════════════
-
 @Composable
 fun ParentRegisterScreen(
     onRegistered: (String, String) -> Unit,
     onBack: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    var showConfirm by remember { mutableStateOf(false) }
+    var childName by remember { mutableStateOf("") }
+    var nutritionistCode by remember { mutableStateOf("") }
 
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)) {
-        IconButton(onClick = onBack, modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("Registro: Padre / Madre", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
-        Text("Crea tu cuenta familiar para dar seguimiento al desarrollo de tu bebé.", fontSize = 13.sp, color = Color.Gray)
-        Spacer(Modifier.height(20.dp))
-
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Correo Electrónico") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(20.dp))
-                Button(
-                    onClick = { onRegistered(name.ifBlank { "Familia Rivera" }, email.ifBlank { "familia@nutriia.com" }) },
-                    shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) { Text("Siguiente: Datos del Bebé", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+    ) {
+        Spacer(Modifier.height(44.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+            }
+            Spacer(Modifier.width(14.dp))
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(NutriaGreen.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.FamilyRestroom, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(28.dp))
+            }
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text("Registro de Padre/Madre", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                Text("Crea tu cuenta familiar", fontSize = 12.sp, color = Color.Gray)
             }
         }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Sección 1: Datos personales
+        RegisterSectionHeader(icon = Icons.Rounded.Person, title = "Datos personales", color = NutriaGreen)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = name, onValueChange = { name = it }, label = "Nombre completo", leadingIcon = Icons.Rounded.Person)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = phone, onValueChange = { phone = it }, label = "Teléfono", leadingIcon = Icons.Rounded.Phone)
+
+        Spacer(Modifier.height(20.dp))
+
+        // Sección 2: Acceso a la cuenta
+        RegisterSectionHeader(icon = Icons.Rounded.Lock, title = "Acceso a la cuenta", color = NutriaSoftPurple)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = email, onValueChange = { email = it }, label = "Correo electrónico", leadingIcon = Icons.Rounded.Email)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(
+            value = password,
+            onValueChange = { password = it },
+            label = "Clave de acceso",
+            leadingIcon = Icons.Rounded.Lock,
+            isPassword = true,
+            showPassword = showPassword,
+            onTogglePassword = { showPassword = !showPassword }
+        )
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = "Confirmar clave",
+            leadingIcon = Icons.Rounded.LockReset,
+            isPassword = true,
+            showPassword = showConfirm,
+            onTogglePassword = { showConfirm = !showConfirm }
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // Sección 3: Tu primer hijo/a
+        RegisterSectionHeader(icon = Icons.Rounded.ChildCare, title = "Tu primer hijo/a", color = NutriaOrange)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = childName, onValueChange = { childName = it }, label = "Nombre del niño/a", leadingIcon = Icons.Rounded.Face)
+
+        Spacer(Modifier.height(20.dp))
+
+        // Sección 4: Vincular nutriólogo (Opcional)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RegisterSectionHeader(icon = Icons.Rounded.MedicalServices, title = "Vincular nutriólogo", color = NutriaSoftTeal)
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.LightGray.copy(alpha = 0.3f))
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
+            ) {
+                Text("Opcional", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        Surface(
+            color = NutriaSoftTeal.copy(alpha = 0.08f),
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Info, contentDescription = null, tint = NutriaSoftTeal, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Puedes vincularte después desde tu perfil si no tienes el código ahora.", fontSize = 11.sp, color = NutriaDarkGreen)
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = nutritionistCode, onValueChange = { nutritionistCode = it }, label = "Código del nutriólogo (opcional)", leadingIcon = Icons.Rounded.QrCodeScanner)
+
+        Spacer(Modifier.height(28.dp))
+
+        Button(
+            onClick = { onRegistered(name.ifBlank { "Familia Rivera" }, email.ifBlank { "familia@nutriia.com" }) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Crear cuenta y continuar", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = Color.White)
+            }
+        }
+
+        Spacer(Modifier.height(28.dp))
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. REGISTRO MAMÁ PRIMERIZA (100% IDÉNTICO A ANDROID)
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun MamaPrimerizaRegisterScreen(
     onRegistered: (String, String, Int) -> Unit,
     onBack: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var semanas by remember { mutableStateOf("24") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    var showConfirm by remember { mutableStateOf(false) }
+    var semanas by remember { mutableStateOf("1") }
 
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)) {
-        IconButton(onClick = onBack, modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("Registro: Mamá Primeriza", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
-        Text("Acompañamiento nutricional durante tu etapa de gestación.", fontSize = 13.sp, color = Color.Gray)
-        Spacer(Modifier.height(20.dp))
-
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Correo Electrónico") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(value = semanas, onValueChange = { semanas = it }, label = { Text("Semanas de Gestación (1-40)") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(20.dp))
-                Button(
-                    onClick = { onRegistered(name.ifBlank { "Mamá NutrIA" }, email.ifBlank { "mama@nutriia.com" }, semanas.toIntOrNull() ?: 24) },
-                    shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = NutriaPink),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) { Text("Crear Cuenta Mamá Primeriza", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+    ) {
+        Spacer(Modifier.height(44.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+            }
+            Spacer(Modifier.width(14.dp))
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(NutriaPink.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Favorite, contentDescription = null, tint = NutriaPink, modifier = Modifier.size(28.dp))
+            }
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text("Registro Mamá Primeriza", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                Text("Tu acompañante en el embarazo", fontSize = 12.sp, color = Color.Gray)
             }
         }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Sección 1: Datos personales
+        RegisterSectionHeader(icon = Icons.Rounded.Person, title = "Datos personales", color = NutriaPink)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = name, onValueChange = { name = it }, label = "Nombre completo", leadingIcon = Icons.Rounded.Person)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = phone, onValueChange = { phone = it }, label = "Teléfono", leadingIcon = Icons.Rounded.Phone)
+
+        Spacer(Modifier.height(20.dp))
+
+        // Sección 2: Estado del embarazo
+        RegisterSectionHeader(icon = Icons.Rounded.DateRange, title = "Estado del embarazo", color = NutriaGreen)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = semanas, onValueChange = { semanas = it }, label = "Semana de embarazo (1-40)", leadingIcon = Icons.Rounded.Tag)
+
+        Spacer(Modifier.height(20.dp))
+
+        // Sección 3: Acceso a la cuenta
+        RegisterSectionHeader(icon = Icons.Rounded.Lock, title = "Acceso a la cuenta", color = NutriaSoftPurple)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = email, onValueChange = { email = it }, label = "Correo electrónico", leadingIcon = Icons.Rounded.Email)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(
+            value = password,
+            onValueChange = { password = it },
+            label = "Contraseña",
+            leadingIcon = Icons.Rounded.Lock,
+            isPassword = true,
+            showPassword = showPassword,
+            onTogglePassword = { showPassword = !showPassword }
+        )
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = "Confirmar contraseña",
+            leadingIcon = Icons.Rounded.LockReset,
+            isPassword = true,
+            showPassword = showConfirm,
+            onTogglePassword = { showConfirm = !showConfirm }
+        )
+
+        Spacer(Modifier.height(28.dp))
+
+        Button(
+            onClick = { onRegistered(name.ifBlank { "Mamá NutrIA" }, email.ifBlank { "mama@nutriia.com" }, semanas.toIntOrNull() ?: 1) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = NutriaPink)
+        ) {
+            Text("Crear cuenta", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(28.dp))
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. REGISTRO PROFESIONAL: NUTRIÓLOGO / GINECÓLOGO (100% IDÉNTICO A ANDROID)
+// ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun ProfessionalRegisterScreen(
     roleTitle: String,
     profesionRequerida: String,
+    accentColor: Color,
     onRegistered: (String, String, String) -> Unit,
     onBack: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    var showConfirm by remember { mutableStateOf(false) }
+    var especialidad by remember { mutableStateOf("") }
     var cedula by remember { mutableStateOf("") }
-    var isVerifyingCedula by remember { mutableStateOf(false) }
-    var cedulaVerificada by remember { mutableStateOf<Boolean?>(null) }
-    var cedulaDetalle by remember { mutableStateOf<String?>(null) }
+    var aceptoSep by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).verticalScroll(rememberScrollState()).padding(24.dp)) {
-        IconButton(onClick = onBack, modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White)) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
-        }
-        Spacer(Modifier.height(16.dp))
-        Text("Registro: $roleTitle", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
-        Text("Validación oficial de Cédula Profesional ante el Registro Nacional de Profesionistas (SEP).", fontSize = 13.sp, color = Color.Gray)
-        Spacer(Modifier.height(20.dp))
-
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre Completo") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Correo Institucional / Profesional") }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = cedula,
-                        onValueChange = {
-                            cedula = it.filter(Char::isDigit)
-                            cedulaVerificada = null
-                            cedulaDetalle = null
-                        },
-                        label = { Text("Cédula Profesional") },
-                        placeholder = { Text("Ej. 12345678") },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    Button(
-                        onClick = {
-                            if (cedula.length >= 7) {
-                                isVerifyingCedula = true
-                                cedulaVerificada = true
-                                cedulaDetalle = "Cédula Válida • $profesionRequerida • SEP"
-                                isVerifyingCedula = false
-                            } else {
-                                cedulaVerificada = false
-                                cedulaDetalle = "Debe tener al menos 7 u 8 dígitos"
-                            }
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NutriaSoftTeal)
-                    ) {
-                        Text("Verificar")
-                    }
-                }
-
-                cedulaDetalle?.let { msg ->
-                    Spacer(Modifier.height(6.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            if (cedulaVerificada == true) Icons.Rounded.Verified else Icons.Rounded.Error,
-                            contentDescription = null,
-                            tint = if (cedulaVerificada == true) NutriaGreen else NutriaRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = msg,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (cedulaVerificada == true) NutriaGreen else NutriaRed
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(20.dp))
-                Button(
-                    onClick = { onRegistered(name.ifBlank { "Dr(a). Profesional" }, email.ifBlank { "pro@nutriia.com" }, cedula) },
-                    enabled = cedulaVerificada == true,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NutriaDarkGreen, disabledContainerColor = Color.LightGray),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) { Text("Completar Registro Profesional", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+    ) {
+        Spacer(Modifier.height(44.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen)
+            }
+            Spacer(Modifier.width(14.dp))
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (profesionRequerida.contains("Nutri")) Icons.Rounded.MedicalServices else Icons.Rounded.Female,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text("Registro de $roleTitle", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                Text("Crea tu perfil profesional", fontSize = 12.sp, color = Color.Gray)
             }
         }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Sección 1: Datos personales
+        RegisterSectionHeader(icon = Icons.Rounded.Person, title = "Datos personales", color = accentColor)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = name, onValueChange = { name = it }, label = "Nombre completo", leadingIcon = Icons.Rounded.Person)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = phone, onValueChange = { phone = it }, label = "Teléfono", leadingIcon = Icons.Rounded.Phone)
+
+        Spacer(Modifier.height(20.dp))
+
+        // Sección 2: Datos profesionales
+        RegisterSectionHeader(icon = Icons.Rounded.VerifiedUser, title = "Datos profesionales", color = NutriaGreen)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = especialidad, onValueChange = { especialidad = it }, label = "Especialidad", leadingIcon = Icons.Rounded.AddBox)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = cedula, onValueChange = { cedula = it }, label = "Cédula profesional", leadingIcon = Icons.Rounded.Badge)
+
+        Spacer(Modifier.height(12.dp))
+
+        // Checkbox SEP
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White)
+                .border(1.dp, Color(0xFFEEEEEE), RoundedCornerShape(12.dp))
+                .clickable { aceptoSep = !aceptoSep }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = aceptoSep, onCheckedChange = { aceptoSep = it }, colors = CheckboxDefaults.colors(checkedColor = accentColor))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Acepto que NutriIA consulte mi cédula profesional en el Registro Nacional de Profesionistas (SEP) para verificar mi identidad profesional.",
+                fontSize = 11.sp,
+                color = Color.Gray,
+                lineHeight = 15.sp
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // Sección 3: Acceso a la cuenta
+        RegisterSectionHeader(icon = Icons.Rounded.Lock, title = "Acceso a la cuenta", color = NutriaSoftPurple)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(value = email, onValueChange = { email = it }, label = "Correo electrónico", leadingIcon = Icons.Rounded.Email)
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(
+            value = password,
+            onValueChange = { password = it },
+            label = "Clave de acceso",
+            leadingIcon = Icons.Rounded.Lock,
+            isPassword = true,
+            showPassword = showPassword,
+            onTogglePassword = { showPassword = !showPassword }
+        )
+        Spacer(Modifier.height(10.dp))
+        RegOutlinedField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = "Confirmar clave",
+            leadingIcon = Icons.Rounded.LockReset,
+            isPassword = true,
+            showPassword = showConfirm,
+            onTogglePassword = { showConfirm = !showConfirm }
+        )
+
+        Spacer(Modifier.height(28.dp))
+
+        Button(
+            onClick = { onRegistered(name.ifBlank { "Dr. Profesional" }, email.ifBlank { "doctor@nutriia.com" }, cedula) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Crear perfil profesional", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = Color.White)
+            }
+        }
+
+        Spacer(Modifier.height(28.dp))
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENTES AUXILIARES DE FORMULARIO DE REGISTRO
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun RegisterSectionHeader(icon: ImageVector, title: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+    }
+}
+
+@Composable
+fun RegOutlinedField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    leadingIcon: ImageVector,
+    isPassword: Boolean = false,
+    showPassword: Boolean = false,
+    onTogglePassword: (() -> Unit)? = null
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(label, color = Color.Gray, fontSize = 14.sp) },
+        leadingIcon = { Icon(leadingIcon, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(20.dp)) },
+        trailingIcon = if (isPassword && onTogglePassword != null) {
+            {
+                IconButton(onClick = onTogglePassword) {
+                    Icon(
+                        if (showPassword) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                        contentDescription = null,
+                        tint = Color.Gray
+                    )
+                }
+            }
+        } else null,
+        visualTransformation = if (isPassword && !showPassword) PasswordVisualTransformation() else VisualTransformation.None,
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = NutriaGreen,
+            unfocusedBorderColor = Color(0xFFEEEEEE),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White
+        )
+    )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
