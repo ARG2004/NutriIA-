@@ -50,7 +50,7 @@ fun ParentDashboardScreen(
                     Text("¡Hola! 👋", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = DashDark)
                     Text("Panel de familia", fontSize = 14.sp, color = Color.Gray)
                 }
-                IconButton(onClick = { onNavigate(Screen.ACCESSIBILITY_CONFIG) }) {
+                IconButton(onClick = { onNavigate(Screen.ACCESIBILIDAD_INICIAL) }) {
                     Icon(Icons.Rounded.Accessibility, null, tint = DashGreen, modifier = Modifier.size(28.dp))
                 }
                 IconButton(onClick = onLogout) {
@@ -74,13 +74,13 @@ fun ParentDashboardScreen(
             Text("Módulos", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DashDark)
             Spacer(Modifier.height(12.dp))
 
-            DashModule("🍎 Sólidos BLW",       "Alimentación complementaria",    DashGreen,  Icons.Rounded.Restaurant)      { onNavigate(Screen.SOLIDOS_BLW) }
-            DashModule("📈 Curvas de crecimiento","Peso, talla y perímetro",      DashBlue,   Icons.Rounded.ShowChart)        { onNavigate(Screen.GROWTH_CURVES) }
-            DashModule("😴 Registro de sueño",  "Patrones de descanso",           DashPurple, Icons.Rounded.Bedtime)          { onNavigate(Screen.SLEEP_LOG) }
-            DashModule("🥗 Calculadora nutricional","Valores y nutrientes",       DashOrange, Icons.Rounded.Calculate)        { onNavigate(Screen.NUTRIENT_CALC) }
-            DashModule("🤖 Chat con IA",         "Asistente nutricional",         DashTeal,   Icons.Rounded.SmartToy)         { onNavigate(Screen.CHAT_AI) }
+            DashModule("🍎 Sólidos BLW",       "Alimentación complementaria",    DashGreen,  Icons.Rounded.Restaurant)      { onNavigate(Screen.SOLIDOS) }
+            DashModule("📈 Curvas de crecimiento","Peso, talla y perímetro",      DashBlue,   Icons.Rounded.ShowChart)        { onNavigate(Screen.CRECIMIENTO) }
+            DashModule("😴 Registro de sueño",  "Patrones de descanso",           DashPurple, Icons.Rounded.Bedtime)          { onNavigate(Screen.SUENO) }
+            DashModule("🥗 Calculadora nutricional","Valores y nutrientes",       DashOrange, Icons.Rounded.Calculate)        { onNavigate(Screen.NUTRIENTES) }
+            DashModule("🤖 Chat con IA",         "Asistente nutricional",         DashTeal,   Icons.Rounded.SmartToy)         { onNavigate(Screen.CHAT_IA) }
             DashModule("🍼 Lactancia",           "Registro de tomas",             DashRosa,   Icons.Rounded.WaterDrop)        { onNavigate(Screen.LACTANCIA) }
-            DashModule("👨‍⚕️ Directorio pediatras","Encuentra especialistas",     DashRosaGine, Icons.Rounded.LocalHospital) { onNavigate(Screen.PEDIATRA_DIR) }
+            DashModule("👨‍⚕️ Directorio pediatras","Encuentra especialistas",     DashRosaGine, Icons.Rounded.LocalHospital) { onNavigate(Screen.PEDIATRA_DASHBOARD) }
             DashModule("📹 Teleconsulta",        "Videollamada con nutriólogo",    DashBlue,   Icons.Rounded.VideoCall)        { onNavigate(Screen.TELECONSULTA) }
             Spacer(Modifier.height(32.dp))
         }
@@ -118,10 +118,10 @@ fun NutritionistDashboardScreen(
             }
             Spacer(Modifier.height(24.dp))
 
-            DashModule("📋 Expedientes",          "Historiales clínicos",    DashTeal,   Icons.Rounded.FolderShared)  { onNavigate(Screen.EXPEDIENTE) }
+            DashModule("📋 Expedientes",          "Historiales clínicos",    DashTeal,   Icons.Rounded.FolderShared)  { onNavigate(Screen.PACIENTE_EXPEDIENTE) }
             DashModule("📹 Teleconsulta",          "Videollamada con pacientes", DashBlue,   Icons.Rounded.VideoCall) { onNavigate(Screen.TELECONSULTA) }
-            DashModule("🤖 Chat IA clínico",       "Asistente de diagnóstico", DashPurple, Icons.Rounded.SmartToy)   { onNavigate(Screen.CHAT_AI) }
-            DashModule("🥗 Calculadora nutricional","Planes alimenticios",   DashOrange, Icons.Rounded.Calculate)    { onNavigate(Screen.NUTRIENT_CALC) }
+            DashModule("🤖 Chat IA clínico",       "Asistente de diagnóstico", DashPurple, Icons.Rounded.SmartToy)   { onNavigate(Screen.CHAT_IA) }
+            DashModule("🥗 Calculadora nutricional","Planes alimenticios",   DashOrange, Icons.Rounded.Calculate)    { onNavigate(Screen.NUTRIENTES) }
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -158,9 +158,9 @@ fun PregnancyDashboardScreen(
             }
             Spacer(Modifier.height(24.dp))
 
-            DashModule("🥗 Nutrición embarazo", "Plan alimenticio prenatal", DashRosa,   Icons.Rounded.Restaurant)   { onNavigate(Screen.EMBARAZO_NUTRICION) }
+            DashModule("🥗 Nutrición embarazo", "Plan alimenticio prenatal", DashRosa,   Icons.Rounded.Restaurant)   { onNavigate(Screen.NUTRICION_EMBARAZO) }
             DashModule("📅 Citas y controles",   "Agenda de revisiones",     DashTeal,   Icons.Rounded.EventNote)    { onNavigate(Screen.CITAS_EMBARAZO) }
-            DashModule("🤖 Chat IA prenatal",    "Consultas sobre embarazo", DashPurple, Icons.Rounded.SmartToy)     { onNavigate(Screen.CHAT_AI) }
+            DashModule("🤖 Chat IA prenatal",    "Consultas sobre embarazo", DashPurple, Icons.Rounded.SmartToy)     { onNavigate(Screen.CHAT_IA) }
             DashModule("📹 Teleconsulta",        "Videollamada con doctor",  DashBlue,   Icons.Rounded.VideoCall)    { onNavigate(Screen.TELECONSULTA) }
             Spacer(Modifier.height(32.dp))
         }
@@ -198,9 +198,9 @@ fun GynecologistDashboardScreen(
             }
             Spacer(Modifier.height(24.dp))
 
-            DashModule("📋 Expedientes embarazo", "Historiales de gestación", DashRosaGine, Icons.Rounded.FolderShared) { onNavigate(Screen.EXPEDIENTE) }
+            DashModule("📋 Expedientes embarazo", "Historiales de gestación", DashRosaGine, Icons.Rounded.FolderShared) { onNavigate(Screen.EXPEDIENTE_EMBARAZO) }
             DashModule("📹 Teleconsulta",          "Videollamada con pacientes", DashBlue, Icons.Rounded.VideoCall)     { onNavigate(Screen.TELECONSULTA) }
-            DashModule("🤖 Chat IA clínico",       "Asistente de diagnóstico", DashPurple, Icons.Rounded.SmartToy)     { onNavigate(Screen.CHAT_AI) }
+            DashModule("🤖 Chat IA clínico",       "Asistente de diagnóstico", DashPurple, Icons.Rounded.SmartToy)     { onNavigate(Screen.CHAT_IA) }
             Spacer(Modifier.height(32.dp))
         }
     }

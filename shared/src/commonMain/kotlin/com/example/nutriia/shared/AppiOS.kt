@@ -20,8 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  NutriIA iOS — Router principal
-//  Importa las pantallas de cada módulo KMP y las conecta con navegación
+//  NutriIA iOS — Router y Navegación idéntica a MainActivity.kt (Android)
 // ═══════════════════════════════════════════════════════════════════════════
 
 import com.example.nutriia.auth.*
@@ -29,20 +28,29 @@ import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.dashboard.*
 import com.example.nutriia.modules.*
 
-// ─── Colores del sistema NutriIA ─────────────────────────────────────────
-private val NutriGreen     = Color(0xFF689F38)
-private val NutriDarkGreen = Color(0xFF33691E)
-private val NutriBgCrema   = Color(0xFFF8F9F3)
-private val NutriWhite     = Color.White
-
-// ─── Pantallas disponibles ───────────────────────────────────────────────
+// ─── Enum de Pantallas 1:1 idéntico a Android MainActivity.kt ─────────────
 enum class Screen {
-    LOGIN, REGISTER_TYPE, REGISTER_PARENT, REGISTER_MAMA, REGISTER_PROFESSIONAL,
-    DASHBOARD_PARENT, DASHBOARD_NUTRITIONIST, DASHBOARD_PREGNANCY, DASHBOARD_GYNECOLOGIST,
-    ACCESSIBILITY_CONFIG, BRAILLE_KEYBOARD,
-    SOLIDOS_BLW, GROWTH_CURVES, SLEEP_LOG, NUTRIENT_CALC, CHAT_AI,
-    LACTANCIA, PEDIATRA_DIR, EMBARAZO_NUTRICION, CITAS_EMBARAZO,
-    TELECONSULTA, EXPEDIENTE
+    ACCESIBILIDAD_INICIAL, LOGIN, REGISTER_TYPE, REGISTER_PARENT, REGISTER_NUTRITIONIST, REGISTER_MAMA_PRIMERIZA,
+    REGISTER_GINECOLOGO,
+    QUIZ, QUIZ_MAMA_PRIMERIZA, DASHBOARD_PARENT, DASHBOARD_NUTRITIONIST, DASHBOARD_MAMA_PRIMERIZA,
+    DASHBOARD_GINECOLOGO,
+    VINCULACION_GINECOLOGO, DIRECTORIO_GINECOLOGOS,
+    LACTANCIA, SOLIDOS, CRECIMIENTO, SUENO, MICRONUTRIENTES, NEURODESARROLLO, MEAL_PLANNING, CHAT_IA, DIARIO_VISUAL, RECORDATORIOS,
+    NUTRIENTES, DIETA, CONFIGURACION, EDITAR_PERFIL, EDITAR_REGION, PEDIATRA_DASHBOARD, PACIENTE_EXPEDIENTE, EXPEDIENTE_EMBARAZO, AYUDA, PAGO_TELECONSULTA,
+    BIOMETRIC_ACTIVATION, NUTRICION_EMBARAZO, CITAS_EMBARAZO, TELECONSULTA
+}
+
+fun esPantallaModuloInterno(screen: Screen): Boolean {
+    return when (screen) {
+        Screen.LACTANCIA, Screen.SOLIDOS, Screen.CRECIMIENTO, Screen.SUENO,
+        Screen.MICRONUTRIENTES, Screen.NEURODESARROLLO, Screen.MEAL_PLANNING,
+        Screen.CHAT_IA, Screen.DIARIO_VISUAL, Screen.RECORDATORIOS, Screen.NUTRIENTES,
+        Screen.DIETA, Screen.CONFIGURACION, Screen.EDITAR_PERFIL, Screen.EDITAR_REGION,
+        Screen.PEDIATRA_DASHBOARD, Screen.AYUDA, Screen.VINCULACION_GINECOLOGO,
+        Screen.DIRECTORIO_GINECOLOGOS, Screen.NUTRICION_EMBARAZO, Screen.CITAS_EMBARAZO,
+        Screen.PACIENTE_EXPEDIENTE, Screen.EXPEDIENTE_EMBARAZO, Screen.TELECONSULTA -> true
+        else -> false
+    }
 }
 
 @Composable
@@ -56,83 +64,102 @@ fun NutriIAiOSApp() {
 
     MaterialTheme {
         when (currentScreen) {
-            Screen.LOGIN               -> LoginScreen(
-                onLogin          = { currentScreen = Screen.DASHBOARD_PARENT },
+            Screen.ACCESIBILIDAD_INICIAL -> AccessibilityConfigScreen(
+                onNavigateBack = { currentScreen = Screen.LOGIN }
+            )
+            Screen.LOGIN -> LoginScreen(
+                onLogin = { currentScreen = Screen.DASHBOARD_PARENT },
                 onNavigateRegister = { currentScreen = Screen.REGISTER_TYPE }
             )
-            Screen.REGISTER_TYPE       -> RegisterTypeScreen(
+            Screen.REGISTER_TYPE -> RegisterTypeScreen(
                 onNavigateBack        = { currentScreen = Screen.LOGIN },
                 onSelectParent        = { currentScreen = Screen.REGISTER_PARENT },
-                onSelectNutritionist  = { currentScreen = Screen.REGISTER_PROFESSIONAL },
-                onSelectMamaPrimeriza = { currentScreen = Screen.REGISTER_MAMA },
-                onSelectGinecologo    = { currentScreen = Screen.REGISTER_PROFESSIONAL }
+                onSelectNutritionist  = { currentScreen = Screen.REGISTER_NUTRITIONIST },
+                onSelectMamaPrimeriza = { currentScreen = Screen.REGISTER_MAMA_PRIMERIZA },
+                onSelectGinecologo    = { currentScreen = Screen.REGISTER_GINECOLOGO }
             )
-            Screen.REGISTER_PARENT     -> ParentRegisterScreen(
+            Screen.REGISTER_PARENT -> ParentRegisterScreen(
                 onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
                 onRegister     = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.REGISTER_MAMA       -> MamaPrimerizaRegisterScreen(
+            Screen.REGISTER_MAMA_PRIMERIZA -> MamaPrimerizaRegisterScreen(
                 onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
-                onRegister     = { currentScreen = Screen.DASHBOARD_PREGNANCY }
+                onRegister     = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
             )
-            Screen.REGISTER_PROFESSIONAL -> ProfessionalRegisterScreen(
+            Screen.REGISTER_NUTRITIONIST -> ProfessionalRegisterScreen(
                 onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
                 onRegister     = { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
             )
-            Screen.DASHBOARD_PARENT    -> ParentDashboardScreen(
-                onNavigate   = { dest -> currentScreen = dest },
-                onLogout     = { currentScreen = Screen.LOGIN }
+            Screen.REGISTER_GINECOLOGO -> ProfessionalRegisterScreen(
+                onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
+                onRegister     = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+            )
+
+            // Dashboards
+            Screen.DASHBOARD_PARENT -> ParentDashboardScreen(
+                onNavigate = { dest -> currentScreen = dest },
+                onLogout   = { currentScreen = Screen.LOGIN }
             )
             Screen.DASHBOARD_NUTRITIONIST -> NutritionistDashboardScreen(
-                onNavigate   = { dest -> currentScreen = dest },
-                onLogout     = { currentScreen = Screen.LOGIN }
+                onNavigate = { dest -> currentScreen = dest },
+                onLogout   = { currentScreen = Screen.LOGIN }
             )
-            Screen.DASHBOARD_PREGNANCY -> PregnancyDashboardScreen(
-                onNavigate   = { dest -> currentScreen = dest },
-                onLogout     = { currentScreen = Screen.LOGIN }
+            Screen.DASHBOARD_MAMA_PRIMERIZA -> PregnancyDashboardScreen(
+                onNavigate = { dest -> currentScreen = dest },
+                onLogout   = { currentScreen = Screen.LOGIN }
             )
-            Screen.DASHBOARD_GYNECOLOGIST -> GynecologistDashboardScreen(
-                onNavigate   = { dest -> currentScreen = dest },
-                onLogout     = { currentScreen = Screen.LOGIN }
+            Screen.DASHBOARD_GINECOLOGO -> GynecologistDashboardScreen(
+                onNavigate = { dest -> currentScreen = dest },
+                onLogout   = { currentScreen = Screen.LOGIN }
             )
-            Screen.ACCESSIBILITY_CONFIG -> AccessibilityConfigScreen(
+
+            // Módulos
+            Screen.ACCESIBILIDAD_INICIAL,
+            Screen.CONFIGURACION        -> AccessibilityConfigScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.BRAILLE_KEYBOARD    -> BrailleKeyboardScreen(
-                onNavigateBack = { currentScreen = Screen.ACCESSIBILITY_CONFIG }
-            )
-            Screen.SOLIDOS_BLW         -> SolidosBLWScreen(
+            Screen.SOLIDOS              -> SolidosBLWScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.GROWTH_CURVES       -> GrowthCurvesScreen(
+            Screen.CRECIMIENTO          -> GrowthCurvesScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.SLEEP_LOG           -> SleepLogScreen(
+            Screen.SUENO                -> SleepLogScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.NUTRIENT_CALC       -> NutrientCalcScreen(
+            Screen.NUTRIENTES,
+            Screen.MICRONUTRIENTES,
+            Screen.DIETA                -> NutrientCalcScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.CHAT_AI             -> ChatAIScreen(
+            Screen.CHAT_IA              -> ChatAIScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.LACTANCIA           -> LactanciaScreen(
+            Screen.LACTANCIA            -> LactanciaScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.PEDIATRA_DIR        -> PediatraDirScreen(
+            Screen.PEDIATRA_DASHBOARD   -> PediatraDirScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.EMBARAZO_NUTRICION  -> EmbarazoNutricionScreen(
-                onNavigateBack = { currentScreen = Screen.DASHBOARD_PREGNANCY }
+            Screen.NUTRICION_EMBARAZO   -> EmbarazoNutricionScreen(
+                onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
             )
-            Screen.CITAS_EMBARAZO      -> CitasEmbarazoScreen(
-                onNavigateBack = { currentScreen = Screen.DASHBOARD_PREGNANCY }
+            Screen.CITAS_EMBARAZO       -> CitasEmbarazoScreen(
+                onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
             )
-            Screen.TELECONSULTA        -> TeleconsultaScreen(
+            Screen.TELECONSULTA,
+            Screen.PAGO_TELECONSULTA    -> TeleconsultaScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }
             )
-            Screen.EXPEDIENTE          -> ExpedienteScreen(
+            Screen.PACIENTE_EXPEDIENTE  -> ExpedienteScreen(
                 onNavigateBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
+            )
+            Screen.EXPEDIENTE_EMBARAZO  -> ExpedienteScreen(
+                onNavigateBack = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+            )
+            else                        -> ParentDashboardScreen(
+                onNavigate = { dest -> currentScreen = dest },
+                onLogout   = { currentScreen = Screen.LOGIN }
             )
         }
     }
