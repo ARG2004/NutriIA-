@@ -2169,3 +2169,231 @@ fun AnimatedMinimalistBackground() {
         }
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TECLADO BRAILLE TÁCTIL (TABLA VERIFICADA DE 6 PUNTOS)
+// ═══════════════════════════════════════════════════════════════════════════
+private val TABLA_BRAILLE_VERIFICADA: Map<Set<Int>, String> = buildMap {
+    put(setOf(1), "a"); put(setOf(1, 2), "b"); put(setOf(1, 4), "c")
+    put(setOf(1, 4, 5), "d"); put(setOf(1, 5), "e"); put(setOf(1, 2, 4), "f")
+    put(setOf(1, 2, 4, 5), "g"); put(setOf(1, 2, 5), "h"); put(setOf(2, 4), "i")
+    put(setOf(2, 4, 5), "j"); put(setOf(1, 3), "k"); put(setOf(1, 2, 3), "l")
+    put(setOf(1, 3, 4), "m"); put(setOf(1, 3, 4, 5), "n"); put(setOf(1, 3, 5), "o")
+    put(setOf(1, 2, 3, 4), "p"); put(setOf(1, 2, 3, 4, 5), "q"); put(setOf(1, 2, 3, 5), "r")
+    put(setOf(2, 3, 4), "s"); put(setOf(2, 3, 4, 5), "t"); put(setOf(1, 3, 6), "u")
+    put(setOf(1, 2, 3, 6), "v"); put(setOf(2, 4, 5, 6), "w"); put(setOf(1, 3, 4, 6), "x")
+    put(setOf(1, 3, 4, 5, 6), "y"); put(setOf(1, 3, 5, 6), "z")
+    put(setOf(1, 6), "á"); put(setOf(1, 2, 4, 6), "é"); put(setOf(3, 4), "í")
+    put(setOf(3, 4, 5), "ó"); put(setOf(1, 5, 6), "ú"); put(setOf(1, 4, 5, 6), "ñ")
+    put(setOf(2), "1"); put(setOf(2, 3), "2"); put(setOf(2, 5), "3")
+    put(setOf(2, 6), "4"); put(setOf(3), "5"); put(setOf(3, 5), "6")
+    put(setOf(3, 6), "7"); put(setOf(2, 3, 5), "8"); put(setOf(2, 3, 6), "9"); put(setOf(3, 5, 6), "0")
+    put(setOf(5), "."); put(setOf(6), ","); put(setOf(2, 5, 6), "?"); put(setOf(3, 4, 6), "!")
+}
+
+@Composable
+fun BrailleKeyboard(
+    textoActual: String,
+    onTextoChange: (String) -> Unit,
+    colorPrimario: Color = NutriaGreen,
+    onNext: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    var puntosSeleccionados by remember { mutableStateOf(setOf<Int>()) }
+    val letraActual = TABLA_BRAILLE_VERIFICADA[puntosSeleccionados].takeIf { puntosSeleccionados.isNotEmpty() }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF1A1A2E))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Teclado Braille (6 puntos)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            if (letraActual != null) {
+                Text(
+                    "Letra: \"$letraActual\"",
+                    color = NutriaOrange,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Matriz de 6 puntos Braille (2 columnas x 3 filas)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(1, 2, 3).forEach { p ->
+                    BrailleDotButton(
+                        punto = p,
+                        seleccionado = puntosSeleccionados.contains(p),
+                        onToggle = {
+                            puntosSeleccionados = if (puntosSeleccionados.contains(p)) puntosSeleccionados - p else puntosSeleccionados + p
+                        }
+                    )
+                }
+            }
+            Spacer(Modifier.width(32.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(4, 5, 6).forEach { p ->
+                    BrailleDotButton(
+                        punto = p,
+                        seleccionado = puntosSeleccionados.contains(p),
+                        onToggle = {
+                            puntosSeleccionados = if (puntosSeleccionados.contains(p)) puntosSeleccionados - p else puntosSeleccionados + p
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Botones de acción del Teclado Braille
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { puntosSeleccionados = emptySet() },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            ) {
+                Text("Limpiar", fontSize = 12.sp)
+            }
+
+            Button(
+                onClick = {
+                    letraActual?.let { l ->
+                        onTextoChange(textoActual + l)
+                        puntosSeleccionados = emptySet()
+                    }
+                },
+                enabled = letraActual != null,
+                modifier = Modifier.weight(1.3f),
+                colors = ButtonDefaults.buttonColors(containerColor = colorPrimario)
+            ) {
+                Text("Insertar", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+
+            Button(
+                onClick = { onTextoChange(textoActual + " ") },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF37474F))
+            ) {
+                Icon(Icons.Rounded.SpaceBar, contentDescription = "Espacio", tint = Color.White)
+            }
+
+            Button(
+                onClick = {
+                    if (textoActual.isNotEmpty()) {
+                        onTextoChange(textoActual.dropLast(1))
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828))
+            ) {
+                Icon(Icons.Rounded.Backspace, contentDescription = "Borrar", tint = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+fun BrailleDotButton(
+    punto: Int,
+    seleccionado: Boolean,
+    onToggle: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .background(if (seleccionado) NutriaGreen else Color(0xFF2E2E48))
+            .border(2.dp, if (seleccionado) Color.White else Color(0xFF4A4A6A), CircleShape)
+            .clickable(onClick = onToggle),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "$punto",
+            color = if (seleccionado) Color.White else Color.LightGray,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMPO DE TEXTO ACCESIBLE CON MODO BRAILLE / VOZ / TECLADO
+// ═══════════════════════════════════════════════════════════════════════════
+@Composable
+fun CampoTextoAccesible(
+    valor: String,
+    onValorChange: (String) -> Unit,
+    etiqueta: String,
+    placeholder: String = "",
+    esPassword: Boolean = false,
+    a11yMode: AccessibilityMode = AccessibilityMode.NORMAL,
+    colorPrimario: Color = NutriaGreen,
+    modifier: Modifier = Modifier
+) {
+    var mostrarBraille by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(etiqueta, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            if (a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE) {
+                TextButton(
+                    onClick = { mostrarBraille = !mostrarBraille },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Icon(Icons.Rounded.TouchApp, contentDescription = null, tint = NutriaOrange, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (mostrarBraille) "Cerrar Braille" else "Teclado Braille", fontSize = 12.sp, color = NutriaOrange, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        OutlinedTextField(
+            value = valor,
+            onValueChange = onValorChange,
+            placeholder = { Text(placeholder, fontSize = 14.sp) },
+            singleLine = true,
+            visualTransformation = if (esPassword) PasswordVisualTransformation() else VisualTransformation.None,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colorPrimario,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            )
+        )
+
+        AnimatedVisibility(visible = mostrarBraille) {
+            Column(modifier = Modifier.padding(top = 10.dp)) {
+                BrailleKeyboard(
+                    textoActual = valor,
+                    onTextoChange = onValorChange,
+                    colorPrimario = colorPrimario
+                )
+            }
+        }
+    }
+}
