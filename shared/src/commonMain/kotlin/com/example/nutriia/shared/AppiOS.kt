@@ -7,11 +7,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.ExitToApp
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -21,14 +25,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -49,16 +54,10 @@ val NutriaGineRosa   = Color(0xFFF06292)
 val NutriaYellow     = Color(0xFFFBC02D)
 val NutriaRed        = Color(0xFFE53935)
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MODOS DE ACCESIBILIDAD
-// ═══════════════════════════════════════════════════════════════════════════
 enum class AccessibilityMode {
     NORMAL, BLIND, MUTE, DEAF, COLOR_BLIND
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ENUM SCREEN COMPLETO DE MAINACTIVITY.KT
-// ═══════════════════════════════════════════════════════════════════════════
 enum class Screen {
     ACCESIBILIDAD_INICIAL, LOGIN, REGISTER_TYPE, REGISTER_PARENT, REGISTER_NUTRITIONIST, REGISTER_MAMA_PRIMERIZA,
     REGISTER_GINECOLOGO,
@@ -69,6 +68,18 @@ enum class Screen {
     NUTRIENTES, DIETA, CONFIGURACION, EDITAR_PERFIL, EDITAR_REGION, PEDIATRA_DASHBOARD, PACIENTE_EXPEDIENTE, EXPEDIENTE_EMBARAZO, AYUDA, PAGO_TELECONSULTA,
     BIOMETRIC_ACTIVATION, NUTRICION_EMBARAZO, CITAS_EMBARAZO
 }
+
+data class ChildData(
+    val id: String,
+    val name: String,
+    val birthDate: String,
+    val ageText: String,
+    val stage: String,
+    val weight: String,
+    val height: String,
+    val headCirc: String,
+    val bmiPercentile: String
+)
 
 @Composable
 fun AppiOS() {
@@ -83,12 +94,28 @@ fun AppiOS() {
     var userEmail by rememberSaveable { mutableStateOf("familia@nutriia.com") }
     var userName by rememberSaveable { mutableStateOf("Familia Rivera") }
     var userRole by rememberSaveable { mutableStateOf("padre") }
-    var childName by rememberSaveable { mutableStateOf("Mateo Rivera") }
-    var childBirthDate by rememberSaveable { mutableStateOf("15/02/2026") }
-    var childWeight by rememberSaveable { mutableStateOf("7.8") }
-    var childHeight by rememberSaveable { mutableStateOf("67.0") }
-    var childHeadCirc by rememberSaveable { mutableStateOf("42.5") }
+    var activeChildIndex by rememberSaveable { mutableIntStateOf(0) }
     var semanasEmbarazo by rememberSaveable { mutableIntStateOf(24) }
+
+    var childrenList by remember {
+        mutableStateOf(
+            listOf(
+                ChildData(
+                    id = "1",
+                    name = "Mateo Rivera",
+                    birthDate = "15/02/2026",
+                    ageText = "6 meses y 15 días",
+                    stage = "Iniciando Sólidos",
+                    weight = "7.8",
+                    height = "67.0",
+                    headCirc = "42.5",
+                    bmiPercentile = "P50 OMS"
+                )
+            )
+        )
+    }
+
+    val activeChild = childrenList.getOrNull(activeChildIndex) ?: childrenList.first()
 
     LaunchedEffect(Unit) {
         delay(1500)
@@ -109,7 +136,7 @@ fun AppiOS() {
             onSurface = Color(0xFF1C1B1F)
         )
     ) {
-        // Safe Area Padding para iPhone SE 2020 (Botón Home + Barra Superior)
+        // Safe Area adaptativa para iPhone SE 2020 (Botón Home + Barra Superior)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -243,13 +270,21 @@ fun AppiOS() {
                         )
 
                         Screen.QUIZ -> OnboardingQuizCompleteView(
-                            initialChildName = childName,
+                            initialChildName = activeChild.name,
                             onQuizComplete = { name, bDate, w, h, hc ->
-                                childName = name.ifBlank { "Mateo Rivera" }
-                                childBirthDate = bDate
-                                childWeight = w
-                                childHeight = h
-                                childHeadCirc = hc
+                                val newChild = ChildData(
+                                    id = (childrenList.size + 1).toString(),
+                                    name = name.ifBlank { "Mateo Rivera" },
+                                    birthDate = bDate,
+                                    ageText = "6 meses",
+                                    stage = "Iniciando Sólidos",
+                                    weight = w,
+                                    height = h,
+                                    headCirc = hc,
+                                    bmiPercentile = "P50 OMS"
+                                )
+                                childrenList = childrenList + newChild
+                                activeChildIndex = childrenList.lastIndex
                                 currentScreen = Screen.DASHBOARD_PARENT
                             },
                             onCancel = { currentScreen = Screen.DASHBOARD_PARENT }
@@ -270,11 +305,14 @@ fun AppiOS() {
                             onTabSelected = { currentScreen = it }
                         ) {
                             NutriIADashboardParentView(
-                                childName = childName,
-                                childWeight = childWeight,
-                                childHeight = childHeight,
-                                childHeadCirc = childHeadCirc,
+                                parentName = userName,
+                                children = childrenList,
+                                activeChildIndex = activeChildIndex,
+                                onChildChanged = { activeChildIndex = it },
+                                onAddChild = { currentScreen = Screen.QUIZ },
                                 onNavigate = { currentScreen = it },
+                                onAyuda = { currentScreen = Screen.AYUDA },
+                                onConfig = { currentScreen = Screen.CONFIGURACION },
                                 onLogout = { currentScreen = Screen.LOGIN }
                             )
                         }
@@ -318,7 +356,7 @@ fun AppiOS() {
                             isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
-                            LactanciaScreenView(childName = childName, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            LactanciaScreenView(childName = activeChild.name, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
 
                         Screen.SOLIDOS -> MainAppScaffold(
@@ -326,7 +364,7 @@ fun AppiOS() {
                             isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
-                            SolidosScreenView(childName = childName, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            SolidosScreenView(childName = activeChild.name, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
 
                         Screen.CRECIMIENTO -> MainAppScaffold(
@@ -335,10 +373,10 @@ fun AppiOS() {
                             onTabSelected = { currentScreen = it }
                         ) {
                             CrecimientoScreenView(
-                                childName = childName,
-                                weight = childWeight,
-                                height = childHeight,
-                                headCirc = childHeadCirc,
+                                childName = activeChild.name,
+                                weight = activeChild.weight,
+                                height = activeChild.height,
+                                headCirc = activeChild.headCirc,
                                 onBack = { currentScreen = Screen.DASHBOARD_PARENT }
                             )
                         }
@@ -380,7 +418,7 @@ fun AppiOS() {
                             isOffline = isOfflineMode,
                             onTabSelected = { currentScreen = it }
                         ) {
-                            NutriChatScreenView(childName = childName, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                            NutriChatScreenView(childName = activeChild.name, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                         }
 
                         Screen.DIARIO_VISUAL -> MainAppScaffold(
@@ -527,7 +565,7 @@ fun SplashOverlay(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PANTALLA: ACCESIBILIDAD INICIAL (PRIMERA VEZ)
+// PANTALLA: ACCESIBILIDAD INICIAL
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun AccesibilidadInicialScreen(
@@ -814,7 +852,6 @@ fun NutriaLoginScreen(
                             }
                         }
 
-                        // Botón de acceso biométrico rápido Touch ID
                         IconButton(
                             onClick = onBiometricLogin,
                             modifier = Modifier
@@ -1021,9 +1058,6 @@ fun MamaPrimerizaRegisterScreen(
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// VERIFICADOR DE CÉDULA PROFESIONAL SEP OFICIAL
-// ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun ProfessionalRegisterScreen(
     roleTitle: String,
@@ -1057,7 +1091,6 @@ fun ProfessionalRegisterScreen(
                 OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
 
-                // Campo Cédula Profesional con Verificador SEP
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = cedula,
@@ -1124,7 +1157,7 @@ fun ProfessionalRegisterScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4. ONBOARDING QUIZ COMPLETO (6 PASOS OMS)
+// 4. ONBOARDING QUIZ COMPLETO
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun OnboardingQuizCompleteView(
@@ -1365,44 +1398,68 @@ fun MainAppScaffold(
     }
 }
 
-data class NavTabItem(val screen: Screen, val label: String, val icon: ImageVector)
-
 // ═══════════════════════════════════════════════════════════════════════════
-// 6. DASHBOARD PRINCIPAL DE PADRES
+// 6. DASHBOARD PRINCIPAL DE PADRES (ADAPTADO 100% DE DASHBOARD.KT)
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
 fun NutriIADashboardParentView(
-    childName: String,
-    childWeight: String,
-    childHeight: String,
-    childHeadCirc: String,
+    parentName: String,
+    children: List<ChildData>,
+    activeChildIndex: Int,
+    onChildChanged: (Int) -> Unit,
+    onAddChild: () -> Unit,
     onNavigate: (Screen) -> Unit,
+    onAyuda: () -> Unit,
+    onConfig: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val activeChild = children.getOrNull(activeChildIndex) ?: children.first()
+    val pagerState = rememberPagerState(initialPage = activeChildIndex, pageCount = { children.size })
+
+    LaunchedEffect(pagerState.currentPage) {
+        onChildChanged(pagerState.currentPage)
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Encabezado con logo, nombre y accesos rápidos de Dashboard.kt
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text("¡Hola, Familia! 🌿", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
-                    Text("Plan Nutricional Activo OMS", fontSize = 12.sp, color = Color.Gray)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(42.dp).clip(CircleShape).background(NutriaGreen.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Eco, contentDescription = null, tint = NutriaGreen, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text("¡Hola, $parentName! 🌿", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
+                        Text("Plan Nutricional Activo OMS", fontSize = 11.sp, color = Color.Gray)
+                    }
                 }
-                Box(
-                    modifier = Modifier.size(44.dp).clip(CircleShape).background(NutriaGreen.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.ChildCare, contentDescription = "Bebé", tint = NutriaGreen, modifier = Modifier.size(26.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    IconButton(onClick = onAyuda, modifier = Modifier.size(38.dp).clip(CircleShape).background(Color.White)) {
+                        Icon(Icons.AutoMirrored.Rounded.HelpOutline, contentDescription = "Ayuda", tint = NutriaDarkGreen, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onConfig, modifier = Modifier.size(38.dp).clip(CircleShape).background(Color.White)) {
+                        Icon(Icons.Rounded.Settings, contentDescription = "Configuración", tint = NutriaDarkGreen, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(onClick = onLogout, modifier = Modifier.size(38.dp).clip(CircleShape).background(Color.White)) {
+                        Icon(Icons.AutoMirrored.Rounded.ExitToApp, contentDescription = "Salir", tint = Color(0xFFD32F2F), modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
 
-        // Tarjeta del Bebé Activo
+        // Carrusel Pager de Tarjetas de Bebés (ChildProfileCard de Dashboard.kt)
         item {
             Card(
                 shape = RoundedCornerShape(24.dp),
@@ -1411,15 +1468,84 @@ fun NutriIADashboardParentView(
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
-                    Text(childName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(Modifier.height(2.dp))
-                    Text("6 meses y 15 días • Alimentación Complementaria", fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ChipInfo(label = "$childWeight kg", subtitle = "Peso P50")
-                        ChipInfo(label = "$childHeight cm", subtitle = "Talla P55")
-                        ChipInfo(label = "$childHeadCirc cm", subtitle = "Cefálico P50")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(46.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = activeChild.name.firstOrNull()?.toString() ?: "B",
+                                    color = Color.White,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(activeChild.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("${activeChild.stage} • ${activeChild.ageText}", fontSize = 11.sp, color = Color.White.copy(alpha = 0.9f))
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onAddChild,
+                            modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f))
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = "Agregar hijo", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
                     }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChipInfo(label = "${activeChild.weight} kg", subtitle = "Peso P50")
+                        ChipInfo(label = "${activeChild.height} cm", subtitle = "Talla P55")
+                        ChipInfo(label = "${activeChild.headCirc} cm", subtitle = "Cefálico P50")
+                        ChipInfo(label = activeChild.bmiPercentile, subtitle = "Percentil")
+                    }
+                }
+            }
+        }
+
+        // Banner de Alerta Clínica Activa
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                border = BorderStroke(1.dp, Color(0xFFFFB74D)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(NutriaOrange.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = NutriaOrange, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Próxima Evaluación Pediátrica", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                        Text("Vacuna de los 6 meses (Hexavalente) programada para esta semana.", fontSize = 11.sp, color = Color(0xFF795548))
+                    }
+                }
+            }
+        }
+
+        // Botón Destacado de NutriChat IA
+        item {
+            Button(
+                onClick = { onNavigate(Screen.CHAT_IA) },
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = NutriaDarkGreen),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Psychology, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Consultar Asistente Clínico NutriIA", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }
@@ -1444,15 +1570,7 @@ fun NutriIADashboardParentView(
             }
         }
 
-        // Fila 3: NutriChat IA y Diario Visual
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DashModuleCard("NutriChat IA", "Consultas clínicas OMS", Icons.Rounded.ChatBubble, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.CHAT_IA) }
-                DashModuleCard("Diario Visual", "Registro fotográfico", Icons.Rounded.PhotoCamera, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.DIARIO_VISUAL) }
-            }
-        }
-
-        // Fila 4: Neurodesarrollo y Registro de Sueño
+        // Fila 3: Neurodesarrollo y Registro de Sueño
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 DashModuleCard("Neurodesarrollo", "Hitos motores y cognitivos", Icons.Rounded.Psychology, NutriaSoftPurple, NutriaSoftPurple.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.NEURODESARROLLO) }
@@ -1460,11 +1578,19 @@ fun NutriIADashboardParentView(
             }
         }
 
-        // Fila 5: Recordatorios y Teleconsulta Pediatra
+        // Fila 4: Diario Visual y Recordatorios
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Diario Visual", "Registro fotográfico", Icons.Rounded.PhotoCamera, NutriaOrange, NutriaOrange.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.DIARIO_VISUAL) }
                 DashModuleCard("Recordatorios", "Vacunas y alertas", Icons.Rounded.Notifications, NutriaPink, NutriaPink.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.RECORDATORIOS) }
-                DashModuleCard("Pediatra & Citas", "Teleconsulta profesional", Icons.Rounded.MedicalServices, NutriaSoftTeal, NutriaSoftTeal.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.PEDIATRA_DASHBOARD) }
+            }
+        }
+
+        // Fila 5: Teleconsulta con Pediatra & Plan Semanal
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DashModuleCard("Pediatra & Citas", "Teleconsulta médica", Icons.Rounded.MedicalServices, NutriaSoftTeal, NutriaSoftTeal.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.PEDIATRA_DASHBOARD) }
+                DashModuleCard("Plan Semanal", "Menús por edad OMS", Icons.Rounded.CalendarToday, NutriaGreen, NutriaGreen.copy(alpha = 0.12f), Modifier.weight(1f)) { onNavigate(Screen.MEAL_PLANNING) }
             }
         }
     }
@@ -1501,19 +1627,47 @@ fun DashboardMamaPrimerizaView(semanas: Int, onNavigate: (Screen) -> Unit, onLog
 
 @Composable
 fun DashboardNutritionistView(onNavigate: (Screen) -> Unit, onLogout: () -> Unit) {
+    var searchQuery by remember { mutableStateOf("") }
+
     LazyColumn(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text("🩺 Directorio Clínico Nutricional", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = NutriaDarkGreen)
             Text("Expedientes de Pacientes Pediátricos Activos", fontSize = 13.sp, color = Color.Gray)
         }
+
+        item {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Buscar paciente por nombre...") },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = NutriaGreen) },
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         item {
             Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Paciente: Mateo Rivera (6m)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("Estado Nutricional: Eutrófico (Percentil 50 OMS)", fontSize = 12.sp, color = NutriaGreen)
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = { onNavigate(Screen.CRECIMIENTO) }, colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen)) {
-                        Text("Ver Expediente & Curvas")
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text("Mateo Rivera", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2C3E50))
+                            Text("6 meses • Peso 7.8kg • Talla 67cm", fontSize = 12.sp, color = Color.Gray)
+                        }
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFE8F5E9)).padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("Eutrófico P50", color = NutriaDarkGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onNavigate(Screen.CRECIMIENTO) }, colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen), modifier = Modifier.weight(1f)) {
+                            Text("Curvas OMS", fontSize = 12.sp)
+                        }
+                        Button(onClick = { onNavigate(Screen.MEAL_PLANNING) }, colors = ButtonDefaults.buttonColors(containerColor = NutriaSoftTeal), modifier = Modifier.weight(1f)) {
+                            Text("Plan Dieta", fontSize = 12.sp)
+                        }
                     }
                 }
             }
@@ -1614,7 +1768,7 @@ fun SolidosScreenView(childName: String, onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().background(NutriaBgCrema).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Atrás", tint = NutriaDarkGreen) }
-            Text("Sólidos & BLW", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+            Text("Sólidos & BLW: $childName", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
         }
         Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(16.dp)) {
