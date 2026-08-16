@@ -15,6 +15,10 @@ data class ResultadoCedula(
     val mensaje: String = ""
 )
 
+expect object PlatformCedulaVerifier {
+    suspend fun verificarCedulaNativa(cedula: String): ResultadoCedula
+}
+
 object CedulaVerifier {
     private var ultimoIntentoMs: Long = 0L
     private const val RATE_LIMIT_MS: Long = 3000L
@@ -37,18 +41,6 @@ object CedulaVerifier {
                 mensaje = "La cédula debe contener al menos 6 dígitos numéricos"
             )
         }
-
-        // Validación estructural para Nutrición / Medicina
-        return ResultadoCedula(
-            valida = true,
-            cedula = cedulaLimpia,
-            nombreTitular = "Especialista Validado",
-            genero = "No especificado",
-            institucion = "Universidad Nacional",
-            profesion = "Licenciatura en Nutrición",
-            entidad = "Ciudad de México",
-            anoRegistro = "2020",
-            mensaje = "Cédula verificada con éxito"
-        )
+        return PlatformCedulaVerifier.verificarCedulaNativa(cedulaLimpia)
     }
 }

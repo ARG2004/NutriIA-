@@ -76,6 +76,10 @@
 	<string>NutrIA utiliza el reconocimiento de voz para facilitar la accesibilidad y dictado de información.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>NutrIA utiliza tu ubicación para sugerirte especialistas y servicios cercanos.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>NutrIA utiliza Bluetooth para conectarse a dispositivos y básculas inteligentes.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>NutrIA utiliza Bluetooth para comunicarse con dispositivos cercanos de salud.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

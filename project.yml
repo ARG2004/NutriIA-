@@ -44,6 +44,8 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
     dependencies:
       - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseFirestore

@@ -62,6 +62,8 @@ import com.example.nutriia.solidos.SolidosScreen
 import com.example.nutriia.teleconsulta.*
 import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.ui.theme.NutriIATheme
+import com.example.nutriia.util.PermissionType
+import com.example.nutriia.util.PlatformPermissionHelper
 import com.example.nutriia.vinculacion.VinculacionViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -315,6 +317,121 @@ fun NutriIAiOSApp() {
         if (toastMessage != null) {
             delay(2500)
             toastMessage = null
+        }
+    }
+
+    // ─── Solicitud Secuencial de Permisos Narrada en Modo BLIND ───────────
+    var permissionStep by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(accessibilityMode, currentScreen) {
+        if (accessibilityMode == AccessibilityMode.BLIND) {
+            if (currentScreen == Screen.ACCESIBILIDAD_INICIAL) {
+                permissionStep = 1
+            } else {
+                if (!PlatformPermissionHelper.hasPermission(PermissionType.MICROPHONE)) {
+                    val msg = if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) {
+                        "Please grant microphone permission to enable voice input."
+                    } else {
+                        "Por favor, concede el permiso de micrófono para activar el control por voz."
+                    }
+                    scope.launch {
+                        accessibilityVm.ttsManager?.hablarYEsperar(msg, 500L)
+                        PlatformPermissionHelper.requestPermission(PermissionType.MICROPHONE) { otorgado ->
+                            if (otorgado) accessibilityVm.hablar(if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) "Microphone enabled." else "Micrófono habilitado.")
+                            else accessibilityVm.hablar(if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) "Microphone denied." else "Micrófono denegado.")
+                        }
+                    }
+                }
+            }
+        } else if (accessibilityMode == AccessibilityMode.MUTE) {
+            if (!PlatformPermissionHelper.hasPermission(PermissionType.CAMERA)) {
+                PlatformPermissionHelper.requestPermission(PermissionType.CAMERA) { }
+            }
+        }
+    }
+
+    LaunchedEffect(permissionStep, accessibilityMode, currentScreen) {
+        if (accessibilityMode != AccessibilityMode.BLIND || currentScreen != Screen.ACCESIBILIDAD_INICIAL) return@LaunchedEffect
+
+        val isIngles = accessibilityVm.idioma.value == IdiomaVoz.INGLES
+
+        when (permissionStep) {
+            1 -> {
+                if (PlatformPermissionHelper.hasPermission(PermissionType.MICROPHONE)) {
+                    permissionStep = 2
+                } else {
+                    val msg = if (isIngles) {
+                        "First, I will ask for microphone permission so you can input information by voice and speak to the assistant. Please press Allow on the prompt."
+                    } else {
+                        "Primero, te pediré el permiso de micrófono para que puedas dictar información por voz y hablar con el asistente. Por favor, selecciona Permitir en la pantalla."
+                    }
+                    scope.launch {
+                        accessibilityVm.ttsManager?.hablarYEsperar(msg, 800L)
+                        PlatformPermissionHelper.requestPermission(PermissionType.MICROPHONE) { otorgado ->
+                            if (otorgado) accessibilityVm.hablar(if (isIngles) "Microphone enabled." else "Micrófono habilitado.")
+                            else accessibilityVm.hablar(if (isIngles) "Microphone denied." else "Micrófono denegado.")
+                            permissionStep = 2
+                        }
+                    }
+                }
+            }
+            2 -> {
+                if (PlatformPermissionHelper.hasPermission(PermissionType.CAMERA)) {
+                    permissionStep = 3
+                } else {
+                    val msg = if (isIngles) {
+                        "Next is camera permission for video consultations with pediatricians and gynecologists. Please press Allow."
+                    } else {
+                        "Ahora te pediré el permiso de cámara para las teleconsultas en video con pediatras y ginecólogos. Por favor, selecciona Permitir."
+                    }
+                    scope.launch {
+                        accessibilityVm.ttsManager?.hablarYEsperar(msg, 800L)
+                        PlatformPermissionHelper.requestPermission(PermissionType.CAMERA) { otorgado ->
+                            if (otorgado) accessibilityVm.hablar(if (isIngles) "Camera enabled." else "Cámara habilitada.")
+                            else accessibilityVm.hablar(if (isIngles) "Camera denied." else "Cámara denegada.")
+                            permissionStep = 3
+                        }
+                    }
+                }
+            }
+            3 -> {
+                if (PlatformPermissionHelper.hasPermission(PermissionType.PHONE)) {
+                    permissionStep = 4
+                } else {
+                    val msg = if (isIngles) {
+                        "Next is phone permission to establish direct calls with specialists. Please press Allow."
+                    } else {
+                        "El siguiente es el permiso de teléfono para establecer llamadas directamente con especialistas. Por favor, selecciona Permitir."
+                    }
+                    scope.launch {
+                        accessibilityVm.ttsManager?.hablarYEsperar(msg, 800L)
+                        PlatformPermissionHelper.requestPermission(PermissionType.PHONE) { otorgado ->
+                            if (otorgado) accessibilityVm.hablar(if (isIngles) "Phone permissions enabled." else "Permisos telefónicos habilitados.")
+                            else accessibilityVm.hablar(if (isIngles) "Phone permissions denied." else "Permisos telefónicos denegados.")
+                            permissionStep = 4
+                        }
+                    }
+                }
+            }
+            4 -> {
+                if (PlatformPermissionHelper.hasPermission(PermissionType.NEAR_DEVICES)) {
+                    permissionStep = 5
+                } else {
+                    val msg = if (isIngles) {
+                        "Finally, I will ask for nearby devices permission to allow device synchronization. Please press Allow."
+                    } else {
+                        "Por último, te pediré el permiso de dispositivos cercanos para permitir la sincronización. Por favor, selecciona Permitir."
+                    }
+                    scope.launch {
+                        accessibilityVm.ttsManager?.hablarYEsperar(msg, 800L)
+                        PlatformPermissionHelper.requestPermission(PermissionType.NEAR_DEVICES) { otorgado ->
+                            if (otorgado) accessibilityVm.hablar(if (isIngles) "Nearby devices permission enabled." else "Permiso de dispositivos cercanos habilitado.")
+                            else accessibilityVm.hablar(if (isIngles) "Nearby devices permission denied." else "Permiso de dispositivos cercanos denegado.")
+                            permissionStep = 5
+                        }
+                    }
+                }
+            }
         }
     }
 
