@@ -89,12 +89,17 @@ open class Query {
 }
 
 class CollectionReference(val path: String = "") : Query() {
-    fun document(path: String = ""): DocumentReference = DocumentReference(path)
+    val id: String get() = path.substringAfterLast('/')
+    fun getId(): String = id
+    fun getPath(): String = path
+    fun document(path: String = ""): DocumentReference = DocumentReference(path, path)
     fun add(data: Any): Task<DocumentReference> = Task()
 }
 
-class DocumentReference(val id: String = "doc_ref") {
+class DocumentReference(val id: String = "doc_ref", val path: String = id) {
     val reference: DocumentReference get() = this
+    fun getId(): String = id
+    fun getPath(): String = path
     fun get(source: Source = Source.DEFAULT): Task<DocumentSnapshot> = Task()
     fun set(data: Any, options: SetOptions? = null): Task<Unit> = Task()
     fun update(data: Map<String, Any?>): Task<Unit> = Task()
