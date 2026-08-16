@@ -47,7 +47,8 @@ open class Context {
         ACCESSIBILITY_SERVICE -> android.view.accessibility.AccessibilityManager()
         else -> null
     }
-    open fun getPackageName(): String = "com.example.nutriia"
+    val packageName: String get() = "com.example.nutriia"
+    open fun getPackageName(): String = packageName
     open fun getPackageManager(): android.content.pm.PackageManager = android.content.pm.PackageManager()
     open fun startActivity(intent: Intent) {}
 
