@@ -4,6 +4,9 @@ import java.util.Locale
 import kotlin.math.round
 import kotlin.math.abs
 
+fun String.lowercase(locale: Any?): String = this.lowercase()
+fun String.uppercase(locale: Any?): String = this.uppercase()
+
 fun String.Companion.format(locale: Locale, format: String, vararg args: Any?): String {
     return formatInternal(format, args)
 }
