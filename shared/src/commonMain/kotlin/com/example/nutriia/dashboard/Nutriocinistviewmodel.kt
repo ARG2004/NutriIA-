@@ -7,8 +7,8 @@ import com.example.nutriia.vinculacion.NutriologoPublico
 import com.example.nutriia.vinculacion.PlanAlimentario
 import com.example.nutriia.vinculacion.Vinculacion
 import com.example.nutriia.vinculacion.VinculacionRepository
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import com.example.nutriia.utils.FechaUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import dev.gitlive.firebase.firestore.await
 
 data class PacienteResumen(
     val ownerUid:            String  = "",
@@ -88,16 +88,12 @@ class NutritionistDashboardViewModel : ViewModel() {
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
-                val source = if (com.example.nutriia.offline.OfflineManager.hayConexion()) {
-                    com.google.firebase.firestore.Source.DEFAULT
-                } else {
-                    com.google.firebase.firestore.Source.CACHE
-                }
-                val doc          = db.collection("usuarios").document(uid).get(source).await()
-                val nombre       = doc.getString("nombre")       ?: return@launch
-                val especialidad = doc.getString("especialidad") ?: ""
-                val cedula       = doc.getString("cedula")       ?: ""
-                val email        = doc.getString("email")        ?: ""
+                val snap         = db.collection("usuarios").document(uid).get().await()
+                val doc          = snap as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                val nombre       = doc?.getString("nombre")       ?: return@launch
+                val especialidad = doc?.getString("especialidad") ?: ""
+                val cedula       = doc?.getString("cedula")       ?: ""
+                val email        = doc?.getString("email")        ?: ""
 
                 vinculacionRepo.publicarPerfilNutriologo(
                     nombre, especialidad, cedula, email
@@ -194,12 +190,6 @@ class NutritionistDashboardViewModel : ViewModel() {
     private fun cargarPlanesDelHijo(padreUid: String, childId: String) {
         viewModelScope.launch {
             try {
-                val source = if (com.example.nutriia.offline.OfflineManager.hayConexion()) {
-                    com.google.firebase.firestore.Source.DEFAULT
-                } else {
-                    com.google.firebase.firestore.Source.CACHE
-                }
-
                 val query = db.collection("usuarios")
                     .document(padreUid)
                     .collection("hijos")
@@ -207,9 +197,9 @@ class NutritionistDashboardViewModel : ViewModel() {
                     .collection("planes_alimentarios")
 
                 val planesSnap = if (com.example.nutriia.offline.OfflineManager.hayConexion()) {
-                    query.whereEqualTo("activo", true).get(source).await()
+                    query.whereEqualTo("activo", true).get().await()
                 } else {
-                    query.get(source).await()
+                    query.get().await()
                 }
 
                 val planesDelHijo = planesSnap.documents.mapNotNull { planDoc ->

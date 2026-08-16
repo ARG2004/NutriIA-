@@ -5,9 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.embarazo.RegistroPesoEmbarazo
 import com.example.nutriia.embarazo.RegistroSintomasEmbarazo
-import com.google.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 
 data class ExpedienteEmbarazoUiState(
@@ -29,77 +28,27 @@ class PacienteExpedienteEmbarazoViewModel : ViewModel() {
         if (uid == null) {
             flowOf(ExpedienteEmbarazoUiState(cargando = false))
         } else {
-            val perfilFlow = callbackFlow {
-                val listener = db.collection("usuarios")
-                    .document(uid)
-                    .collection("perfilEmbarazo")
-                    .document("unico")
-                    .addSnapshotListener { snap, err ->
-                        if (err != null) {
-                            trySend(null)
-                            return@addSnapshotListener
-                        }
-                        val p = snap?.data?.let { PerfilEmbarazo.fromMap(it) }
-                        trySend(p)
-                    }
-                awaitClose { listener.remove() }
+            val perfilFlow = flow {
+                val snap = db.collection("usuarios").document(uid).collection("perfilEmbarazo").document("unico").get()
+                emit(PerfilEmbarazo.fromMap(snap.data))
             }
 
-            val pesoFlow = callbackFlow {
-                val listener = db.collection("usuarios")
-                    .document(uid)
-                    .collection("perfilEmbarazo")
-                    .document("unico")
-                    .collection("registrosPeso")
-                    .addSnapshotListener { snap, err ->
-                        if (err != null) {
-                            trySend(emptyList())
-                            return@addSnapshotListener
-                        }
-                        val list = snap?.documents?.mapNotNull { doc ->
-                            doc.data?.let { RegistroPesoEmbarazo.fromMap(doc.id, it) }
-                        } ?: emptyList()
-                        trySend(list)
-                    }
-                awaitClose { listener.remove() }
+            val pesoFlow = flow {
+                val snap = db.collection("usuarios").document(uid).collection("perfilEmbarazo").document("unico").collection("registrosPeso").get()
+                val list = snap.documents.mapNotNull { doc -> RegistroPesoEmbarazo.fromMap(doc.id, doc.data) }
+                emit(list)
             }
 
-            val sintomasFlow = callbackFlow {
-                val listener = db.collection("usuarios")
-                    .document(uid)
-                    .collection("perfilEmbarazo")
-                    .document("unico")
-                    .collection("registrosSintomas")
-                    .addSnapshotListener { snap, err ->
-                        if (err != null) {
-                            trySend(emptyList())
-                            return@addSnapshotListener
-                        }
-                        val list = snap?.documents?.mapNotNull { doc ->
-                            doc.data?.let { RegistroSintomasEmbarazo.fromMap(doc.id, it) }
-                        } ?: emptyList()
-                        trySend(list)
-                    }
-                awaitClose { listener.remove() }
+            val sintomasFlow = flow {
+                val snap = db.collection("usuarios").document(uid).collection("perfilEmbarazo").document("unico").collection("registrosSintomas").get()
+                val list = snap.documents.mapNotNull { doc -> RegistroSintomasEmbarazo.fromMap(doc.id, doc.data) }
+                emit(list)
             }
 
-            val citasFlow = callbackFlow {
-                val listener = db.collection("usuarios")
-                    .document(uid)
-                    .collection("perfilEmbarazo")
-                    .document("unico")
-                    .collection("citas")
-                    .addSnapshotListener { snap, err ->
-                        if (err != null) {
-                            trySend(emptyList())
-                            return@addSnapshotListener
-                        }
-                        val list = snap?.documents?.mapNotNull { doc ->
-                            doc.data?.let { CitaEmbarazo.fromMap(doc.id, it) }
-                        } ?: emptyList()
-                        trySend(list)
-                    }
-                awaitClose { listener.remove() }
+            val citasFlow = flow {
+                val snap = db.collection("usuarios").document(uid).collection("perfilEmbarazo").document("unico").collection("citas").get()
+                val list = snap.documents.mapNotNull { doc -> CitaEmbarazo.fromMap(doc.id, doc.data) }
+                emit(list)
             }
 
             combine(perfilFlow, pesoFlow, sintomasFlow, citasFlow) { perfil, peso, sintomas, citas ->

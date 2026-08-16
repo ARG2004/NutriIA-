@@ -7,17 +7,17 @@ import com.example.nutriia.vinculacion.NutriologoPublico
 import com.example.nutriia.vinculacion.PlanAlimentario
 import com.example.nutriia.vinculacion.Vinculacion
 import com.example.nutriia.vinculacion.VinculacionRepository
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
+import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.firestore.FieldValue
+import dev.gitlive.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.firestore.ListenerRegistration
+import dev.gitlive.firebase.firestore.await
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import com.example.nutriia.utils.FechaUtils
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 // ─── Modelos de comunicación ──────────────────────────────────────────────────
 
@@ -165,11 +165,12 @@ class PediatraDashboardViewModel : ViewModel() {
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
-                val doc          = db.collection("usuarios").document(uid).get().await()
-                val nombre       = doc.getString("nombre")       ?: return@launch
-                val especialidad = doc.getString("especialidad") ?: ""
-                val cedula       = doc.getString("cedula")       ?: ""
-                val email        = doc.getString("email")        ?: ""
+                val snap         = db.collection("usuarios").document(uid).get().await()
+                val doc          = snap as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                val nombre       = doc?.getString("nombre")       ?: return@launch
+                val especialidad = doc?.getString("especialidad") ?: ""
+                val cedula       = doc?.getString("cedula")       ?: ""
+                val email        = doc?.getString("email")        ?: ""
                 vinculacionRepo.publicarPerfilNutriologo(nombre, especialidad, cedula, email).fold(
                     onSuccess = { _uiState.value = _uiState.value.copy(miPerfil = it) },
                     onFailure = {}
@@ -204,62 +205,60 @@ class PediatraDashboardViewModel : ViewModel() {
 
     private fun cargarDetallesPacientes(vinculaciones: List<Vinculacion>) {
         viewModelScope.launch {
-            val lista = mutableListOf<PacienteDetalle>()
+            try {
+                val lista = mutableListOf<PacienteDetalle>()
 
-            vinculaciones.forEach { vinc ->
-                try {
-                    val hijoDoc = db.collection("usuarios")
-                        .document(vinc.padreUid)
-                        .collection("hijos")
-                        .document(vinc.childId)
-                        .get().await()
+                vinculaciones.forEach { vinc ->
+                    try {
+                        val planesSnap = db.collection("usuarios")
+                            .document(vinc.padreUid)
+                            .collection("hijos")
+                            .document(vinc.childId)
+                            .collection("planes_alimentarios")
+                            .whereEqualTo("activo", true)
+                            .get().await()
 
-                    val planesSnap = db.collection("usuarios")
-                        .document(vinc.padreUid)
-                        .collection("hijos")
-                        .document(vinc.childId)
-                        .collection("planes_alimentarios")
-                        .whereEqualTo("activo", true)
-                        .get().await()
+                        val planes = (planesSnap as? dev.gitlive.firebase.firestore.QuerySnapshot)?.documents?.mapNotNull { planDoc ->
+                            PlanAlimentario.fromMap(planDoc.id, planDoc.data)
+                        } ?: emptyList()
 
-                    val planes = planesSnap.documents.mapNotNull { planDoc ->
-                        planDoc.data?.let { PlanAlimentario.fromMap(planDoc.id, it) }
-                    }
+                        val uid = auth.currentUser?.uid ?: ""
+                        val noLeidosSnap = db.collection("nutriologos")
+                            .document(uid)
+                            .collection("mensajes")
+                            .whereEqualTo("childId", vinc.childId)
+                            .whereEqualTo("estado", EstadoMensaje.NUEVO.name)
+                            .get().await()
 
-                    val uid = auth.currentUser?.uid ?: ""
-                    val noLeidosSnap = db.collection("nutriologos")
-                        .document(uid)
-                        .collection("mensajes")
-                        .whereEqualTo("childId", vinc.childId)
-                        .whereEqualTo("estado", EstadoMensaje.NUEVO.name)
-                        .get().await()
-
-                    lista.add(
-                        PacienteDetalle(
-                            vinculacionId        = vinc.id,
-                            padreUid             = vinc.padreUid,
-                            padreNombre          = vinc.padreNombre,
-                            childId              = vinc.childId,
-                            childNombre          = hijoDoc.getString("name") ?: vinc.childNombre,
-                            birthDate            = hijoDoc.getString("birthDate") ?: "",
-                            weightKg             = hijoDoc.getString("weightKg") ?: "",
-                            heightCm             = hijoDoc.getString("heightCm") ?: "",
-                            hasAllergies         = hijoDoc.getBoolean("hasAllergies") ?: false,
-                            alergias             = hijoDoc.getString("alergias") ?: "",
-                            ultimaActualizacion  = formatearFecha(hijoDoc.get("creadoEn")),
-                            planesActivos        = planes,
-                            mensajesNoLeidos     = noLeidosSnap.size(),
-                            consultas            = emptyList() // se llena por el Flow de abajo
+                        lista.add(
+                            PacienteDetalle(
+                                vinculacionId        = vinc.id,
+                                padreUid             = vinc.padreUid,
+                                padreNombre          = vinc.padreNombre,
+                                childId              = vinc.childId,
+                                childNombre          = vinc.childNombre,
+                                ultimaActualizacion  = FechaUtils.formatearFecha(vinc.actualizadoEn ?: 0L),
+                                planesActivos        = planes,
+                                mensajesNoLeidos     = (noLeidosSnap as? dev.gitlive.firebase.firestore.QuerySnapshot)?.size() ?: 0
+                            )
                         )
-                    )
-                } catch (_: Exception) {}
-            }
+                    } catch (_: Exception) {}
+                }
 
-            _uiState.value = _uiState.value.copy(pacientes = lista)
+                _uiState.value = _uiState.value.copy(
+                    cargando  = false,
+                    pacientes = lista
+                )
 
-            // Iniciar Flow de consultas en tiempo real para cada paciente
-            vinculaciones.forEach { vinc ->
-                escucharConsultasDePaciente(vinc.padreUid, vinc.childId)
+                // Iniciar Flow de consultas en tiempo real para cada paciente
+                vinculaciones.forEach { vinc ->
+                    escucharConsultasDePaciente(vinc.padreUid, vinc.childId)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    cargando = false,
+                    error    = "Error al cargar pacientes: ${e.message}"
+                )
             }
         }
     }
@@ -296,11 +295,11 @@ class PediatraDashboardViewModel : ViewModel() {
         mensajesListener = db.collection("nutriologos")
             .document(uid)
             .collection("mensajes")
-            .orderBy("creadoEn", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .orderBy("creadoEn", dev.gitlive.firebase.firestore.Direction.DESCENDING)
             .addSnapshotListener { snap, err ->
                 if (err != null) return@addSnapshotListener
                 val lista = snap?.documents?.mapNotNull { doc ->
-                    doc.data?.let { MensajePaciente.fromMap(doc.id, it) }
+                    MensajePaciente.fromMap(doc.id, doc.data)
                 } ?: emptyList()
 
                 _uiState.value = _uiState.value.copy(

@@ -14,14 +14,14 @@ import com.example.nutriia.crecimiento.Sexo
 import com.example.nutriia.crecimiento.interpretarIMC
 import com.example.nutriia.crecimiento.InterpretacionIMC
 import com.example.nutriia.offline.OfflineManager
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.Query
+import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.firestore.ListenerRegistration
+import dev.gitlive.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import dev.gitlive.firebase.firestore.await
 import com.example.nutriia.utils.FechaUtils
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -154,30 +154,26 @@ class PacienteExpedienteViewModel : ViewModel() {
             var hasAllergiesVal = false
 
             try {
-                val source = if (OfflineManager.hayConexion()) {
-                    com.google.firebase.firestore.Source.DEFAULT
-                } else {
-                    com.google.firebase.firestore.Source.CACHE
-                }
                 val hijoDoc = db.collection("usuarios")
                     .document(ownerUid)
                     .collection("hijos")
                     .document(childId)
-                    .get(source).await()
+                    .get().await()
 
-                if (hijoDoc.exists()) {
-                    nacimiento = hijoDoc.getString("birthDate") ?: ""
-                    nivelIngreso = hijoDoc.getString("nivelIngreso")
+                val doc = hijoDoc as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                if (doc != null && doc.exists) {
+                    nacimiento = doc.getString("birthDate") ?: ""
+                    nivelIngreso = doc.getString("nivelIngreso")
                         ?.let { runCatching { NivelIngreso.valueOf(it) }.getOrDefault(NivelIngreso.BASICO) }
                         ?: NivelIngreso.BASICO
 
-                    region = hijoDoc.getString("region")
+                    region = doc.getString("region")
                         ?.let { runCatching { RegionMexico.valueOf(it) }.getOrDefault(RegionMexico.PUEBLA) }
                         ?: RegionMexico.PUEBLA
 
-                    basePeso = hijoDoc.get("weightKg")?.toString()?.toDoubleOrNull() ?: 0.0
-                    baseTalla = hijoDoc.get("heightCm")?.toString()?.toDoubleOrNull() ?: 0.0
-                    hasAllergiesVal = hijoDoc.getBoolean("hasAllergies") ?: false
+                    basePeso = doc.data["weightKg"]?.toString()?.toDoubleOrNull() ?: 0.0
+                    baseTalla = doc.data["heightCm"]?.toString()?.toDoubleOrNull() ?: 0.0
+                    hasAllergiesVal = doc.getBoolean("hasAllergies") ?: false
                 }
             } catch (e: Exception) {
                 com.example.nutriia.platform.Log.w("Expediente", "Fallo al obtener perfil base del hijo: ${e.message}")
@@ -281,7 +277,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                                 ReaccionAlimento.ALERGIA,
                                 ReaccionAlimento.RECHAZO  -> "Rechazado"
                             },
-                            fechaMs = doc.getTimestamp("creadoEn")?.toDate()?.time ?: 0L
+                            fechaMs = doc.getTimestamp("creadoEn")?.time ?: 0L
                         )
                     }.getOrNull()
                 }?.sortedByDescending { it.fechaMs } ?: emptyList()
@@ -311,7 +307,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                         id          = d.id,
                         texto       = d.getString("texto") ?: d.getString("contenido") ?: "",
                         autorNombre = d.getString("autorNombre") ?: "Nutriólogo",
-                        fechaMs     = d.getTimestamp("creadoEn")?.toDate()?.time ?: 0L
+                        fechaMs     = d.getTimestamp("creadoEn")?.time ?: 0L
                     )
                 }?.sortedByDescending { it.fechaMs } ?: emptyList()
                 _ui.value = _ui.value.copy(notasConsulta = notas)
@@ -336,7 +332,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                         titulo      = d.getString("titulo") ?: "",
                         contenido   = d.getString("contenido") ?: d.getString("texto") ?: "",
                         autorNombre = d.getString("autorNombre") ?: "Nutriólogo",
-                        fechaMs     = d.getTimestamp("creadoEn")?.toDate()?.time ?: 0L
+                        fechaMs     = d.getTimestamp("creadoEn")?.time ?: 0L
                     )
                 }?.sortedByDescending { it.fechaMs } ?: emptyList()
                 _ui.value = _ui.value.copy(entradasAlimentacion = entradas)
@@ -363,7 +359,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to "nota_nutriologo",
-                    "creadoEn"    to com.google.firebase.Timestamp.now()
+                    "creadoEn"    to dev.gitlive.firebase.firestore.Timestamp.now()
                 )
                 
                 val task = db.collection("usuarios").document(ownerUid)
@@ -410,7 +406,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to tipo,
-                    "creadoEn"    to com.google.firebase.Timestamp.now()
+                    "creadoEn"    to dev.gitlive.firebase.firestore.Timestamp.now()
                 )
                 
                 val task = db.collection("usuarios").document(_ownerUid)
@@ -479,7 +475,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to "receta_nutriologo",
-                    "creadoEn"    to com.google.firebase.Timestamp.now()
+                    "creadoEn"    to dev.gitlive.firebase.firestore.Timestamp.now()
                 )
                 
                 val task1 = db.collection("usuarios").document(_ownerUid)
@@ -501,7 +497,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"     to currentUser.uid,
                     "autorNombre"  to (currentUser.displayName ?: "Nutriólogo"),
                     "edadMeses"    to _ui.value.edadMeses,
-                    "creadoEn"     to com.google.firebase.Timestamp.now()
+                    "creadoEn"     to dev.gitlive.firebase.firestore.Timestamp.now()
                 )
                 
                 val task2 = db.collection("usuarios").document(_ownerUid)
@@ -567,7 +563,8 @@ class PacienteExpedienteViewModel : ViewModel() {
                                 .whereEqualTo("autorUid", currentUser.uid)
                                 .get().await()
 
-                            for (doc in matchingDocs.documents) {
+                            val docsList = (matchingDocs as? dev.gitlive.firebase.firestore.QuerySnapshot)?.documents ?: emptyList()
+                            for (doc in docsList) {
                                 doc.reference.delete().await()
                             }
                         }

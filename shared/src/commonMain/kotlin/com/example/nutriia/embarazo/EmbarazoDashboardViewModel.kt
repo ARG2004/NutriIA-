@@ -8,8 +8,8 @@ import com.example.nutriia.ginecologo.EstadoVinculacionEmbarazo
 import com.example.nutriia.nutriente.RegistroNutrientes
 import com.example.nutriia.alerta.Alerta
 import com.example.nutriia.alerta.TipoAlerta
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*

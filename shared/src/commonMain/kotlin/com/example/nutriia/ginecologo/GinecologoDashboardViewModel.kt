@@ -2,14 +2,14 @@ package com.example.nutriia.ginecologo
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import dev.gitlive.firebase.firestore.await
 
 data class SolicitudEmbarazoUiState(
     val miPerfil:              GinecologoPublico?        = null,
@@ -54,11 +54,12 @@ class GinecologoDashboardViewModel : ViewModel() {
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
-                val doc          = db.collection("usuarios").document(uid).get().await()
-                val nombre       = doc.getString("nombre")       ?: return@launch
-                val especialidad = doc.getString("especialidad") ?: "Ginecología y Obstetricia"
-                val cedula       = doc.getString("cedula")       ?: ""
-                val email        = doc.getString("email")        ?: ""
+                val snap         = db.collection("usuarios").document(uid).get().await()
+                val doc          = snap as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                val nombre       = doc?.getString("nombre")       ?: return@launch
+                val especialidad = doc?.getString("especialidad") ?: "Ginecología y Obstetricia"
+                val cedula       = doc?.getString("cedula")       ?: ""
+                val email        = doc?.getString("email")        ?: ""
 
                 ginecologoRepo.publicarPerfilGinecologo(
                     nombre, especialidad, cedula, email
