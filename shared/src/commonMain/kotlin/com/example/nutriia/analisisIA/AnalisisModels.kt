@@ -1,10 +1,13 @@
 package com.example.nutriia.analisisIA
 
+import kotlinx.serialization.Serializable
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS — Módulo de Análisis de Alimentos con IA
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ─── 1. Resultado de detección de alimento (OpenRouter Vision) ───────────────
+// ─── 1. Resultado de detección de alimento ──────────────────────────────────
+@Serializable
 data class FoodDetectionResult(
     val foodName    : String  = "",
     val ingredients : List<String> = emptyList(),
@@ -12,7 +15,8 @@ data class FoodDetectionResult(
     val confidence  : Double  = 0.0
 )
 
-// ─── 2. Información nutricional (Spoonacular) ────────────────────────────────
+// ─── 2. Información nutricional ─────────────────────────────────────────────
+@Serializable
 data class NutritionInfo(
     val calories      : Double = 0.0,
     val protein       : Double = 0.0,
@@ -23,7 +27,8 @@ data class NutritionInfo(
     val sodium        : Double = 0.0
 )
 
-// ─── 3. Análisis pediátrico (OpenRouter LLM) ─────────────────────────────────
+// ─── 3. Análisis pediátrico / gestacional ───────────────────────────────────
+@Serializable
 data class PediatricAnalysis(
     val recommended       : Boolean       = false,
     val recommendedPortion: String        = "",
@@ -33,6 +38,7 @@ data class PediatricAnalysis(
 )
 
 // ─── 4. Resultado completo guardado en Firebase ──────────────────────────────
+@Serializable
 data class AnalisisCompleto(
     val id            : String           = "",
     val childId       : String           = "",
