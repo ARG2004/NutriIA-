@@ -41,7 +41,7 @@ private fun loadBundleImageBitmap(resourceName: String, ext: String = "webp"): I
         bytes.usePinned { pinned ->
             memcpy(pinned.addressOf(0), bytesPtr, data.length)
         }
-        SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
+        SkiaImage.makeFromEncoded(bytes)?.toComposeImageBitmap()
     } catch (_: Throwable) {
         null
     }

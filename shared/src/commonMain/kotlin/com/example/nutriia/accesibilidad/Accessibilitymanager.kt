@@ -151,9 +151,9 @@ fun abrirConfiguracionTalkBack(context: Any? = null) {
 }
 
 // ─── HapticFeedback ───────────────────────────────────────────────────────────
-fun vibrateTap(haptic: HapticFeedback)     = haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-fun vibrateSuccess(haptic: HapticFeedback) = haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-fun vibrateError(haptic: HapticFeedback)   = haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+fun vibrateTap(haptic: HapticFeedback)     { try { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) } catch (_: Throwable) {} }
+fun vibrateSuccess(haptic: HapticFeedback) { try { haptic.performHapticFeedback(HapticFeedbackType.LongPress) } catch (_: Throwable) {} }
+fun vibrateError(haptic: HapticFeedback)   { try { haptic.performHapticFeedback(HapticFeedbackType.LongPress) } catch (_: Throwable) {} }
 
 // ─── Textos de voz — Español ──────────────────────────────────────────────────
 object Voz {

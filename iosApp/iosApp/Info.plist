@@ -17,13 +17,13 @@
 	<key>CFBundleShortVersionString</key>
 	<string>2.2.7</string>
 	<key>CFBundleVersion</key>
-	<string>48</string>
+	<string>49</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-	<key>UILaunchScreen</key>
-	<dict/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>
