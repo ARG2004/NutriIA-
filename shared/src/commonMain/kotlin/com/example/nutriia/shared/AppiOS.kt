@@ -115,9 +115,9 @@ fun NutriIAiOSApp() {
     var showLoginSplash by remember { mutableStateOf(false) }
     var showResumeSplash by remember { mutableStateOf(false) }
 
-    var currentScreen by rememberSaveable { mutableStateOf(Screen.LOGIN) }
+    var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
     var children by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
-    var activeChildIndex by rememberSaveable { mutableIntStateOf(0) }
+    var activeChildIndex by remember { mutableIntStateOf(0) }
     val activeChild = children.getOrNull(activeChildIndex)
 
     var isAddingChild by remember { mutableStateOf(false) }

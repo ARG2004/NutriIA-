@@ -7,17 +7,21 @@ import platform.AVFAudio.AVSpeechUtterance
 import platform.AVFAudio.AVSpeechUtteranceDefaultSpeechRate
 
 class IosNutriTTS {
-    private val synthesizer = AVSpeechSynthesizer()
+    private val synthesizer by lazy { AVSpeechSynthesizer() }
 
     fun speak(text: String, lang: String = "es-MX") {
-        if (text.isBlank()) return
-        val utterance = AVSpeechUtterance(string = text)
-        utterance.voice = AVSpeechSynthesisVoice.voiceWithLanguage(lang) ?: AVSpeechSynthesisVoice.voiceWithLanguage("es-ES")
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        synthesizer.speakUtterance(utterance)
+        try {
+            if (text.isBlank()) return
+            val utterance = AVSpeechUtterance(string = text)
+            utterance.voice = AVSpeechSynthesisVoice.voiceWithLanguage(lang) ?: AVSpeechSynthesisVoice.voiceWithLanguage("es-ES")
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+            synthesizer.speakUtterance(utterance)
+        } catch (_: Throwable) {}
     }
 
     fun stop() {
-        synthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
+        try {
+            synthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
+        } catch (_: Throwable) {}
     }
 }
