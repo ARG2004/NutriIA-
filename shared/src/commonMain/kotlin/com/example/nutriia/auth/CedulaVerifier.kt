@@ -15,9 +15,7 @@ data class ResultadoCedula(
     val mensaje: String = ""
 )
 
-expect object PlatformCedulaVerifier {
-    suspend fun verificarCedulaNativa(cedula: String): ResultadoCedula
-}
+expect suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula
 
 object CedulaVerifier {
     private var ultimoIntentoMs: Long = 0L
@@ -41,6 +39,6 @@ object CedulaVerifier {
                 mensaje = "La cédula debe contener al menos 6 dígitos numéricos"
             )
         }
-        return PlatformCedulaVerifier.verificarCedulaNativa(cedulaLimpia)
+        return verificarEnPortalSEP(cedulaLimpia)
     }
 }
