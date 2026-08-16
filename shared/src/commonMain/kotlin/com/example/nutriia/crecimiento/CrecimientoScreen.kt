@@ -427,11 +427,11 @@ private fun ResumenCard(m: MedicionCrecimiento?, meses: Int, interp: Interpretac
                 val animImc   by animateFloatAsState(m.imc.toFloat(),      tween(800, easing = EaseOutCubic), label = "i")
 
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
-                    StatCol(Icons.Rounded.MonitorWeight, C_Amber,            C_AmberLight,            "${"%.1f".format(animPeso)} kg",  "Peso")
+                    StatCol(Icons.Rounded.MonitorWeight, C_Amber,            C_AmberLight,            "${((animPeso * 10).toInt() / 10.0)} kg",  "Peso")
                     Box(Modifier.width(1.dp).height(60.dp).background(C_Divider))
-                    StatCol(Icons.Rounded.Height,        C_Teal,             C_TealLight,             "${"%.0f".format(animTalla)} cm", "Talla")
+                    StatCol(Icons.Rounded.Height,        C_Teal,             C_TealLight,             "${animTalla.toInt()} cm", "Talla")
                     Box(Modifier.width(1.dp).height(60.dp).background(C_Divider))
-                    StatCol(Icons.Rounded.Analytics,     style?.color ?: C_Green, style?.light ?: C_GreenLight, "${"%.1f".format(animImc)}", "IMC")
+                    StatCol(Icons.Rounded.Analytics,     style?.color ?: C_Green, style?.light ?: C_GreenLight, "${((animImc * 10).toInt() / 10.0)}", "IMC")
                 }
 
                 Spacer(Modifier.height(14.dp))
@@ -795,7 +795,7 @@ private fun TimelineHistorial(
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     MiniStat(Icons.Rounded.MonitorWeight, "${m.pesoKg} kg", C_Amber)
                                     MiniStat(Icons.Rounded.Height, "${m.tallaCm} cm", C_Teal)
-                                    if (m.imc > 0) MiniStat(style.icon, "${"%.1f".format(m.imc)}", style.color)
+                                    if (m.imc > 0) MiniStat(style.icon, "${((m.imc * 10).toInt() / 10.0)}", style.color)
                                 }
                                 if (m.notas.isNotBlank()) {
                                     Spacer(Modifier.height(4.dp))
@@ -889,7 +889,7 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
                             style = Stroke(stroke, cap = StrokeCap.Round))
                     }
                     Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${"%.1f".format(animImc)}", fontSize = 40.sp, fontWeight = FontWeight.Black,
+                        Text("${((animImc * 10).toInt() / 10.0)}", fontSize = 40.sp, fontWeight = FontWeight.Black,
                             color = style?.color ?: C_Green)
                         Text("kg/m²", fontSize = 12.sp, color = C_TextSub)
                     }
@@ -966,7 +966,7 @@ private fun EvolucionIMC(historial: List<MedicionCrecimiento>, meses: Int) {
                             Icon(style.icon, null, tint = style.color, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(10.dp))
                             Text(m.fecha, fontSize = 12.sp, color = C_TextSub, modifier = Modifier.weight(1f))
-                            Text("${"%.2f".format(m.imc)}", fontWeight = FontWeight.Bold, color = style.color, fontSize = 14.sp)
+                            Text("${((m.imc * 100).toInt() / 100.0)}", fontWeight = FontWeight.Bold, color = style.color, fontSize = 14.sp)
                             Spacer(Modifier.width(8.dp))
                             Surface(shape = RoundedCornerShape(50.dp), color = style.light) {
                                 Text(interp.categoria, Modifier.padding(horizontal = 8.dp, vertical = 3.dp),

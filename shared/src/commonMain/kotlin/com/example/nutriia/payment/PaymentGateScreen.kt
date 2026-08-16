@@ -127,7 +127,7 @@ fun PaymentGateScreen(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            "${"%.2f".format(PaymentViewModel.PRECIO_CENTAVOS / 100.0)} ${PaymentViewModel.MONEDA}",
+                            "${PaymentViewModel.PRECIO_CENTAVOS / 100}.00 ${PaymentViewModel.MONEDA}",
                             fontWeight = FontWeight.ExtraBold,
                             fontSize   = 18.sp,
                             color      = PDarkGreen

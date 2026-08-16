@@ -544,7 +544,11 @@ private fun CallTimerDisplay(segundos: Int) {
     val h = segundos / 3600
     val m = (segundos % 3600) / 60
     val s = segundos % 60
-    val texto = if (h > 0) "%02d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    val texto = if (h > 0) {
+        "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+    } else {
+        "${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+    }
 
     Surface(shape = RoundedCornerShape(20.dp), color = CallSurface.copy(0.85f)) {
         Row(

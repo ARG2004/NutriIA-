@@ -914,7 +914,7 @@ private fun HistorialCrecimientoExpediente(
                     // IMC & Categoría
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            "IMC: ${"%.1f".format(m.imc)}",
+                            "IMC: ${((m.imc * 10).toInt() / 10.0)}",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = style.first

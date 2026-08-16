@@ -1074,7 +1074,7 @@ fun GrowthSection(
                         GrowthStatItem(Icons.Rounded.Straighten, "${ultimaMedicion.tallaCm} cm", "Talla", DashSoftTeal)
                         if (ultimaMedicion.imc > 0) {
                             Box(Modifier.width(1.dp).height(50.dp).background(Color(0xFFF0F0F0)).semantics { invisibleToUser() })
-                            GrowthStatItem(Icons.Rounded.Analytics, "%.1f".format(ultimaMedicion.imc), "IMC", DashNutriaGreen)
+                            GrowthStatItem(Icons.Rounded.Analytics, "${((ultimaMedicion.imc * 10).toInt() / 10.0)}", "IMC", DashNutriaGreen)
                         }
                     }
                     Spacer(Modifier.height(16.dp))

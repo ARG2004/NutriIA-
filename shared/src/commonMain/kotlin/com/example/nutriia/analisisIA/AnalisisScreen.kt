@@ -162,7 +162,7 @@ fun AnalisisScreen(
                         val nutrition = state.resultado.nutrition
                         val analysis = state.resultado.analysis
                         val recomText = if (analysis.recommended) "Recomendado para $targetNombre" else "No recomendado para $targetNombre"
-                        a11yVm.hablar("Análisis completado con éxito. Se detectó ${food.foodName}. ${recomText}. Calorías estimadas: ${nutrition.calories.toInt()} kilocalorías. Proteínas: ${"%.1f".format(nutrition.protein)} gramos, Carbohidratos: ${"%.1f".format(nutrition.carbohydrates)} gramos, Grasas: ${"%.1f".format(nutrition.fat)} gramos.")
+                        a11yVm.hablar("Análisis completado con éxito. Se detectó ${food.foodName}. ${recomText}. Calorías estimadas: ${nutrition.calories.toInt()} kilocalorías. Proteínas: ${((nutrition.protein * 10).toInt() / 10.0)} gramos, Carbohidratos: ${((nutrition.carbohydrates * 10).toInt() / 10.0)} gramos, Grasas: ${((nutrition.fat * 10).toInt() / 10.0)} gramos.")
                     }
                     is AnalisisUiState.Guardado -> {
                         a11yVm.hablar("Análisis guardado exitosamente en el diario nutricional.")
@@ -1124,7 +1124,7 @@ private fun PantallaResultado(
 
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text     = "Detección IA (${"%.0f".format(food.confidence * 100)}% certeza)",
+                        text     = "Detección IA (${(food.confidence * 100).toInt()}% certeza)",
                         fontSize = 12.sp,
                         color    = TextSecond
                     )
@@ -1152,11 +1152,11 @@ private fun PantallaResultado(
             ) {
                 MacroStatColumn("${nutrition.calories.toInt()} kcal", "Calorías", AmberWarm)
                 DividerVertical()
-                MacroStatColumn("${"%.1f".format(nutrition.carbohydrates)} g", "Carbohidratos", Color(0xFF7B68EE))
+                MacroStatColumn("${((nutrition.carbohydrates * 10).toInt() / 10.0)} g", "Carbohidratos", Color(0xFF7B68EE))
                 DividerVertical()
-                MacroStatColumn("${"%.1f".format(nutrition.protein)} g", "Proteína", Color(0xFF20B2AA))
+                MacroStatColumn("${((nutrition.protein * 10).toInt() / 10.0)} g", "Proteína", Color(0xFF20B2AA))
                 DividerVertical()
-                MacroStatColumn("${"%.1f".format(nutrition.fat)} g", "Grasas", RedSoft)
+                MacroStatColumn("${((nutrition.fat * 10).toInt() / 10.0)} g", "Grasas", RedSoft)
             }
         }
 
