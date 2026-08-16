@@ -31,15 +31,16 @@ import platform.posix.memcpy
 
 @OptIn(ExperimentalForeignApi::class)
 private fun loadBundleImageBitmap(resourceName: String, ext: String = "webp"): ImageBitmap? {
-    val path = NSBundle.mainBundle.pathForResource(resourceName, ext) ?: return null
-    val data = NSData.dataWithContentsOfFile(path) ?: return null
-    val length = data.length.toInt()
-    if (length <= 0) return null
-    val bytes = ByteArray(length)
-    bytes.usePinned { pinned ->
-        memcpy(pinned.addressOf(0), data.bytes, data.length)
-    }
     return try {
+        val path = NSBundle.mainBundle.pathForResource(resourceName, ext) ?: return null
+        val data = NSData.dataWithContentsOfFile(path) ?: return null
+        val length = data.length.toInt()
+        if (length <= 0) return null
+        val bytesPtr = data.bytes ?: return null
+        val bytes = ByteArray(length)
+        bytes.usePinned { pinned ->
+            memcpy(pinned.addressOf(0), bytesPtr, data.length)
+        }
         SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
     } catch (_: Throwable) {
         null
@@ -48,7 +49,13 @@ private fun loadBundleImageBitmap(resourceName: String, ext: String = "webp"): I
 
 @Composable
 actual fun NutriaMascotaHeader(modifier: Modifier) {
-    val bitmap = remember { loadBundleImageBitmap("ic_nutria") ?: loadBundleImageBitmap("ic_splash") }
+    val bitmap = remember {
+        try {
+            loadBundleImageBitmap("ic_nutria") ?: loadBundleImageBitmap("ic_splash")
+        } catch (_: Throwable) {
+            null
+        }
+    }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         if (bitmap != null) {
@@ -80,7 +87,13 @@ actual fun NutriaMascotaHeader(modifier: Modifier) {
 
 @Composable
 actual fun NutriaSplashMascota(modifier: Modifier) {
-    val bitmap = remember { loadBundleImageBitmap("ic_splash") ?: loadBundleImageBitmap("ic_nutria") }
+    val bitmap = remember {
+        try {
+            loadBundleImageBitmap("ic_splash") ?: loadBundleImageBitmap("ic_nutria")
+        } catch (_: Throwable) {
+            null
+        }
+    }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         if (bitmap != null) {
