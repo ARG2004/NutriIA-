@@ -35,6 +35,8 @@ import com.example.nutriia.embarazo.NivelSintoma
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.embarazo.RegistroPesoEmbarazo
 import com.example.nutriia.embarazo.RegistroSintomasEmbarazo
+import com.google.firebase.Timestamp
+import java.util.Locale
 
 private val EmbRosa       = Color(0xFFEC9BBF)
 private val EmbRosaOscuro = Color(0xFFD4679A)

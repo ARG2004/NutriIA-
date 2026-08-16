@@ -1,4 +1,4 @@
-package java.lang
+package kotlin.text
 
 import java.util.Locale
 import kotlin.math.round
