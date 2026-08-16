@@ -1,6 +1,6 @@
 package com.example.nutriia.dashboard
 
-import android.os.Build
+// import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -32,7 +32,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
@@ -221,7 +220,6 @@ fun NutriIADashboardScreen(
 
     val a11yMode         = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
-    val context = LocalContext.current
 
     val pagerState = rememberPagerState(
         initialPage               = initialPageIndex.coerceIn(0, children.lastIndex),
@@ -279,7 +277,7 @@ fun NutriIADashboardScreen(
 
     // ── Voice Commands Logic ──────────────────────────────────────────────────
     var isListening by remember { mutableStateOf(false) }
-    val voiceManager = remember { VoiceInputManager(context) }
+    val voiceManager = remember { VoiceInputManager() }
     val voiceState by voiceManager.estado
 
     // FIX: Evitar fugas de ServiceConnection al destruir el Composable

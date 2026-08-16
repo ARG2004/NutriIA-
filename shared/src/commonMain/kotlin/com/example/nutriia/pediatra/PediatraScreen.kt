@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 import com.example.nutriia.teleconsulta.TipoLlamada
@@ -30,9 +29,8 @@ import com.example.nutriia.vinculacion.VinculacionViewModel
 import com.example.nutriia.util.PermissionHelper
 import com.example.nutriia.util.PermissionType
 import com.example.nutriia.util.rememberPermissionState
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import android.util.Log
+import com.example.nutriia.platform.Log
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.example.nutriia.accesibilidad.AccessibilityMode
@@ -91,14 +89,14 @@ fun PediatraScreen(
 
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
-    val vinculaciones        by vinculacionViewModel.vinculaciones.collectAsStateWithLifecycle()
-    val nutriologoEncontrado by vinculacionViewModel.nutriologoEncontrado.collectAsStateWithLifecycle()
-    val directorio           by vinculacionViewModel.directorio.collectAsStateWithLifecycle()
-    val cargando             by vinculacionViewModel.cargando.collectAsStateWithLifecycle()
-    val cargandoDir          by vinculacionViewModel.cargandoDirectorio.collectAsStateWithLifecycle()
-    val error                by vinculacionViewModel.error.collectAsStateWithLifecycle()
-    val exito                by vinculacionViewModel.exito.collectAsStateWithLifecycle()
-    val nutriologoSel        by vinculacionViewModel.nutriologoSeleccionado.collectAsStateWithLifecycle()
+    val vinculaciones        by vinculacionViewModel.vinculaciones.collectAsState()
+    val nutriologoEncontrado by vinculacionViewModel.nutriologoEncontrado.collectAsState()
+    val directorio           by vinculacionViewModel.directorio.collectAsState()
+    val cargando             by vinculacionViewModel.cargando.collectAsState()
+    val cargandoDir          by vinculacionViewModel.cargandoDirectorio.collectAsState()
+    val error                by vinculacionViewModel.error.collectAsState()
+    val exito                by vinculacionViewModel.exito.collectAsState()
+    val nutriologoSel        by vinculacionViewModel.nutriologoSeleccionado.collectAsState()
 
     val vinculacionesHijo = vinculaciones.filter { it.childId == childId }
     val activas           = vinculacionesHijo.filter { it.estado == EstadoVinculacion.ACTIVO }
@@ -110,12 +108,11 @@ fun PediatraScreen(
     var queryDir     by remember { mutableStateOf("") }
     var mostrarEscannerQR by remember { mutableStateOf(false) }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var permissionCheckStep by remember { mutableStateOf(0) }
+        var permissionCheckStep by remember { mutableStateOf(0) }
 
     // ── Voice Commands Logic ──────────────────────────────────────────────────
     var isListening by remember { mutableStateOf(false) }
-    val voiceManager = remember { VoiceInputManager(context) }
+    val voiceManager = remember { VoiceInputManager() }
     val voiceState by voiceManager.estado
 
     DisposableEffect(Unit) {
@@ -206,7 +203,7 @@ fun PediatraScreen(
         kotlinx.coroutines.delay(500)
         when (permissionCheckStep) {
             0 -> {
-                val hasCam = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.CAMERA))
+                val hasCam = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.CAMERA))
                 if (!hasCam) {
                     cameraState.requestPermission()
                 } else {
@@ -214,7 +211,7 @@ fun PediatraScreen(
                 }
             }
             1 -> {
-                val hasMic = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.MICROPHONE))
+                val hasMic = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.MICROPHONE))
                 if (!hasMic) {
                     micState.requestPermission()
                 } else {
@@ -222,7 +219,7 @@ fun PediatraScreen(
                 }
             }
             2 -> {
-                val hasPhone = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.PHONE))
+                val hasPhone = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.PHONE))
                 if (!hasPhone) {
                     phoneState.requestPermission()
                 } else {
@@ -230,7 +227,7 @@ fun PediatraScreen(
                 }
             }
             3 -> {
-                val hasNear = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.NEAR_DEVICES))
+                val hasNear = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.NEAR_DEVICES))
                 if (!hasNear) {
                     nearDevicesState.requestPermission()
                 } else {

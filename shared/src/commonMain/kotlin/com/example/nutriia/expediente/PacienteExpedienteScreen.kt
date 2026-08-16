@@ -25,7 +25,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
 import com.example.nutriia.crecimiento.MedicionCrecimiento
 import com.example.nutriia.crecimiento.interpretarIMC
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
@@ -88,7 +87,7 @@ fun PacienteExpedienteScreen(
     sharedViewModel: NutriSharedViewModel? = null,
     viewModel:       PacienteExpedienteViewModel = viewModel()
 ) {
-    val ui by viewModel.ui.collectAsStateWithLifecycle()
+    val ui by viewModel.ui.collectAsState()
     val snackbar = remember { SnackbarHostState() }
 
     val a11yMode = LocalAccessibilityMode.current
@@ -983,7 +982,7 @@ private fun AlimentoRegistradoRow(alimento: AlimentoIntroducido) {
     val icon = remember(alimento.nombre) { obtenerIconoAlimento(alimento.nombre) }
     val fechaIntroduccion = remember(alimento.fechaMs) {
         if (alimento.fechaMs == 0L) ""
-        else FechaUtils.formatearFecha(Date(alimento.fechaMs))
+        else FechaUtils.formatearFecha(alimento.fechaMs)
     }
 
     Card(
@@ -1051,7 +1050,7 @@ private fun AlimentoRegistradoRow(alimento: AlimentoIntroducido) {
 private fun NotaCard(nota: NotaConsulta) {
     val fecha = remember(nota.fechaMs) {
         if (nota.fechaMs == 0L) ""
-        else FechaUtils.formatearFecha(Date(nota.fechaMs))
+        else FechaUtils.formatearFecha(nota.fechaMs)
     }
     Card(
         modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),

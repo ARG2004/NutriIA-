@@ -1,9 +1,6 @@
 package com.example.nutriia.auth
 
-import android.app.Application
-import android.content.Context
-import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.ui.theme.ChildProfile
@@ -28,9 +25,9 @@ private data class UsuarioSesion(
     val rol:      String = "padre"
 )
 
-class LoginViewModel(application: Application) : AndroidViewModel(application) {
+class LoginViewModel : ViewModel() {
 
-    private val repositorio = RepositorioLogin(application)
+    private val repositorio = RepositorioLogin()
 
     private val _estado = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val estado: StateFlow<LoginUiState> = _estado
@@ -71,7 +68,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     // ── Verificar sesión activa ───────────────────────────────────────────────
     fun verificarSesion(onResultado: (rol: String?, hijos: List<ChildProfile>) -> Unit) {
         viewModelScope.launch {
-            if (SessionManager.obtenerUid(getApplication()) == null) {
+            if (SessionManager.obtenerUid() == null) {
                 onResultado(null, emptyList())
                 return@launch
             }
@@ -174,19 +171,19 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun hayHuellaDisponible(context: Context): Boolean {
+    fun hayHuellaDisponible(context: Any? = null): Boolean {
         return BiometricHelper.isAvailable(context)
     }
 
     fun loginConHuella(
-        activity: FragmentActivity,
+        activity: Any? = null,
         onExito: (uid: String) -> Unit,
         onFail: () -> Unit
     ) {
         BiometricHelper.prompt(
             activity = activity,
             onSuccess = {
-                val uidLocal = SessionManager.obtenerUid(activity)
+                val uidLocal = SessionManager.obtenerUid()
                 if (uidLocal != null) {
                     viewModelScope.launch {
                         val rol = repositorio.obtenerRol(uidLocal)
@@ -201,7 +198,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                         viewModelScope.launch {
                             val rol = repositorio.obtenerRol(usuarioFirebase.uid)
                             val hijos = if (rol == "padre") repositorio.cargarHijos(usuarioFirebase.uid) else emptyList()
-                            SessionManager.guardarSesion(activity, usuarioFirebase.uid)
+                            SessionManager.guardarSesion(usuarioFirebase.uid)
                             cargarDatosSesion(usuarioFirebase.uid, rol, usuarioFirebase.email ?: "")
                             _estado.value = LoginUiState.Exito(rol = rol, hijos = hijos)
                             onExito(usuarioFirebase.uid)
@@ -218,7 +215,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun olvidarDispositivo(context: Context) {
-        repositorio.cerrarSesionBiometrica(context)
+    fun olvidarDispositivo(context: Any? = null) {
+        repositorio.cerrarSesionBiometrica()
     }
 }

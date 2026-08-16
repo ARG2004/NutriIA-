@@ -1,11 +1,9 @@
 package com.example.nutriia.teleconsulta
 
-import android.util.Log
-import android.app.Application
-import android.content.Context
-import android.media.AudioManager
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nutriia.payment.PaymentRepository
+import com.example.nutriia.platform.Log
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import org.webrtc.IceCandidate
-import org.webrtc.SessionDescription
-import org.webrtc.VideoTrack
-import com.example.nutriia.payment.PaymentRepository
 
 data class TeleconsultaUiState(
     val llamadaActual:    SolicitudLlamada? = null,
@@ -30,15 +24,12 @@ data class TeleconsultaUiState(
     val duracionSegundos: Int     = 0,
     val error:            String? = null,
     val cargando:         Boolean = false,
-    val remoteVideoTrack: VideoTrack? = null,
     val webRtcConectado:  Boolean = false
 )
 
-class TeleconsultaViewModel(application: Application) : AndroidViewModel(application),
-    WebRtcEngineCallback {
+class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
 
-    private val repo         = TeleconsultaRepository()
-    private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val repo = TeleconsultaRepository()
 
     private val _state = MutableStateFlow(TeleconsultaUiState())
     val state: StateFlow<TeleconsultaUiState> = _state.asStateFlow()
@@ -94,7 +85,6 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
             duracionSegundos = 0
         )
         iniciarTimer()
-        configurarAltavoz(true)
         confirmarPagoTrasConexionEstable()
     }
 
@@ -107,7 +97,6 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
     }
 
     override fun onRemoteVideoTrackReady(track: VideoTrack) {
-        _state.value = _state.value.copy(remoteVideoTrack = track)
     }
 
     // ═════════════════════════════════════════════════════
@@ -180,8 +169,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
             enLlamada     = false,
             cargando      = false
         )
-        configurarAltavoz(true)
-        val engine = CallEngineProvider.init(getApplication(), this@TeleconsultaViewModel)
+        val engine = CallEngineProvider.init(this@TeleconsultaViewModel)
         engine.createPeerConnection(isOffer = true, tipo = tipo)
         engine.createOffer()
         suscribirCambiosLlamada(llamada.id)
@@ -206,8 +194,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
 
             val llamada = _state.value.llamadaEntrante ?: return@launch
 
-            configurarAltavoz(true)
-            val engine = CallEngineProvider.init(getApplication(), this@TeleconsultaViewModel)
+            val engine = CallEngineProvider.init(this@TeleconsultaViewModel)
             engine.createPeerConnection(isOffer = false, tipo = llamada.tipo)
 
             repo.responderLlamada(llamadaId, true)
@@ -243,7 +230,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
                             val offerNuevo    = llamada.offerSdp
                             val offerAnterior = prev?.offerSdp
                             if (offerNuevo != null && offerAnterior == null && CallEngineProvider.isInitialized) {
-                                CallEngineProvider.engine.setRemoteOffer(offerNuevo)
+                                CallEngineProvider.getEngine()?.setRemoteOffer(offerNuevo)
                             }
                         }
                     }
@@ -255,11 +242,9 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
                             llamadaActual    = null,
                             enLlamada        = false,
                             duracionSegundos = 0,
-                            webRtcConectado  = false,
-                            remoteVideoTrack = null
+                            webRtcConectado  = false
                         )
                         liberarWebRtc()
-                        // Limpieza fire-and-forget: borra SDP e ICE candidates de Firestore
                         viewModelScope.launch { repo.limpiarDatosSeñalizacion(llamadaId) }
                     }
                     else -> {}
@@ -269,7 +254,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
                     val answerNuevo    = llamada.answerSdp
                     val answerAnterior = prev?.answerSdp
                     if (answerNuevo != null && answerAnterior == null && CallEngineProvider.isInitialized) {
-                        CallEngineProvider.engine.setRemoteAnswer(answerNuevo)
+                        CallEngineProvider.getEngine()?.setRemoteAnswer(answerNuevo)
                         remoteSdpEstablecido = true
                         procesarIceCandidatesPendientes()
                     }
@@ -284,7 +269,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
             .onEach { candidates ->
                 candidates.forEach { c ->
                     if (remoteSdpEstablecido && CallEngineProvider.isInitialized) {
-                        CallEngineProvider.engine.addRemoteIceCandidate(c.sdpMid, c.sdpMLineIndex, c.sdp)
+                        CallEngineProvider.getEngine()?.addRemoteIceCandidate(c.sdpMid, c.sdpMLineIndex, c.sdp)
                     } else if (iceCandidatesPendientes.none { it.sdp == c.sdp }) {
                         iceCandidatesPendientes.add(c)
                     }
@@ -299,7 +284,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
             .onEach { candidates ->
                 candidates.forEach { c ->
                     if (remoteSdpEstablecido && CallEngineProvider.isInitialized) {
-                        CallEngineProvider.engine.addRemoteIceCandidate(c.sdpMid, c.sdpMLineIndex, c.sdp)
+                        CallEngineProvider.getEngine()?.addRemoteIceCandidate(c.sdpMid, c.sdpMLineIndex, c.sdp)
                     } else if (iceCandidatesPendientes.none { it.sdp == c.sdp }) {
                         iceCandidatesPendientes.add(c)
                     }
@@ -311,7 +296,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
     private fun procesarIceCandidatesPendientes() {
         if (!CallEngineProvider.isInitialized) return
         iceCandidatesPendientes.forEach { c ->
-            CallEngineProvider.engine.addRemoteIceCandidate(c.sdpMid, c.sdpMLineIndex, c.sdp)
+            CallEngineProvider.getEngine()?.addRemoteIceCandidate(c.sdpMid, c.sdpMLineIndex, c.sdp)
         }
         iceCandidatesPendientes.clear()
     }
@@ -329,7 +314,6 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
             _state.value = _state.value.copy(
                 enLlamada        = false,
                 webRtcConectado  = false,
-                remoteVideoTrack = null,
                 llamadaActual    = _state.value.llamadaActual?.copy(estado = EstadoLlamada.FINALIZADA)
             )
             liberarWebRtc()
@@ -343,37 +327,28 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
     fun toggleSilencio() {
         val nuevo = !_state.value.silenciado
         _state.value = _state.value.copy(silenciado = nuevo)
-        if (CallEngineProvider.isInitialized) CallEngineProvider.engine.silenciar(nuevo)
+        if (CallEngineProvider.isInitialized) CallEngineProvider.getEngine()?.silenciar(nuevo)
     }
 
     fun toggleCamara() {
         val nuevo = !_state.value.camaraApagada
         _state.value = _state.value.copy(camaraApagada = nuevo)
-        if (CallEngineProvider.isInitialized) CallEngineProvider.engine.apagarCamara(nuevo)
+        if (CallEngineProvider.isInitialized) CallEngineProvider.getEngine()?.apagarCamara(nuevo)
     }
 
     fun toggleAltavoz() {
         val nuevo = !_state.value.altavozActivo
         _state.value = _state.value.copy(altavozActivo = nuevo)
-        configurarAltavoz(nuevo)
     }
 
     fun cambiarCamara() {
-        if (CallEngineProvider.isInitialized) CallEngineProvider.engine.cambiarCamara()
-    }
-
-    private fun configurarAltavoz(on: Boolean) {
-        audioManager.mode             = AudioManager.MODE_IN_COMMUNICATION
-        audioManager.isSpeakerphoneOn = on
+        if (CallEngineProvider.isInitialized) CallEngineProvider.getEngine()?.cambiarCamara()
     }
 
     // ═════════════════════════════════════════════════════
     // OBSERVACIONES LLAMADAS ENTRANTES
     // ═════════════════════════════════════════════════════
 
-    // ── PADRE: escucha llamadas del nutriólogo ────────────────────────────────
-    // FIX: Si el padre ya tiene una llamada activa (él está llamando),
-    // no mostrar el overlay de llamada entrante.
     fun iniciarObservacionEntrantes(padreUid: String) {
         entrantesJob?.cancel()
         entrantesJob = repo.observarLlamadasEntrantes(padreUid)
@@ -381,14 +356,13 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
                 val hayLlamadaActiva = _state.value.llamadaActual != null
                 when {
                     llamada == null  -> _state.value = _state.value.copy(llamadaEntrante = null)
-                    hayLlamadaActiva -> { /* el padre ya está en una llamada, ignorar */ }
+                    hayLlamadaActiva -> { }
                     else             -> _state.value = _state.value.copy(llamadaEntrante = llamada)
                 }
             }
             .launchIn(viewModelScope)
     }
 
-    // ── NUTRIÓLOGO: escucha llamadas del padre ────────────────────────────────
     fun iniciarObservacionEntrantesNutriologo(nutriologoUid: String) {
         Log.d("TeleconsultaVM", "iniciarObservacionEntrantesNutriologo: nutriologoUid=$nutriologoUid")
         entrantesJob?.cancel()
@@ -397,7 +371,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
                 val hayLlamadaActiva = _state.value.llamadaActual != null
                 when {
                     llamada == null  -> _state.value = _state.value.copy(llamadaEntrante = null)
-                    hayLlamadaActiva -> { /* ya en llamada, ignorar */ }
+                    hayLlamadaActiva -> { }
                     else             -> _state.value = _state.value.copy(llamadaEntrante = llamada)
                 }
             }
@@ -432,7 +406,6 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
             llamadaActual    = null,
             enLlamada        = false,
             duracionSegundos = 0,
-            remoteVideoTrack = null,
             webRtcConectado  = false
         )
     }
@@ -460,8 +433,6 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
         observerJob?.cancel();      observerJob      = null
         iceCandidatesJob?.cancel(); iceCandidatesJob = null
         CallEngineProvider.release()
-        audioManager.mode             = AudioManager.MODE_NORMAL
-        audioManager.isSpeakerphoneOn = false
     }
 
     private val DURACION_MINIMA_GARANTIZADA_SEGUNDOS = 300L
@@ -476,18 +447,15 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
                     pagoIdPendiente = null
                 },
                 onFailure = {
-                    Log.e("TeleconsultaVM", "Error al marcar pago usado", it)
+                    Log.e("TeleconsultaVM", "Error al marcar pago usado: ${it.message}")
                 }
             )
         }
     }
 
-    // DECISION: Una vez que la llamada se usó por al menos 5 min (300s), se considera consumida de forma
-    // definitiva. Si dura menos, el pago se reactiva limpiando el llamadaId en Firestore para que el padre
-    // pueda reintentar sin pagar de nuevo.
     private fun evaluarReactivacionPago() {
         val pagoId = pagoIdConsumido ?: return
-        pagoIdConsumido = null // Limpiar primero para garantizar idempotencia
+        pagoIdConsumido = null
         val duracion = _state.value.duracionSegundos
         if (duracion < DURACION_MINIMA_GARANTIZADA_SEGUNDOS) {
             viewModelScope.launch {
@@ -496,7 +464,7 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
                         Log.d("TeleconsultaVM", "Pago $pagoId reactivado exitosamente (duracion: ${duracion}s)")
                     },
                     onFailure = {
-                        Log.e("TeleconsultaVM", "Error al reactivar pago $pagoId", it)
+                        Log.e("TeleconsultaVM", "Error al reactivar pago $pagoId: ${it.message}")
                     }
                 )
             }

@@ -1,6 +1,6 @@
 package com.example.nutriia.auth
 
-import android.widget.Toast
+// import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,7 +19,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -27,9 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.R
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
@@ -57,8 +54,7 @@ fun NutriaLoginScreen(
     var resetMessage by remember { mutableStateOf<String?>(null) }
     val estado       by viewModel.estado.collectAsState()
 
-    val context = LocalContext.current
-    val a11yMode = LocalAccessibilityMode.current
+        val a11yMode = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
 
     // Anuncia toda la pantalla al entrar
@@ -195,17 +191,14 @@ fun NutriaLoginScreen(
                     }
 
                     // Botón Biométrico
-                    if (viewModel.hayHuellaDisponible(context)) {
+                    if (viewModel.hayHuellaDisponible()) {
                         Spacer(Modifier.height(16.dp))
                         Button(
                             onClick = {
-                                (context as? FragmentActivity)?.let { activity ->
-                                    viewModel.loginConHuella(
-                                        activity = activity,
-                                        onExito = { /* MainActivity detectará el cambio de estado */ },
-                                        onFail = {}
-                                    )
-                                }
+                                viewModel.loginConHuella(
+                                    onExito = { },
+                                    onFail = {}
+                                )
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -315,8 +308,7 @@ fun NutriaLoginScreen(
 fun MascotaMinimalista() {
     Box(contentAlignment = Alignment.Center,
         modifier = Modifier.size(300.dp).semantics { contentDescription = "" }) {
-        Image(painterResource(id = R.drawable.ic_nutria), null,
-            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.fillMaxSize())
     }
 }
 

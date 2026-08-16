@@ -1,6 +1,6 @@
 package com.example.nutriia.payment
 
-import android.util.Log
+import com.example.nutriia.platform.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape

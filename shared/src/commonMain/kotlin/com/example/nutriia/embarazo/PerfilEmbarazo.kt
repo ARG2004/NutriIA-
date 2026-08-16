@@ -1,13 +1,11 @@
 package com.example.nutriia.embarazo
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.ui.theme.parsearAlergenos   // reutilizar el existente, NO duplicar
 
-@Parcelize
+
 data class PerfilEmbarazo(
     val semanas:                Int          = 1,
     val condiciones:            List<String> = emptyList(),
@@ -21,7 +19,7 @@ data class PerfilEmbarazo(
     val pesoPregestacionalKg:   Double       = 0.0,
     val esGemelar:              Boolean      = false,
     val otrasCondicionesTexto:  String       = ""
-) : Parcelable {
+)  {
 
     val alergenosParsados: List<Alergeno> get() =
         if (allergiesDetail.isNotBlank()) parsearAlergenos(allergiesDetail) else emptyList()

@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -19,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 
@@ -47,12 +47,12 @@ fun DirectorioNutriologosScreen(
     onBack:      () -> Unit = {},
     onVinculado: () -> Unit = {}
 ) {
-    val directorio          by viewModel.directorio.collectAsStateWithLifecycle()
-    val cargando            by viewModel.cargandoDirectorio.collectAsStateWithLifecycle()
-    val cargandoAccion      by viewModel.cargando.collectAsStateWithLifecycle()
-    val nutriologoSeleccionado by viewModel.nutriologoSeleccionado.collectAsStateWithLifecycle()
-    val exito               by viewModel.exito.collectAsStateWithLifecycle()
-    val error               by viewModel.error.collectAsStateWithLifecycle()
+    val directorio          by viewModel.directorio.collectAsState()
+    val cargando            by viewModel.cargandoDirectorio.collectAsState()
+    val cargandoAccion      by viewModel.cargando.collectAsState()
+    val nutriologoSeleccionado by viewModel.nutriologoSeleccionado.collectAsState()
+    val exito               by viewModel.exito.collectAsState()
+    val error               by viewModel.error.collectAsState()
 
     var queryTexto by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }

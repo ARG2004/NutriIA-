@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,7 +28,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -1126,8 +1126,6 @@ private fun HungerCuesCard() {
 
 @Composable
 private fun OmsDisclaimerNote() {
-    val context = LocalContext.current
-
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         shape    = RoundedCornerShape(18.dp),
@@ -1158,16 +1156,14 @@ private fun OmsDisclaimerNote() {
                 // ── Fuente 1: WHO Infant and Young Child Feeding ──────────────
                 LactOmsLinkRow(
                     label   = "WHO — Infant and Young Child Feeding, 2023",
-                    url     = "https://www.who.int/news-room/fact-sheets/detail/infant-and-young-child-feeding",
-                    context = context
+                    url     = "https://www.who.int/news-room/fact-sheets/detail/infant-and-young-child-feeding"
                 )
                 Spacer(Modifier.height(4.dp))
 
                 // ── Fuente 2: UNICEF Early Childhood Nutrition ────────────────
                 LactOmsLinkRow(
                     label   = "UNICEF — Early Childhood Nutrition, 2023",
-                    url     = "https://www.unicef.org/nutrition/early-childhood-nutrition",
-                    context = context
+                    url     = "https://www.unicef.org/nutrition/early-childhood-nutrition"
                 )
             }
         }
@@ -1175,12 +1171,12 @@ private fun OmsDisclaimerNote() {
 }
 
 @Composable
-private fun LactOmsLinkRow(label: String, url: String, context: android.content.Context) {
+private fun LactOmsLinkRow(label: String, url: String) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
             .clickable {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                com.example.nutriia.platform.openUrl(url)
             }
             .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically

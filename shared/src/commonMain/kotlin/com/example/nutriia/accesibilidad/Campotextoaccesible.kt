@@ -1,9 +1,5 @@
 package com.example.nutriia.accesibilidad
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -23,14 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 
 enum class InputModoCiego { TECLADO, VOZ, BRAILLE, SENAS }
@@ -55,7 +49,6 @@ fun CampoTextoAccesible(
     onCommandParsed: ((String) -> Boolean)? = null,
     modifier:        Modifier         = Modifier
 ) {
-    val context = LocalContext.current
     val haptic  = LocalHapticFeedback.current
     val a11yMode = LocalAccessibilityMode.current
 
@@ -65,44 +58,11 @@ fun CampoTextoAccesible(
         )
     }
     var valorAlActivar by remember(activo) { mutableStateOf(if (activo) valor else "") }
-    var voiceManager by remember { mutableStateOf<VoiceInputManager?>(null) }
-    var tienePermiso by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-                    == PackageManager.PERMISSION_GRANTED
-        )
-    }
+    var voiceManager by remember { mutableStateOf<VoiceInputManager?>(VoiceInputManager()) }
+    var tienePermiso by remember { mutableStateOf(true) }
 
     val voiceEstado by remember(voiceManager) {
         derivedStateOf { voiceManager?.estado?.value ?: VoiceInputState.IDLE }
-    }
-
-    val permisoLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { otorgado ->
-        tienePermiso = otorgado
-        if (otorgado) {
-            ttsManager?.hablar(Voz.VOZ_ESCUCHANDO)
-            iniciarEscuchaConReintento(
-                voiceManager  = voiceManager,
-                idioma        = idioma,
-                modoAccesible = true,
-                esCampoFecha  = esCampoFecha,
-                esCampoHora   = esCampoHora,
-                keyboardOptions = keyboardOptions,
-                ttsManager    = ttsManager,
-                onValorChange = onValorChange,
-                onNext        = onNext,
-                onCommandParsed = onCommandParsed,
-                onSwitchModo    = { modoEntrada = it }
-            )
-        } else {
-            ttsManager?.hablar(Voz.VOZ_SIN_PERMISO)
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        voiceManager = VoiceInputManager(context)
     }
 
     var mostrarDatePicker by remember { mutableStateOf(false) }
@@ -151,8 +111,6 @@ fun CampoTextoAccesible(
                 onCommandParsed = onCommandParsed,
                 onSwitchModo    = { modoEntrada = it }
             )
-        } else if (!tienePermiso) {
-            permisoLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
@@ -200,69 +158,11 @@ fun CampoTextoAccesible(
     }
 
     if (mostrarDatePicker) {
-        val cal = java.util.Calendar.getInstance()
-        if (valor.isNotEmpty()) {
-            try {
-                if (valor.contains("-")) {
-                    val parts = valor.split("-").map { it.toInt() }
-                    if (parts.size == 3) {
-                        cal.set(parts[0], parts[1] - 1, parts[2])
-                    }
-                } else if (valor.contains("/")) {
-                    val parts = valor.split("/").map { it.toInt() }
-                    if (parts.size == 3) {
-                        cal.set(parts[2], parts[1] - 1, parts[0])
-                    }
-                }
-            } catch (e: Exception) {}
-        }
-        android.app.DatePickerDialog(
-            context,
-            { _, year, month, dayOfMonth ->
-                val formatedDate = if (etiqueta.contains("AAAA-MM-DD") || etiqueta.contains("YYYY-MM-DD") || valor.contains("-")) {
-                    String.format(java.util.Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
-                } else {
-                    String.format(java.util.Locale.US, "%02d/%02d/%04d", dayOfMonth, month + 1, year)
-                }
-                onValorChange(formatedDate)
-                mostrarDatePicker = false
-            },
-            cal.get(java.util.Calendar.YEAR),
-            cal.get(java.util.Calendar.MONTH),
-            cal.get(java.util.Calendar.DAY_OF_MONTH)
-        ).apply {
-            setOnDismissListener { mostrarDatePicker = false }
-            show()
-        }
+        mostrarDatePicker = false
     }
 
     if (mostrarTimePicker) {
-        val cal = java.util.Calendar.getInstance()
-        var initH = 8
-        var initM = 0
-        if (valor.isNotEmpty() && valor.contains(":")) {
-            try {
-                val parts = valor.split(":").map { it.toInt() }
-                if (parts.size >= 2) {
-                    initH = parts[0]
-                    initM = parts[1]
-                }
-            } catch (e: Exception) {}
-        }
-        android.app.TimePickerDialog(
-            context,
-            { _, hourOfDay, minute ->
-                val formatedTime = String.format(java.util.Locale.US, "%02d:%02d", hourOfDay, minute)
-                onValorChange(formatedTime)
-                mostrarTimePicker = false
-            },
-            initH,
-            initM,
-            true
-        ).apply {
-            setOnDismissListener { mostrarTimePicker = false }
-            show()
-        }
+        mostrarTimePicker = false
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -678,8 +578,6 @@ fun CampoTextoAccesible(
                                                     onCommandParsed = onCommandParsed,
                                                     onSwitchModo    = { modoEntrada = it }
                                                 )
-                                            } else {
-                                                permisoLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                             }
                                         }
                                     }

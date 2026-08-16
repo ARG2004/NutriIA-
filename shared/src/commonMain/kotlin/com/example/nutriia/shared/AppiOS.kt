@@ -2,6 +2,7 @@ package com.example.nutriia.shared
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import kotlinx.datetime.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -74,10 +75,9 @@ fun mesesDeVida(fechaNacimiento: String): Int {
             val p = fechaNacimiento.split("-").map { it.toInt() }
             Triple(p[2], p[1], p[0])
         }
-        val hoy = java.util.Calendar.getInstance()
-        val nac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-        val anios = hoy.get(java.util.Calendar.YEAR) - nac.get(java.util.Calendar.YEAR)
-        val meses = hoy.get(java.util.Calendar.MONTH) - nac.get(java.util.Calendar.MONTH)
+        val hoy = kotlinx.datetime.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val anios = hoy.year - anio
+        val meses = hoy.monthNumber - mes
         (anios * 12 + meses).coerceAtLeast(0)
     } catch (_: Exception) { 0 }
 }
@@ -326,27 +326,25 @@ fun NutriIAiOSApp() {
                         }
                     }
                     Screen.DASHBOARD_GINECOLOGO -> GinecologoDashboardScreen(
+                        teleconsultaViewModel = teleconsultaVm,
                         onLogout = {
                             accessibilityVm.silenciar()
                             loginViewModel.cerrarSesion()
                             currentScreen = Screen.LOGIN
                         },
-                        onPacienteClick = { paciente ->
+                        onPatientClick = { paciente ->
                             pacienteSeleccionado = PacienteResumen(
-                                id = paciente.pacienteUid,
-                                nombre = paciente.pacienteNombre,
-                                edad = "${paciente.semanasGestacion} semanas",
-                                genero = "Femenino",
-                                ultimaConsulta = "Hoy",
-                                tieneAlerta = false
+                                ownerUid = paciente.mamaUid,
+                                childId = paciente.mamaUid,
+                                childNombre = paciente.mamaNombre,
+                                padreNombre = paciente.mamaNombre
                             )
                             currentScreen = Screen.EXPEDIENTE_EMBARAZO
                         },
                         onConfiguracion = {
                             pantallaOrigenConfig = Screen.DASHBOARD_GINECOLOGO
                             currentScreen = Screen.CONFIGURACION
-                        },
-                        onVerDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS }
+                        }
                     )
 
                     // Módulos Clínicos
@@ -393,20 +391,43 @@ fun NutriIAiOSApp() {
                     }
 
                     Screen.PEDIATRA_DASHBOARD -> activeChild?.let { child ->
-                        PediatraScreen(childId = child.id, childName = child.name, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                        PediatraScreen(
+                            padreUid = loginViewModel.uidUsuario,
+                            padreNombre = loginViewModel.nombreUsuario,
+                            childId = child.id,
+                            childNombre = child.name,
+                            onAbrirPago = { _, _, _ -> },
+                            onBack = { currentScreen = Screen.DASHBOARD_PARENT }
+                        )
                     } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
 
-                    Screen.NUTRICION_EMBARAZO -> EmbarazoNutricionScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
-                    Screen.CITAS_EMBARAZO -> CitasEmbarazoScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
-                    Screen.VINCULACION_GINECOLOGO -> VinculacionGinecologoScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }, onVerDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS })
-                    Screen.DIRECTORIO_GINECOLOGOS -> DirectorioGinecologosScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
+                    Screen.NUTRICION_EMBARAZO -> EmbarazoNutricionScreen(
+                        perfil = PerfilEmbarazo(),
+                        onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                    )
+                    Screen.CITAS_EMBARAZO -> CitasEmbarazoScreen(
+                        teleconsultaViewModel = teleconsultaVm,
+                        mamaUid = loginViewModel.uidUsuario,
+                        mamaNombre = loginViewModel.nombreUsuario,
+                        onAbrirPago = { _, _, _ -> },
+                        onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                    )
+                    Screen.VINCULACION_GINECOLOGO -> VinculacionGinecologoScreen(
+                        onNavigateToDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS },
+                        onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                    )
+                    Screen.DIRECTORIO_GINECOLOGOS -> DirectorioGinecologosScreen(
+                        mamaNombre = loginViewModel.nombreUsuario,
+                        onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA },
+                        onVinculado = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                    )
 
                     Screen.PACIENTE_EXPEDIENTE -> pacienteSeleccionado?.let { pac ->
                         PacienteExpedienteScreen(
-                            ownerUid = pac.id,
-                            childId = pac.id,
-                            childNombre = pac.nombre,
-                            padreNombre = "Tutor del Paciente",
+                            ownerUid = pac.ownerUid,
+                            childId = pac.childId,
+                            childNombre = pac.childNombre,
+                            padreNombre = pac.padreNombre.ifBlank { "Tutor del Paciente" },
                             onBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST },
                             sharedViewModel = sharedVm
                         )
@@ -414,8 +435,8 @@ fun NutriIAiOSApp() {
 
                     Screen.EXPEDIENTE_EMBARAZO -> pacienteSeleccionado?.let { pac ->
                         PacienteExpedienteEmbarazoScreen(
-                            mamaUid = pac.id,
-                            mamaNombre = pac.nombre,
+                            mamaUid = pac.ownerUid,
+                            mamaNombre = pac.childNombre,
                             onBack = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
                         )
                     } ?: run { currentScreen = Screen.DASHBOARD_GINECOLOGO }

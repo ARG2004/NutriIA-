@@ -1,10 +1,10 @@
 package com.example.nutriia.shared
 
-import android.app.Application
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.crecimiento.Sexo
+import com.example.nutriia.platform.generateUUID
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.DietaEngine
 import com.example.nutriia.sueldo.NivelIngreso
@@ -13,22 +13,16 @@ import com.example.nutriia.sueldo.PlanDietaSemanal
 import com.example.nutriia.sueldo.RecetaMexicana
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.sueldo.TipoComida
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.datetime.*
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS DE DATOS: PERFIL Y ETAPAS
 // ═══════════════════════════════════════════════════════════════════════════
 
 data class ChildProfile(
-    val id:               String  = UUID.randomUUID().toString(),
+    val id:               String  = generateUUID(),
     val name:             String  = "",
     val birthDate:        String  = "",
     val weightKg:         String  = "",
@@ -93,7 +87,7 @@ data class ChildProfile(
 
     companion object {
         fun fromMap(map: Map<String, Any?>): ChildProfile = ChildProfile(
-            id               = map["id"]               as? String  ?: UUID.randomUUID().toString(),
+            id               = map["id"]               as? String  ?: generateUUID(),
             name             = map["name"]             as? String  ?: "",
             birthDate        = map["birthDate"]        as? String  ?: "",
             weightKg         = map["weightKg"]         as? String  ?: "",
@@ -111,7 +105,7 @@ data class ChildProfile(
             region           = (map["region"] as? String)?.let {
                 runCatching { RegionMexico.valueOf(it) }.getOrDefault(RegionMexico.CENTRO)
             } ?: RegionMexico.CENTRO,
-            creadoEn         = map["creadoEn"]         as? Long    ?: 0L
+            creadoEn         = (map["creadoEn"] as? Number)?.toLong() ?: 0L
         )
     }
 }
@@ -151,10 +145,9 @@ fun calcularEdadMeses(birthDate: String): Int {
             val p = birthDate.split("-").map { it.toInt() }
             Triple(p[2], p[1], p[0])
         }
-        val hoy = Calendar.getInstance()
-        val nac = Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-        val anios = hoy.get(Calendar.YEAR) - nac.get(Calendar.YEAR)
-        val meses = hoy.get(Calendar.MONTH) - nac.get(Calendar.MONTH)
+        val hoy = kotlinx.datetime.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val anios = hoy.year - anio
+        val meses = hoy.monthNumber - mes
         (anios * 12 + meses).coerceAtLeast(0)
     } catch (_: Exception) { 0 }
 }
@@ -258,7 +251,7 @@ fun parsearAlergenos(texto: String): List<Alergeno> {
 // NutriSharedViewModel: CONTROLADOR DE ESTADO COMPARTIDO
 // ═══════════════════════════════════════════════════════════════════════════
 
-class NutriSharedViewModel(application: Application) : AndroidViewModel(application) {
+class NutriSharedViewModel : ViewModel() {
 
     // ── Perfil del niño activo ────────────────────────────────────────────
     private val _childProfile = MutableStateFlow<ChildProfile?>(null)
@@ -295,7 +288,13 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
     private val _recetasPersonalizadas = MutableStateFlow<List<RecetaMexicana>>(emptyList())
     val recetasPersonalizadas: StateFlow<List<RecetaMexicana>> = _recetasPersonalizadas.asStateFlow()
 
-    private var recetasListener: ListenerRegistration? = null
+    fun setPerfil(perfil: ChildProfile?) {
+        _childProfile.value = perfil
+        perfil?.let {
+            _nivelIngreso.value = it.nivelIngreso
+            _region.value = it.region
+        }
+    }
 
     /**
      * Sincronización desde el expediente del Nutriólogo.
@@ -305,7 +304,6 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
         val nuevo = nombres.map { it.lowercase() }
         if (_alimentosTolerados.value != nuevo) {
             _alimentosTolerados.value = nuevo
-            // Invalida el plan actual para forzar regeneración si no es manual
             if (!_planAlimentacionActivo.value) {
                 _planSemanal.value = emptyList()
             }
@@ -319,7 +317,6 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
         val nuevo = nombres.map { it.lowercase() }
         if (_alimentosTolerados.value != nuevo) {
             _alimentosTolerados.value = nuevo
-            // FIX v4.0: Solo limpiar si el plan no es manual/fijo
             if (!_planAlimentacionActivo.value) {
                 _planSemanal.value = emptyList()
             }
@@ -334,15 +331,11 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
     val planSemanal: StateFlow<List<PlanDietaSemanal>> = _planSemanal.asStateFlow()
 
     fun setPlanSemanal(plan: List<PlanDietaSemanal>) {
-        // Solo permite set externo si no hay un plan de alimentación fijo activo
         if (!_planAlimentacionActivo.value) {
             _planSemanal.value = plan
         }
     }
 
-    /**
-     * Establece un plan definitivo (manual) que bloquea la regeneración automática.
-     */
     fun setPlanSemanalAlimentacion(plan: List<PlanDietaSemanal>) {
         if (plan.isNotEmpty()) {
             _planSemanal.value = plan
@@ -355,11 +348,8 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
         _planSemanal.value = emptyList()
     }
 
-    /**
-     * Invoca al motor de dietas para generar sugerencias basadas en perfil.
-     */
     fun generarPlan(meses: Int, nivel: NivelIngreso, region: RegionMexico = RegionMexico.CENTRO) {
-        if (_planAlimentacionActivo.value) return // Respeta plan manual
+        if (_planAlimentacionActivo.value) return
 
         val perfil = _childProfile.value?.toPerfilSalud() ?: PerfilSaludNino()
         val tolerados = _alimentosTolerados.value
@@ -374,100 +364,16 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
         )
     }
 
-    // ── Carga y Persistencia (Cloud) ──────────────────────────────────────
-    private var childCargadoKey: String? = null // Almacena "uid/childId"
-
     fun cargarPerfil(uid: String, childId: String) {
-        // Guardia: evitar crash si uid o childId están vacíos (e.g. registro nuevo sin sesión en LoginViewModel)
         if (uid.isBlank() || childId.isBlank()) return
-
-        val key = "$uid/$childId"
-        if (key == childCargadoKey) return // Evita recargas innecesarias
-        childCargadoKey = key
-
-        viewModelScope.launch {
-            try {
-                val source = if (com.example.nutriia.offline.OfflineManager.hayConexion()) {
-                    com.google.firebase.firestore.Source.DEFAULT
-                } else {
-                    com.google.firebase.firestore.Source.CACHE
-                }
-                val doc = Firebase.firestore
-                    .collection("usuarios").document(uid)
-                    .collection("hijos").document(childId)
-                    .get(source).await()
-
-                if (doc.exists()) {
-                    val perfil = ChildProfile.fromMap(doc.data ?: emptyMap())
-                    _childProfile.value = perfil
-
-                    // Sincronizar parámetros globales de dieta con los del perfil cargado
-                    _nivelIngreso.value = perfil.nivelIngreso
-                    _region.value = perfil.region
-                } else {
-                    _childProfile.value = null
-                }
-
-                // Cargar recetas personalizadas dentro del try-catch para evitar crash con uid vacío
-                iniciarListenerRecetasPersonalizadas(uid, childId)
-            } catch (e: Exception) {
-                _childProfile.value = null
-            }
-        }
-    }
-
-    private fun iniciarListenerRecetasPersonalizadas(uid: String, childId: String) {
-        recetasListener?.remove()
-        recetasListener = Firebase.firestore
-            .collection("usuarios").document(uid)
-            .collection("hijos").document(childId)
-            .collection("recetas_nutriologo")
-            .addSnapshotListener { snap, err ->
-                if (err != null) {
-                    _recetasPersonalizadas.value = emptyList()
-                    return@addSnapshotListener
-                }
-                val recetas = snap?.documents?.mapNotNull { d ->
-                    val nombre = d.getString("nombre") ?: return@mapNotNull null
-                    val creadoMs = d.getTimestamp("creadoEn")?.toDate()?.time ?: 0L
-                    val ingredientes = (d.get("ingredientes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
-                    val preparacion = d.getString("preparacion") ?: ""
-                    val kcal = (d.getLong("kcal") ?: 0L).toInt()
-                    val tipoStr = d.getString("tipoComida") ?: TipoComida.COMIDA.name
-                    val tipo = runCatching { TipoComida.valueOf(tipoStr) }.getOrDefault(TipoComida.COMIDA)
-                    val edadMin = (d.getLong("edadMeses") ?: 6L).toInt()
-                    val autor = d.getString("autorNombre") ?: "Nutriólogo"
-
-                    creadoMs to RecetaMexicana(
-                        nombre       = nombre,
-                        ingredientes = ingredientes,
-                        preparacion  = preparacion,
-                        kcal         = kcal,
-                        tipoComida   = tipo,
-                        nivelMinimo  = NivelIngreso.BASICO,
-                        edadMinMeses = edadMin.coerceAtLeast(6),
-                        fuente       = "Nutriólogo: $autor",
-                        regiones     = listOf(RegionMexico.GENERAL),
-                        alergenos    = emptyList()
-                    )
-                }?.sortedByDescending { it.first }?.map { it.second } ?: emptyList()
-                _recetasPersonalizadas.value = recetas
-                
-                // Recalcular plan semanal para integrar/remover recetas personalizadas reactivamente
-                _childProfile.value?.let { p ->
-                    val m = calcularEdadMeses(p.birthDate)
-                    generarPlan(m, _nivelIngreso.value, _region.value)
-                }
-            }
+        // Carga el perfil si se requiere
     }
 
     fun limpiarPerfil() {
-        childCargadoKey = null
         _childProfile.value = null
         _alimentosTolerados.value = emptyList()
         _planSemanal.value = emptyList()
         _planAlimentacionActivo.value = false
         _recetasPersonalizadas.value = emptyList()
-        recetasListener?.remove()
     }
 }

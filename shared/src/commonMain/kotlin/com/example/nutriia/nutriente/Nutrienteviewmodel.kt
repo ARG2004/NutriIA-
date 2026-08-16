@@ -1,7 +1,6 @@
 package com.example.nutriia.nutriente
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.sueldo.ComidasDiarias
@@ -14,8 +13,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import com.example.nutriia.utils.FechaUtils
-import java.text.SimpleDateFormat
-import java.util.*
 
 data class DatosInfante(
     val childId: String       = "",
@@ -41,7 +38,7 @@ data class RecomendacionConectada(
     val snacksMax:   Int
 )
 
-class NutrientesViewModel(application: Application) : AndroidViewModel(application) {
+class NutrientesViewModel : ViewModel() {
 
     // Usa directamente NutrientesRepositorio — el offline lo maneja Firestore
     private val repo = NutrientesRepositorio()

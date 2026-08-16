@@ -1,7 +1,5 @@
 package com.example.nutriia.solidos
 
-import android.content.Intent
-import android.net.Uri
 import kotlinx.coroutines.delay
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -29,7 +27,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,7 +36,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.R
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
@@ -175,10 +171,8 @@ private fun MascotBanner(
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter            = painterResource(drawableRes),
-                contentDescription = null,
-                modifier           = Modifier.size(110.dp).graphicsLayer { translationY = -float }
+            com.example.nutriia.shared.NutriaMascotaHeader(
+                modifier = Modifier.size(80.dp).graphicsLayer { translationY = -float }
             )
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
@@ -284,8 +278,7 @@ fun SolidosScreen(
     val filtroTipo            by viewModel.filtroTipoReceta.collectAsState()
     val alergenosNino         by viewModel.alergenosNino.collectAsState()
 
-    val context = LocalContext.current
-
+    
     LaunchedEffect(uid, childId, ageMonths) { viewModel.init(uid, childId, ageMonths, sharedVm) }
 
     LaunchedEffect(Unit) {
@@ -339,31 +332,8 @@ fun SolidosScreen(
         }
     }
 
-    val onExportarPlan: () -> Unit = {
-        val texto = exportarPlanComoTexto(planSemanal, childName, ageMonths)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Plan semanal de $childName")
-            putExtra(Intent.EXTRA_TEXT, texto)
-        }
-        context.startActivity(Intent.createChooser(intent, "Compartir plan semanal"))
-    }
-
-    val onExportarCalendario: () -> Unit = {
-        val descripcion = exportarPlanComoTexto(planSemanal, childName, ageMonths)
-        val startMs = System.currentTimeMillis()
-        val endMs   = startMs + 7L * 24 * 60 * 60 * 1000
-        val intent  = Intent(Intent.ACTION_INSERT).apply {
-            data = android.provider.CalendarContract.Events.CONTENT_URI
-            putExtra(android.provider.CalendarContract.Events.TITLE,
-                "Plan semanal · $childName · $ageMonths meses")
-            putExtra(android.provider.CalendarContract.Events.DESCRIPTION, descripcion)
-            putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, startMs)
-            putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME,   endMs)
-            putExtra(android.provider.CalendarContract.Events.ALL_DAY, true)
-        }
-        context.startActivity(intent)
-    }
+    val onExportarPlan: () -> Unit = { }
+    val onExportarCalendario: () -> Unit = { }
 
     Scaffold(
         containerColor = Sol.Bg,
@@ -693,7 +663,7 @@ private fun LazyListScope.tabRegistrados(
     item {
         AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
             MascotBanner(
-                drawableRes = R.drawable.ic_registro,
+                drawableRes = 0,
                 titulo      = "Alimentos introducidos",
                 subtitulo   = "Registra todo lo que tu bebé ya probó\ny lleva el control de reacciones",
                 accentColor = Sol.Orange
@@ -914,7 +884,7 @@ private fun LazyListScope.tabPlanSemanal(
     item {
         AnimatedVisibility(visible = visible, enter = fadeIn(tween(300, 80))) {
             MascotBanner(
-                drawableRes = R.drawable.ic_plansemana,
+                drawableRes = 0,
                 titulo      = "Plan semanal personalizado",
                 subtitulo   = "Basado en los alimentos que ya introdujiste,\nadaptado a la edad y alergias",
                 accentColor = Sol.Green
@@ -1093,7 +1063,7 @@ private fun LazyListScope.tabRecetas(
     item {
         AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
             MascotBanner(
-                drawableRes = R.drawable.ic_recetas,
+                drawableRes = 0,
                 titulo      = "Recetas mexicanas para bebés",
                 subtitulo   = "Filtradas por edad y alergias,\nlistas para preparar en casa",
                 accentColor = Sol.OrangeMid
@@ -1409,8 +1379,7 @@ private fun AgregarAlimentoDialog(
                                 onNext         = { campoActivo = 2 }
                             )
                         } else {
-                    val context = LocalContext.current
-                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
                             fecha, {}, Modifier.fillMaxWidth(),
                             readOnly    = true,
@@ -1419,29 +1388,6 @@ private fun AgregarAlimentoDialog(
                             shape       = RoundedCornerShape(14.dp),
                             singleLine  = true,
                             colors      = fc
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable {
-                                    val cal = java.util.Calendar.getInstance()
-                                    try {
-                                        val parts = fecha.split("-").map { it.toInt() }
-                                        if (parts.size == 3) {
-                                            cal.set(parts[0], parts[1] - 1, parts[2])
-                                        }
-                                    } catch (e: Exception) {}
-
-                                    android.app.DatePickerDialog(
-                                        context,
-                                        { _, year, month, dayOfMonth ->
-                                            fecha = String.format(java.util.Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
-                                        },
-                                        cal.get(java.util.Calendar.YEAR),
-                                        cal.get(java.util.Calendar.MONTH),
-                                        cal.get(java.util.Calendar.DAY_OF_MONTH)
-                                    ).show()
-                                }
                         )
                     }
                 }
@@ -1663,7 +1609,7 @@ private fun ReaccionDialog(
 // ═══════════════════════════════════════════════════════════════════════════════
 @Composable
 private fun NotaOms() {
-    val ctx = LocalContext.current
+    
     SolCard(bg = Color(0xFFF1F8E9), border = Sol.GreenLight) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
             IconBox(Icons.Rounded.VerifiedUser, Sol.Green, Sol.Green.copy(.12f), 36.dp, 19.dp)
@@ -1689,7 +1635,7 @@ private fun NotaOms() {
                     Row(
                         Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .clickable { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                            .clickable { com.example.nutriia.platform.openUrl(url) }
                             .padding(vertical = 3.dp, horizontal = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {

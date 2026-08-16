@@ -394,14 +394,11 @@ class PediatraDashboardViewModel : ViewModel() {
     private fun formatearFecha(creadoEnRaw: Any?): String {
         val timestamp = when (creadoEnRaw) {
             is Number -> creadoEnRaw.toLong()
-            is String -> {
-                FechaUtils.parsearFechaHora(creadoEnRaw)?.time ?: 0L
-            }
-            is com.google.firebase.Timestamp -> creadoEnRaw.toDate().time
+            is String -> FechaUtils.parsearFechaHora(creadoEnRaw)
             else -> 0L
         }
         if (timestamp == 0L) return "Sin datos"
-        val diffDias = (System.currentTimeMillis() - timestamp) / (1000 * 60 * 60 * 24)
+        val diffDias = (com.example.nutriia.platform.currentTimeMillis() - timestamp) / (1000 * 60 * 60 * 24)
         return when {
             diffDias == 0L -> "Hoy"
             diffDias == 1L -> "Ayer"

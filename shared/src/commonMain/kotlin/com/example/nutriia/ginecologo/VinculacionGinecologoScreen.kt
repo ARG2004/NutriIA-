@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
@@ -44,10 +43,10 @@ fun VinculacionGinecologoScreen(
     onNavigateToDirectorio: () -> Unit,
     onBack: () -> Unit
 ) {
-    val vinculacion by viewModel.vinculacionActual.collectAsStateWithLifecycle()
-    val cargando    by viewModel.cargando.collectAsStateWithLifecycle()
-    val exito       by viewModel.exito.collectAsStateWithLifecycle()
-    val error       by viewModel.error.collectAsStateWithLifecycle()
+    val vinculacion by viewModel.vinculacionActual.collectAsState()
+    val cargando    by viewModel.cargando.collectAsState()
+    val exito       by viewModel.exito.collectAsState()
+    val error       by viewModel.error.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
 

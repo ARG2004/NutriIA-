@@ -28,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.ginecologo.GinecologoViewModel
 import com.example.nutriia.payment.PaymentAwareTeleconsultaButtons
@@ -77,12 +76,12 @@ fun CitasEmbarazoScreen(
         }
     }
 
-    val vinculacion by viewModel.vinculacionActual.collectAsStateWithLifecycle()
-    val cargando by viewModel.cargando.collectAsStateWithLifecycle()
-    val citas by viewModel.citasDeLaMama.collectAsStateWithLifecycle()
+    val vinculacion by viewModel.vinculacionActual.collectAsState()
+    val cargando by viewModel.cargando.collectAsState()
+    val citas by viewModel.citasDeLaMama.collectAsState()
     var showAgendarDialog by remember { mutableStateOf(false) }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
+
     var permissionCheckStep by remember { mutableIntStateOf(0) }
 
     val cameraState = rememberPermissionState(
@@ -114,7 +113,7 @@ fun CitasEmbarazoScreen(
         delay(500)
         when (permissionCheckStep) {
             0 -> {
-                val hasCam = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.CAMERA))
+                val hasCam = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.CAMERA))
                 if (!hasCam) {
                     cameraState.requestPermission()
                 } else {
@@ -122,7 +121,7 @@ fun CitasEmbarazoScreen(
                 }
             }
             1 -> {
-                val hasMic = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.MICROPHONE))
+                val hasMic = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.MICROPHONE))
                 if (!hasMic) {
                     micState.requestPermission()
                 } else {
@@ -130,7 +129,7 @@ fun CitasEmbarazoScreen(
                 }
             }
             2 -> {
-                val hasPhone = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.PHONE))
+                val hasPhone = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.PHONE))
                 if (!hasPhone) {
                     phoneState.requestPermission()
                 } else {
@@ -138,7 +137,7 @@ fun CitasEmbarazoScreen(
                 }
             }
             3 -> {
-                val hasNear = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.NEAR_DEVICES))
+                val hasNear = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(PermissionType.NEAR_DEVICES))
                 if (!hasNear) {
                     nearDevicesState.requestPermission()
                 } else {
@@ -472,7 +471,7 @@ fun AgendarCitaDialog(
     ttsManager: NutriTTS? = null,
     idiomaActual: IdiomaVoz = IdiomaVoz.ESPANOL_MX
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+
     var fecha by remember { mutableStateOf(vinculacion.proximaCitaFecha.ifBlank { "" }) }
     var hora by remember { mutableStateOf(vinculacion.proximaCitaHora.ifBlank { "" }) }
     var motivo by remember { mutableStateOf(vinculacion.proximaCitaMotivo.ifBlank { "" }) }
@@ -516,7 +515,7 @@ fun AgendarCitaDialog(
         if (motivo.isNotBlank() && campoActivo == 2 && motivo != valorInicial) campoActivo = 3
     }
 
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+    val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     val ejecutarConfirmarCita: () -> Unit = {
         if (fecha.isNotBlank() && hora.isNotBlank()) {
@@ -613,57 +612,32 @@ fun AgendarCitaDialog(
                 } else {
                     OutlinedTextField(
                         value = fecha,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Fecha") },
-                        placeholder = { Text("Seleccionar fecha") },
+                        onValueChange = { fecha = it },
+                        label = { Text("Fecha (AAAA-MM-DD)") },
+                        placeholder = { Text("2026-05-10") },
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = EmbRosa,
                             unfocusedBorderColor = Color.LightGray
                         ),
                         trailingIcon = {
-                            IconButton(onClick = {
-                                val cal = java.util.Calendar.getInstance()
-                                android.app.DatePickerDialog(
-                                    context,
-                                    { _, year, month, dayOfMonth ->
-                                        fecha = String.format(java.util.Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
-                                    },
-                                    cal.get(java.util.Calendar.YEAR),
-                                    cal.get(java.util.Calendar.MONTH),
-                                    cal.get(java.util.Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }) {
-                                Icon(Icons.Rounded.CalendarToday, null, tint = EmbRosa)
-                            }
+                            Icon(Icons.Rounded.CalendarToday, null, tint = EmbRosa)
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     OutlinedTextField(
                         value = hora,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Hora") },
-                        placeholder = { Text("Seleccionar hora") },
+                        onValueChange = { hora = it },
+                        label = { Text("Hora (HH:mm)") },
+                        placeholder = { Text("10:00") },
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = EmbRosa,
                             unfocusedBorderColor = Color.LightGray
                         ),
                         trailingIcon = {
-                            IconButton(onClick = {
-                                android.app.TimePickerDialog(
-                                    context,
-                                    { _, hourOfDay, minute ->
-                                        hora = String.format(java.util.Locale.US, "%02d:%02d", hourOfDay, minute)
-                                    },
-                                    12, 0, true
-                                ).show()
-                            }) {
-                                Icon(Icons.Rounded.AccessTime, null, tint = EmbRosa)
-                            }
+                            Icon(Icons.Rounded.AccessTime, null, tint = EmbRosa)
                         },
                         modifier = Modifier.fillMaxWidth()
                     )

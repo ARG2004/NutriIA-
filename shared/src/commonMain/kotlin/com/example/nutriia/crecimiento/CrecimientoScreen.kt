@@ -1,8 +1,6 @@
 package com.example.nutriia.crecimiento
 
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
+// import android.os.Build
 import kotlinx.coroutines.delay
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -31,9 +29,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import com.example.nutriia.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -419,11 +415,7 @@ private fun ResumenCard(m: MedicionCrecimiento?, meses: Int, interp: Interpretac
                             .background(s.light).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_header),
-                            contentDescription = null,
-                            modifier = Modifier.size(60.dp)
-                        )
+                        com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.size(60.dp))
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text(s.mensaje, fontWeight = FontWeight.Bold, color = s.color, fontSize = 13.sp)
@@ -907,11 +899,7 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
                 }
 
                 Spacer(Modifier.height(4.dp))
-                Image(
-                    painter = painterResource(id = R.drawable.ic_crecimiento),
-                    contentDescription = null,
-                    modifier = Modifier.size(120.dp)
-                )
+                com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.size(120.dp))
                 Spacer(Modifier.height(8.dp))
 
                 style?.let { s ->
@@ -1137,33 +1125,7 @@ private fun DialogoMedicion(
                         )
                     }
                 } else {
-                    val context = LocalContext.current
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        CampoMedicion("Fecha", Icons.Rounded.CalendarToday, fecha) {}
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable {
-                                    val cal = java.util.Calendar.getInstance()
-                                    try {
-                                        val parts = fecha.split("-").map { it.toInt() }
-                                        if (parts.size == 3) {
-                                            cal.set(parts[0], parts[1] - 1, parts[2])
-                                        }
-                                    } catch (e: Exception) {}
-
-                                    android.app.DatePickerDialog(
-                                        context,
-                                        { _, year, month, dayOfMonth ->
-                                            fecha = String.format(java.util.Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
-                                        },
-                                        cal.get(java.util.Calendar.YEAR),
-                                        cal.get(java.util.Calendar.MONTH),
-                                        cal.get(java.util.Calendar.DAY_OF_MONTH)
-                                    ).show()
-                                }
-                        )
-                    }
+                                        CampoMedicion("Fecha (AAAA-MM-DD)", Icons.Rounded.CalendarToday, fecha) { fecha = it }
                     CampoMedicion("Peso (kg)", Icons.Rounded.MonitorWeight, peso, KeyboardType.Decimal) { peso = it }
                     CampoMedicion("Talla (cm)", Icons.Rounded.Height, talla, KeyboardType.Decimal) { talla = it }
                     CampoMedicion("Circ. cefálica (cm)  —  opcional", Icons.Rounded.Tag, circC, KeyboardType.Decimal) { circC = it }
@@ -1316,8 +1278,7 @@ private val FUENTES = listOf(
 
 @Composable
 fun NotaOMS() {
-    val ctx = LocalContext.current
-    var fuentesExpanded by remember { mutableStateOf(false) }       // ← NUEVO
+        var fuentesExpanded by remember { mutableStateOf(false) }       // ← NUEVO
 
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -1416,7 +1377,7 @@ fun NotaOMS() {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         FUENTES.forEach { fuente ->
-                            FuenteCard(fuente = fuente, ctx = ctx)
+                            FuenteCard(fuente = fuente)
                         }
                     }
                 }
@@ -1442,7 +1403,7 @@ fun NotaOMS() {
 }
 
 @Composable
-private fun FuenteCard(fuente: FuenteInfo, ctx: android.content.Context) {
+private fun FuenteCard(fuente: FuenteInfo) {
     Card(Modifier.fillMaxWidth(), RoundedCornerShape(16.dp), CardDefaults.cardColors(C_Card), CardDefaults.cardElevation(1.dp)) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1473,15 +1434,14 @@ private fun FuenteCard(fuente: FuenteInfo, ctx: android.content.Context) {
             Spacer(Modifier.height(10.dp))
             HorizontalDivider(color = C_Divider, thickness = 0.5.dp)
             Spacer(Modifier.height(10.dp))
-            LinkRow(icon = Icons.Rounded.Language, label = "Página oficial OMS", url = fuente.url, ctx = ctx)
+            LinkRow(icon = Icons.Rounded.Language, label = "Página oficial OMS", url = fuente.url)
             fuente.urlPdf?.let { pdf ->
                 Spacer(Modifier.height(6.dp))
                 LinkRow(
                     icon  = Icons.Rounded.PictureAsPdf,
                     label = fuente.labelPdf ?: "Tabla de percentiles (PDF)",
                     url   = pdf,
-                    ctx   = ctx,
-                    color = C_Red
+                                        color = C_Red
                 )
             }
         }
@@ -1504,12 +1464,11 @@ private fun LinkRow(
     icon:  ImageVector,
     label: String,
     url:   String,
-    ctx:   android.content.Context,
-    color: Color = C_Green
+        color: Color = C_Green
 ) {
     Row(
         Modifier.clip(RoundedCornerShape(6.dp))
-            .clickable { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            .clickable { com.example.nutriia.platform.openUrl(url) }
             .padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1525,7 +1484,4 @@ private fun LinkRow(
 // HELPER
 // ═══════════════════════════════════════════════════════════════════════════
 
-private fun calcMeses(fecha: String): Int = try {
-    val d = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(fecha) ?: return 0
-    ((Date().time - d.time) / (1000L * 60 * 60 * 24 * 30.44)).toInt()
-} catch (e: Exception) { 0 }
+private fun calcMeses(fecha: String): Int = com.example.nutriia.shared.calcularEdadMeses(fecha)

@@ -1,7 +1,5 @@
 package com.example.nutriia.auth
 
-import android.content.Context
-import android.content.SharedPreferences
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.crecimiento.Sexo
 import com.example.nutriia.embarazo.PerfilEmbarazo
@@ -11,33 +9,30 @@ import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.utils.FechaUtils
+import com.example.nutriia.platform.generateUUID
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import java.util.UUID
 
 sealed class ResultadoAuth {
     data class Exito(val uid: String, val rol: String) : ResultadoAuth()
     data class Error(val mensaje: String)              : ResultadoAuth()
 }
 
-class RepositorioLogin(private val context: Context) {
+class RepositorioLogin {
 
     private val auth = FirebaseAuth.getInstance()
     private val db   = FirebaseFirestore.getInstance()
 
-    private val rolCache: SharedPreferences =
-        context.getSharedPreferences("nutriia_rol_cache", Context.MODE_PRIVATE)
+    private val rolCache = mutableMapOf<String, String>()
 
     private fun guardarRolCache(uid: String, rol: String) {
-        rolCache.edit().putString("uid", uid).putString("rol", rol).apply()
+        rolCache[uid] = rol
     }
 
     private fun obtenerRolCache(uid: String): String? {
-        return if (rolCache.getString("uid", null) == uid)
-            rolCache.getString("rol", null)
-        else null
+        return rolCache[uid]
     }
 
     suspend fun login(email: String, contrasena: String): ResultadoAuth {
@@ -58,7 +53,7 @@ class RepositorioLogin(private val context: Context) {
 
             val rol   = obtenerRol(usuario.uid)
             guardarRolCache(usuario.uid, rol)
-            SessionManager.guardarSesion(context, usuario.uid)
+            SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, rol)
 
         } catch (e: Exception) {
@@ -101,7 +96,7 @@ class RepositorioLogin(private val context: Context) {
             db.collection("usuarios").document(usuario.uid).set(datos).await()
 
             guardarRolCache(usuario.uid, "padre")
-            SessionManager.guardarSesion(context, usuario.uid)
+            SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, "padre")
 
         } catch (e: Exception) {
@@ -142,7 +137,7 @@ class RepositorioLogin(private val context: Context) {
             db.collection("usuarios").document(usuario.uid).set(datos).await()
 
             guardarRolCache(usuario.uid, "mama_primeriza")
-            SessionManager.guardarSesion(context, usuario.uid)
+            SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, "mama_primeriza")
 
         } catch (e: Exception) {
@@ -229,7 +224,7 @@ class RepositorioLogin(private val context: Context) {
             db.collection("usuarios").document(usuario.uid).set(datosUsuario).await()
 
             guardarRolCache(usuario.uid, "nutriologo")
-            SessionManager.guardarSesion(context, usuario.uid)
+            SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, "nutriologo")
 
         } catch (e: Exception) {
@@ -293,7 +288,7 @@ class RepositorioLogin(private val context: Context) {
             )
 
             guardarRolCache(usuario.uid, "ginecologo")
-            SessionManager.guardarSesion(context, usuario.uid)
+            SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, "ginecologo")
 
         } catch (e: Exception) {
@@ -345,7 +340,7 @@ class RepositorioLogin(private val context: Context) {
 
     suspend fun guardarHijo(uid: String, child: ChildProfile): Boolean {
         return try {
-            val childId = child.id.ifBlank { UUID.randomUUID().toString() }
+            val childId = child.id.ifBlank { generateUUID() }
             db.collection("usuarios").document(uid)
                 .collection("hijos").document(childId)
                 .set(mapOf(
@@ -432,7 +427,7 @@ class RepositorioLogin(private val context: Context) {
     suspend fun recuperarContrasena(email: String): Boolean {
         if (email.isBlank()) return false
         return try {
-            auth.sendPasswordResetEmail(email.trim()).await()
+            auth.sendPasswordResetEmail(email = email.trim(), settings = null)
             true
         } catch (e: Exception) { false }
     }
@@ -441,8 +436,8 @@ class RepositorioLogin(private val context: Context) {
 
     suspend fun cerrarSesionCompleta() {
         auth.signOut()
-        SessionManager.limpiarSesion(context)
-        rolCache.edit().clear().apply()
+        SessionManager.limpiarSesion()
+        rolCache.clear()
         if (OfflineManager.hayConexion()) {
             try {
                 db.clearPersistence().await()
@@ -455,12 +450,12 @@ class RepositorioLogin(private val context: Context) {
     }
 
     suspend fun cerrarSesion() {
-        SessionManager.limpiarSesion(context)
-        rolCache.edit().clear().apply()
+        SessionManager.limpiarSesion()
+        rolCache.clear()
     }
 
-    fun cerrarSesionBiometrica(context: Context) {
-        SessionManager.limpiarSesion(context)
+    fun cerrarSesionBiometrica() {
+        SessionManager.limpiarSesion()
     }
 
     suspend fun actualizarContrasena(contrasenaActual: String, nuevaContrasena: String): ResultadoAuth {
@@ -505,8 +500,8 @@ class RepositorioLogin(private val context: Context) {
 
             usuario.delete().await()
 
-            SessionManager.limpiarSesion(context)
-            rolCache.edit().clear().apply()
+            SessionManager.limpiarSesion()
+            rolCache.clear()
 
             ResultadoAuth.Exito(uid, "cuenta_eliminada")
         } catch (e: Exception) {

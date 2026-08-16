@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -90,8 +89,7 @@ fun ConfiguracionScreen(
     onCerrarSesion:     () -> Unit,
     onEliminarCuentaConPassword: (contrasenaActual: String, onResultado: (Boolean, String) -> Unit) -> Unit = { _, _ -> }
 ) {
-    val context      = LocalContext.current
-    val a11yVm: AccessibilityViewModel = viewModel()
+        val a11yVm: AccessibilityViewModel = viewModel()
     val modoActual   by a11yVm.mode.collectAsState()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val ttsManager   = a11yVm.ttsManager
@@ -173,8 +171,7 @@ fun ConfiguracionScreen(
                 modoActual     = modoActual,
                 idiomaActual   = idiomaActual,
                 ttsManager     = ttsManager,
-                context        = context,
-                onModoChange   = { a11yVm.setMode(it) },
+                                onModoChange   = { a11yVm.setMode(it) },
                 onIdiomaChange = { a11yVm.setIdioma(it) },
                 onDismiss      = { mostrarDialogoA11y = false }
             )
@@ -448,8 +445,8 @@ fun ConfiguracionScreen(
         }
 
         if (mostrarDialogoArco) {
-            val repoLogin = remember { com.example.nutriia.auth.RepositorioLogin(context) }
-            val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            val repoLogin = remember { com.example.nutriia.auth.RepositorioLogin() }
+            val currentUserId = com.example.nutriia.auth.RepositorioLogin().obtenerUsuarioActual()?.uid ?: ""
 
             AlertDialog(
                 onDismissRequest = { if (!borrandoDatosArco) mostrarDialogoArco = false },
@@ -1160,8 +1157,7 @@ private fun CfgCambiarPasswordDialog(
     onEnviarCorreo: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    var contrasenaActual by remember { mutableStateOf("") }
+        var contrasenaActual by remember { mutableStateOf("") }
     var nuevaContrasena by remember { mutableStateOf("") }
     var confirmarContrasena by remember { mutableStateOf("") }
 
@@ -1268,7 +1264,7 @@ private fun CfgCambiarPasswordDialog(
                         cargando = false
                         if (exito) {
                             mensajeExito = "Contraseña actualizada exitosamente"
-                            android.widget.Toast.makeText(context, "Contraseña actualizada exitosamente", android.widget.Toast.LENGTH_SHORT).show()
+                            
                             onDismiss()
                         } else {
                             mensajeError = msg
@@ -1386,16 +1382,15 @@ private fun CfgEliminarCuentaDialog(
 
 @Composable
 private fun PermissionSettingRow(type: PermissionType, isLast: Boolean = false) {
-    val context = LocalContext.current
-    var isGranted by remember {
-        mutableStateOf(PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(type)))
+        var isGranted by remember {
+        mutableStateOf(PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(type)))
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                isGranted = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(type))
+                isGranted = PermissionHelper.hasPermissions(permissions = PermissionHelper.getRequiredPermissions(type))
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

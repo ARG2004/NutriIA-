@@ -1,7 +1,5 @@
 package com.example.nutriia.analisisIA
 
-import com.google.firebase.Timestamp
-
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS — Módulo de Análisis de Alimentos con IA
 // ═══════════════════════════════════════════════════════════════════════════
@@ -43,26 +41,15 @@ data class AnalisisCompleto(
     val foodDetection : FoodDetectionResult = FoodDetectionResult(),
     val nutrition     : NutritionInfo       = NutritionInfo(),
     val analysis      : PediatricAnalysis   = PediatricAnalysis(),
-    val creadoEn      : Timestamp?          = null
+    val creadoEn      : Long                = 0L
 )
 
 // ─── 5. UI State — flujo de estados de la pantalla ───────────────────────────
 sealed class AnalisisUiState {
-    /** Pantalla inicial: lista vacía, esperando acción del usuario */
     object Idle : AnalisisUiState()
-
-    /** Cámara abierta, esperando toma de foto */
     object Capturando : AnalisisUiState()
-
-    /** Procesando — el mensaje muestra el paso actual al usuario */
     data class Analizando(val mensaje: String) : AnalisisUiState()
-
-    /** Análisis completado con éxito */
     data class Exito(val resultado: AnalisisCompleto) : AnalisisUiState()
-
-    /** Análisis guardado en Firebase */
     object Guardado : AnalisisUiState()
-
-    /** Error recuperable — se muestra al usuario */
     data class Error(val mensaje: String) : AnalisisUiState()
 }

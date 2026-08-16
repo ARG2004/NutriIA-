@@ -1,6 +1,6 @@
 package com.example.nutriia.teleconsulta
 
-import android.util.Log
+import com.example.nutriia.platform.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore

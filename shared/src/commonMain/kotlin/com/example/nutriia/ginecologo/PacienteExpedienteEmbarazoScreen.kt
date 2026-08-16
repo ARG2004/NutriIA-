@@ -24,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
@@ -53,7 +52,7 @@ fun PacienteExpedienteEmbarazoScreen(
     onBack: () -> Unit,
     viewModel: PacienteExpedienteEmbarazoViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     var tabSeleccionado by remember { mutableIntStateOf(0) }
 
     val a11yMode = LocalAccessibilityMode.current

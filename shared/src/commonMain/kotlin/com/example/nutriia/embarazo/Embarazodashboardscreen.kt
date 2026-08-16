@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -91,9 +90,8 @@ fun EmbarazoDashboardScreen(
     val esAccesible  = esBlind || esMute
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
-    val context = LocalContext.current
-    var isListening by remember { mutableStateOf(false) }
-    val voiceManager = remember { VoiceInputManager(context) }
+        var isListening by remember { mutableStateOf(false) }
+    val voiceManager = remember { VoiceInputManager() }
     val voiceState by voiceManager.estado
     var showSintomasSheet by remember { mutableStateOf(false) }
     var showPesoSheet   by remember { mutableStateOf(false) }
@@ -1969,8 +1967,7 @@ fun SintomasBottomSheetContent(
 
     var tabIndex by remember { mutableIntStateOf(0) }
 
-    val context = LocalContext.current
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+        val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     val analizados = remember(sintomasSeleccionados, semanaSeleccionada) {
         sintomasSeleccionados.map { SintomasAnalyzer.analizarSintoma(it, info.trimestre) }
@@ -2918,7 +2915,7 @@ fun GatekeeperForm(
 ) {
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
-    val context = androidx.compose.ui.platform.LocalContext.current
+
     val calendar = java.util.Calendar.getInstance()
     val year = calendar.get(java.util.Calendar.YEAR)
     val month = calendar.get(java.util.Calendar.MONTH)
@@ -2936,7 +2933,7 @@ fun GatekeeperForm(
     val esBlind = a11yMode == AccessibilityMode.BLIND
     val esMute = a11yMode == AccessibilityMode.MUTE
     val esAccesible = esBlind || esMute
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+    val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     val ejecutarGuardarGatekeeper: () -> Unit = {
         errorMsg = ""
@@ -2990,19 +2987,7 @@ fun GatekeeperForm(
         }
     }
 
-    val datePickerDialog = remember {
-        android.app.DatePickerDialog(
-            context,
-            { _, selectedYear, selectedMonth, selectedDayOfMonth ->
-                val formattedDay = String.format(java.util.Locale.US, "%02d", selectedDayOfMonth)
-                val formattedMonth = String.format(java.util.Locale.US, "%02d", selectedMonth + 1)
-                fumInput = "$formattedDay/$formattedMonth/$selectedYear"
-            },
-            year,
-            month,
-            day
-        )
-    }
+    
 
     val scrollState = rememberScrollState()
 
@@ -3126,32 +3111,21 @@ fun GatekeeperForm(
 
                     if (perfil.fechaUltimaMenstruacion.isBlank()) {
                         Spacer(Modifier.height(16.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { datePickerDialog.show() }
-                        ) {
-                            OutlinedTextField(
-                                value = fumInput,
-                                onValueChange = { },
-                                readOnly = true,
-                                label = { Text(loc("Fecha de última regla (opcional)", "Last period date (optional)")) },
-                                placeholder = { Text("DD/MM/YYYY") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusProperties { canFocus = false },
-                                shape = RoundedCornerShape(12.dp),
-                                trailingIcon = {
-                                    IconButton(onClick = { datePickerDialog.show() }) {
-                                        Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = Color.Gray)
-                                    }
-                                },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color(0xFFEC9BBF),
-                                    unfocusedBorderColor = Color.LightGray
-                                )
+                        OutlinedTextField(
+                            value = fumInput,
+                            onValueChange = { fumInput = it },
+                            label = { Text(loc("Fecha de última regla (opcional)", "Last period date (optional)")) },
+                            placeholder = { Text("DD/MM/YYYY") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            trailingIcon = {
+                                Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = Color.Gray)
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFFEC9BBF),
+                                unfocusedBorderColor = Color.LightGray
                             )
-                        }
+                        )
                     }
 
                     Spacer(Modifier.height(16.dp))

@@ -1,5 +1,4 @@
 package com.example.nutriia.configuracion
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -56,8 +55,7 @@ fun CfgAccesibilidadDialog(
     modoActual:    AccessibilityMode,
     idiomaActual:  IdiomaVoz,
     ttsManager:    NutriTTS?,
-    context:       Context,
-    onModoChange:  (AccessibilityMode) -> Unit,
+        onModoChange:  (AccessibilityMode) -> Unit,
     onIdiomaChange:(IdiomaVoz) -> Unit,
     onDismiss:     () -> Unit
 ) {
@@ -106,7 +104,7 @@ fun CfgAccesibilidadDialog(
                 HorizontalDivider(color = Color(0xFFEEEEEE))
 
                 // Banner TalkBack detectado
-                AnimatedVisibility(visible = isTalkBackActive(context)) {
+                AnimatedVisibility(visible = false) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -148,7 +146,7 @@ fun CfgAccesibilidadDialog(
                             .background(if (selected) GreenConfig.copy(alpha = 0.06f) else Color.White)
                             .clickable {
                                 modoLocal = option.mode
-                                if (option.mode == AccessibilityMode.BLIND && !isTalkBackActive(context))
+                                if (option.mode == AccessibilityMode.BLIND && !false)
                                     mostrarTalkBackInfo = true
                             }
                             .padding(12.dp),
@@ -214,7 +212,7 @@ fun CfgAccesibilidadDialog(
                             fontSize = 11.sp, color = Color.DarkGray, lineHeight = 15.sp
                         )
                         TextButton(
-                            onClick        = { abrirConfiguracionTalkBack(context) },
+                            onClick        = {  },
                             contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
                         ) {
                             Text("Ir a configuración de Android →", fontSize = 11.sp, color = Color(0xFF5E35B1))

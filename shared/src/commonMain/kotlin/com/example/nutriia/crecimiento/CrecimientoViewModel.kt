@@ -1,7 +1,6 @@
 package com.example.nutriia.crecimiento
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
@@ -15,7 +14,7 @@ sealed class CrecimientoUiState {
     data class Error(val msg: String) : CrecimientoUiState()
 }
 
-class CrecimientoViewModel(application: Application) : AndroidViewModel(application) {
+class CrecimientoViewModel : ViewModel() {
 
     private val repo = CrecimientoRepository()
 

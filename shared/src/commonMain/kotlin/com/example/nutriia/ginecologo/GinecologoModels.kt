@@ -1,12 +1,11 @@
 package com.example.nutriia.ginecologo
 
-import com.google.firebase.Timestamp
+import com.example.nutriia.platform.currentTimeMillis
 
 // ─── Estado de la vinculación de embarazo ──────────────────────────────────────
 enum class EstadoVinculacionEmbarazo { PENDIENTE, ACTIVO, RECHAZADO, REVOCADO }
 
 // ─── Vinculación entre ginecólogo y mamá primeriza ────────────────────────────
-// ID del documento en Firestore: "{ginecologoUid}_{mamaUid}"
 data class VinculacionEmbarazo(
     val id:               String                    = "",
     val ginecologoUid:    String                    = "",
@@ -14,12 +13,12 @@ data class VinculacionEmbarazo(
     val mamaUid:          String                    = "",
     val mamaNombre:       String                    = "",
     val estado:           EstadoVinculacionEmbarazo = EstadoVinculacionEmbarazo.PENDIENTE,
-    val creadoEn:         Timestamp?                = null,
-    val actualizadoEn:    Timestamp?                = null,
-    val proximaCitaFecha:  String                    = "",
-    val proximaCitaHora:   String                    = "",
-    val proximaCitaMotivo: String                    = "",
-    val proximaCitaTipo:   String                    = "" // "TELECONSULTA" o "PRESENCIAL"
+    val creadoEn:         Long?                     = null,
+    val actualizadoEn:    Long?                     = null,
+    val proximaCitaFecha:  String                   = "",
+    val proximaCitaHora:   String                   = "",
+    val proximaCitaMotivo: String                   = "",
+    val proximaCitaTipo:   String                   = "" // "TELECONSULTA" o "PRESENCIAL"
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"               to id,
@@ -28,8 +27,8 @@ data class VinculacionEmbarazo(
         "mamaUid"          to mamaUid,
         "mamaNombre"       to mamaNombre,
         "estado"           to estado.name,
-        "creadoEn"         to (creadoEn ?: Timestamp.now()),
-        "actualizadoEn"    to Timestamp.now(),
+        "creadoEn"         to (creadoEn ?: currentTimeMillis()),
+        "actualizadoEn"    to currentTimeMillis(),
         "proximaCitaFecha"  to proximaCitaFecha,
         "proximaCitaHora"   to proximaCitaHora,
         "proximaCitaMotivo" to proximaCitaMotivo,
@@ -37,7 +36,8 @@ data class VinculacionEmbarazo(
     )
 
     companion object {
-        fun docId(ginecologoUid: String, mamaUid: String) = "${ginecologoUid}_${mamaUid}"
+        fun docId(ginecologoUid: String, mamaUid: String) =
+            "${ginecologoUid}_${mamaUid}"
 
         fun fromMap(id: String, map: Map<String, Any?>): VinculacionEmbarazo = VinculacionEmbarazo(
             id               = id,
@@ -48,8 +48,8 @@ data class VinculacionEmbarazo(
             estado           = runCatching {
                 EstadoVinculacionEmbarazo.valueOf(map["estado"] as? String ?: "")
             }.getOrDefault(EstadoVinculacionEmbarazo.PENDIENTE),
-            creadoEn         = map["creadoEn"]      as? Timestamp,
-            actualizadoEn    = map["actualizadoEn"] as? Timestamp,
+            creadoEn         = map["creadoEn"]         as? Long,
+            actualizadoEn    = map["actualizadoEn"]    as? Long,
             proximaCitaFecha  = map["proximaCitaFecha"]  as? String ?: "",
             proximaCitaHora   = map["proximaCitaHora"]   as? String ?: "",
             proximaCitaMotivo = map["proximaCitaMotivo"] as? String ?: "",
@@ -58,13 +58,13 @@ data class VinculacionEmbarazo(
     }
 }
 
-// ─── Perfil público del ginecólogo (colección ginecologos_publicos) ─────────────
+// ─── Perfil público del ginecólogo ──────────────────────────────────────────
 data class GinecologoPublico(
     val uid:          String = "",
     val nombre:       String = "",
     val especialidad: String = "",
     val cedula:       String = "",
-    val codigo:       String = "", // GINE-XXXX-YYYYY
+    val codigo:       String = "",
     val email:        String = ""
 ) {
     fun toMap(): Map<String, Any> = mapOf(
@@ -77,13 +77,13 @@ data class GinecologoPublico(
     )
 
     companion object {
-        fun fromMap(map: Map<String, Any?>): GinecologoPublico = GinecologoPublico(
-            uid          = map["uid"]          as? String ?: "",
-            nombre       = map["nombre"]       as? String ?: "",
-            especialidad = map["especialidad"] as? String ?: "",
-            cedula       = map["cedula"]       as? String ?: "",
-            codigo       = map["codigo"]       as? String ?: "",
-            email        = map["email"]        as? String ?: ""
+        fun fromMap(map: Map<String, Any?>, fallbackId: String = ""): GinecologoPublico = GinecologoPublico(
+            uid          = (map["uid"] as? String ?: "").takeIf { it.isNotBlank() } ?: fallbackId,
+            nombre       = map["nombre"]        as? String ?: "",
+            especialidad = map["especialidad"]  as? String ?: "",
+            cedula       = map["cedula"]        as? String ?: "",
+            codigo       = map["codigo"]        as? String ?: "",
+            email        = map["email"]         as? String ?: ""
         )
     }
 }

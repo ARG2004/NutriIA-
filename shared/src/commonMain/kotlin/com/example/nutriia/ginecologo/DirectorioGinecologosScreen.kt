@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
@@ -46,12 +45,12 @@ fun DirectorioGinecologosScreen(
     onBack: () -> Unit = {},
     onVinculado: () -> Unit = {}
 ) {
-    val directorio      by viewModel.directorio.collectAsStateWithLifecycle()
-    val cargando        by viewModel.cargandoDirectorio.collectAsStateWithLifecycle()
-    val cargandoAccion  by viewModel.cargando.collectAsStateWithLifecycle()
-    val ginecologoEncontrado by viewModel.ginecologoEncontrado.collectAsStateWithLifecycle()
-    val exito           by viewModel.exito.collectAsStateWithLifecycle()
-    val error           by viewModel.error.collectAsStateWithLifecycle()
+    val directorio      by viewModel.directorio.collectAsState()
+    val cargando        by viewModel.cargandoDirectorio.collectAsState()
+    val cargandoAccion  by viewModel.cargando.collectAsState()
+    val ginecologoEncontrado by viewModel.ginecologoEncontrado.collectAsState()
+    val exito           by viewModel.exito.collectAsState()
+    val error           by viewModel.error.collectAsState()
 
     var queryTexto by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }

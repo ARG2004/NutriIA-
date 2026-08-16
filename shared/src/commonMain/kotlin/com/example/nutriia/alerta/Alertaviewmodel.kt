@@ -1,8 +1,6 @@
 package com.example.nutriia.alerta
 
-import android.app.Application
-import android.content.Context
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,10 +12,9 @@ sealed class AlertaUiState {
     data class Error(val msg: String) : AlertaUiState()
 }
 
-class AlertaViewModel(app: Application) : AndroidViewModel(app) {
+class AlertaViewModel : ViewModel() {
 
-    private val repo    = AlertaRepository()
-    private val context: Context get() = getApplication()
+    private val repo = AlertaRepository()
 
     private val _alertas   = MutableStateFlow<List<Alerta>>(emptyList())
     val alertas: StateFlow<List<Alerta>> = _alertas.asStateFlow()
@@ -28,7 +25,6 @@ class AlertaViewModel(app: Application) : AndroidViewModel(app) {
     private val _cargando  = MutableStateFlow(false)
     val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
 
-    // ── Inicializar con el hijo activo ────────────────────────────────────────
     fun init(childId: String?) {
         viewModelScope.launch {
             repo.observarPorHijo(childId)
@@ -37,13 +33,12 @@ class AlertaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ── Guardar nueva alerta ──────────────────────────────────────────────────
     fun guardar(alerta: Alerta) {
         viewModelScope.launch {
             _cargando.value = true
             try {
                 repo.guardar(alerta)
-                AlertaScheduler.programar(context, alerta)
+                AlertaScheduler.programar(alerta = alerta)
                 _uiState.value = AlertaUiState.Saved
             } catch (e: Exception) {
                 _uiState.value = AlertaUiState.Error(e.message ?: "Error al guardar")
@@ -53,12 +48,11 @@ class AlertaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ── Eliminar alerta ───────────────────────────────────────────────────────
     fun eliminar(alerta: Alerta) {
         viewModelScope.launch {
             try {
                 repo.eliminar(alerta.childId, alerta.id)
-                AlertaScheduler.cancelar(context, alerta.id)
+                AlertaScheduler.cancelar(alertaId = alerta.id)
                 _uiState.value = AlertaUiState.Deleted
             } catch (e: Exception) {
                 _uiState.value = AlertaUiState.Error(e.message ?: "Error al eliminar")
@@ -66,13 +60,12 @@ class AlertaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ── Toggle activa/inactiva ────────────────────────────────────────────────
     fun toggleActiva(alerta: Alerta) {
         viewModelScope.launch {
             try {
                 val nueva = alerta.copy(activa = !alerta.activa)
                 repo.toggleActiva(alerta.childId, alerta.id, nueva.activa)
-                AlertaScheduler.programar(context, nueva)
+                AlertaScheduler.programar(alerta = nueva)
             } catch (e: Exception) {
                 _uiState.value = AlertaUiState.Error(e.message ?: "Error")
             }

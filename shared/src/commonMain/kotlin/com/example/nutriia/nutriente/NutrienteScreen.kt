@@ -19,7 +19,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -30,7 +29,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.R
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
@@ -138,10 +136,8 @@ private fun MascotBanner(
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter            = painterResource(drawableRes),
-                contentDescription = null,
-                modifier           = Modifier
+            com.example.nutriia.shared.NutriaMascotaHeader(
+                modifier = Modifier
                     .size(mascotSize)
                     .graphicsLayer { translationY = -float }
             )
@@ -198,9 +194,8 @@ fun NutrientesScreen(
     var visible     by remember { mutableStateOf(false) }
     val snackbar    = remember { SnackbarHostState() }
 
-    val context = LocalContext.current
-    var isListening by remember { mutableStateOf(false) }
-    val voiceManager = remember { VoiceInputManager(context) }
+        var isListening by remember { mutableStateOf(false) }
+    val voiceManager = remember { VoiceInputManager() }
     val voiceState by voiceManager.estado
 
     LaunchedEffect(isListening) {
@@ -222,8 +217,7 @@ fun NutrientesScreen(
                         a11yVm.hablar(loc("Cambiado a hoy.", "Changed to today."))
                     }
                     cmd.contains("ayer") || cmd.contains("yesterday") -> {
-                        val cal = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, -1) }
-                        val ayer = FechaUtils.formatearFecha(cal.time)
+                        val ayer = FechaUtils.formatearFecha(com.example.nutriia.platform.currentTimeMillis() - 86400000L)
                         vm.cambiarFecha(ayer)
                         a11yVm.hablar(loc("Cambiado a ayer.", "Changed to yesterday."))
                     }
@@ -307,7 +301,7 @@ fun NutrientesScreen(
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
                     MascotBanner(
-                        drawableRes = R.drawable.ic_nutriente,
+                        drawableRes = 0,
                         titulo      = "Nutrición de $childName",
                         subtitulo   = "Lleva el control diario de\ncalorías, macros y micronutrientes",
                         accentColor = Sol.Purple,
@@ -442,8 +436,8 @@ private fun FechaSelectorCard(
 ) {
     val haptic = LocalHapticFeedback.current
     fun desplazar(dias: Int): String {
-        val cal = Calendar.getInstance().also { it.add(Calendar.DAY_OF_YEAR, dias) }
-        return FechaUtils.formatearFecha(cal.time)
+        val ms = com.example.nutriia.platform.currentTimeMillis() + (dias.toLong() * 86400000L)
+        return FechaUtils.formatearFecha(ms)
     }
     val hoy    = desplazar(0)
     val ayer   = desplazar(-1)

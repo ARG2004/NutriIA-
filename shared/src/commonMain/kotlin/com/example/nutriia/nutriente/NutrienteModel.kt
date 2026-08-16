@@ -136,8 +136,8 @@ data class RegistroNutrientes(
         ),
         "notas"    to notas,
         "creadoEn" to creadoEn,
-        "fechaCreacion" to com.example.nutriia.utils.FechaUtils.formatearFecha(java.util.Date(creadoEn)),
-        "horaCreacion"  to com.example.nutriia.utils.FechaUtils.formatearHora(java.util.Date(creadoEn))
+        "fechaCreacion" to com.example.nutriia.utils.FechaUtils.formatearFecha(creadoEn),
+        "horaCreacion"  to com.example.nutriia.utils.FechaUtils.formatearHora(creadoEn)
     )
 
     companion object {
@@ -146,7 +146,7 @@ data class RegistroNutrientes(
             val m = map["macros"] as? Map<String, Any?> ?: emptyMap()
             val n = map["micros"] as? Map<String, Any?> ?: emptyMap()
             return RegistroNutrientes(
-                id       = map["id"]       as? String ?: UUID.randomUUID().toString(),
+                id       = map["id"]       as? String ?: com.example.nutriia.platform.generateUUID(),
                 childId  = map["childId"]  as? String ?: "",
                 fecha    = map["fecha"]    as? String ?: "",
                 comida   = map["comida"]   as? String ?: "",

@@ -267,14 +267,11 @@ class NutritionistDashboardViewModel : ViewModel() {
     private fun formatearFecha(creadoEnRaw: Any?): String {
         val timestamp = when (creadoEnRaw) {
             is Number -> creadoEnRaw.toLong()
-            is String -> {
-                FechaUtils.parsearFechaHora(creadoEnRaw)?.time ?: 0L
-            }
-            is com.google.firebase.Timestamp -> creadoEnRaw.toDate().time
+            is String -> FechaUtils.parsearFechaHora(creadoEnRaw)
             else -> 0L
         }
         if (timestamp == 0L) return "Sin datos"
-        val diffMs   = System.currentTimeMillis() - timestamp
+        val diffMs   = com.example.nutriia.platform.currentTimeMillis() - timestamp
         val diffDias = diffMs / (1000 * 60 * 60 * 24)
         return when {
             diffDias == 0L -> "Hoy"

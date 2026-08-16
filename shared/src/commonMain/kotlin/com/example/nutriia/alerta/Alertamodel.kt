@@ -4,7 +4,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import java.util.UUID
+import com.example.nutriia.platform.currentTimeMillis
+import com.example.nutriia.platform.generateUUID
+import com.example.nutriia.utils.FechaUtils
 
 // ─── Tipos de alerta ──────────────────────────────────────────────────────────
 
@@ -48,7 +50,7 @@ enum class DiasSemana(val label: String, val short: String) {
 // ─── Modelo de Alerta ─────────────────────────────────────────────────────────
 
 data class Alerta(
-    val id:          String           = UUID.randomUUID().toString(),
+    val id:          String           = generateUUID(),
     val childId:     String           = "",
     val childName:   String           = "",
     val tipo:        TipoAlerta       = TipoAlerta.TOMA_COMIDA,
@@ -58,7 +60,7 @@ data class Alerta(
     val diasSemana:  List<DiasSemana> = DiasSemana.entries.toList(),
     val fechaUnica:  String?          = null,                 // "DD/MM/YYYY"
     val activa:      Boolean          = true,
-    val creadaEn:    Long             = System.currentTimeMillis()
+    val creadaEn:    Long             = currentTimeMillis()
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"          to id,
@@ -72,8 +74,8 @@ data class Alerta(
         "fechaUnica"  to fechaUnica,
         "activa"      to activa,
         "creadaEn"    to creadaEn,
-        "fechaCreacion" to com.example.nutriia.utils.FechaUtils.formatearFecha(java.util.Date(creadaEn)),
-        "horaCreacion"  to com.example.nutriia.utils.FechaUtils.formatearHora(java.util.Date(creadaEn))
+        "fechaCreacion" to FechaUtils.formatearFecha(creadaEn),
+        "horaCreacion"  to FechaUtils.formatearHora(creadaEn)
     )
 
     companion object {
@@ -81,7 +83,7 @@ data class Alerta(
             @Suppress("UNCHECKED_CAST")
             val diasRaw = map["diasSemana"] as? List<String> ?: emptyList()
             return Alerta(
-                id          = map["id"]          as? String ?: UUID.randomUUID().toString(),
+                id          = map["id"]          as? String ?: generateUUID(),
                 childId     = map["childId"]     as? String ?: "",
                 childName   = map["childName"]   as? String ?: "",
                 tipo        = TipoAlerta.entries.find { it.name == map["tipo"] } ?: TipoAlerta.TOMA_COMIDA,
@@ -91,7 +93,7 @@ data class Alerta(
                 diasSemana  = diasRaw.mapNotNull { n -> DiasSemana.entries.find { it.name == n } },
                 fechaUnica  = map["fechaUnica"]  as? String,
                 activa      = map["activa"]      as? Boolean ?: true,
-                creadaEn    = map["creadaEn"]    as? Long ?: System.currentTimeMillis()
+                creadaEn    = map["creadaEn"]    as? Long ?: currentTimeMillis()
             )
         }
     }

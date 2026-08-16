@@ -1,6 +1,6 @@
 package com.example.nutriia.expediente
 
-import android.util.Log
+import com.example.nutriia.platform.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.shared.NutriSharedViewModel
@@ -38,7 +38,7 @@ data class NotaConsulta(
 ) {
     val fechaStr: String get() {
         if (fechaMs == 0L) return "Reciente"
-        return FechaUtils.formatearFecha(Date(fechaMs))
+        return FechaUtils.formatearFecha(fechaMs)
     }
 }
 
@@ -59,7 +59,7 @@ data class EntradaAlimentacion(
 ) {
     val fechaStr: String get() {
         if (fechaMs == 0L) return "Reciente"
-        return FechaUtils.formatearFecha(Date(fechaMs))
+        return FechaUtils.formatearFecha(fechaMs)
     }
     val esReceta: Boolean get() = tipo == "receta_nutriologo"
 }

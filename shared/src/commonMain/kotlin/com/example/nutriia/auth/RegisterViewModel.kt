@@ -1,7 +1,6 @@
 package com.example.nutriia.auth
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +13,9 @@ sealed class RegisterUiState {
     data class Error(val mensaje: String) : RegisterUiState()
 }
 
-class RegisterViewModel(application: Application) : AndroidViewModel(application) {
+class RegisterViewModel : ViewModel() {
 
-    private val repositorio = RepositorioLogin(application)
+    private val repositorio = RepositorioLogin()
 
     private val _estado = MutableStateFlow<RegisterUiState>(RegisterUiState.Idle)
     val estado: StateFlow<RegisterUiState> = _estado

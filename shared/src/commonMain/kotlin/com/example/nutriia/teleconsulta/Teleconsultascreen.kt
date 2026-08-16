@@ -1,6 +1,5 @@
 package com.example.nutriia.teleconsulta
 
-import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -23,12 +22,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import org.webrtc.VideoTrack
 import com.example.nutriia.utils.FechaUtils
-import java.text.SimpleDateFormat
-import java.util.*
 
 // ─── Paleta de llamada ─────────────────────────────────────────────────────────
 private val CallBg        = Color(0xFF08111C)
@@ -75,7 +70,7 @@ fun WebRtcVideoView(
 fun TeleconsultaHostOverlay(
     viewModel: TeleconsultaViewModel = viewModel()
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsState()
 
     // ── Llamada ENTRANTE (padre recibe) ───────────────────────────────────────
     state.llamadaEntrante?.let { llamada ->
@@ -142,31 +137,8 @@ fun TeleconsultaActiveScreen(
             .background(Brush.verticalGradient(listOf(CallBg, CallBg2, CallBg3)))
     ) {
 
-        // ── Video remoto de fondo (si es videollamada y está conectado) ────────
-        if (isVideo && state.webRtcConectado && state.remoteVideoTrack != null) {
-            WebRtcVideoView(
-                videoTrack = state.remoteVideoTrack,
-                modifier   = Modifier.fillMaxSize(),
-                isMirror   = false
-            )
-            // Gradiente encima del video para legibilidad
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.Black.copy(0.35f),
-                                Color.Transparent,
-                                Color.Black.copy(0.55f)
-                            )
-                        )
-                    )
-            )
-        } else {
-            // Fondo animado cuando no hay video
-            AnimatedCallBackground(isVideo = isVideo)
-        }
+        // Fondo animado
+        AnimatedCallBackground(isVideo = isVideo)
 
         Column(
             modifier            = Modifier.fillMaxSize().systemBarsPadding(),
@@ -188,23 +160,14 @@ fun TeleconsultaActiveScreen(
                     )
                 }
                 EstadoLlamada.ACTIVA -> {
-                    // Si hay video remoto, mostrar solo info mínima arriba
-                    if (isVideo && state.webRtcConectado && state.remoteVideoTrack != null) {
-                        ActiveCallMinimalHeader(
-                            nombre      = llamada.padreNombre,
-                            childNombre = llamada.childNombre,
-                            segundos    = state.duracionSegundos
-                        )
-                    } else {
-                        ActiveCallSection(
-                            nombre        = llamada.padreNombre,
-                            childNombre   = llamada.childNombre,
-                            isVideo       = isVideo,
-                            camaraApagada = state.camaraApagada,
-                            segundos      = state.duracionSegundos,
-                            webRtcConect  = state.webRtcConectado
-                        )
-                    }
+                    ActiveCallSection(
+                        nombre        = llamada.padreNombre,
+                        childNombre   = llamada.childNombre,
+                        isVideo       = isVideo,
+                        camaraApagada = state.camaraApagada,
+                        segundos      = state.duracionSegundos,
+                        webRtcConect  = state.webRtcConectado
+                    )
                 }
                 else -> {}
             }
@@ -882,12 +845,12 @@ private fun TeleconsultaHistorialRow(llamada: SolicitudLlamada) {
     val icon  = if (llamada.tipo == TipoLlamada.VIDEO) Icons.Rounded.Videocam else Icons.Rounded.Call
     val fecha = remember(llamada.creadoEn) {
         if (llamada.creadoEn == 0L) "—"
-        else FechaUtils.formatearFechaHora(Date(llamada.creadoEn))
+        else FechaUtils.formatearFechaHora(llamada.creadoEn)
     }
     val duracion = remember(llamada.duracionSegundos) {
         val m = llamada.duracionSegundos / 60
         val s = llamada.duracionSegundos % 60
-        if (llamada.duracionSegundos == 0) "—" else "%02d:%02d min".format(m, s)
+        if (llamada.duracionSegundos == 0) "—" else "${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')} min"
     }
 
     Card(

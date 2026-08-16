@@ -1,14 +1,6 @@
 package com.example.nutriia.alerta
 
-import android.Manifest
-import android.os.Build
 import kotlinx.coroutines.delay
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -33,11 +25,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import com.example.nutriia.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,6 +38,7 @@ import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.loc
+import com.example.nutriia.shared.NutriaMascotaHeader
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
@@ -146,14 +137,8 @@ fun AlertasScreen(
 
     fun loc(es: String, en: String) = idiomaActual.loc(es, en)
 
-    val permLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { }
-
     LaunchedEffect(Unit) {
         viewModel.init(childId)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
 
         if (esBlind) {
             val nombreParaA11y = childName ?: loc("tu embarazo", "your pregnancy")
@@ -168,7 +153,6 @@ fun AlertasScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     var tabSeleccionada by remember { mutableStateOf<TipoAlerta?>(null) }
-    val context = androidx.compose.ui.platform.LocalContext.current
     var showAlarmPermissionDialog by remember { mutableStateOf(false) }
     var showDialog      by remember { mutableStateOf(false) }
     var alertaAEliminar by remember { mutableStateOf<Alerta?>(null) }
@@ -176,23 +160,11 @@ fun AlertasScreen(
     var visible         by remember { mutableStateOf(false) }
     val snackbar        = remember { SnackbarHostState() }
 
-    val checkAndRun: (() -> Unit) -> Unit = { action ->
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
-        val canSchedule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            alarmManager?.canScheduleExactAlarms() ?: true
-        } else {
-            true
-        }
-        if (!canSchedule) {
-            showAlarmPermissionDialog = true
-        } else {
-            action()
-        }
-    }
+    val checkAndRun: (() -> Unit) -> Unit = { action -> action() }
 
     // ── Voice Commands Logic ──────────────────────────────────────────────────
     var isListening by remember { mutableStateOf(false) }
-    val voiceManager = remember { VoiceInputManager(context) }
+    val voiceManager = remember { VoiceInputManager() }
     val voiceState by voiceManager.estado
 
     LaunchedEffect(isListening) {
@@ -360,7 +332,7 @@ fun AlertasScreen(
                 item {
                     AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
                         MascotBanner(
-                            drawableRes = R.drawable.ic_notificacion,
+                            drawableRes = 0,
                             titulo      = "Alertas y recordatorios",
                             subtitulo   = "Programa notificaciones para comidas,\nvacunas, citas y mediciones",
                             accentColor = Sol.Indigo
@@ -466,39 +438,6 @@ fun AlertasScreen(
         )
     }
 
-    if (showAlarmPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = { showAlarmPermissionDialog = false },
-            shape = RoundedCornerShape(22.dp),
-            title = { Text("Permiso de Alarmas Exactas", fontWeight = FontWeight.Bold) },
-            text = { Text("Para garantizar que los recordatorios de comidas y medicamentos suenen exactamente a la hora programada, NutriIA requiere el permiso de Alarmas Exactas.\n\n¿Deseas ir a la configuración para habilitarlo?") },
-            confirmButton = {
-                Button(onClick = {
-                    showAlarmPermissionDialog = false
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        try {
-                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
-                            }
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            val intent = Intent(Settings.ACTION_SETTINGS)
-                            context.startActivity(intent)
-                        }
-                    }
-                }) {
-                    Text("Configuración")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showAlarmPermissionDialog = false
-                }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -506,11 +445,11 @@ fun AlertasScreen(
 // ═══════════════════════════════════════════════════════════════════════════════
 @Composable
 private fun MascotBanner(
-    drawableRes: Int,
+    drawableRes: Int = 0,
     titulo:      String,
     subtitulo:   String,
     accentColor: Color = Sol.Indigo,
-    mascotSize:  androidx.compose.ui.unit.Dp = 140.dp
+    mascotSize:  androidx.compose.ui.unit.Dp = 80.dp
 ) {
     val inf   = rememberInfiniteTransition(label = "mb")
     val float by inf.animateFloat(
@@ -529,10 +468,8 @@ private fun MascotBanner(
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter            = painterResource(drawableRes),
-                contentDescription = null,
-                modifier           = Modifier
+            NutriaMascotaHeader(
+                modifier = Modifier
                     .size(mascotSize)
                     .graphicsLayer { translationY = -float }
             )

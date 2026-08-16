@@ -18,11 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
@@ -48,7 +46,7 @@ fun GinecologoDashboardScreen(
     onConfiguracion: () -> Unit = {},
     onPatientClick: (VinculacionEmbarazo) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     var pacienteParaCita by remember { mutableStateOf<VinculacionEmbarazo?>(null) }
 
     val a11yMode = LocalAccessibilityMode.current
@@ -414,8 +412,7 @@ fun AgendarCitaDialog(
     onDismiss: () -> Unit,
     onConfirm: (fecha: String, hora: String, motivo: String, tipo: String) -> Unit
 ) {
-    val context = LocalContext.current
-    var fecha by remember { mutableStateOf(vinculacion.proximaCitaFecha.ifBlank { "" }) }
+        var fecha by remember { mutableStateOf(vinculacion.proximaCitaFecha.ifBlank { "" }) }
     var hora by remember { mutableStateOf(vinculacion.proximaCitaHora.ifBlank { "" }) }
     var motivo by remember { mutableStateOf(vinculacion.proximaCitaMotivo.ifBlank { "" }) }
     var tipo by remember { mutableStateOf(vinculacion.proximaCitaTipo.ifBlank { "TELECONSULTA" }) }
@@ -450,57 +447,32 @@ fun AgendarCitaDialog(
 
                 OutlinedTextField(
                     value = fecha,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Fecha") },
-                    placeholder = { Text("Seleccionar fecha") },
+                    onValueChange = { fecha = it },
+                    label = { Text("Fecha (AAAA-MM-DD)") },
+                    placeholder = { Text("2026-05-10") },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = EmbRosa,
                         unfocusedBorderColor = Color.LightGray
                     ),
                     trailingIcon = {
-                        IconButton(onClick = {
-                            val cal = java.util.Calendar.getInstance()
-                            android.app.DatePickerDialog(
-                                context,
-                                { _, year, month, dayOfMonth ->
-                                    fecha = String.format(java.util.Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth)
-                                },
-                                cal.get(java.util.Calendar.YEAR),
-                                cal.get(java.util.Calendar.MONTH),
-                                cal.get(java.util.Calendar.DAY_OF_MONTH)
-                            ).show()
-                        }) {
-                            Icon(Icons.Rounded.CalendarToday, null, tint = EmbRosa)
-                        }
+                        Icon(Icons.Rounded.CalendarToday, null, tint = EmbRosa)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = hora,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Hora") },
-                    placeholder = { Text("Seleccionar hora") },
+                    onValueChange = { hora = it },
+                    label = { Text("Hora (HH:mm)") },
+                    placeholder = { Text("10:00") },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = EmbRosa,
                         unfocusedBorderColor = Color.LightGray
                     ),
                     trailingIcon = {
-                        IconButton(onClick = {
-                            android.app.TimePickerDialog(
-                                context,
-                                { _, hourOfDay, minute ->
-                                    hora = String.format(java.util.Locale.US, "%02d:%02d", hourOfDay, minute)
-                                },
-                                12, 0, true
-                            ).show()
-                        }) {
-                            Icon(Icons.Rounded.AccessTime, null, tint = EmbRosa)
-                        }
+                        Icon(Icons.Rounded.AccessTime, null, tint = EmbRosa)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )

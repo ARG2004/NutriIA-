@@ -1,11 +1,11 @@
 package com.example.nutriia.vinculacion
-import com.google.firebase.Timestamp
+
+import com.example.nutriia.platform.currentTimeMillis
 
 // ─── Estado de la vinculación ─────────────────────────────────────────────────
 enum class EstadoVinculacion { PENDIENTE, ACTIVO, RECHAZADO, REVOCADO }
 
 // ─── Vinculación entre nutriólogo y padre ─────────────────────────────────────
-// ID del documento en Firestore: "{nutriologoUid}_{padreUid}"
 data class Vinculacion(
     val id:              String              = "",
     val nutriologoUid:   String              = "",
@@ -15,8 +15,8 @@ data class Vinculacion(
     val childId:         String              = "",   // hijo al que aplica la vinculación
     val childNombre:     String              = "",
     val estado:          EstadoVinculacion   = EstadoVinculacion.PENDIENTE,
-    val creadoEn:        Timestamp?          = null,
-    val actualizadoEn:   Timestamp?          = null
+    val creadoEn:        Long?               = null,
+    val actualizadoEn:   Long?               = null
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"               to id,
@@ -27,12 +27,11 @@ data class Vinculacion(
         "childId"          to childId,
         "childNombre"      to childNombre,
         "estado"           to estado.name,
-        "creadoEn"         to (creadoEn ?: Timestamp.now()),
-        "actualizadoEn"    to Timestamp.now()
+        "creadoEn"         to (creadoEn ?: currentTimeMillis()),
+        "actualizadoEn"    to currentTimeMillis()
     )
 
     companion object {
-        // ID determinista: permite get() directo en Security Rules sin query
         fun docId(nutriologoUid: String, padreUid: String) =
             "${nutriologoUid}_${padreUid}"
 
@@ -47,8 +46,8 @@ data class Vinculacion(
             estado           = runCatching {
                 EstadoVinculacion.valueOf(map["estado"] as? String ?: "")
             }.getOrDefault(EstadoVinculacion.PENDIENTE),
-            creadoEn         = map["creadoEn"]      as? Timestamp,
-            actualizadoEn    = map["actualizadoEn"] as? Timestamp
+            creadoEn         = map["creadoEn"]      as? Long,
+            actualizadoEn    = map["actualizadoEn"] as? Long
         )
     }
 }
@@ -96,7 +95,7 @@ data class PlanAlimentario(
     val fechaInicio:     String    = "",
     val fechaFin:        String    = "",
     val activo:          Boolean   = true,
-    val creadoEn:        Timestamp?= null
+    val creadoEn:        Long?     = null
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"               to id,
@@ -110,7 +109,7 @@ data class PlanAlimentario(
         "fechaInicio"      to fechaInicio,
         "fechaFin"         to fechaFin,
         "activo"           to activo,
-        "creadoEn"         to (creadoEn ?: Timestamp.now())
+        "creadoEn"         to (creadoEn ?: currentTimeMillis())
     )
 
     companion object {
@@ -128,13 +127,13 @@ data class PlanAlimentario(
             fechaInicio      = map["fechaInicio"]      as? String ?: "",
             fechaFin         = map["fechaFin"]         as? String ?: "",
             activo           = map["activo"]           as? Boolean ?: true,
-            creadoEn         = map["creadoEn"]         as? Timestamp
+            creadoEn         = map["creadoEn"]         as? Long
         )
     }
 }
 
 data class ComidaPlan(
-    val momento:    String = "",   // "Desayuno", "Colación", "Comida", etc.
+    val momento:    String = "",
     val alimentos:  String = "",
     val porcion:    String = "",
     val notas:      String = ""

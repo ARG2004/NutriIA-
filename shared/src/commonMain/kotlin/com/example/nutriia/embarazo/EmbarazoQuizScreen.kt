@@ -18,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
@@ -36,8 +35,7 @@ fun EmbarazoQuizScreen(
     onQuizComplete: (PerfilEmbarazo) -> Unit,
     onCancel: () -> Unit
 ) {
-    val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
+        val haptic = LocalHapticFeedback.current
     val accessibilityVm: AccessibilityViewModel = viewModel()
     val idiomaActual by accessibilityVm.idioma.collectAsState()
     val modoGuardado by accessibilityVm.mode.collectAsState()
@@ -48,7 +46,7 @@ fun EmbarazoQuizScreen(
     var perfil by remember { mutableStateOf(PerfilEmbarazo(semanas = semanasIniciales)) }
     
     var selectedA11yMode by remember(modoGuardado) {
-        mutableStateOf(if (isTalkBackActive(context)) AccessibilityMode.BLIND else modoGuardado)
+        mutableStateOf(if (false) AccessibilityMode.BLIND else modoGuardado)
     }
     val ttsManager = accessibilityVm.ttsManager
 
@@ -114,7 +112,7 @@ fun EmbarazoQuizScreen(
                             0 -> StepAccesibilidad(
                                 selected = selectedA11yMode,
                                 idiomaActual = idiomaActual,
-                                talkBackActivo = isTalkBackActive(context),
+                                talkBackActivo = false,
                                 onSelect = { modo ->
                                      selectedA11yMode = modo
                                      accessibilityVm.setMode(modo)
@@ -412,8 +410,8 @@ private fun StepDatosMedicosEmbarazo(
     val esMute = modo == AccessibilityMode.MUTE
     val esAccesible = esBlind || esMute
 
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+
+    val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     var campoActivo by remember { mutableIntStateOf(0) }
     var valorInicial by remember { mutableStateOf("") }

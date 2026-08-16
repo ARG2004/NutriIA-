@@ -3,7 +3,6 @@ package com.example.nutriia.embarazo
 import androidx.compose.animation.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -79,22 +78,12 @@ fun EmbarazoNutricionScreen(
         }
     }
 
-    val context = LocalContext.current
-    val repo = remember { com.example.nutriia.embarazo.EmbarazoNutricionRepository() }
+        val repo = remember { com.example.nutriia.embarazo.EmbarazoNutricionRepository() }
     val repoSolidos = remember { com.example.nutriia.solidos.SolidosRepository() }
     val sdf = remember { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()) }
     val fechaHoy = remember { sdf.format(java.util.Date()) }
 
-    var uid by remember { mutableStateOf(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "") }
-    DisposableEffect(Unit) {
-        val listener = com.google.firebase.auth.FirebaseAuth.AuthStateListener { auth ->
-            uid = auth.currentUser?.uid ?: ""
-        }
-        com.google.firebase.auth.FirebaseAuth.getInstance().addAuthStateListener(listener)
-        onDispose {
-            com.google.firebase.auth.FirebaseAuth.getInstance().removeAuthStateListener(listener)
-        }
-    }
+    val uid = ""
 
     val alimentosHoy by remember(fechaHoy, uid) {
         repo.observarPorFecha(fechaHoy)
@@ -265,24 +254,8 @@ fun EmbarazoNutricionScreen(
                         }
                         sb.append("¡Cuida tu alimentación y la de tu bebé! 💖")
 
-                        val startMs = System.currentTimeMillis()
-                        val endMs   = startMs + 7L * 24 * 60 * 60 * 1000
-                        try {
-                            val intent = Intent(Intent.ACTION_INSERT).apply {
-                                data = android.provider.CalendarContract.Events.CONTENT_URI
-                                putExtra(android.provider.CalendarContract.Events.TITLE, "Plan Nutricional Semanal - Embarazo")
-                                putExtra(android.provider.CalendarContract.Events.DESCRIPTION, sb.toString())
-                                putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, startMs)
-                                putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME,   endMs)
-                                putExtra(android.provider.CalendarContract.Events.ALL_DAY, true)
-                            }
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            val clip = android.content.ClipData.newPlainText("Plan Nutricional", sb.toString())
-                            clipboard.setPrimaryClip(clip)
-                            android.widget.Toast.makeText(context, "💾 No se pudo abrir el calendario. Copiado al portapapeles.", android.widget.Toast.LENGTH_LONG).show()
-                        }
+                        // Exportar plan
+                        val planTexto = sb.toString()
                     },
                     onAddClick = {
                         tab = 1
@@ -331,7 +304,7 @@ fun EmbarazoNutricionScreen(
                     scope.launch {
                         val sdfIso = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
                         val newItem = com.example.nutriia.solidos.AlimentoIntroducido(
-                             id = java.util.UUID.randomUUID().toString(),
+                             id = com.example.nutriia.platform.generateUUID(),
                              childId = "",
                              nombre = name,
                              grupo = group,
@@ -775,14 +748,14 @@ private fun AgregarComidaEmbarazoDialog(
         if (calorias.isNotBlank() && campoActivo == 1 && calorias != valorInicial) campoActivo = 2
     }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+
+    val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     val ejecutarGuardarComida: () -> Unit = {
         if (alimento.isNotBlank()) {
             val kcalVal = calorias.toIntOrNull() ?: 0
             val reg = com.example.nutriia.nutriente.RegistroNutrientes(
-                id = java.util.UUID.randomUUID().toString(),
+                id = com.example.nutriia.platform.generateUUID(),
                 childId = "",
                 fecha = com.example.nutriia.utils.FechaUtils.fechaActual(),
                 comida = comida,
@@ -1815,8 +1788,8 @@ private fun AgregarAlimentoDisponibleDialog(
     val esAccesible = esBlind || esMute
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+
+    val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     LaunchedEffect(nombre) {
         if (!esBlind || nombre.isBlank()) return@LaunchedEffect

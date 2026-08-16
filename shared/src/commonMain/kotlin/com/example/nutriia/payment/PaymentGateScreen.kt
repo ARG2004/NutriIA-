@@ -13,12 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 private val PGreen     = Color(0xFF689F38)
@@ -37,9 +35,8 @@ fun PaymentGateScreen(
     onPagoConfirmado: () -> Unit,
     onCancelar:       () -> Unit
 ) {
-    val state   by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-
+    val state   by viewModel.state.collectAsState()
+    
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Crear el pago pendiente al entrar a la pantalla
@@ -223,7 +220,7 @@ fun PaymentGateScreen(
 
                         // ── Botón principal — abre el navegador ───────────────
                         Button(
-                            onClick  = { viewModel.abrirPayPalEnNavegador(context) },
+                            onClick  = { viewModel.abrirPayPalEnNavegador() },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             colors   = ButtonDefaults.buttonColors(containerColor = PayPalGold),
                             shape    = RoundedCornerShape(16.dp)

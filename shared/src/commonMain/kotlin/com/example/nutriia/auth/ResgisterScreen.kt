@@ -1,6 +1,6 @@
 package com.example.nutriia.auth
 
-import android.util.Patterns
+// import android.util.Patterns
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -44,7 +44,6 @@ import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.Voz
 import com.example.nutriia.accesibilidad.VozEn
 import com.example.nutriia.accesibilidad.VoiceInputManager
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
 
 // ─── COLORES ──────────────────────────────────────────────────────────────────
@@ -843,7 +842,7 @@ fun ParentRegisterScreen(
                     }
                     if (data.email.isBlank()) {
                         emailError = loc("El correo es requerido", "Email is required"); hasErrors = true
-                    } else if (!Patterns.EMAIL_ADDRESS.matcher(data.email).matches()) {
+                    } else if (!(data.email.contains("@") && data.email.contains("."))) {
                         emailError = loc("Correo inválido", "Invalid email"); hasErrors = true
                     }
                     if (data.password.length < 6) {
@@ -1199,7 +1198,7 @@ fun MamaPrimerizaRegisterScreen(
                     if (data.name.isBlank()) { nameError = loc("Nombre requerido", "Name required"); hasErrors = true }
                     if (data.phone.isBlank() || !tieneDiezDigitos(data.phone)) { phoneError = loc("Teléfono inválido", "Invalid phone"); hasErrors = true }
                     if (data.semanas !in 1..40) { semanasError = loc("Semana entre 1 y 40", "Week between 1 and 40"); hasErrors = true }
-                    if (data.email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(data.email).matches()) { emailError = loc("Email inválido", "Invalid email"); hasErrors = true }
+                    if (data.email.isBlank() || !(data.email.contains("@") && data.email.contains("."))) { emailError = loc("Email inválido", "Invalid email"); hasErrors = true }
                     if (data.password.length < 6) { passwordError = loc("Mínimo 6 caracteres", "Min 6 characters"); hasErrors = true }
                     if (confirmPassword != data.password) { confirmError = loc("No coinciden", "No match"); hasErrors = true }
 
@@ -1247,8 +1246,7 @@ fun NutritionistRegisterScreen(
     var buscandoCedula by remember { mutableStateOf(false) }
     var aceptoConsentimientoCedula by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
-
+    
     LaunchedEffect(data.licenseId, aceptoConsentimientoCedula) {
         val digitos = data.licenseId.filter(Char::isDigit)
         if (digitos.length >= 6 && aceptoConsentimientoCedula) {
@@ -1256,7 +1254,7 @@ fun NutritionistRegisterScreen(
             buscandoCedula = true
             val res = CedulaVerifier.verificarCedulaConRateLimit(digitos)
             if (res.valida) {
-                val repo = RepositorioLogin(context)
+                val repo = RepositorioLogin()
                 if (repo.esCedulaRegistrada(digitos)) {
                     verificadoCedulaState = ResultadoCedula(
                         valida = false,
@@ -1288,7 +1286,7 @@ fun NutritionistRegisterScreen(
     // ── Helper local de localización ──────────────────────────────────────────
     fun loc(es: String, en: String) = idiomaActual.loc(es, en)
 
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+    val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     var campoActivo by remember { mutableIntStateOf(0) }
     var valorInicial by remember { mutableStateOf("") }
@@ -1694,7 +1692,7 @@ fun NutritionistRegisterScreen(
                 else if (verificadoCedulaState == null) { licenseError = loc("Verificando cédula ante la SEP, por favor espera...", "Verifying license, please wait..."); hasErrors = true }
                 else if (!verificadoCedulaState!!.valida) { licenseError = verificadoCedulaState!!.mensaje.ifBlank { loc("Cédula no válida ante la SEP", "Invalid license number") }; hasErrors = true }
                 if (data.email.isBlank()) { emailError = loc("El correo es requerido", "Email is required"); hasErrors = true }
-                else if (!Patterns.EMAIL_ADDRESS.matcher(data.email).matches()) { emailError = loc("Correo inválido", "Invalid email"); hasErrors = true }
+                else if (!(data.email.contains("@") && data.email.contains("."))) { emailError = loc("Correo inválido", "Invalid email"); hasErrors = true }
                 if (data.password.length < 6) { passwordError = loc("Mínimo 6 caracteres", "Minimum 6 characters"); hasErrors = true }
                 if (confirmPassword != data.password) { confirmError = loc("Las claves no coinciden", "Passwords do not match"); hasErrors = true }
                 if (hasErrors) {
@@ -1856,8 +1854,7 @@ fun GinecologistRegisterScreen(
     var buscandoCedulaGine by remember { mutableStateOf(false) }
     var aceptoConsentimientoCedulaGine by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
-
+    
     LaunchedEffect(data.licenseId, aceptoConsentimientoCedulaGine) {
         val digitos = data.licenseId.filter(Char::isDigit)
         if (digitos.length >= 6 && aceptoConsentimientoCedulaGine) {
@@ -1865,7 +1862,7 @@ fun GinecologistRegisterScreen(
             buscandoCedulaGine = true
             val res = CedulaVerifier.verificarCedula(digitos)
             if (res.valida) {
-                val repo = RepositorioLogin(context)
+                val repo = RepositorioLogin()
                 if (repo.esCedulaRegistrada(digitos)) {
                     verificadoCedulaGineState = ResultadoCedula(
                         valida = false,
@@ -1896,7 +1893,7 @@ fun GinecologistRegisterScreen(
 
     fun loc(es: String, en: String) = idiomaActual.loc(es, en)
 
-    val voiceManager = remember { if (esBlind) VoiceInputManager(context) else null }
+    val voiceManager = remember { if (esBlind) VoiceInputManager() else null }
 
     var campoActivo by remember { mutableIntStateOf(0) }
     var valorInicial by remember { mutableStateOf("") }
@@ -2228,7 +2225,7 @@ fun GinecologistRegisterScreen(
                 else if (digitosGine.length < 6) { licenseError = loc("Mínimo 6 dígitos", "Min 6 digits"); hasErrors = true }
                 else if (verificadoCedulaGineState == null) { licenseError = loc("Verificando cédula ante la SEP...", "Verifying license..."); hasErrors = true }
                 else if (!verificadoCedulaGineState!!.valida) { licenseError = verificadoCedulaGineState!!.mensaje.ifBlank { loc("Cédula no válida ante la SEP", "Invalid license number") }; hasErrors = true }
-                if (data.email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(data.email).matches()) { emailError = loc("Email inválido", "Invalid email"); hasErrors = true }
+                if (data.email.isBlank() || !(data.email.contains("@") && data.email.contains("."))) { emailError = loc("Email inválido", "Invalid email"); hasErrors = true }
                 if (data.password.length < 6) { passwordError = loc("Mínimo 6 caracteres", "Min 6 characters"); hasErrors = true }
                 if (confirmPassword != data.password) { confirmError = loc("No coinciden", "No match"); hasErrors = true }
                 if (hasErrors) {

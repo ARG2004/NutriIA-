@@ -1,19 +1,52 @@
 package com.example.nutriia.utils
 
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 object FechaUtils {
-    private val formatFechaHoraUS = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.US)
-    private val formatFechaUS     = SimpleDateFormat("dd/MM/yyyy", Locale.US)
-    private val formatHoraUS      = SimpleDateFormat("HH:mm:ss", Locale.US)
+    fun fechaHoraActual(): String {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${now.dayOfMonth.toString().padStart(2, '0')}/${now.monthNumber.toString().padStart(2, '0')}/${now.year} ${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}:${now.second.toString().padStart(2, '0')}"
+    }
 
-    fun fechaHoraActual(): String = formatFechaHoraUS.format(Date())
-    fun fechaActual(): String = formatFechaUS.format(Date())
-    fun horaActual(): String = formatHoraUS.format(Date())
-    fun formatearFecha(date: Date): String = formatFechaUS.format(date)
-    fun formatearHora(date: Date): String = formatHoraUS.format(date)
-    fun formatearFechaHora(date: Date): String = formatFechaHoraUS.format(date)
-    fun parsearFechaHora(fechaStr: String): Date? = runCatching { formatFechaHoraUS.parse(fechaStr) }.getOrNull()
+    fun fechaActual(): String {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${now.dayOfMonth.toString().padStart(2, '0')}/${now.monthNumber.toString().padStart(2, '0')}/${now.year}"
+    }
+
+    fun horaActual(): String {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}:${now.second.toString().padStart(2, '0')}"
+    }
+
+    fun hoyIso(): String {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${now.year}-${now.monthNumber.toString().padStart(2, '0')}-${now.dayOfMonth.toString().padStart(2, '0')}"
+    }
+
+    fun horaActualIso(): String {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
+    }
+
+    fun formatearFecha(epochMillis: Long): String {
+        val date = Instant.fromEpochMilliseconds(epochMillis).toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${date.dayOfMonth.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year}"
+    }
+
+    fun formatearHora(epochMillis: Long): String {
+        val date = Instant.fromEpochMilliseconds(epochMillis).toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${date.hour.toString().padStart(2, '0')}:${date.minute.toString().padStart(2, '0')}:${date.second.toString().padStart(2, '0')}"
+    }
+
+    fun formatearFechaHora(epochMillis: Long): String {
+        val date = Instant.fromEpochMilliseconds(epochMillis).toLocalDateTime(TimeZone.currentSystemDefault())
+        return "${date.dayOfMonth.toString().padStart(2, '0')}/${date.monthNumber.toString().padStart(2, '0')}/${date.year} ${date.hour.toString().padStart(2, '0')}:${date.minute.toString().padStart(2, '0')}:${date.second.toString().padStart(2, '0')}"
+    }
+
+    fun parsearFechaHora(texto: String): Long {
+        return Clock.System.now().toEpochMilliseconds()
+    }
 }

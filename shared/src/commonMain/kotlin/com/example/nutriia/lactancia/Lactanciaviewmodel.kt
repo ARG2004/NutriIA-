@@ -1,14 +1,16 @@
 package com.example.nutriia.lactancia
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nutriia.utils.FechaUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.todayIn
 
 sealed class LactanciaUiState {
     object Idle    : LactanciaUiState()
@@ -18,7 +20,7 @@ sealed class LactanciaUiState {
     data class Error(val msg: String) : LactanciaUiState()
 }
 
-class LactanciaViewModel(application: Application) : AndroidViewModel(application) {
+class LactanciaViewModel : ViewModel() {
 
     // Usa directamente LactanciaRepository — el offline lo maneja Firestore
     private val repo = LactanciaRepository()
@@ -41,8 +43,7 @@ class LactanciaViewModel(application: Application) : AndroidViewModel(applicatio
     private val _omsRec          = MutableStateFlow<OmsLactanciaRecommendation?>(null)
     val omsRec: StateFlow<OmsLactanciaRecommendation?> = _omsRec.asStateFlow()
 
-    private val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    private val today: String get() = dateFmt.format(Date())
+    private val today: String get() = FechaUtils.hoyIso()
 
     private var currentChildId: String? = null
     private var observeJob: Job? = null
@@ -101,10 +102,9 @@ class LactanciaViewModel(application: Application) : AndroidViewModel(applicatio
     private fun loadWeekly(childId: String) {
         viewModelScope.launch {
             try {
+                val now = Clock.System.todayIn(TimeZone.currentSystemDefault())
                 val dias = (0..6).map { offset ->
-                    val cal = java.util.Calendar.getInstance()
-                    cal.add(java.util.Calendar.DAY_OF_YEAR, -offset)
-                    dateFmt.format(cal.time)
+                    now.minus(offset, DateTimeUnit.DAY).toString()
                 }
                 val flows = dias.map { dia ->
                     repo.observeFeedingsByDate(childId, dia)
@@ -159,9 +159,8 @@ class LactanciaViewModel(application: Application) : AndroidViewModel(applicatio
         val intervalMinutes = (rec.minIntervalHours * 60).toInt()
         val nextMinutes     = lastMinutes + intervalMinutes
 
-        val cal    = java.util.Calendar.getInstance()
-        val nowMin = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 +
-                cal.get(java.util.Calendar.MINUTE)
+        val horaActual = FechaUtils.horaActualIso()
+        val nowMin = parseTimeToMinutes(horaActual).coerceAtLeast(0)
 
         val diffMin = nextMinutes - nowMin
         _nextFeedingIn.value = when {
@@ -174,7 +173,7 @@ class LactanciaViewModel(application: Application) : AndroidViewModel(applicatio
     private fun parseTimeToMinutes(time: String): Int {
         return try {
             val parts = time.split(":")
-            if (parts.size != 2) return -1
+            if (parts.size < 2) return -1
             parts[0].toInt() * 60 + parts[1].toInt()
         } catch (e: Exception) { -1 }
     }

@@ -1,17 +1,10 @@
 package com.example.nutriia.analisisIA
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.view.ViewGroup
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.view.PreviewView
+import androidx.compose.ui.layout.ContentScale
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -33,14 +26,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
@@ -146,9 +135,7 @@ fun AnalisisScreen(
     val colors = if (esModoEmbarazo) PregnancyAnalisisColors else ChildAnalisisColors
 
     CompositionLocalProvider(LocalAnalisisColors provides colors) {
-        val context        = LocalContext.current
-        val lifecycleOwner = LocalLifecycleOwner.current
-        val uiState by viewModel.uiState.collectAsState()
+                        val uiState by viewModel.uiState.collectAsState()
 
         val a11yMode = LocalAccessibilityMode.current
         val a11yVm: AccessibilityViewModel = viewModel()
@@ -187,21 +174,9 @@ fun AnalisisScreen(
             }
         }
 
-        var tieneCamara by remember {
-            mutableStateOf(
-                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                        == PackageManager.PERMISSION_GRANTED
-            )
-        }
+        val tieneCamara = true
 
-        val permisoLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { otorgado ->
-            tieneCamara = otorgado
-            if (otorgado) viewModel.abrirCamara()
-        }
-
-        DisposableEffect(Unit) { onDispose { viewModel.resetear() } }
+        
 
         Box(
             modifier = Modifier
@@ -222,15 +197,13 @@ fun AnalisisScreen(
                         perfilEmbarazo = perfilEmbarazo,
                         isEmbarazo     = esModoEmbarazo,
                         onTomarFoto    = {
-                            if (tieneCamara) viewModel.abrirCamara()
-                            else permisoLauncher.launch(Manifest.permission.CAMERA)
+                            viewModel.abrirCamara()
                         },
                         onVolver       = { viewModel.resetear(); onNavigateBack() }
                     )
                     is AnalisisUiState.Capturando -> PantallaCaptura(
-                        lifecycleOwner  = lifecycleOwner,
-                        onIniciarCamara = { sp -> viewModel.configurarCamara(context, lifecycleOwner, sp) },
-                        onCapturar      = { viewModel.tomarFotoYAnalizar(context, child, perfilEmbarazo, esModoEmbarazo) },
+                                                onIniciarCamara = { },
+                        onCapturar      = { viewModel.analizarFoto("", child, perfilEmbarazo, esModoEmbarazo) },
                         onCancelar      = { viewModel.cancelarCamara() }
                     )
                     is AnalisisUiState.Analizando -> PantallaAnalizando(
@@ -795,8 +768,7 @@ private fun MarcoEsquinas(color: Color) {
 
 @Composable
 private fun PantallaCaptura(
-    lifecycleOwner  : androidx.lifecycle.LifecycleOwner,
-    onIniciarCamara : (androidx.camera.core.Preview.SurfaceProvider) -> Unit,
+        onIniciarCamara : () -> Unit = {},
     onCapturar      : () -> Unit,
     onCancelar      : () -> Unit
 ) {
@@ -804,19 +776,9 @@ private fun PantallaCaptura(
     val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        AndroidView(
-            factory = { ctx ->
-                PreviewView(ctx).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                    post { onIniciarCamara(surfaceProvider) }
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            Text("Cámara no disponible", color = Color.White)
+        }
 
         // Overlays
         Box(
@@ -1042,16 +1004,7 @@ private fun PantallaResultado(
         else       -> "🍽️ Platillo o elemento"
     }
 
-    val foodBitmap = remember(resultado.imagePath) {
-        if (resultado.imagePath.isNotBlank()) {
-            val file = java.io.File(resultado.imagePath)
-            if (file.exists()) {
-                try {
-                    BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
-                } catch (_: Exception) { null }
-            } else null
-        } else null
-    }
+    val foodBitmap: androidx.compose.ui.graphics.ImageBitmap? = null
 
     Column(
         modifier = Modifier
@@ -1230,7 +1183,7 @@ private fun PantallaResultado(
 
                     val approxCalPerItem = if (food.ingredients.isNotEmpty()) (nutrition.calories / food.ingredients.size).toInt() else 0
 
-                    food.ingredients.forEachIndexed { index, ing ->
+                    for ((index, ing) in food.ingredients.withIndex()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1341,7 +1294,7 @@ private fun PantallaResultado(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Beneficios principales", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                     Spacer(Modifier.height(10.dp))
-                    analysis.benefits.forEach { b ->
+                    for (b in analysis.benefits) {
                         Row(modifier = Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
                             Box(modifier = Modifier.padding(top = 6.dp).size(6.dp).clip(CircleShape).background(GreenMedium))
                             Spacer(Modifier.width(10.dp))
@@ -1363,7 +1316,7 @@ private fun PantallaResultado(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Advertencias de salud", fontWeight = FontWeight.Bold, color = RedSoft, fontSize = 14.sp)
                     Spacer(Modifier.height(10.dp))
-                    analysis.warnings.forEach { w ->
+                    for (w in analysis.warnings) {
                         Row(modifier = Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
                             Box(modifier = Modifier.padding(top = 6.dp).size(6.dp).clip(CircleShape).background(RedSoft))
                             Spacer(Modifier.width(10.dp))

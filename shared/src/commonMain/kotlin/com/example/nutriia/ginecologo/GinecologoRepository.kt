@@ -1,6 +1,6 @@
 package com.example.nutriia.ginecologo
 
-import android.util.Log
+import com.example.nutriia.platform.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -156,7 +156,7 @@ class GinecologoRepository {
                 mamaUid          = mamaUid,
                 mamaNombre       = mamaNombre,
                 estado           = EstadoVinculacionEmbarazo.PENDIENTE,
-                creadoEn         = Timestamp.now()
+                creadoEn         = com.example.nutriia.platform.currentTimeMillis()
             )
 
             colVinculaciones.document(docId).set(vinculacion.toMap()).await()

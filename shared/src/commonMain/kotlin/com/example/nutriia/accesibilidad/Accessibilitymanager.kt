@@ -1,28 +1,12 @@
 package com.example.nutriia.accesibilidad
 
-import android.content.Context
-import android.content.Intent
-import android.provider.Settings
-import android.speech.tts.TextToSpeech
-import android.speech.tts.Voice
-import android.view.accessibility.AccessibilityManager as AndroidA11yManager
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import androidx.datastore.preferences.core.booleanPreferencesKey
+import com.example.nutriia.platform.openUrl
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import java.util.Locale
-
-// ─── DataStore ────────────────────────────────────────────────────────────────
-val Context.accessibilityDataStore by preferencesDataStore(name = "accessibility_prefs")
-private val MODE_KEY    = stringPreferencesKey("accessibility_mode")
-private val LANG_KEY    = stringPreferencesKey("accessibility_lang")
-private val PRIMERA_VEZ = booleanPreferencesKey("primera_vez")
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 // ─── Modos ────────────────────────────────────────────────────────────────────
 enum class AccessibilityMode(val label: String, val description: String) {
@@ -35,58 +19,48 @@ enum class AccessibilityMode(val label: String, val description: String) {
 enum class IdiomaVoz(
     val label:       String,
     val descripcion: String,
-    val localeTTS:   Locale,
     val localeVoz:   String,
     val soportado:   Boolean = true
 ) {
     ESPANOL_MX(
         label       = "Español Latinoamérica",
         descripcion = "Voz en español de México y Latinoamérica",
-        localeTTS   = Locale.forLanguageTag("es-MX"),
         localeVoz   = "es-MX"
     ),
     ESPANOL_US(
         label       = "Español Estados Unidos",
         descripcion = "Voz en español neutro de Estados Unidos",
-        localeTTS   = Locale.forLanguageTag("es-US"),
         localeVoz   = "es-US"
     ),
     INGLES(
         label       = "English",
         descripcion = "Voice in American English",
-        localeTTS   = Locale.US,
         localeVoz   = "en-US"
     )
 }
 
 // ─── Repositorio ──────────────────────────────────────────────────────────────
-class AccessibilityRepository(private val context: Context) {
+class AccessibilityRepository(context: Any? = null) {
 
-    val modeFlow: Flow<AccessibilityMode> = context.accessibilityDataStore.data
-        .map { prefs: Preferences ->
-            runCatching { AccessibilityMode.valueOf(prefs[MODE_KEY] ?: "NORMAL") }
-                .getOrDefault(AccessibilityMode.NORMAL)
-        }
+    private val _modeFlow = MutableStateFlow(AccessibilityMode.NORMAL)
+    val modeFlow: Flow<AccessibilityMode> = _modeFlow.asStateFlow()
 
-    val langFlow: Flow<IdiomaVoz> = context.accessibilityDataStore.data
-        .map { prefs: Preferences ->
-            runCatching { IdiomaVoz.valueOf(prefs[LANG_KEY] ?: "ESPANOL_MX") }
-                .getOrDefault(IdiomaVoz.ESPANOL_MX)
-        }
+    private val _langFlow = MutableStateFlow(IdiomaVoz.ESPANOL_MX)
+    val langFlow: Flow<IdiomaVoz> = _langFlow.asStateFlow()
 
-    val primeraVezFlow: Flow<Boolean> = context.accessibilityDataStore.data
-        .map { prefs: Preferences -> prefs[PRIMERA_VEZ] ?: true }
+    private val _primeraVezFlow = MutableStateFlow(false)
+    val primeraVezFlow: Flow<Boolean> = _primeraVezFlow.asStateFlow()
 
     suspend fun saveMode(mode: AccessibilityMode) {
-        context.accessibilityDataStore.edit { it[MODE_KEY] = mode.name }
+        _modeFlow.value = mode
     }
 
     suspend fun saveLang(lang: IdiomaVoz) {
-        context.accessibilityDataStore.edit { it[LANG_KEY] = lang.name }
+        _langFlow.value = lang
     }
 
     suspend fun marcarPrimeraVezCompletada() {
-        context.accessibilityDataStore.edit { it[PRIMERA_VEZ] = false }
+        _primeraVezFlow.value = false
     }
 }
 
@@ -99,124 +73,64 @@ fun IdiomaVoz.loc(es: String, en: String): String =
     if (this == IdiomaVoz.INGLES) en else es
 
 // ─── NutriTTS ─────────────────────────────────────────────────────────────────
-class NutriTTS(context: Context, private var idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX) {
+class NutriTTS(context: Any? = null, private var idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX) {
 
-    private var tts: TextToSpeech? = null
-    private var ready = false
-    var vozActiva: String = "Iniciando..."
+    private val bridge = NutriTTSBridge()
+    private var ready = true
+    var vozActiva: String = "Voz Nativa (${idioma.localeVoz})"
 
     fun isReady() = ready
 
-    init {
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                aplicarIdioma(idioma)
-                tts?.setSpeechRate(0.90f)
-                tts?.setPitch(1.10f)
-                ready = true
-                android.util.Log.d("NutriTTS", "Listo. Voz: $vozActiva")
-            }
-        }
-    }
-
     fun cambiarIdioma(nuevoIdioma: IdiomaVoz) {
         idioma = nuevoIdioma
-        aplicarIdioma(nuevoIdioma)
-    }
-
-    private fun aplicarIdioma(idioma: IdiomaVoz) {
-        val voces: List<Voice> = tts?.voices
-            ?.filter { voice: Voice -> voice.locale.language == idioma.localeTTS.language }
-            ?.sortedByDescending { voice: Voice -> voice.quality }
-            ?: emptyList()
- 
-        val vozElegida = voces.firstOrNull {
-            it.locale.country == idioma.localeTTS.country
-        } ?: voces.firstOrNull()
- 
-        if (vozElegida != null) {
-            tts?.voice  = vozElegida
-            vozActiva   = "${vozElegida.name} (${vozElegida.locale})"
-        } else {
-            tts?.language = idioma.localeTTS
-            vozActiva     = "Generica ${idioma.localeTTS}"
-        }
+        vozActiva = "Voz Nativa (${idioma.localeVoz})"
     }
 
     fun hablar(texto: String) {
-        if (!ready || texto.isBlank()) return
-        tts?.speak(texto, TextToSpeech.QUEUE_FLUSH, null, texto.hashCode().toString())
+        if (texto.isBlank()) return
+        bridge.speak(texto, idioma.localeVoz)
     }
 
-    // ── Habla el texto según el idioma activo ─────────────────────────────────
     fun hablarLocalizado(esTexto: String, enTexto: String) {
         hablar(if (idioma == IdiomaVoz.INGLES) enTexto else esTexto)
     }
 
     fun hablarEnCola(texto: String) {
-        if (!ready || texto.isBlank()) return
-        tts?.speak(texto, TextToSpeech.QUEUE_ADD, null, texto.hashCode().toString())
+        if (texto.isBlank()) return
+        bridge.speak(texto, idioma.localeVoz)
     }
 
-    // ── Versión localizada en cola ────────────────────────────────────────────
     fun hablarEnColaLocalizado(esTexto: String, enTexto: String) {
         hablarEnCola(if (idioma == IdiomaVoz.INGLES) enTexto else esTexto)
     }
 
-    fun estaHablando(): Boolean = tts?.isSpeaking == true
+    fun estaHablando(): Boolean = false
 
     suspend fun hablarYEsperar(texto: String, margenMs: Long = 600L) {
-        if (!ready || texto.isBlank()) return
-        val utteranceId = "nutriia_${System.currentTimeMillis()}"
-        var terminado = false
-
-        tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
-            override fun onStart(id: String?)  {}
-            override fun onDone(id: String?)   { if (id == utteranceId) terminado = true }
-            override fun onError(id: String?)  { terminado = true }
-        })
-
-        tts?.speak(texto, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-
-        val maxEspera = 30_000L
-        var esperado  = 0L
-        while (!terminado && esperado < maxEspera) {
-            kotlinx.coroutines.delay(100)
-            esperado += 100
-        }
+        if (texto.isBlank()) return
+        bridge.speak(texto, idioma.localeVoz)
         kotlinx.coroutines.delay(margenMs)
     }
 
-    // ── Versión localizada con espera ─────────────────────────────────────────
-    suspend fun hablarYEsperarLocalizado(esTexto: String, enTexto: String, margenMs: Long = 600L) {
-        hablarYEsperar(if (idioma == IdiomaVoz.INGLES) enTexto else esTexto, margenMs)
+    fun hablarYEsperarLocalizado(esTexto: String, enTexto: String, margenMs: Long = 600L) {
+        hablarLocalizado(esTexto, enTexto)
     }
 
     fun probarVoz() = hablarLocalizado(Voz.PRUEBA_VOZ, VozEn.PRUEBA_VOZ)
-    fun silenciar() = tts?.stop()
+    fun silenciar() = bridge.stop()
 
-    fun obtenerVocesDisponibles(): List<String> {
-        val v: List<Voice> = tts?.voices?.filter { voice: Voice -> voice.locale.language == idioma.localeTTS.language } ?: emptyList()
-        return v.map { voice: Voice -> "${voice.name} — ${voice.locale}" }
-    }
+    fun obtenerVocesDisponibles(): List<String> = listOf("Voz del Sistema (${idioma.localeVoz})")
 
     fun liberar() {
-        tts?.stop(); tts?.shutdown(); tts = null; ready = false
+        bridge.stop()
     }
 }
 
 // ─── Detección del sistema ────────────────────────────────────────────────────
-fun isTalkBackActive(context: Context): Boolean {
-    val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AndroidA11yManager
-    return am?.isEnabled == true && am.isTouchExplorationEnabled
-}
+fun isTalkBackActive(context: Any? = null): Boolean = false
 
-fun abrirConfiguracionTalkBack(context: Context) {
-    context.startActivity(
-        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-    )
+fun abrirConfiguracionTalkBack(context: Any? = null) {
+    openUrl("app-settings:")
 }
 
 // ─── HapticFeedback ───────────────────────────────────────────────────────────

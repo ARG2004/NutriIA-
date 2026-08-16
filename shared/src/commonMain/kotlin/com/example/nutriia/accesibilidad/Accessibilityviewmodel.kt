@@ -1,7 +1,6 @@
 package com.example.nutriia.accesibilidad
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.auth.RepositorioLogin
 import kotlinx.coroutines.delay
@@ -12,10 +11,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
+class AccessibilityViewModel : ViewModel() {
 
-    private val repo      = AccessibilityRepository(app)
-    private val loginRepo = RepositorioLogin(app)   // ← context agregado
+    private val repo      = AccessibilityRepository()
+    private val loginRepo = RepositorioLogin()
 
     var ttsManager: NutriTTS? = null
         private set
@@ -68,7 +67,7 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ── Cambia idioma (sin INDIGENA) ──────────────────────────────────────────
+    // ── Cambia idioma ─────────────────────────────────────────────────────────
     fun setIdioma(nuevoIdioma: IdiomaVoz) {
         viewModelScope.launch { repo.saveLang(nuevoIdioma) }
         ttsManager?.cambiarIdioma(nuevoIdioma)
@@ -113,7 +112,7 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
             mensajeInicial?.let { hablar(it) }
             return
         }
-        ttsManager = NutriTTS(getApplication(), idioma.value)
+        ttsManager = NutriTTS(null, idioma.value)
         if (mensajeInicial != null) colaPendiente.add(0, mensajeInicial)
 
         viewModelScope.launch {
@@ -133,5 +132,7 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
         ttsManager = null
     }
 
-    override fun onCleared() { super.onCleared(); liberarTTS() }
+    fun limpiar() {
+        liberarTTS()
+    }
 }

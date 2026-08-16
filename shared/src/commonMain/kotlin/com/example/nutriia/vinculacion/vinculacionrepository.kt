@@ -1,6 +1,6 @@
 package com.example.nutriia.vinculacion
 
-import android.util.Log
+import com.example.nutriia.platform.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -175,7 +175,7 @@ class VinculacionRepository {
                 childId          = childId,
                 childNombre      = childNombre,
                 estado           = EstadoVinculacion.PENDIENTE,
-                creadoEn         = Timestamp.now()
+                creadoEn         = com.example.nutriia.platform.currentTimeMillis()
             )
 
             Log.d("VINCULACION", "docId=$docId")

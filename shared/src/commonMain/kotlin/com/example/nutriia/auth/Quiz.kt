@@ -46,7 +46,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.state.ToggleableState
@@ -277,8 +276,7 @@ fun OnboardingQuizScreen(
     onAccesibilidadCompletada: () -> Unit = {},
     onCancel:                  () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val haptic  = LocalHapticFeedback.current
+        val haptic  = LocalHapticFeedback.current
 
     val stepInicial = when {
         soloAccesibilidad   -> 0
@@ -307,7 +305,7 @@ fun OnboardingQuizScreen(
 
     var selectedA11yMode by remember(modoGuardado) {
         mutableStateOf(
-            if (isTalkBackActive(context)) AccessibilityMode.BLIND else modoGuardado
+            if (false) AccessibilityMode.BLIND else modoGuardado
         )
     }
     val ttsManager = accessibilityVm.ttsManager
@@ -392,7 +390,7 @@ fun OnboardingQuizScreen(
             },
             confirmButton = {
                 Button(
-                    onClick = { mostrarDialogoTalkBack = false; abrirConfiguracionTalkBack(context) },
+                    onClick = { mostrarDialogoTalkBack = false;  },
                     colors  = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
                     shape   = RoundedCornerShape(12.dp)
                 ) {
@@ -527,12 +525,12 @@ fun OnboardingQuizScreen(
                             0 -> StepAccesibilidad(
                                 selected       = selectedA11yMode,
                                 idiomaActual   = idiomaActual,
-                                talkBackActivo = isTalkBackActive(context),
+                                talkBackActivo = false,
                                 onSelect       = { modo ->
                                     vibrateTap(haptic)
                                     selectedA11yMode = modo
                                     accessibilityVm.setMode(modo)
-                                    if (modo == AccessibilityMode.BLIND && !isTalkBackActive(context))
+                                    if (modo == AccessibilityMode.BLIND && !false)
                                         mostrarDialogoTalkBack = true
                                 },
                                 onIdiomaSelect = { idioma -> vibrateTap(haptic); accessibilityVm.setIdioma(idioma) }

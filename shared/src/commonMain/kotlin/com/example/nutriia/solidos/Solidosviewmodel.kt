@@ -1,7 +1,6 @@
 package com.example.nutriia.solidos
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.sueldo.Alergeno
@@ -31,7 +30,7 @@ enum class FiltroTipoReceta(val label: String, val tipo: TipoComida?) {
     COLACION ("Colación", TipoComida.COLACION)
 }
 
-class AlimentacionViewModel(application: Application) : AndroidViewModel(application) {
+class AlimentacionViewModel : ViewModel() {
 
     // Usa directamente SolidosRepository — el offline lo maneja Firestore
     private val repo = SolidosRepository()
