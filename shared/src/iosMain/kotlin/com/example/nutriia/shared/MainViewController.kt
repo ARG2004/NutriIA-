@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalNativeApi::class)
+
 package com.example.nutriia.shared
 
 import androidx.compose.ui.window.ComposeUIViewController
