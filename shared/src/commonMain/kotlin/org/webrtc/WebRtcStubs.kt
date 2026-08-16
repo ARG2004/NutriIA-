@@ -112,11 +112,22 @@ class Camera1Enumerator(captureToTexture: Boolean = true) : CameraEnumerator {
     override fun createCapturer(deviceName: String, eventsHandler: Any?): VideoCapturer? = null
 }
 
+class MediaStream(val id: String = "")
+class DataChannel(val label: String = "")
+
 class PeerConnection(
     private val observer: Observer? = null
 ) {
     enum class IceConnectionState {
         NEW, CHECKING, CONNECTED, COMPLETED, FAILED, DISCONNECTED, CLOSED
+    }
+
+    enum class IceGatheringState {
+        NEW, GATHERING, COMPLETE
+    }
+
+    enum class PeerConnectionState {
+        NEW, CONNECTING, CONNECTED, DISCONNECTED, FAILED, CLOSED
     }
 
     enum class SignalingState {
@@ -127,12 +138,13 @@ class PeerConnection(
         fun onSignalingChange(state: SignalingState) {}
         fun onIceConnectionChange(state: IceConnectionState) {}
         fun onIceConnectionReceivingChange(receiving: Boolean) {}
-        fun onIceGatheringChange(state: Any?) {}
+        fun onIceGatheringChange(state: IceGatheringState) {}
+        fun onConnectionChange(state: PeerConnectionState) {}
         fun onIceCandidate(candidate: IceCandidate) {}
         fun onIceCandidatesRemoved(candidates: Array<IceCandidate>) {}
-        fun onAddStream(stream: Any?) {}
-        fun onRemoveStream(stream: Any?) {}
-        fun onDataChannel(dataChannel: Any?) {}
+        fun onAddStream(stream: MediaStream) {}
+        fun onRemoveStream(stream: MediaStream) {}
+        fun onDataChannel(dataChannel: DataChannel) {}
         fun onRenegotiationNeeded() {}
         fun onAddTrack(receiver: Any?, mediaStreams: Array<Any?>) {}
         fun onTrack(transceiver: RtpTransceiver) {}

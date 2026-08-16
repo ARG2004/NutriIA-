@@ -83,13 +83,45 @@ class Calendar private constructor() {
     fun before(other: Any?): Boolean = false
 
     companion object {
+        const val ERA = 0
         const val YEAR = 1
         const val MONTH = 2
+        const val WEEK_OF_YEAR = 3
+        const val WEEK_OF_MONTH = 4
+        const val DATE = 5
         const val DAY_OF_MONTH = 5
+        const val DAY_OF_YEAR = 6
+        const val DAY_OF_WEEK = 7
+        const val DAY_OF_WEEK_IN_MONTH = 8
+        const val AM_PM = 9
+        const val HOUR = 10
         const val HOUR_OF_DAY = 11
         const val MINUTE = 12
         const val SECOND = 13
         const val MILLISECOND = 14
+        const val ZONE_OFFSET = 15
+        const val DST_OFFSET = 16
+
+        const val SUNDAY = 1
+        const val MONDAY = 2
+        const val TUESDAY = 3
+        const val WEDNESDAY = 4
+        const val THURSDAY = 5
+        const val FRIDAY = 6
+        const val SATURDAY = 7
+
+        const val JANUARY = 0
+        const val FEBRUARY = 1
+        const val MARCH = 2
+        const val APRIL = 3
+        const val MAY = 4
+        const val JUNE = 5
+        const val JULY = 6
+        const val AUGUST = 7
+        const val SEPTEMBER = 8
+        const val OCTOBER = 9
+        const val NOVEMBER = 10
+        const val DECEMBER = 11
 
         fun getInstance(): Calendar = Calendar()
         fun getInstance(timeZone: TimeZone): Calendar = Calendar()
