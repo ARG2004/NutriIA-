@@ -59,11 +59,21 @@ enum class Source {
 
 open class Query {
     open fun whereEqualTo(field: String, value: Any?): Query = this
+    open fun whereNotEqualTo(field: String, value: Any?): Query = this
+    open fun whereGreaterThan(field: String, value: Any?): Query = this
     open fun whereGreaterThanOrEqualTo(field: String, value: Any?): Query = this
+    open fun whereLessThan(field: String, value: Any?): Query = this
     open fun whereLessThanOrEqualTo(field: String, value: Any?): Query = this
     open fun whereIn(field: String, values: List<Any?>): Query = this
+    open fun whereNotIn(field: String, values: List<Any?>): Query = this
+    open fun whereArrayContains(field: String, value: Any?): Query = this
+    open fun whereArrayContainsAny(field: String, values: List<Any?>): Query = this
     open fun orderBy(field: String): Query = this
     open fun orderBy(field: String, direction: Query.Direction): Query = this
+    open fun startAt(vararg values: Any?): Query = this
+    open fun startAfter(vararg values: Any?): Query = this
+    open fun endAt(vararg values: Any?): Query = this
+    open fun endBefore(vararg values: Any?): Query = this
     open fun limit(limit: Long): Query = this
     open fun get(source: Source = Source.DEFAULT): Task<QuerySnapshot> = Task()
     open fun addSnapshotListener(listener: (QuerySnapshot?, Exception?) -> Unit): ListenerRegistration {
