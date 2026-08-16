@@ -106,7 +106,7 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-            BUILD_NUM="40"
+            BUILD_NUM="41"
             xcodebuild archive \
               -project iosApp.xcodeproj \
               -scheme NutriIA \
@@ -115,7 +115,7 @@ jobs:
               -sdk iphoneos \
               ONLY_ACTIVE_ARCH=NO \
               ARCHS=arm64 \
-              MARKETING_VERSION="2.2.5" \
+              MARKETING_VERSION="2.2.6" \
               CURRENT_PROJECT_VERSION="$BUILD_NUM" \
               CODE_SIGN_IDENTITY="$IDENTITY" \
               CODE_SIGN_STYLE=Manual \
@@ -147,8 +147,18 @@ jobs:
         with:
           name: NutrIA-iOS-Artifacts
           path: |
+            ${{ runner.temp }}/ipa-export/*.ipa
             build/*.ipa
             *.ipa
             shared/build/bin/iosArm64/releaseFramework/
             shared/build/bin/
           if-no-files-found: ignore
+
+      - name: 11. Upload iOS App dSYMs (Crash Symbolication)
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: NutriIA-iOS-dSYMs
+          path: ${{ runner.temp }}/NutriIA.xcarchive/dSYMs/
+          if-no-files-found: warn
+
