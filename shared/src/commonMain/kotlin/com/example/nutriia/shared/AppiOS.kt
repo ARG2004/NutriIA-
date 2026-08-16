@@ -259,6 +259,15 @@ fun NutriIAiOSApp() {
         }
     }
 
+    val cfgVm: ConfiguracionViewModel = remember {
+        try {
+            ConfiguracionViewModel()
+        } catch (t: Throwable) {
+            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando ConfiguracionViewModel: ${t.message}", t)
+            throw t
+        }
+    }
+
     com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 6/11] Colectando StateFlows de Accesibilidad...")
     val estado by loginViewModel.estado.collectAsState()
     val accessibilityMode by accessibilityVm.mode.collectAsState()
@@ -730,27 +739,59 @@ fun NutriIAiOSApp() {
                         )
                     } ?: run { currentScreen = Screen.DASHBOARD_GINECOLOGO }
 
-                    Screen.CONFIGURACION -> ConfiguracionScreen(
-                        children = children,
-                        nombrePadre = loginViewModel.nombreUsuario.ifBlank { "Usuario NutriIA" },
-                        emailPadre = loginViewModel.emailUsuario.ifBlank { "usuario@nutriia.com" },
-                        rol = loginViewModel.rolUsuario.ifBlank { "padre" },
-                        onBack = { currentScreen = pantallaOrigenConfig },
-                        onEditarPerfil = { currentScreen = Screen.EDITAR_PERFIL },
-                        onEditarHijo = { child ->
-                            hijoParaEditar = child
-                            currentScreen = Screen.EDITAR_REGION
-                        },
-                        onAgregarHijo = {
-                            isAddingChild = true
-                            saltarAccesibilidadEnQuiz = false
-                            currentScreen = Screen.QUIZ
-                        },
-                        onCerrarSesion = {
+                    Screen.CONFIGURACION -> {
+                        val logoutAction = {
+                            teleconsultaVm.detenerObservacionEntrantes()
+                            accessibilityVm.silenciar()
                             loginViewModel.cerrarSesion()
+                            sharedVm.limpiarPerfil()
+                            children = emptyList()
+                            activeChildIndex = 0
+                            saltarAccesibilidadEnQuiz = false
+                            perfilEmbarazo = null
+                            nombreMama = ""
                             currentScreen = Screen.LOGIN
                         }
-                    )
+                        ConfiguracionScreen(
+                            children = children,
+                            nombrePadre = loginViewModel.nombreUsuario.ifBlank { "Usuario NutriIA" },
+                            emailPadre = loginViewModel.emailUsuario.ifBlank { "usuario@nutriia.com" },
+                            rol = loginViewModel.rolUsuario.ifBlank { "padre" },
+                            onBack = { currentScreen = pantallaOrigenConfig },
+                            onEditarPerfil = { currentScreen = Screen.EDITAR_PERFIL },
+                            onCambiarPasswordDirecto = { actual, nueva, callback ->
+                                cfgVm.cambiarContrasenaDirecta(actual, nueva) { exito, msg ->
+                                    callback(exito, msg)
+                                    if (exito) {
+                                        toastMessage = "Contraseña actualizada exitosamente"
+                                    }
+                                }
+                            },
+                            onEnviarCorreoPassword = {
+                                cfgVm.enviarRecuperacionPassword(loginViewModel.emailUsuario)
+                                toastMessage = "Correo de recuperación enviado"
+                            },
+                            onEditarHijo = { child ->
+                                hijoParaEditar = child
+                                currentScreen = Screen.EDITAR_REGION
+                            },
+                            onAgregarHijo = {
+                                isAddingChild = true
+                                saltarAccesibilidadEnQuiz = true
+                                currentScreen = Screen.QUIZ
+                            },
+                            onPrivacidad = { },
+                            onCerrarSesion = { cfgVm.cerrarSesion { logoutAction() } },
+                            onEliminarCuentaConPassword = { actual, callback ->
+                                cfgVm.eliminarCuentaDefinitiva(actual) { exito, msg ->
+                                    callback(exito, msg)
+                                    if (exito) {
+                                        logoutAction()
+                                    }
+                                }
+                            }
+                        )
+                    }
                     Screen.EDITAR_PERFIL -> EditarPerfilScreen(
                         nombreInicial   = loginViewModel.nombreUsuario,
                         emailInicial    = loginViewModel.emailUsuario,

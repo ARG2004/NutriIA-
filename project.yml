@@ -5,6 +5,11 @@ options:
     iOS: '15.0'
   createIntermediateGroups: true
 
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    exactVersion: 10.29.0
+
 targets:
   NutriIA:
     type: application
@@ -19,7 +24,7 @@ targets:
       path: iosApp/iosApp/Info.plist
       properties:
         CFBundleShortVersionString: '2.2.6'
-        CFBundleVersion: '47'
+        CFBundleVersion: '48'
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arg.nutriia
@@ -31,10 +36,14 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
-        CURRENT_PROJECT_VERSION: '47'
+        CURRENT_PROJECT_VERSION: '48'
         MARKETING_VERSION: '2.2.6'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
     dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
       - framework: shared/build/bin/iosArm64/releaseFramework/Shared.framework
         embed: false
