@@ -3,8 +3,12 @@ package com.google.firebase.firestore
 import com.google.android.gms.tasks.Task
 import java.util.Date
 
-class Timestamp(val seconds: Long = 0L, val nanoseconds: Int = 0) {
+class Timestamp(val seconds: Long = 0L, val nanoseconds: Int = 0) : Comparable<Timestamp> {
     fun toDate(): Date = Date(seconds * 1000)
+    override fun compareTo(other: Timestamp): Int {
+        val s = seconds.compareTo(other.seconds)
+        return if (s != 0) s else nanoseconds.compareTo(other.nanoseconds)
+    }
     companion object {
         fun now(): Timestamp = Timestamp(0L, 0)
     }

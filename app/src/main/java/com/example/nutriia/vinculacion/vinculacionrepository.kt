@@ -131,8 +131,8 @@ class VinculacionRepository {
                 .get().await()
 
             val porNombre = snap.documents.mapNotNull { doc ->
-                doc.data?.let { NutriologoPublico.fromMap(it, doc.id) }
-            }.filter { !esEspecialidadGinecologica(it.especialidad) }
+                doc.data?.let { data -> NutriologoPublico.fromMap(data, doc.id) }
+            }.filter { nutriologo -> !esEspecialidadGinecologica(nutriologo.especialidad) }
 
             Result.success(porNombre)
         } catch (e: Exception) {

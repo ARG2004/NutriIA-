@@ -394,7 +394,7 @@ private fun TabSintomas(registros: List<RegistroSintomasEmbarazo>) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val ordenadas = registros.sortedByDescending { it.creadoEn }
+        val ordenadas = registros.sortedByDescending { it.creadoEn ?: Timestamp.now() }
         items(ordenadas) { reg ->
             val trimestre = when {
                 reg.semanaGestacion <= 13 -> 1
