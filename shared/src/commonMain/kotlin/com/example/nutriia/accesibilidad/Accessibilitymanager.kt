@@ -4,10 +4,12 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
 import android.view.accessibility.AccessibilityManager as AndroidA11yManager
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -56,9 +58,6 @@ enum class IdiomaVoz(
         localeVoz   = "en-US"
     )
 }
-
-import android.speech.tts.Voice
-import androidx.datastore.preferences.core.Preferences
 
 // ─── Repositorio ──────────────────────────────────────────────────────────────
 class AccessibilityRepository(private val context: Context) {

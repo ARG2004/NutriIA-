@@ -1,5 +1,7 @@
 package java.util.concurrent
 
+import java.lang.Runnable
+
 enum class TimeUnit {
     NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS;
     fun toMillis(duration: Long): Long = duration
