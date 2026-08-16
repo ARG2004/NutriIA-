@@ -2,14 +2,14 @@ package com.example.nutriia.ginecologo
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.gitlive.firebase.auth.FirebaseAuth
-import dev.gitlive.firebase.firestore.FirebaseFirestore
+import com.example.nutriia.firebase.auth.FirebaseAuth
+import com.example.nutriia.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import dev.gitlive.firebase.firestore.await
+import com.example.nutriia.firebase.firestore.await
 
 data class SolicitudEmbarazoUiState(
     val miPerfil:              GinecologoPublico?        = null,
@@ -55,7 +55,7 @@ class GinecologoDashboardViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val snap         = db.collection("usuarios").document(uid).get().await()
-                val doc          = snap as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                val doc          = snap as? com.example.nutriia.firebase.firestore.DocumentSnapshot
                 val nombre       = doc?.getString("nombre")       ?: return@launch
                 val especialidad = doc?.getString("especialidad") ?: "Ginecología y Obstetricia"
                 val cedula       = doc?.getString("cedula")       ?: ""

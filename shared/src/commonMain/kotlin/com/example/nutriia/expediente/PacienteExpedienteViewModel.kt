@@ -14,14 +14,14 @@ import com.example.nutriia.crecimiento.Sexo
 import com.example.nutriia.crecimiento.interpretarIMC
 import com.example.nutriia.crecimiento.InterpretacionIMC
 import com.example.nutriia.offline.OfflineManager
-import dev.gitlive.firebase.auth.FirebaseAuth
-import dev.gitlive.firebase.firestore.FirebaseFirestore
-import dev.gitlive.firebase.firestore.ListenerRegistration
-import dev.gitlive.firebase.firestore.Query
+import com.example.nutriia.firebase.auth.FirebaseAuth
+import com.example.nutriia.firebase.firestore.FirebaseFirestore
+import com.example.nutriia.firebase.firestore.ListenerRegistration
+import com.example.nutriia.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import dev.gitlive.firebase.firestore.await
+import com.example.nutriia.firebase.firestore.await
 import com.example.nutriia.utils.FechaUtils
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,7 +160,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     .document(childId)
                     .get().await()
 
-                val doc = hijoDoc as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                val doc = hijoDoc as? com.example.nutriia.firebase.firestore.DocumentSnapshot
                 if (doc != null && doc.exists) {
                     nacimiento = doc.getString("birthDate") ?: ""
                     nivelIngreso = doc.getString("nivelIngreso")
@@ -359,7 +359,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to "nota_nutriologo",
-                    "creadoEn"    to dev.gitlive.firebase.firestore.Timestamp.now()
+                    "creadoEn"    to com.example.nutriia.firebase.firestore.Timestamp.now()
                 )
                 
                 val task = db.collection("usuarios").document(ownerUid)
@@ -406,7 +406,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to tipo,
-                    "creadoEn"    to dev.gitlive.firebase.firestore.Timestamp.now()
+                    "creadoEn"    to com.example.nutriia.firebase.firestore.Timestamp.now()
                 )
                 
                 val task = db.collection("usuarios").document(_ownerUid)
@@ -475,7 +475,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to "receta_nutriologo",
-                    "creadoEn"    to dev.gitlive.firebase.firestore.Timestamp.now()
+                    "creadoEn"    to com.example.nutriia.firebase.firestore.Timestamp.now()
                 )
                 
                 val task1 = db.collection("usuarios").document(_ownerUid)
@@ -497,7 +497,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"     to currentUser.uid,
                     "autorNombre"  to (currentUser.displayName ?: "Nutriólogo"),
                     "edadMeses"    to _ui.value.edadMeses,
-                    "creadoEn"     to dev.gitlive.firebase.firestore.Timestamp.now()
+                    "creadoEn"     to com.example.nutriia.firebase.firestore.Timestamp.now()
                 )
                 
                 val task2 = db.collection("usuarios").document(_ownerUid)
@@ -563,7 +563,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                                 .whereEqualTo("autorUid", currentUser.uid)
                                 .get().await()
 
-                            val docsList = (matchingDocs as? dev.gitlive.firebase.firestore.QuerySnapshot)?.documents ?: emptyList()
+                            val docsList = (matchingDocs as? com.example.nutriia.firebase.firestore.QuerySnapshot)?.documents ?: emptyList()
                             for (doc in docsList) {
                                 doc.reference.delete().await()
                             }

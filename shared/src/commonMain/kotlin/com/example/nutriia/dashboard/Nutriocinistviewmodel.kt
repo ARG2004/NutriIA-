@@ -7,8 +7,8 @@ import com.example.nutriia.vinculacion.NutriologoPublico
 import com.example.nutriia.vinculacion.PlanAlimentario
 import com.example.nutriia.vinculacion.Vinculacion
 import com.example.nutriia.vinculacion.VinculacionRepository
-import dev.gitlive.firebase.auth.FirebaseAuth
-import dev.gitlive.firebase.firestore.FirebaseFirestore
+import com.example.nutriia.firebase.auth.FirebaseAuth
+import com.example.nutriia.firebase.firestore.FirebaseFirestore
 import com.example.nutriia.utils.FechaUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import dev.gitlive.firebase.firestore.await
+import com.example.nutriia.firebase.firestore.await
 
 data class PacienteResumen(
     val ownerUid:            String  = "",
@@ -89,7 +89,7 @@ class NutritionistDashboardViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val snap         = db.collection("usuarios").document(uid).get().await()
-                val doc          = snap as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                val doc          = snap as? com.example.nutriia.firebase.firestore.DocumentSnapshot
                 val nombre       = doc?.getString("nombre")       ?: return@launch
                 val especialidad = doc?.getString("especialidad") ?: ""
                 val cedula       = doc?.getString("cedula")       ?: ""

@@ -1,4 +1,4 @@
-package dev.gitlive.firebase.auth
+package com.example.nutriia.firebase.auth
 
 class FirebaseAuth {
     companion object {

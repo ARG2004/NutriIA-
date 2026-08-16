@@ -1,9 +1,11 @@
-package dev.gitlive.firebase.firestore
+package com.example.nutriia.firebase.firestore
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 suspend fun <T> T.await(): T = this
+
+typealias Query = CollectionReference
 
 class FirebaseFirestore {
     companion object {

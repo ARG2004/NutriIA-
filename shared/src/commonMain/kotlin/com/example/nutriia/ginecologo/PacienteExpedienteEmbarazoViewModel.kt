@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.embarazo.RegistroPesoEmbarazo
 import com.example.nutriia.embarazo.RegistroSintomasEmbarazo
-import dev.gitlive.firebase.firestore.FirebaseFirestore
+import com.example.nutriia.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 

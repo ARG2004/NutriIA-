@@ -10,10 +10,10 @@ import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.utils.FechaUtils
 import com.example.nutriia.platform.generateUUID
-import dev.gitlive.firebase.auth.FirebaseAuth
-import dev.gitlive.firebase.auth.FirebaseUser
-import dev.gitlive.firebase.firestore.FirebaseFirestore
-import dev.gitlive.firebase.firestore.await
+import com.example.nutriia.firebase.auth.FirebaseAuth
+import com.example.nutriia.firebase.auth.FirebaseUser
+import com.example.nutriia.firebase.firestore.FirebaseFirestore
+import com.example.nutriia.firebase.firestore.await
 
 sealed class ResultadoAuth {
     data class Exito(val uid: String, val rol: String) : ResultadoAuth()
@@ -301,11 +301,11 @@ class RepositorioLogin {
         return try {
             db.collection("usuarios").document(uid).update(
                 mapOf(
-                    "cedulaValida"          to dev.gitlive.firebase.firestore.FieldValue.delete,
-                    "nombreTitularCedula"   to dev.gitlive.firebase.firestore.FieldValue.delete,
-                    "profesionCedula"       to dev.gitlive.firebase.firestore.FieldValue.delete,
-                    "consentimientoCedula" to dev.gitlive.firebase.firestore.FieldValue.delete,
-                    "fechaConsentimiento"   to dev.gitlive.firebase.firestore.FieldValue.delete,
+                    "cedulaValida"          to com.example.nutriia.firebase.firestore.FieldValue.delete,
+                    "nombreTitularCedula"   to com.example.nutriia.firebase.firestore.FieldValue.delete,
+                    "profesionCedula"       to com.example.nutriia.firebase.firestore.FieldValue.delete,
+                    "consentimientoCedula" to com.example.nutriia.firebase.firestore.FieldValue.delete,
+                    "fechaConsentimiento"   to com.example.nutriia.firebase.firestore.FieldValue.delete,
                     "needsReverification"   to true
                 )
             ).await()
@@ -471,7 +471,7 @@ class RepositorioLogin {
         val email = usuario.email ?: return ResultadoAuth.Error("No se pudo obtener el correo de la cuenta")
 
         return try {
-            val credencial = dev.gitlive.firebase.auth.EmailAuthProvider.credential(email, contrasenaActual)
+            val credencial = com.example.nutriia.firebase.auth.EmailAuthProvider.credential(email, contrasenaActual)
             usuario.reauthenticate(credencial).await()
             usuario.updatePassword(nuevaContrasena).await()
             ResultadoAuth.Exito(usuario.uid, "contrasena_actualizada")
@@ -490,7 +490,7 @@ class RepositorioLogin {
         val email = usuario.email ?: return ResultadoAuth.Error("No se pudo obtener el correo de la cuenta")
 
         return try {
-            val credencial = dev.gitlive.firebase.auth.EmailAuthProvider.credential(email, contrasenaActual)
+            val credencial = com.example.nutriia.firebase.auth.EmailAuthProvider.credential(email, contrasenaActual)
             usuario.reauthenticate(credencial).await()
 
             val uid = usuario.uid

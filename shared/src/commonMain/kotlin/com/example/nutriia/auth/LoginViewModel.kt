@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.ui.theme.ChildProfile
-import dev.gitlive.firebase.firestore.FirebaseFirestore
+import com.example.nutriia.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import dev.gitlive.firebase.firestore.await
+import com.example.nutriia.firebase.firestore.await
 
 sealed class LoginUiState {
     object Idle    : LoginUiState()

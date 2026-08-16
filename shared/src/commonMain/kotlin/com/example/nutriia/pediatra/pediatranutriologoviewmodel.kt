@@ -7,11 +7,11 @@ import com.example.nutriia.vinculacion.NutriologoPublico
 import com.example.nutriia.vinculacion.PlanAlimentario
 import com.example.nutriia.vinculacion.Vinculacion
 import com.example.nutriia.vinculacion.VinculacionRepository
-import dev.gitlive.firebase.auth.FirebaseAuth
-import dev.gitlive.firebase.firestore.FieldValue
-import dev.gitlive.firebase.firestore.FirebaseFirestore
-import dev.gitlive.firebase.firestore.ListenerRegistration
-import dev.gitlive.firebase.firestore.await
+import com.example.nutriia.firebase.auth.FirebaseAuth
+import com.example.nutriia.firebase.firestore.FieldValue
+import com.example.nutriia.firebase.firestore.FirebaseFirestore
+import com.example.nutriia.firebase.firestore.ListenerRegistration
+import com.example.nutriia.firebase.firestore.await
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -166,7 +166,7 @@ class PediatraDashboardViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val snap         = db.collection("usuarios").document(uid).get().await()
-                val doc          = snap as? dev.gitlive.firebase.firestore.DocumentSnapshot
+                val doc          = snap as? com.example.nutriia.firebase.firestore.DocumentSnapshot
                 val nombre       = doc?.getString("nombre")       ?: return@launch
                 val especialidad = doc?.getString("especialidad") ?: ""
                 val cedula       = doc?.getString("cedula")       ?: ""
@@ -218,7 +218,7 @@ class PediatraDashboardViewModel : ViewModel() {
                             .whereEqualTo("activo", true)
                             .get().await()
 
-                        val planes = (planesSnap as? dev.gitlive.firebase.firestore.QuerySnapshot)?.documents?.mapNotNull { planDoc ->
+                        val planes = (planesSnap as? com.example.nutriia.firebase.firestore.QuerySnapshot)?.documents?.mapNotNull { planDoc ->
                             PlanAlimentario.fromMap(planDoc.id, planDoc.data)
                         } ?: emptyList()
 
@@ -239,7 +239,7 @@ class PediatraDashboardViewModel : ViewModel() {
                                 childNombre          = vinc.childNombre,
                                 ultimaActualizacion  = FechaUtils.formatearFecha(vinc.actualizadoEn ?: 0L),
                                 planesActivos        = planes,
-                                mensajesNoLeidos     = (noLeidosSnap as? dev.gitlive.firebase.firestore.QuerySnapshot)?.size() ?: 0
+                                mensajesNoLeidos     = (noLeidosSnap as? com.example.nutriia.firebase.firestore.QuerySnapshot)?.size() ?: 0
                             )
                         )
                     } catch (_: Exception) {}
@@ -295,7 +295,7 @@ class PediatraDashboardViewModel : ViewModel() {
         mensajesListener = db.collection("nutriologos")
             .document(uid)
             .collection("mensajes")
-            .orderBy("creadoEn", dev.gitlive.firebase.firestore.Direction.DESCENDING)
+            .orderBy("creadoEn", com.example.nutriia.firebase.firestore.Direction.DESCENDING)
             .addSnapshotListener { snap, err ->
                 if (err != null) return@addSnapshotListener
                 val lista = snap?.documents?.mapNotNull { doc ->
