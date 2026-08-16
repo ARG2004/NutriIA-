@@ -10,7 +10,6 @@ import android.content.Context
 
 object CallEngineProvider {
 
-    @Volatile
     private var _engine: WebRtcEngine? = null
 
     /** Motor activo. Lanza excepción si no fue inicializado. */
