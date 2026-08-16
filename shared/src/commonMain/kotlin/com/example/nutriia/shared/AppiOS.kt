@@ -144,8 +144,18 @@ fun NutriIAiOSApp() {
         isCheckingInitialSession = false
     }
 
+    val viewModelStore = remember { androidx.lifecycle.ViewModelStore() }
+    val viewModelStoreOwner = remember {
+        object : androidx.lifecycle.ViewModelStoreOwner {
+            override val viewModelStore: androidx.lifecycle.ViewModelStore = viewModelStore
+        }
+    }
+
     NutriIATheme {
-        CompositionLocalProvider(LocalAccessibilityMode provides accessibilityMode) {
+        CompositionLocalProvider(
+            androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner provides viewModelStoreOwner,
+            LocalAccessibilityMode provides accessibilityMode
+        ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 when (currentScreen) {
                     Screen.ACCESIBILIDAD_INICIAL -> OnboardingQuizScreen(
