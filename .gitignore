@@ -20,6 +20,13 @@ local.properties
 /app/debug/
 /app/build/
 
+# Kotlin Multiplatform
+.kotlin/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
 # Certificate & Private Key Security
 *.p12
 *.cer
