@@ -6,6 +6,8 @@ expect fun currentTimeMillis(): Long
 
 expect fun openUrl(url: String)
 
+expect fun platformLog(tag: String, msg: String)
+
 fun generateUUID(): String {
     val chars = "0123456789abcdef"
     val time = currentTimeMillis().toString(16)
@@ -14,10 +16,10 @@ fun generateUUID(): String {
 }
 
 object Log {
-    fun d(tag: String, msg: String) = println("DEBUG [$tag] $msg")
-    fun i(tag: String, msg: String) = println("INFO [$tag] $msg")
-    fun w(tag: String, msg: String, tr: Throwable? = null) = println("WARN [$tag] $msg")
-    fun e(tag: String, msg: String, tr: Throwable? = null) = println("ERROR [$tag] $msg")
+    fun d(tag: String, msg: String) = platformLog("DEBUG-$tag", msg)
+    fun i(tag: String, msg: String) = platformLog("INFO-$tag", msg)
+    fun w(tag: String, msg: String, tr: Throwable? = null) = platformLog("WARN-$tag", if (tr != null) "$msg -> ${tr.message}\n${tr.stackTraceToString()}" else msg)
+    fun e(tag: String, msg: String, tr: Throwable? = null) = platformLog("ERROR-$tag", if (tr != null) "$msg -> ${tr.message}\n${tr.stackTraceToString()}" else msg)
 }
 
 object Logger {

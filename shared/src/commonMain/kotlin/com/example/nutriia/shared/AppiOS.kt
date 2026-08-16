@@ -102,11 +102,49 @@ fun AppiOS() {
 
 @Composable
 fun NutriIAiOSApp() {
-    val loginViewModel: LoginViewModel = remember { LoginViewModel() }
-    val sharedVm: NutriSharedViewModel = remember { NutriSharedViewModel() }
-    val teleconsultaVm: TeleconsultaViewModel = remember { TeleconsultaViewModel() }
-    val accessibilityVm: AccessibilityViewModel = remember { AccessibilityViewModel() }
+    com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 1/11] Iniciando NutriIAiOSApp()...")
 
+    val loginViewModel: LoginViewModel = remember {
+        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 2/11] Instanciando LoginViewModel()...")
+        try {
+            LoginViewModel()
+        } catch (t: Throwable) {
+            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando LoginViewModel: ${t.message}", t)
+            throw t
+        }
+    }
+
+    val sharedVm: NutriSharedViewModel = remember {
+        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 3/11] Instanciando NutriSharedViewModel()...")
+        try {
+            NutriSharedViewModel()
+        } catch (t: Throwable) {
+            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando NutriSharedViewModel: ${t.message}", t)
+            throw t
+        }
+    }
+
+    val teleconsultaVm: TeleconsultaViewModel = remember {
+        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 4/11] Instanciando TeleconsultaViewModel()...")
+        try {
+            TeleconsultaViewModel()
+        } catch (t: Throwable) {
+            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando TeleconsultaViewModel: ${t.message}", t)
+            throw t
+        }
+    }
+
+    val accessibilityVm: AccessibilityViewModel = remember {
+        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 5/11] Instanciando AccessibilityViewModel()...")
+        try {
+            AccessibilityViewModel()
+        } catch (t: Throwable) {
+            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando AccessibilityViewModel: ${t.message}", t)
+            throw t
+        }
+    }
+
+    com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 6/11] Colectando StateFlows de Accesibilidad...")
     val accessibilityMode by accessibilityVm.mode.collectAsState()
     val primeraVez by accessibilityVm.primeraVez.collectAsState()
     val primeraVezCargada by accessibilityVm.primeraVezCargada.collectAsState()
@@ -144,6 +182,7 @@ fun NutriIAiOSApp() {
         isCheckingInitialSession = false
     }
 
+    com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 7/11] Configurando ViewModelStore y ViewModelStoreOwner...")
     val viewModelStore = remember { androidx.lifecycle.ViewModelStore() }
     val viewModelStoreOwner = remember {
         object : androidx.lifecycle.ViewModelStoreOwner {
@@ -151,12 +190,15 @@ fun NutriIAiOSApp() {
         }
     }
 
+    com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 8/11] Entrando a NutriIATheme...")
     NutriIATheme {
+        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 9/11] Entrando a CompositionLocalProvider...")
         CompositionLocalProvider(
             androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner provides viewModelStoreOwner,
             LocalAccessibilityMode provides accessibilityMode
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
+                com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 10/11] Renderizando pantalla: $currentScreen...")
                 when (currentScreen) {
                     Screen.ACCESIBILIDAD_INICIAL -> OnboardingQuizScreen(
                         soloAccesibilidad = true,
@@ -168,6 +210,7 @@ fun NutriIAiOSApp() {
                     )
                     Screen.LOGIN -> NutriaLoginScreen(
                         viewModel = loginViewModel,
+                        a11yVm = accessibilityVm,
                         onNavigateAsParent = {
                             showLoginSplash = true
                             currentScreen = if (children.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
@@ -520,6 +563,7 @@ fun NutriIAiOSApp() {
 private fun SplashOverlay(
     mensaje: String = "Iniciando NutriIA..."
 ) {
+    com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 11/11] Componiendo SplashOverlay...")
     var animIn by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { animIn = true }
 

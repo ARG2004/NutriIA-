@@ -13,3 +13,8 @@ actual fun openUrl(url: String) {
     val nsUrl = NSURL.URLWithString(url) ?: return
     UIApplication.sharedApplication.openURL(nsUrl)
 }
+
+actual fun platformLog(tag: String, msg: String) {
+    platform.Foundation.NSLog("[NutriIA-%s] %s", tag, msg)
+    println("[NutriIA-$tag] $msg")
+}

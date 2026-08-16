@@ -39,12 +39,14 @@ val NutriaBgCrema   = Color(0xFFF8F9F3)
 
 @Composable
 fun NutriaLoginScreen(
-    viewModel: LoginViewModel = viewModel(),
+    viewModel: LoginViewModel = remember { LoginViewModel() },
+    a11yVm: AccessibilityViewModel = remember { AccessibilityViewModel() },
     onNavigateAsParent: () -> Unit       = {},
     onNavigateAsNutritionist: () -> Unit = {},
     onNavigateToRegister: () -> Unit     = {},
     onNavigateToBiometricActivation: (uid: String, rol: String) -> Unit = { _, _ -> }
 ) {
+    com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [NutriaLoginScreen] Iniciando composable NutriaLoginScreen...")
     var email        by remember { mutableStateOf("") }
     var password     by remember { mutableStateOf("") }
     var showError    by remember { mutableStateOf<String?>(null) }
@@ -53,8 +55,8 @@ fun NutriaLoginScreen(
     var resetMessage by remember { mutableStateOf<String?>(null) }
     val estado       by viewModel.estado.collectAsState()
 
-        val a11yMode = LocalAccessibilityMode.current
-    val a11yVm: AccessibilityViewModel = viewModel()
+    val a11yMode = LocalAccessibilityMode.current
+    com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [NutriaLoginScreen] a11yMode cargado = $a11yMode")
 
     // Anuncia toda la pantalla al entrar
     LaunchedEffect(Unit) {
@@ -82,6 +84,7 @@ fun NutriaLoginScreen(
     LaunchedEffect(Unit) { startAnimation = true }
     val entranceAlpha by animateFloatAsState(if (startAnimation) 1f else 0f, tween(1000), label = "alpha")
 
+    com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [NutriaLoginScreen] Componiendo Box y elementos UI...")
     Box(modifier = Modifier.fillMaxSize().background(NutriaBgCrema)) {
         AnimatedMinimalistBackground()
         Column(
@@ -305,6 +308,7 @@ fun NutriaLoginScreen(
 
 @Composable
 fun MascotaMinimalista() {
+    com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [MascotaMinimalista] Componiendo mascota...")
     Box(contentAlignment = Alignment.Center,
         modifier = Modifier.size(300.dp).semantics { contentDescription = "" }) {
         com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.fillMaxSize())
@@ -313,6 +317,7 @@ fun MascotaMinimalista() {
 
 @Composable
 fun AnimatedMinimalistBackground() {
+    com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [AnimatedMinimalistBackground] Componiendo fondo animado...")
     val it = rememberInfiniteTransition(label = "bg")
     val icons = listOf(Icons.Rounded.Eco, Icons.Rounded.Spa, Icons.Rounded.Psychology, Icons.Rounded.LocalFlorist)
     Box(modifier = Modifier.fillMaxSize().semantics { contentDescription = "" }) {

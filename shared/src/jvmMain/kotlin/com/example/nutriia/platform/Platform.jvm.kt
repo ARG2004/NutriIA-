@@ -7,3 +7,7 @@ actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 actual fun openUrl(url: String) {
     println("Opening URL: $url")
 }
+
+actual fun platformLog(tag: String, msg: String) {
+    println("[NutriIA-$tag] $msg")
+}

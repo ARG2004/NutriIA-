@@ -273,7 +273,7 @@ fun OnboardingQuizScreen(
         )
     }
 
-    val accessibilityVm: AccessibilityViewModel = viewModel()
+    val accessibilityVm: AccessibilityViewModel = remember { AccessibilityViewModel() }
     val idiomaActual   by accessibilityVm.idioma.collectAsState()
     val modoGuardado   by accessibilityVm.mode.collectAsState()
 
