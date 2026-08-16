@@ -13,7 +13,7 @@ data class Timestamp(
     fun toEpochMillis(): Long = seconds * 1000 + (nanoseconds / 1_000_000)
     fun toDate(): Timestamp = this
 
-    override fun compareTo(other: Timestamp): Int {
+    override operator fun compareTo(other: Timestamp): Int {
         val sec = seconds.compareTo(other.seconds)
         return if (sec != 0) sec else nanoseconds.compareTo(other.nanoseconds)
     }

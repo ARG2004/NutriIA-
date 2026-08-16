@@ -1,6 +1,7 @@
 package com.example.nutriia.embarazo
 
 import kotlinx.coroutines.delay
+import kotlinx.datetime.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -2892,10 +2893,10 @@ fun calcularSemanasDesdeFUM(fumStr: String): Int {
             val p = fumStr.split("-").map { it.toInt() }
             Triple(p[2], p[1], p[0])
         }
-        val calFum = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-        val diffMs = com.example.nutriia.platform.currentTimeMillis() - calFum.timeInMillis
-        val diffDays = diffMs / (1000 * 60 * 60 * 24)
-        val calculatedWeeks = (diffDays / 7).toInt()
+        val fumDate = kotlinx.datetime.LocalDate(anio, mes, dia)
+        val today = kotlinx.datetime.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+        val diffDays = fumDate.daysUntil(today)
+        val calculatedWeeks = (diffDays / 7)
         calculatedWeeks.coerceIn(1, 40)
     } catch (_: Exception) {
         1
@@ -2912,11 +2913,10 @@ fun GatekeeperForm(
 ) {
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
-
-    val calendar = java.util.Calendar.getInstance()
-    val year = calendar.get(java.util.Calendar.YEAR)
-    val month = calendar.get(java.util.Calendar.MONTH)
-    val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    val today = kotlinx.datetime.Clock.System.todayIn(kotlinx.datetime.TimeZone.currentSystemDefault())
+    val year = today.year
+    val month = today.monthNumber - 1
+    val day = today.dayOfMonth
 
     var pesoPreInput by remember { mutableStateOf("") }
     var estaturaInput by remember { mutableStateOf("") }

@@ -53,6 +53,13 @@ import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.ui.theme.EtapaInfo
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlinx.datetime.yearsUntil
+import kotlinx.datetime.monthsUntil
+import kotlinx.datetime.daysUntil
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PALETA
@@ -133,11 +140,9 @@ private fun parseFechaComponents(fecha: String): Triple<Int, Int, Int> {
 
 private fun calcAgeMonths(fecha: String): Int = runCatching {
     val (anio, mes, dia) = parseFechaComponents(fecha)
-    val currentYear = 2026
-        val currentMonth = 8
-        val diffYears = currentYear - anio
-        val diffMonths = currentMonth - mes
-    val totalMonths = diffYears * 12 + diffMonths
+    val birthDate = LocalDate(anio, mes, dia)
+    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val totalMonths = birthDate.monthsUntil(today)
     if (totalMonths < 0) 0 else totalMonths
 }.getOrDefault(0)
 
@@ -164,22 +169,12 @@ internal fun colorDeEtapa(nombreEtapa: String): Color = when (nombreEtapa) {
 
 internal fun obtenerEdadTexto(fecha: String): String = runCatching {
     val (anio, mes, dia) = parseFechaComponents(fecha)
-    val calNac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-    val calHoy = java.util.Calendar.getInstance()
-    var years = calHoy.get(java.util.Calendar.YEAR) - calNac.get(java.util.Calendar.YEAR)
-    var months = calHoy.get(java.util.Calendar.MONTH) - calNac.get(java.util.Calendar.MONTH)
-    var days = calHoy.get(java.util.Calendar.DAY_OF_MONTH) - calNac.get(java.util.Calendar.DAY_OF_MONTH)
-
-    if (days < 0) {
-        months -= 1
-        val prevMonth = (calHoy.get(java.util.Calendar.MONTH) - 1 + 12) % 12
-        val tempCal = java.util.Calendar.getInstance().apply { set(java.util.Calendar.MONTH, prevMonth) }
-        days += tempCal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
-    }
-    if (months < 0) {
-        years -= 1
-        months += 12
-    }
+    val birthDate = LocalDate(anio, mes, dia)
+    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val years = birthDate.yearsUntil(today)
+    val afterYears = LocalDate(birthDate.year + years, birthDate.monthNumber, birthDate.dayOfMonth.coerceAtMost(28))
+    val months = afterYears.monthsUntil(today)
+    val totalDays = birthDate.daysUntil(today)
 
     when {
         years > 0 -> buildString {
@@ -187,7 +182,7 @@ internal fun obtenerEdadTexto(fecha: String): String = runCatching {
             if (months > 0) append(" y $months mes${if (months > 1) "es" else ""}")
         }
         months > 0 -> "$months mes${if (months > 1) "es" else ""}"
-        else       -> "$days día${if (days > 1) "s" else ""}"
+        else       -> "$totalDays día${if (totalDays > 1) "s" else ""}"
     }
 }.getOrDefault("Edad desconocida")
 

@@ -2,6 +2,11 @@ package com.example.nutriia.data
 
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.PerfilSaludNino
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.monthsUntil
+import kotlinx.datetime.todayIn
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELO DEL NIÑO — refleja exactamente tu estructura en Firestore
@@ -21,7 +26,7 @@ data class ChildProfile(
     val creadoEn:         Long    = 0L
 ) {
     /**
-     * Calcula la edad en meses desde birthDate ("dd/MM/yyyy").
+     * Calcula la edad en meses desde birthDate ("dd/MM/yyyy" o "yyyy-MM-dd").
      * Si el formato falla devuelve 6 (mínimo seguro).
      */
     fun edadEnMeses(): Int {
@@ -33,11 +38,10 @@ data class ChildProfile(
                 val p = birthDate.split("-").map { it.toInt() }
                 Triple(p[2], p[1], p[0])
             }
-            val hoy = java.util.Calendar.getInstance()
-            val nac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-            var meses = (hoy.get(java.util.Calendar.YEAR) - nac.get(java.util.Calendar.YEAR)) * 12
-            meses += hoy.get(java.util.Calendar.MONTH) - nac.get(java.util.Calendar.MONTH)
-            if (meses < 0) 0 else meses
+            val birthLocalDate = LocalDate(anio, mes, dia)
+            val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+            val months = birthLocalDate.monthsUntil(today)
+            if (months < 0) 0 else months
         } catch (_: Exception) { 6 }
     }
 
