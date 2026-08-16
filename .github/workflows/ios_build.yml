@@ -71,10 +71,9 @@ jobs:
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ]; then
             echo "No se detectó APPSTORE_PRIVATE_KEY; omitiendo configuración de API Key."
           else
-            echo "Configurando clave API de App Store Connect para despliegue en TestFlight..."
+            echo "Configurando clave API de App Store Connect..."
             mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys
-            echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 -D -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || true
-            echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 --decode -o ~/.private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 -D -o ~/.private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || true
+            echo "$APPSTORE_PRIVATE_KEY_BASE64" | tr -d '\r\n ' | base64 --decode -o ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8 2>/dev/null || true
           fi
 
       - name: 7. Build iOS Multiplatform Framework
@@ -90,35 +89,24 @@ jobs:
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
             echo "Secretos de App Store Connect no configurados; omitiendo envío a TestFlight."
           else
-            echo "Instalando xcodegen para generar proyecto Xcode..."
             brew install xcodegen
-
-            echo "Generando iosApp.xcodeproj desde project.yml..."
             xcodegen generate
 
-            echo "Obteniendo identidad de firma del keychain..."
             IDENTITY=$(security find-identity -v | grep -E "Apple Distribution|iPhone Distribution" | grep -o '"[^"]*"' | head -1 | tr -d '"')
-            echo "Identidad: $IDENTITY"
-
-            echo "Obteniendo UUID del perfil de aprovisionamiento instalado..."
             PP_FILE=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null | head -1)
             security cms -D -i "$PP_FILE" > /tmp/pp_decoded.plist 2>/dev/null
             PP_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /tmp/pp_decoded.plist 2>/dev/null || echo "")
-            echo "UUID del perfil: $PP_UUID"
 
-            echo "Preparando exportOptions.plist con firma manual..."
             cp iosApp/exportOptions.plist /tmp/exportOptions.plist
             /usr/libexec/PlistBuddy -c "Set :signingStyle manual" /tmp/exportOptions.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" /tmp/exportOptions.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.arg.nutriia string $PP_UUID" /tmp/exportOptions.plist 2>/dev/null || true
 
-            echo "=== Desbloqueando keychain antes de archivar ==="
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
-            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH || true
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
             BUILD_NUM="35"
-            echo "=== Archivando con xcodebuild (Build $BUILD_NUM) ==="
             xcodebuild archive \
               -project iosApp.xcodeproj \
               -scheme NutriIA \
@@ -134,36 +122,18 @@ jobs:
               PROVISIONING_PROFILE="$PP_UUID" \
               DEVELOPMENT_TEAM=X423NH338U
 
-            echo "=== Forzando versión 2.2.5 (build $BUILD_NUM) en el xcarchive ==="
-            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleShortVersionString 2.2.5" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleShortVersionString string 2.2.5" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :ApplicationProperties:CFBundleVersion $BUILD_NUM" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ApplicationProperties:CFBundleVersion string $BUILD_NUM" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 2.2.5" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app/Info.plist 2>/dev/null || true
-
-            echo "=== Re-firmando app tras actualizar Plist ==="
-            codesign --force --sign "$IDENTITY" --timestamp=none $RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app || true
-
-            echo "=== Versión dentro del xcarchive ==="
-            /usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleShortVersionString" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist || true
-            /usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleVersion" $RUNNER_TEMP/NutriIA.xcarchive/Info.plist || true
-
-            echo "=== Exportando IPA ==="
             xcodebuild -exportArchive \
               -archivePath $RUNNER_TEMP/NutriIA.xcarchive \
               -exportPath $RUNNER_TEMP/ipa-export \
               -exportOptionsPlist /tmp/exportOptions.plist
 
             IPA_PATH=$(find $RUNNER_TEMP/ipa-export -name "*.ipa" | head -1)
-            echo "IPA generado en: $IPA_PATH"
-
-            echo "=== Subiendo a TestFlight ==="
             xcrun altool --upload-app --type ios \
               --file "$IPA_PATH" \
               --apiKey "$KEY_ID" \
               --apiIssuer "$ISSUER_ID" \
               --verbose || echo "Subida finalizada."
           fi
-
 
       - name: 9. Upload Android APK Artifact
         uses: actions/upload-artifact@v4
