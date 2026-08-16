@@ -123,14 +123,16 @@ class VinculacionRepository {
         if (q.isBlank()) return listarNutriologos()
 
         return try {
-            val porNombre = colNutriologosPublicos
+            val snap = colNutriologosPublicos
                 .orderBy("nombre")
                 .startAt(q)
                 .endAt(q + "\uF8FF")
                 .limit(20)
                 .get().await()
-                .documents.mapNotNull { doc -> doc.data?.let { NutriologoPublico.fromMap(it, doc.id) } }
-                .filter { nutriologo -> !esEspecialidadGinecologica(nutriologo.especialidad) }
+
+            val porNombre = snap.documents.mapNotNull { doc ->
+                doc.data?.let { NutriologoPublico.fromMap(it, doc.id) }
+            }.filter { !esEspecialidadGinecologica(it.especialidad) }
 
             Result.success(porNombre)
         } catch (e: Exception) {
