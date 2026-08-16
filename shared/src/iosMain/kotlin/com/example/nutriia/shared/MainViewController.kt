@@ -19,6 +19,7 @@ private val hookInstalled: Boolean by lazy {
         }
         NSLog("%s", crashMsg)
         println(crashMsg)
+        com.example.nutriia.platform.CrashStorage.saveCrash(crashMsg)
     }
     true
 }

@@ -97,7 +97,74 @@ fun esPantallaModuloInterno(screen: Screen): Boolean {
 
 @Composable
 fun AppiOS() {
-    NutriIAiOSApp()
+    var savedCrashLog by remember { mutableStateOf(com.example.nutriia.platform.CrashStorage.loadCrash()) }
+
+    if (savedCrashLog != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF181A20))
+                .padding(horizontal = 20.dp, vertical = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Spacer(Modifier.height(20.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🚨", fontSize = 24.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Crash Previo Detectado",
+                        color = Color(0xFFFF5252),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Se guardó la información del último cierre inesperado de Kotlin en NSUserDefaults:",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF23272F)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = savedCrashLog ?: "",
+                        color = Color(0xFF80D8FF),
+                        fontSize = 11.sp,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        lineHeight = 16.sp,
+                        modifier = Modifier.padding(14.dp)
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        com.example.nutriia.platform.CrashStorage.clearCrash()
+                        savedCrashLog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF689F38)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Text("Limpiar Registro y Entrar a NutriIA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+                Spacer(Modifier.height(30.dp))
+            }
+        }
+    } else {
+        NutriIAiOSApp()
+    }
 }
 
 @Composable
