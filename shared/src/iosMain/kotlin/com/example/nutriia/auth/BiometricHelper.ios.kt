@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.example.nutriia.auth
 
 import platform.LocalAuthentication.LAContext

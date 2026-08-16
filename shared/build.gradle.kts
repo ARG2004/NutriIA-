@@ -16,7 +16,9 @@ kotlin {
             isStatic = true
             freeCompilerArgs += listOf(
                 "-Xdisable-phases=DevirtualizationAnalysis",
-                "-g"
+                "-g",
+                "-opt-in=kotlinx.cinterop.ExperimentalForeignApi",
+                "-opt-in=kotlin.experimental.ExperimentalNativeApi"
             )
         }
     }

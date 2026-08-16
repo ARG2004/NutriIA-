@@ -106,7 +106,7 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-            BUILD_NUM="46"
+            BUILD_NUM="47"
             xcodebuild archive \
               -project iosApp.xcodeproj \
               -scheme NutriIA \
@@ -115,7 +115,7 @@ jobs:
               -sdk iphoneos \
               ONLY_ACTIVE_ARCH=NO \
               ARCHS=arm64 \
-              MARKETING_VERSION="2.2.6" \
+              MARKETING_VERSION="2.2.7" \
               CURRENT_PROJECT_VERSION="$BUILD_NUM" \
               CODE_SIGN_IDENTITY="$IDENTITY" \
               CODE_SIGN_STYLE=Manual \
