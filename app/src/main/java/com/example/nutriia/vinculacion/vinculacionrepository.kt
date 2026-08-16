@@ -110,8 +110,9 @@ class VinculacionRepository {
         return try {
             val snap = colNutriologosPublicos.limit(limite).get().await()
             val lista = snap.documents.mapNotNull { doc ->
-                doc.data?.let { NutriologoPublico.fromMap(it, doc.id) }
-            }.filter { !esEspecialidadGinecologica(it.especialidad) }
+                val data = doc.data ?: return@mapNotNull null
+                NutriologoPublico.fromMap(data, doc.id)
+            }.filter { nutriologo -> !esEspecialidadGinecologica(nutriologo.especialidad) }
             Result.success(lista)
         } catch (e: Exception) {
             Result.failure(e)
@@ -131,7 +132,8 @@ class VinculacionRepository {
                 .get().await()
 
             val porNombre = snap.documents.mapNotNull { doc ->
-                doc.data?.let { data -> NutriologoPublico.fromMap(data, doc.id) }
+                val data = doc.data ?: return@mapNotNull null
+                NutriologoPublico.fromMap(data, doc.id)
             }.filter { nutriologo -> !esEspecialidadGinecologica(nutriologo.especialidad) }
 
             Result.success(porNombre)
