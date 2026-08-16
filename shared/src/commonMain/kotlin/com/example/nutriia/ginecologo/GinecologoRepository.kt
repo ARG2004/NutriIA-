@@ -94,7 +94,8 @@ class GinecologoRepository {
         return try {
             val snap = colGinecologosPublicos.limit(limite).get().await()
             val lista = snap.documents.mapNotNull { doc ->
-                doc.data?.let { GinecologoPublico.fromMap(it) }
+                val data = doc.data ?: return@mapNotNull null
+                GinecologoPublico.fromMap(data)
             }
             Result.success(lista)
         } catch (e: Exception) {
@@ -108,13 +109,17 @@ class GinecologoRepository {
 
         return try {
             // Intento búsqueda por nombre
-            val porNombre = colGinecologosPublicos
+            val snap = colGinecologosPublicos
                 .orderBy("nombre")
                 .startAt(q)
                 .endAt(q + "\uF8FF")
                 .limit(20)
                 .get().await()
-                .documents.mapNotNull { it.data?.let { d -> GinecologoPublico.fromMap(d) } }
+
+            val porNombre = snap.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                GinecologoPublico.fromMap(data)
+            }
 
             Result.success(porNombre)
         } catch (e: Exception) {

@@ -5,6 +5,22 @@ import kotlin.math.round
 import kotlin.math.abs
 
 fun String.Companion.format(locale: Locale, format: String, vararg args: Any?): String {
+    return formatInternal(format, args)
+}
+
+fun String.Companion.format(format: String, vararg args: Any?): String {
+    return formatInternal(format, args)
+}
+
+fun String.format(locale: Locale, vararg args: Any?): String {
+    return formatInternal(this, args)
+}
+
+fun String.format(vararg args: Any?): String {
+    return formatInternal(this, args)
+}
+
+private fun formatInternal(format: String, args: Array<out Any?>): String {
     var result = format
     var argIndex = 0
     val regex = Regex("%(\\+)?(0\\d+)?(\\.\\d+)?([dfes])")
@@ -55,6 +71,3 @@ fun String.Companion.format(locale: Locale, format: String, vararg args: Any?): 
     }
     return result
 }
-
-fun String.Companion.format(format: String, vararg args: Any?): String =
-    String.format(Locale.US, format, *args)
