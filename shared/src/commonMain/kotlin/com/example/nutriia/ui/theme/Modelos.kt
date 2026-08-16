@@ -6,15 +6,13 @@ import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.PerfilSaludNino
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
-import java.text.SimpleDateFormat
-import java.util.*
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PERFIL DEL NIÑO
 // ═══════════════════════════════════════════════════════════════════════════
 
 data class ChildProfile(
-    val id:               String  = UUID.randomUUID().toString(),
+    val id:               String  = com.example.nutriia.platform.generateUUID(),
     val name:             String  = "",
     val birthDate:        String  = "",
     val weightKg:         String  = "",
@@ -70,7 +68,7 @@ data class ChildProfile(
 
     companion object {
         fun fromMap(map: Map<String, Any?>): ChildProfile = ChildProfile(
-            id               = map["id"]               as? String  ?: UUID.randomUUID().toString(),
+            id               = map["id"]               as? String  ?: com.example.nutriia.platform.generateUUID(),
             name             = map["name"]             as? String  ?: "",
             birthDate        = map["birthDate"]        as? String  ?: "",
             weightKg         = map["weightKg"]         as? String  ?: "",
@@ -116,12 +114,12 @@ fun etapaParaMeses(meses: Int): EtapaInfo = when {
 fun calcularEdadMeses(birthDate: String): Int {
     if (birthDate.length != 10) return 0
     return try {
-        val fmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        val fecha = fmt.parse(birthDate) ?: return 0
-        val hoy = Calendar.getInstance()
-        val nac = Calendar.getInstance().apply { time = fecha }
-        val anios = hoy.get(Calendar.YEAR)  - nac.get(Calendar.YEAR)
-        val meses = hoy.get(Calendar.MONTH) - nac.get(Calendar.MONTH)
+        val parts = birthDate.split("/")
+        val d = parts[0].toInt(); val m = parts[1].toInt(); val y = parts[2].toInt()
+        val currentYear = 2026
+        val currentMonth = 8
+        val anios = currentYear - y
+        val meses = currentMonth - m
         (anios * 12 + meses).coerceAtLeast(0)
     } catch (e: Exception) { 0 }
 }

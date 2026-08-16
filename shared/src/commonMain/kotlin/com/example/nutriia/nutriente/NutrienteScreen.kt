@@ -42,10 +42,6 @@ import com.example.nutriia.accesibilidad.vibrateTap
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
-import java.util.Date
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TOKENS DE DISEÑO
@@ -205,7 +201,7 @@ fun NutrientesScreen(
             voiceManager.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
                 isListening = false
-                val cmd = result.lowercase(Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 when {
                     cmd.contains("anotar") || cmd.contains("registrar") || cmd.contains("log") || cmd.contains("add") -> {
                         a11yVm.hablar(loc("Abriendo formulario para anotar alimento.", "Opening form to log food."))

@@ -1,6 +1,5 @@
 package com.example.nutriia.nutriente
 
-import java.util.UUID
 
 // ─── Rangos de edad según OMS ─────────────────────────────────────────────────
 // 0–6 meses: lactancia exclusiva
@@ -105,7 +104,7 @@ val recomendacionesOMS: Map<RangoEdad, RecomendacionOMS> = mapOf(
 // ─── Registro diario de nutrientes ───────────────────────────────────────────
 
 data class RegistroNutrientes(
-    val id:          String          = UUID.randomUUID().toString(),
+    val id:          String          = com.example.nutriia.platform.generateUUID(),
     val childId:     String          = "",
     val fecha:       String          = "",    // "DD/MM/YYYY"
     val comida:      String          = "",    // "Desayuno", "Almuerzo", etc.
@@ -113,7 +112,7 @@ data class RegistroNutrientes(
     val macros:      Macronutrientes = Macronutrientes(),
     val micros:      Micronutrientes = Micronutrientes(),
     val notas:       String          = "",
-    val creadoEn:    Long            = System.currentTimeMillis()
+    val creadoEn:    Long            = com.example.nutriia.platform.currentTimeMillis()
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"       to id,
@@ -165,7 +164,7 @@ data class RegistroNutrientes(
                     zinc      = (n["zinc"]      as? Number)?.toDouble() ?: 0.0
                 ),
                 notas    = map["notas"]    as? String ?: "",
-                creadoEn = (map["creadoEn"] as? Number)?.toLong() ?: System.currentTimeMillis()
+                creadoEn = (map["creadoEn"] as? Number)?.toLong() ?: com.example.nutriia.platform.currentTimeMillis()
             )
         }
     }

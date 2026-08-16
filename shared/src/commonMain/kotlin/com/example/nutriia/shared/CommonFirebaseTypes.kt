@@ -1,11 +1,20 @@
 package com.example.nutriia.shared
 
-// Multiplatform Timestamp compatible with Firestore
 data class Timestamp(
     val seconds: Long = 0L,
     val nanoseconds: Int = 0
-) {
+) : Comparable<Timestamp> {
+    val time: Long get() = toEpochMillis()
+
     companion object {
-        fun now(): Timestamp = Timestamp(0L, 0)
+        fun now(): Timestamp = Timestamp(com.example.nutriia.platform.currentTimeMillis() / 1000, 0)
+    }
+
+    fun toEpochMillis(): Long = seconds * 1000 + (nanoseconds / 1_000_000)
+    fun toDate(): Timestamp = this
+
+    override fun compareTo(other: Timestamp): Int {
+        val sec = seconds.compareTo(other.seconds)
+        return if (sec != 0) sec else nanoseconds.compareTo(other.nanoseconds)
     }
 }

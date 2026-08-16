@@ -35,8 +35,6 @@ import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RecetaMexicana
 import com.example.nutriia.sueldo.TipoComida
 import com.example.nutriia.utils.FechaUtils
-import java.text.SimpleDateFormat
-import java.util.*
 
 // ─── Paleta de Colores Premium NutriIA (Estilos Dashboard) ───────────────────
 private val EGreen     = Color(0xFF4CAF50) // DashNutriaGreen
@@ -414,19 +412,20 @@ private fun ExpedienteHeader(
     // Formatear fecha de nacimiento de forma legible
     val nacimientoStr = remember(birthDate) {
         if (birthDate.isBlank()) return@remember ""
-        val formatos = listOf(
-            SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()),
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
-            SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+        val meses = listOf(
+            "", "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
         )
-        for (fmt in formatos) {
-            try {
-                fmt.isLenient = false
-                val date = fmt.parse(birthDate) ?: continue
-                return@remember SimpleDateFormat("dd 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-MX")).format(date)
-            } catch (_: Exception) { continue }
-        }
-        birthDate // fallback: mostrar tal cual
+        runCatching {
+            val parts = if (birthDate.contains("-")) birthDate.split("-") else birthDate.split("/")
+            if (parts.size == 3) {
+                if (parts[0].length == 4) {
+                    "${parts[2].toInt()} de ${meses[parts[1].toInt()]} de ${parts[0]}"
+                } else {
+                    "${parts[0].toInt()} de ${meses[parts[1].toInt()]} de ${parts[2]}"
+                }
+            } else birthDate
+        }.getOrDefault(birthDate)
     }
 
     // Header con degradado premium verde y esquinas inferiores redondeadas

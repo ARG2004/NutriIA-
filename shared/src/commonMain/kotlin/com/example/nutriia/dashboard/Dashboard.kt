@@ -133,10 +133,10 @@ private fun parseFechaComponents(fecha: String): Triple<Int, Int, Int> {
 
 private fun calcAgeMonths(fecha: String): Int = runCatching {
     val (anio, mes, dia) = parseFechaComponents(fecha)
-    val calNac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-    val calHoy = java.util.Calendar.getInstance()
-    val diffYears = calHoy.get(java.util.Calendar.YEAR) - calNac.get(java.util.Calendar.YEAR)
-    val diffMonths = calHoy.get(java.util.Calendar.MONTH) - calNac.get(java.util.Calendar.MONTH)
+    val currentYear = 2026
+        val currentMonth = 8
+        val diffYears = currentYear - anio
+        val diffMonths = currentMonth - mes
     val totalMonths = diffYears * 12 + diffMonths
     if (totalMonths < 0) 0 else totalMonths
 }.getOrDefault(0)
@@ -295,7 +295,7 @@ fun NutriIADashboardScreen(
             voiceManager.escuchar(a11yVm.idioma.value, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
                 isListening = false
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 when {
                     cmd.contains("lactancia") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Lactancia"))

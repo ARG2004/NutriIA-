@@ -402,8 +402,8 @@ private fun StepDatosMedicosEmbarazo(
     isEnglish: Boolean
 ) {
     fun loc(es: String, en: String) = if (isEnglish) en else es
-    var tallaText by remember { mutableStateOf(if (tallaM > 0.0) String.format(java.util.Locale.US, "%.2f", tallaM) else "") }
-    var pesoText by remember { mutableStateOf(if (pesoPregestacionalKg > 0.0) String.format(java.util.Locale.US, "%.1f", pesoPregestacionalKg) else "") }
+    var tallaText by remember { mutableStateOf(if (tallaM > 0.0) tallaM.toString() else "") }
+    var pesoText by remember { mutableStateOf(if (pesoPregestacionalKg > 0.0) pesoPregestacionalKg.toString() else "") }
     var edadText by remember { mutableStateOf(if (edad > 0) edad.toString() else "") }
 
     val esBlind = modo == AccessibilityMode.BLIND
@@ -455,7 +455,7 @@ private fun StepDatosMedicosEmbarazo(
             )
             voiceManager?.escuchar(if (isEnglish) IdiomaVoz.INGLES else IdiomaVoz.ESPANOL_MX, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 if (cmd.contains("continuar") || cmd.contains("guardar") || cmd.contains("siguiente") || cmd.contains("comenzar") || cmd.contains("continue") || cmd.contains("next")) {
                     ttsManager?.hablar(loc("Avanzando.", "Proceeding."))
                 }

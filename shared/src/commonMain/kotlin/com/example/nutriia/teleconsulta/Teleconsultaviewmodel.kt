@@ -245,7 +245,7 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
                             webRtcConectado  = false
                         )
                         liberarWebRtc()
-                        viewModelScope.launch { repo.limpiarDatosSeñalizacion(llamadaId) }
+                        viewModelScope.launch { repo.limpiarDatosSenalizacion(llamadaId) }
                     }
                     else -> {}
                 }

@@ -34,8 +34,7 @@ import com.example.nutriia.embarazo.NivelSintoma
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.embarazo.RegistroPesoEmbarazo
 import com.example.nutriia.embarazo.RegistroSintomasEmbarazo
-import com.google.firebase.Timestamp
-import java.util.Locale
+import com.example.nutriia.shared.Timestamp
 
 private val EmbRosa       = Color(0xFFEC9BBF)
 private val EmbRosaOscuro = Color(0xFFD4679A)
@@ -215,21 +214,21 @@ fun PacienteExpedienteEmbarazoScreen(
                         )
                         ExpedienteStatChip(
                             icon = Icons.Rounded.Height,
-                            value = String.format(java.util.Locale.US, "%.2f m", perfil.tallaM),
+                            value = "${perfil.tallaM}",
                             label = "Estatura",
                             iconTint = EmbTeal,
                             bgColor = EmbTeal.copy(alpha = 0.10f)
                         )
                         ExpedienteStatChip(
                             icon = Icons.Rounded.MonitorWeight,
-                            value = String.format(java.util.Locale.US, "%.1f kg", perfil.pesoPregestacionalKg),
+                            value = "${perfil.pesoPregestacionalKg}",
                             label = "Peso previo",
                             iconTint = EmbRosaOscuro,
                             bgColor = EmbRosa.copy(alpha = 0.12f)
                         )
                         ExpedienteStatChip(
                             icon = Icons.Rounded.Analytics,
-                            value = String.format(java.util.Locale.US, "%.1f", perfil.imcPregestacional),
+                            value = "${perfil.imcPregestacional}",
                             label = "IMC prev.",
                             iconTint = Color(0xFFF57C00),
                             bgColor = Color(0xFFFFF3E0)
@@ -602,7 +601,7 @@ private fun TabCrecimiento(perfil: PerfilEmbarazo, registrosPeso: List<RegistroP
                         }
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            String.format(java.util.Locale.US, "%.1f kg", ultimoReg.pesoActualKg),
+                            "${ultimoReg.pesoActualKg}",
                             fontWeight = FontWeight.Black,
                             fontSize = 16.sp,
                             color = Color(0xFF212121)
@@ -631,7 +630,7 @@ private fun TabCrecimiento(perfil: PerfilEmbarazo, registrosPeso: List<RegistroP
                         }
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            String.format(java.util.Locale.US, "%+.1f kg", ganancia),
+                            "${ganancia}",
                             fontWeight = FontWeight.Black,
                             fontSize = 16.sp,
                             color = if (ganancia >= 0) Color(0xFF2E7D32) else Color(0xFFC62828)
@@ -852,7 +851,7 @@ private fun TabCrecimiento(perfil: PerfilEmbarazo, registrosPeso: List<RegistroP
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
-                        Text(String.format(java.util.Locale.US, "%.1f kg", rec.pesoActualKg), fontSize = 13.sp, color = Color(0xFF212121), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                        Text("${rec.pesoActualKg}", fontSize = 13.sp, color = Color(0xFF212121), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                         Text(
                             if (rec.alturaUterinaCm != null) "${rec.alturaUterinaCm} cm" else "—",
                             fontSize = 13.sp,

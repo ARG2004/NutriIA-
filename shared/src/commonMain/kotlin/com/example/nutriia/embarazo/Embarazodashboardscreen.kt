@@ -50,9 +50,6 @@ import com.example.nutriia.accesibilidad.VoiceInputState
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.utils.FechaUtils
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -113,7 +110,7 @@ fun EmbarazoDashboardScreen(
             voiceManager.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
                 isListening = false
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 when {
                     cmd.contains("ginec") || cmd.contains("gineco") || cmd.contains("medico") || cmd.contains("médico") -> {
                         a11yVm.hablar(loc("Abriendo vinculación con ginecólogo.", "Opening gynecologist pairing."))
@@ -508,7 +505,7 @@ fun EmbarazoDashboardScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             val pesoTexto = if (ultimoReg != null) {
-                                String.format(java.util.Locale.US, "%.1f kg", ultimoReg.pesoActualKg)
+                                "${ultimoReg.pesoActualKg}"
                             } else {
                                 "— kg"
                             }
@@ -646,7 +643,7 @@ fun EmbarazoDashboardScreen(
                                         color = Color.Gray
                                     )
                                     Text(
-                                        text = String.format(java.util.Locale.US, "%.1f kg", ultimoReg.pesoActualKg),
+                                        text = "${ultimoReg.pesoActualKg}",
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.DarkGray
@@ -676,7 +673,7 @@ fun EmbarazoDashboardScreen(
                                         color = Color.Gray
                                     )
                                     Text(
-                                        text = String.format(java.util.Locale.US, "%+.1f kg", ganancia),
+                                        text = "${ganancia}",
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (ganancia > 0) Color(0xFF2E7D32) else Color.DarkGray
@@ -1200,7 +1197,7 @@ fun EmbarazoDashboardScreen(
                         )
                         voiceManager.escuchar(idiomaActual, true) { result, isFinal ->
                             if (!isFinal) return@escuchar
-                            val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                            val cmd = result.lowercase().trim()
                             if (cmd.contains("guardar") || cmd.contains("registrar") || cmd.contains("save") || cmd.contains("log")) {
                                 ejecutarGuardarPeso()
                             } else {
@@ -1215,8 +1212,8 @@ fun EmbarazoDashboardScreen(
                         val imc = perfilState!!.imcPregestacional
                         val rango = GananciaPesoCalculator.rangoAjustado(imc, perfilState!!.edad, perfilState!!.tallaM)
                         val anuncio = loc(
-                            "Abriendo control de peso prenatal. Tu rango recomendado total de ganancia de peso es de ${String.format(java.util.Locale.US, "%.1f", rango.minKg)} a ${String.format(java.util.Locale.US, "%.1f", rango.maxKg)} kilogramos. Por favor, ingresa tu peso actual. Puedes tocar cualquier registro en el historial para escucharlo.",
-                            "Opening prenatal weight control. Your total recommended weight gain range is ${String.format(java.util.Locale.US, "%.1f", rango.minKg)} to ${String.format(java.util.Locale.US, "%.1f", rango.maxKg)} kilograms. Please enter your current weight. You can tap any log in the history to hear it."
+                            "Abriendo control de peso prenatal. Tu rango recomendado total de ganancia de peso es de ${"${rango.minKg}"} a ${"${rango.maxKg}"} kilogramos. Por favor, ingresa tu peso actual. Puedes tocar cualquier registro en el historial para escucharlo.",
+                            "Opening prenatal weight control. Your total recommended weight gain range is ${"${rango.minKg}"} to ${"${rango.maxKg}"} kilograms. Please enter your current weight. You can tap any log in the history to hear it."
                         )
                         a11yVm.hablar(anuncio)
                     }
@@ -1304,7 +1301,7 @@ fun EmbarazoDashboardScreen(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                                     ) {
                                         Text(
-                                            text = loc("IMC pregestacional: ${String.format(java.util.Locale.US, "%.1f", imc)}", "Pre-pregnancy BMI: ${String.format(java.util.Locale.US, "%.1f", imc)}"),
+                                            text = loc("IMC pregestacional: ${"${imc}"}", "Pre-pregnancy BMI: ${"${imc}"}"),
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.DarkGray
@@ -1324,8 +1321,8 @@ fun EmbarazoDashboardScreen(
                                     }
                                     Text(
                                         text = loc(
-                                            "Rango recomendado total: ${String.format(java.util.Locale.US, "%.1f", rango.minKg)} a ${String.format(java.util.Locale.US, "%.1f", rango.maxKg)} kg",
-                                            "Total recommended range: ${String.format(java.util.Locale.US, "%.1f", rango.minKg)} to ${String.format(java.util.Locale.US, "%.1f", rango.maxKg)} kg"
+                                            "Rango recomendado total: ${"${rango.minKg}"} a ${"${rango.maxKg}"} kg",
+                                            "Total recommended range: ${"${rango.minKg}"} to ${"${rango.maxKg}"} kg"
                                         ),
                                         fontSize = 12.sp,
                                         color = Color.DarkGray
@@ -1997,7 +1994,7 @@ fun SintomasBottomSheetContent(
         )
         voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
             if (!isFinal) return@escuchar
-            val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+            val cmd = result.lowercase().trim()
             if (cmd.contains("guardar") || cmd.contains("registrar") || cmd.contains("save") || cmd.contains("finalizar")) {
                 ejecutarGuardarSintomas()
             }
@@ -2896,7 +2893,7 @@ fun calcularSemanasDesdeFUM(fumStr: String): Int {
             Triple(p[2], p[1], p[0])
         }
         val calFum = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-        val diffMs = System.currentTimeMillis() - calFum.timeInMillis
+        val diffMs = com.example.nutriia.platform.currentTimeMillis() - calFum.timeInMillis
         val diffDays = diffMs / (1000 * 60 * 60 * 24)
         val calculatedWeeks = (diffDays / 7).toInt()
         calculatedWeeks.coerceIn(1, 40)
@@ -2950,11 +2947,8 @@ fun GatekeeperForm(
                     errorMsg = loc("Por favor ingresa un peso actual válido (30-200 kg)", "Please enter a valid current weight (30-200 kg)")
                 } else {
                     if (fumInput.isNotBlank()) {
-                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                        sdf.isLenient = false
-                        try {
-                            sdf.parse(fumInput)
-                        } catch (e: Exception) {
+                        val p = fumInput.split("/")
+                        if (p.size != 3 || p[0].toIntOrNull() !in 1..31 || p[1].toIntOrNull() !in 1..12 || (p[2].toIntOrNull() ?: 0) !in 1900..2100) {
                             errorMsg = loc("Formato de fecha FUM incorrecto. Usa DD/MM/YYYY", "Incorrect date format. Use DD/MM/YYYY")
                         }
                     }
@@ -2979,7 +2973,7 @@ fun GatekeeperForm(
             )
             voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 if (cmd.contains("guardar") || cmd.contains("continuar") || cmd.contains("save")) {
                     ejecutarGuardarGatekeeper()
                 }

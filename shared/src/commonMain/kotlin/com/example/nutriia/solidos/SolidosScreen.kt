@@ -47,9 +47,6 @@ import com.example.nutriia.sueldo.PerfilSaludNino
 import com.example.nutriia.sueldo.RecetaMexicana
 import com.example.nutriia.sueldo.TipoComida
 import com.example.nutriia.utils.FechaUtils
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TOKENS DE DISEÑO — sin cambios
@@ -1401,7 +1398,7 @@ private fun AgregarAlimentoDialog(
                         CampoTextoAccesible(
                             valor          = grupoTexto,
                             onValorChange  = { spoken ->
-                                val clean = spoken.lowercase(java.util.Locale.getDefault()).trim()
+                                val clean = spoken.lowercase().trim()
                                 val matched = when {
                                     clean.contains("verdura") -> GrupoAlimento.VERDURAS
                                     clean.contains("fruta")   -> GrupoAlimento.FRUTAS
@@ -1459,7 +1456,7 @@ private fun AgregarAlimentoDialog(
                         CampoTextoAccesible(
                             valor          = reaccionTexto,
                             onValorChange  = { spoken ->
-                                val clean = spoken.lowercase(java.util.Locale.getDefault()).trim()
+                                val clean = spoken.lowercase().trim()
                                 val matched = when {
                                     clean.contains("ning") || clean.contains("sin") || clean.contains("no tuvo") -> ReaccionAlimento.NINGUNA
                                     clean.contains("leve") -> ReaccionAlimento.LEVE

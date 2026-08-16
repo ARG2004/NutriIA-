@@ -1,6 +1,6 @@
 package com.example.nutriia.embarazo
 
-import com.google.firebase.Timestamp
+import com.example.nutriia.shared.Timestamp
 
 data class RegistroSintomasEmbarazo(
     val id: String = "",

@@ -537,7 +537,7 @@ fun AgendarCitaDialog(
             )
             voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 if (cmd.contains("guardar") || cmd.contains("confirmar") || cmd.contains("agendar") || cmd.contains("save")) {
                     ejecutarConfirmarCita()
                 }

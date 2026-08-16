@@ -132,7 +132,7 @@ fun PediatraScreen(
             voiceManager.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
                 isListening = false
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 when {
                     cmd.contains("código") || cmd.contains("codigo") || cmd.contains("code") -> {
                         modoBusqueda = ModoBusqueda.CODIGO

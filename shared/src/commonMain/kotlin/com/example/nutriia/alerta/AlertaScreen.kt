@@ -174,7 +174,7 @@ fun AlertasScreen(
             voiceManager.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
                 isListening = false
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 when {
                     cmd.contains("todas") || cmd.contains("all") -> {
                         tabSeleccionada = null
@@ -764,7 +764,7 @@ private fun AlertaDialog(
 
     val onCommandParsed: (String) -> Boolean = { cmd ->
         var handled = false
-        val clean = cmd.lowercase(java.util.Locale.getDefault()).trim()
+        val clean = cmd.lowercase().trim()
         val newTipo = when {
             clean.contains("comida") || clean.contains("toma") || clean.contains("feeding") || clean == "food" -> TipoAlerta.TOMA_COMIDA
             clean.contains("vacuna") || clean == "vaccine" -> TipoAlerta.VACUNA
@@ -810,7 +810,7 @@ private fun AlertaDialog(
                 }
                 val horaSegura = if (hora.isNotBlank() && hora.contains(":")) hora else "08:00"
                 onSave(Alerta(
-                    id          = alertaEdit?.id       ?: java.util.UUID.randomUUID().toString(),
+                    id          = alertaEdit?.id       ?: com.example.nutriia.platform.generateUUID(),
                     childId     = childId ?: "",
                     childName   = childName ?: "Mi Embarazo",
                     tipo        = tipo,
@@ -820,10 +820,10 @@ private fun AlertaDialog(
                     diasSemana  = if (esUnica) emptyList() else diasSel,
                     fechaUnica  = if (esUnica && fechaUnica.length == 10) fechaUnica else null,
                     activa      = alertaEdit?.activa   ?: true,
-                    creadaEn    = alertaEdit?.creadaEn ?: System.currentTimeMillis()
+                    creadaEn    = alertaEdit?.creadaEn ?: com.example.nutriia.platform.currentTimeMillis()
                 ))
             } catch (e: Exception) {
-                android.util.Log.e("AlertaScreen", "Error al guardar alerta", e)
+                com.example.nutriia.platform.Log.e("AlertaScreen", "Error al guardar alerta", e)
             }
         }
     }
@@ -1166,13 +1166,13 @@ private fun AlertaDialog(
         DatePickerDialog(
             onDismissRequest = { showTimePicker = false },
             confirmButton = {
-                TextButton({
-                    hora = "%02d:%02d".format(timeState.hour, timeState.minute)
+                TextButton(onClick = {
+                    hora = "${timeState.hour.toString().padStart(2, '0')}:${timeState.minute.toString().padStart(2, '0')}"
                     showTimePicker = false
                 }) { Text("OK", color = tipo.color, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton({ showTimePicker = false }) { Text(loc("Cancelar", "Cancel"), color = Sol.TextMuted) }
+                TextButton(onClick = { showTimePicker = false }) { Text(loc("Cancelar", "Cancel"), color = Sol.TextMuted) }
             }
         ) {
             TimePicker(
@@ -1198,5 +1198,5 @@ private fun formatHora12h(hora24: String): String {
     val hh  = hora24.split(":").getOrElse(0) { "8" }.toIntOrNull()  ?: 8
     val mm  = hora24.split(":").getOrElse(1) { "00" }.toIntOrNull() ?: 0
     val h12 = when { hh == 0 -> 12; hh > 12 -> hh - 12; else -> hh }
-    return "%d:%02d %s".format(h12, mm, if (hh < 12) "AM" else "PM")
+    return "$h12:${mm.toString().padStart(2, '0')} ${if (hh < 12) "AM" else "PM"}"
 }

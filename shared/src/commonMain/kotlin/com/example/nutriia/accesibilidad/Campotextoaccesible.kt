@@ -835,7 +835,7 @@ private fun iniciarEscuchaConReintento(
     voiceManager?.errorMsg?.value    = ""
     voiceManager?.errorCodigo?.value = -1
     voiceManager?.escuchar(idioma, modoAccesible) { texto, isFinal ->
-        val command = texto.lowercase(java.util.Locale.getDefault()).trim()
+        val command = texto.lowercase().trim()
         
         // ── Intercepción de Comandos para Cambiar de Modo en Blind Mode ──────────────
         val esCmdBraille = command == "cambiar a teclado braile" || command == "cambiar a teclado braille" ||

@@ -1,6 +1,6 @@
 package com.example.nutriia.crecimiento
 
-import com.google.firebase.Timestamp
+import com.example.nutriia.shared.Timestamp
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS — CRECIMIENTO

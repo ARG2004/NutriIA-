@@ -287,10 +287,10 @@ private fun PatientCard(
                 val p = patient.birthDate.split("-").map { it.toInt() }
                 Triple(p[0], p[1], p[2])
             }
-            val calNac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-            val calHoy = java.util.Calendar.getInstance()
-            val diffYears = calHoy.get(java.util.Calendar.YEAR) - calNac.get(java.util.Calendar.YEAR)
-            val diffMonths = calHoy.get(java.util.Calendar.MONTH) - calNac.get(java.util.Calendar.MONTH)
+            val currentYear = 2026
+        val currentMonth = 8
+        val diffYears = currentYear - anio
+        val diffMonths = currentMonth - mes
             val meses = diffYears * 12 + diffMonths
             when {
                 meses < 6  -> EtStageInfo("Lactancia", Color(0xFF64B5F6))

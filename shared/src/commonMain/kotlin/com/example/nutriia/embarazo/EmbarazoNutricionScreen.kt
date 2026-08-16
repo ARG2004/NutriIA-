@@ -3,7 +3,6 @@ package com.example.nutriia.embarazo
 import androidx.compose.animation.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import android.content.Intent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -80,8 +79,7 @@ fun EmbarazoNutricionScreen(
 
         val repo = remember { com.example.nutriia.embarazo.EmbarazoNutricionRepository() }
     val repoSolidos = remember { com.example.nutriia.solidos.SolidosRepository() }
-    val sdf = remember { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()) }
-    val fechaHoy = remember { sdf.format(java.util.Date()) }
+    val fechaHoy = remember { com.example.nutriia.utils.FechaUtils.fechaActual() }
 
     val uid = ""
 
@@ -241,7 +239,7 @@ fun EmbarazoNutricionScreen(
                         mostrarForm = true
                     },
                     onExport = {
-                        val sb = java.lang.StringBuilder()
+                        val sb = StringBuilder()
                         sb.append("📅 PLAN NUTRICIONAL SEMANAL - NutriIA\n")
                         sb.append("Trimestre: ${resumen.trimestreLabel}\n\n")
                         planState.forEach { dia ->
@@ -302,13 +300,12 @@ fun EmbarazoNutricionScreen(
                 onDismiss = { mostrarAlimentoDisponibleForm = false },
                 onSave = { name, group ->
                     scope.launch {
-                        val sdfIso = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                        val newItem = com.example.nutriia.solidos.AlimentoIntroducido(
+                                                val newItem = com.example.nutriia.solidos.AlimentoIntroducido(
                              id = com.example.nutriia.platform.generateUUID(),
                              childId = "",
                              nombre = name,
                              grupo = group,
-                             fechaIntroduccion = sdfIso.format(java.util.Date())
+                             fechaIntroduccion = com.example.nutriia.utils.FechaUtils.hoyIso()
                         )
                         repoSolidos.guardarAlimento("", newItem)
                         mostrarAlimentoDisponibleForm = false
@@ -536,7 +533,7 @@ private fun LazyListScope.tabResumenEmbarazo(
                     NutrientProgressCard(
                         modifier = Modifier.weight(1f),
                         label = "Proteínas",
-                        consumed = "${String.format("%.1f", consumedProteinas)}g",
+                        consumed = "${((((consumedProteinas) * 10).toInt()) / 10.0).toString()}g",
                         target = "${macros.proteinasG}g",
                         progress = pctProteinas,
                         icon = Icons.Rounded.FitnessCenter,
@@ -545,7 +542,7 @@ private fun LazyListScope.tabResumenEmbarazo(
                     NutrientProgressCard(
                         modifier = Modifier.weight(1f),
                         label = "Hierro",
-                        consumed = "${String.format("%.1f", consumedHierro)}mg",
+                        consumed = "${((((consumedHierro) * 10).toInt()) / 10.0).toString()}mg",
                         target = "${macros.hierroMg}mg",
                         progress = pctHierro,
                         icon = Icons.Rounded.Shield,
@@ -580,7 +577,7 @@ private fun LazyListScope.tabResumenEmbarazo(
             StaggeredEntrance(delayMs = 300L) {
                 NutrientProgressCard(
                     label = "Agua",
-                    consumed = "${String.format("%.1f", consumedAgua)}L",
+                    consumed = "${((((consumedAgua) * 10).toInt()) / 10.0).toString()}L",
                     target = "${macros.aguaLitros}L",
                     progress = pctAgua,
                     icon = Icons.Rounded.WaterDrop,
@@ -783,7 +780,7 @@ private fun AgregarComidaEmbarazoDialog(
             )
             voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 if (cmd.contains("guardar") || cmd.contains("registrar") || cmd.contains("save")) {
                     ejecutarGuardarComida()
                 }
@@ -1804,7 +1801,7 @@ private fun AgregarAlimentoDisponibleDialog(
             )
             voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
-                val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                val cmd = result.lowercase().trim()
                 if (cmd.contains("guardar") || cmd.contains("registrar") || cmd.contains("save")) {
                     onSave(nombre, grupo)
                 }

@@ -64,8 +64,6 @@ import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.ui.theme.parsearAlergenos
-import java.util.Calendar
-import java.util.TimeZone
 import kotlinx.coroutines.delay
 
 private val QuizAccent = Color(0xFFEC9BBF)
@@ -81,23 +79,19 @@ private val IQ_TextMid  = Color(0xFF78909C)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 private fun millisToDateString(millis: Long): String {
-    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-    cal.timeInMillis = millis
-    val d = cal.get(Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
-    val m = (cal.get(Calendar.MONTH) + 1).toString().padStart(2, '0')
-    val y = cal.get(Calendar.YEAR)
-    return "$d/$m/$y"
+    return com.example.nutriia.utils.FechaUtils.formatearFecha(millis)
 }
 
 private fun dateStringToMillis(dateStr: String): Long? {
     if (dateStr.length != 10) return null
-    return runCatching {
+    return try {
         val parts = dateStr.split("/")
-        Calendar.getInstance(TimeZone.getTimeZone("UTC")).also { cal ->
-            cal.set(parts[2].toInt(), parts[1].toInt() - 1, parts[0].toInt(), 12, 0, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }.getOrNull()
+        val d = parts[0].toLong()
+        val m = parts[1].toLong()
+        val y = parts[2].toLong()
+        val days = (y - 1970) * 365 + (y - 1969) / 4 + (m - 1) * 30 + (d - 1)
+        days * 86400_000L
+    } catch (_: Exception) { null }
 }
 
 private fun dateStringToReadable(value: String): String? {
@@ -120,37 +114,17 @@ private fun esFechaValida(value: String): Boolean {
         val p = value.split("/")
         val d = p[0].toInt(); val m = p[1].toInt(); val y = p[2].toInt()
         if (m !in 1..12 || d !in 1..31) return false
-        val nacimiento = Calendar.getInstance().also {
-            it.isLenient = false
-            it.set(y, m - 1, d, 0, 0, 0)
-            it.set(Calendar.MILLISECOND, 0)
-            it.time   // lanza si la fecha no existe (ej. 31/02)
-        }
-        val hoy = Calendar.getInstance()
-        // No puede ser fecha futura
-        if (nacimiento.after(hoy)) return false
-        // Edad máxima: 12 años cumplidos
-        val limite = Calendar.getInstance().also {
-            it.add(Calendar.YEAR, -12)
-            it.add(Calendar.DAY_OF_MONTH, -1)   // día anterior al cumpleaños 12 hace 12 años = sigue siendo válido
-        }
-        nacimiento.after(limite)   // nacimiento > (hoy - 12 años) → tiene menos de 12 años
+        val currentYear = 2026
+        y in (currentYear - 12)..currentYear
     }.getOrDefault(false)
 }
 
-// Devuelve true si la fecha supera los 12 años (para mostrar el error correcto)
 private fun edadSuperaLimite(value: String): Boolean {
     if (value.length != 10) return false
     return runCatching {
         val p = value.split("/")
-        val nacimiento = Calendar.getInstance().also {
-            it.isLenient = false
-            it.set(p[2].toInt(), p[1].toInt() - 1, p[0].toInt(), 0, 0, 0)
-            it.set(Calendar.MILLISECOND, 0)
-            it.time
-        }
-        val limite = Calendar.getInstance().also { it.add(Calendar.YEAR, -12); it.add(Calendar.DAY_OF_MONTH, -1) }
-        !nacimiento.after(Calendar.getInstance()) || nacimiento.before(limite) || nacimiento == limite
+        val y = p[2].toInt()
+        y < (2026 - 12)
     }.getOrDefault(false)
 }
 
@@ -1090,17 +1064,12 @@ private fun DatePickerDualMode(value: String, onValueChange: (String) -> Unit) {
         if (!modoCalendario) runCatching { focusRequester.requestFocus() }
     }
 
-    val currentYear   = Calendar.getInstance().get(Calendar.YEAR)
+    val currentYear = 2026
     val initialMillis = remember(value) { dateStringToMillis(value) }
 
     // Límites: solo niños de 0 a 12 años cumplidos
-    val milisMinimo = remember {
-        Calendar.getInstance().also {
-            it.add(Calendar.YEAR, -12)
-            it.add(Calendar.DAY_OF_MONTH, -1)
-        }.timeInMillis
-    }
-    val milisMaximo = remember { System.currentTimeMillis() }
+    val milisMinimo = remember { com.example.nutriia.platform.currentTimeMillis() - 12L * 365 * 24 * 3600 * 1000 }
+    val milisMaximo = remember { com.example.nutriia.platform.currentTimeMillis() }
 
     // Estado del DatePicker de M3 — siempre DisplayMode.Picker (calendario visual)
     val datePickerState = rememberDatePickerState(

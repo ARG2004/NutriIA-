@@ -14,8 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import com.example.nutriia.utils.FechaUtils
-import java.util.Locale
-import java.util.Date
 
 data class AccionPendiente(
     val id: String,
@@ -420,8 +418,8 @@ class EmbarazoDashboardViewModel : ViewModel() {
             val hasBadge = estado != GananciaPesoCalculator.EstadoGanancia.EN_RANGO && !perfil.esGemelar
             
             EstadoModulo(
-                subtituloEs = String.format(Locale.US, "%.1f kg · Sem. %d", ultimoRegistro.pesoActualKg, ultimoRegistro.semanaGestacion),
-                subtituloEn = String.format(Locale.US, "%.1f kg · Wk. %d", ultimoRegistro.pesoActualKg, ultimoRegistro.semanaGestacion),
+                subtituloEs = "${ultimoRegistro.pesoActualKg} kg · Sem. ${ultimoRegistro.semanaGestacion}",
+                subtituloEn = "${ultimoRegistro.pesoActualKg} kg · Wk. ${ultimoRegistro.semanaGestacion}",
                 badge = if (hasBadge) "!" else null
             )
         } else {

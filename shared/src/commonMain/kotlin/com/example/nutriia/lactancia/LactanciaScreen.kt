@@ -1,7 +1,5 @@
 package com.example.nutriia.lactancia
 
-import android.content.Intent
-import android.net.Uri
 import kotlinx.coroutines.delay
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -45,9 +43,6 @@ import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.loc
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.utils.FechaUtils
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 private val LactPink      = Color(0xFFEC9BBF)
 private val LactPinkLight = Color(0xFFFCE4EC)
@@ -768,23 +763,16 @@ fun AddFeedingDialog(
     var duration     by remember { mutableStateOf("") }
     var formulaMl    by remember { mutableStateOf("") }
     var notes        by remember { mutableStateOf("") }
-    var timeInput    by remember {
-        val defaultVal = if (esBlind) "" else {
-            val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
-            fmt.format(Date())
-        }
+    var timeInput by remember {
+        val defaultVal = if (esBlind) "" else com.example.nutriia.utils.FechaUtils.horaActualIso()
         mutableStateOf(defaultVal)
     }
-    val dateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val today   = dateFmt.format(Date())
+    val today = com.example.nutriia.utils.FechaUtils.hoyIso()
 
     fun loc(es: String, en: String) = idioma.loc(es, en)
 
     val guardarTodo = {
-        val finalTime = if (timeInput.isNotBlank()) timeInput else {
-            val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
-            fmt.format(Date())
-        }
+        val finalTime = if (timeInput.isNotBlank()) timeInput else com.example.nutriia.utils.FechaUtils.horaActualIso()
         if (esBlind) {
             ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
         }

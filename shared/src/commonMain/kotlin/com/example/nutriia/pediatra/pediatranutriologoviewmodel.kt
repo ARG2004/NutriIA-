@@ -365,7 +365,7 @@ class PediatraDashboardViewModel : ViewModel() {
                     .update(mapOf(
                         "respuesta"    to respuesta,
                         "estado"       to EstadoMensaje.RESPONDIDO.name,
-                        "respondidoEn" to System.currentTimeMillis()
+                        "respondidoEn" to com.example.nutriia.platform.currentTimeMillis()
                     )).await()
             } catch (_: Exception) {}
         }

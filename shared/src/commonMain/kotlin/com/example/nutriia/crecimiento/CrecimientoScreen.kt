@@ -43,9 +43,6 @@ import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.NutriTTS
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PALETA — Médico Cálido
@@ -998,8 +995,7 @@ private fun DialogoMedicion(
     onSave:     (MedicionCrecimiento) -> Unit
 ) {
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
-    val fmt   = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    var fecha by remember { mutableStateOf(fmt.format(Date())) }
+    var fecha by remember { mutableStateOf(com.example.nutriia.utils.FechaUtils.hoyIso()) }
     var peso  by remember { mutableStateOf("") }
     var talla by remember { mutableStateOf("") }
     var circC by remember { mutableStateOf("") }
@@ -1026,7 +1022,7 @@ private fun DialogoMedicion(
                 ttsManager?.hablar(loc("Guardar", "Save"))
             }
             onSave(MedicionCrecimiento(
-                id        = java.util.UUID.randomUUID().toString(),
+                id        = com.example.nutriia.platform.generateUUID(),
                 fecha     = fecha,
                 pesoKg    = peso.replace(",", ".").toDoubleOrNull()  ?: 0.0,
                 tallaCm   = talla.replace(",", ".").toDoubleOrNull() ?: 0.0,

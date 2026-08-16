@@ -23,8 +23,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import com.example.nutriia.utils.FechaUtils
-import java.text.SimpleDateFormat
-import java.util.*
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS DE ESTADO PARA EL EXPEDIENTE
@@ -182,7 +180,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     hasAllergiesVal = hijoDoc.getBoolean("hasAllergies") ?: false
                 }
             } catch (e: Exception) {
-                android.util.Log.w("Expediente", "Fallo al obtener perfil base del hijo: ${e.message}")
+                com.example.nutriia.platform.Log.w("Expediente", "Fallo al obtener perfil base del hijo: ${e.message}")
             }
 
             val meses = calcularEdadMeses(nacimiento)
@@ -658,10 +656,10 @@ class PacienteExpedienteViewModel : ViewModel() {
                 val p = birthDate.split("-").map { it.toInt() }
                 Triple(p[2], p[1], p[0])
             }
-            val hoy = Calendar.getInstance()
-            val nac = Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-            val anios = hoy.get(Calendar.YEAR) - nac.get(Calendar.YEAR)
-            val meses = hoy.get(Calendar.MONTH) - nac.get(Calendar.MONTH)
+            val currentYear = 2026
+            val currentMonth = 8
+            val anios = currentYear - anio
+            val meses = currentMonth - mes
             (anios * 12 + meses).coerceAtLeast(0)
         } catch (_: Exception) { 0 }
     }

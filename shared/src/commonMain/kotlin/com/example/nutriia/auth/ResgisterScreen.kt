@@ -1345,7 +1345,7 @@ fun NutritionistRegisterScreen(
                 // Escuchar comando 'acepto'
                 voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                     if (!isFinal) return@escuchar
-                    val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                    val cmd = result.lowercase().trim()
                     if (cmd.contains("acepto") || cmd.contains("autorizo") || cmd.contains("sí") || cmd.contains("accept")) {
                         aceptoConsentimientoCedula = true
                         a11yVm.hablar(loc("Consentimiento aceptado. Verificando cédula ante la SEP.", "Consent accepted. Verifying license with SEP."))
@@ -1724,7 +1724,7 @@ fun NutritionistRegisterScreen(
                     voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                         if (!isFinal) return@escuchar
                         escuchandoRegistro = false
-                        val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                        val cmd = result.lowercase().trim()
                         if (cmd.contains("registrar") || cmd.contains("registrarme") ||
                             cmd.contains("crear") || cmd.contains("crear cuenta") ||
                             cmd.contains("enviar") || cmd.contains("finalizar")) {
@@ -1947,7 +1947,7 @@ fun GinecologistRegisterScreen(
                 )
                 voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                     if (!isFinal) return@escuchar
-                    val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                    val cmd = result.lowercase().trim()
                     if (cmd.contains("acepto") || cmd.contains("autorizo") || cmd.contains("sí") || cmd.contains("accept")) {
                         aceptoConsentimientoCedulaGine = true
                         a11yVm.hablar(loc("Consentimiento aceptado. Verificando cédula ante la SEP.", "Consent accepted. Verifying license with SEP."))
@@ -2251,7 +2251,7 @@ fun GinecologistRegisterScreen(
                     voiceManager?.escuchar(idiomaActual, true) { result, isFinal ->
                         if (!isFinal) return@escuchar
                         escuchandoRegistroGine = false
-                        val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
+                        val cmd = result.lowercase().trim()
                         if (cmd.contains("registrar") || cmd.contains("registrarme") ||
                             cmd.contains("crear") || cmd.contains("crear cuenta") ||
                             cmd.contains("enviar") || cmd.contains("finalizar")) {

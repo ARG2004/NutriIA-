@@ -85,9 +85,9 @@ fun BrailleKeyboard(
         val claves = TABLA_BRAILLE_VERIFICADA.keys.toList()
         val conflictos = claves.groupBy { it }.filter { it.value.size > 1 }
         if (conflictos.isEmpty()) {
-            android.util.Log.d("Braille", "✅ Tabla sin conflictos: ${claves.size} caracteres")
+            com.example.nutriia.platform.Log.d("Braille", "✅ Tabla sin conflictos: ${claves.size} caracteres")
         } else {
-            android.util.Log.e("Braille", "❌ Conflictos: $conflictos")
+            com.example.nutriia.platform.Log.e("Braille", "❌ Conflictos: $conflictos")
         }
         ttsManager?.hablar("Teclado Braille activo. Selecciona los puntos de tu letra. El botón Limpiar patrón está abajo a la izquierda, y el botón verde Continuar está abajo a la derecha.")
     }

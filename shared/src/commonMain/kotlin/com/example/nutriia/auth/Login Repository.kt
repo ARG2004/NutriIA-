@@ -212,7 +212,7 @@ class RepositorioLogin {
                 "nombreTitularCedula"   to nombreTitularCedula,
                 "profesionCedula"       to profesionCedula,
                 "consentimientoCedula" to consentimientoCedula,
-                "fechaConsentimiento"   to com.google.firebase.Timestamp.now(),
+                "fechaConsentimiento"   to com.example.nutriia.shared.Timestamp.now(),
                 "needsReverification"   to false,
                 "rol"                   to "nutriologo",
                 "modoAccesibilidad"     to AccessibilityMode.NORMAL.name,
@@ -268,7 +268,7 @@ class RepositorioLogin {
                 "nombreTitularCedula"   to nombreTitularCedula,
                 "profesionCedula"       to profesionCedula,
                 "consentimientoCedula" to consentimientoCedula,
-                "fechaConsentimiento"   to com.google.firebase.Timestamp.now(),
+                "fechaConsentimiento"   to com.example.nutriia.shared.Timestamp.now(),
                 "needsReverification"   to false,
                 "rol"                   to "ginecologo",
                 "modoAccesibilidad"     to AccessibilityMode.NORMAL.name,
@@ -311,7 +311,7 @@ class RepositorioLogin {
             ).await()
             true
         } catch (e: Throwable) {
-            android.util.Log.e("RepositorioLogin", "Error al eliminar datos de verificación ARCO: ${e.message}")
+            com.example.nutriia.platform.Log.e("RepositorioLogin", "Error al eliminar datos de verificación ARCO: ${e.message}")
             false
         }
     }
