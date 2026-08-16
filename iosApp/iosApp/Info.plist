@@ -72,6 +72,10 @@
 	<string>NutrIA utiliza la galería para adjuntar fotos a tu expediente nutricional.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>NutrIA utiliza Face ID para un inicio de sesión rápido y seguro.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>NutrIA utiliza el reconocimiento de voz para facilitar la accesibilidad y dictado de información.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>NutrIA utiliza tu ubicación para sugerirte especialistas y servicios cercanos.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
