@@ -86,8 +86,8 @@ fun rememberPermissionState(
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val allGranted = result.values.all { it }
+    ) { result: Map<String, Boolean> ->
+        val allGranted = result.values.all { granted -> granted }
         if (allGranted) {
             onGranted()
         } else {

@@ -1,7 +1,6 @@
 package com.example.nutriia.teleconsulta
 
 import android.content.Context
-import android.view.ViewGroup
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -22,13 +21,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import org.webrtc.EglBase
-import org.webrtc.SurfaceViewRenderer
 import org.webrtc.VideoTrack
 import com.example.nutriia.utils.FechaUtils
 import java.text.SimpleDateFormat
@@ -58,31 +54,17 @@ fun WebRtcVideoView(
     modifier:   Modifier = Modifier,
     isMirror:   Boolean  = false
 ) {
-    val eglBase = remember { EglBase.create() }
-
-    AndroidView(
-        factory = { ctx ->
-            SurfaceViewRenderer(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                init(eglBase.eglBaseContext, null)
-                setMirror(isMirror)
-                setEnableHardwareScaler(true)
-            }
-        },
-        update = { renderer ->
-            renderer.setMirror(isMirror)
-            videoTrack?.addSink(renderer)
-        },
-        onRelease = { renderer ->
-            videoTrack?.removeSink(renderer)
-            renderer.release()
-            eglBase.release()
-        },
-        modifier = modifier
-    )
+    Box(
+        modifier = modifier.background(CallSurface2),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Videocam,
+            contentDescription = "Video",
+            tint = CallGreen,
+            modifier = Modifier.size(48.dp)
+        )
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -293,35 +275,17 @@ fun TeleconsultaActiveScreen(
 // ─── Vista de video LOCAL (self view en pip) ──────────────────────────────────
 @Composable
 fun LocalVideoSinkView(modifier: Modifier = Modifier) {
-    val eglBase = remember { EglBase.create() }
-
-    AndroidView(
-        factory = { ctx ->
-            SurfaceViewRenderer(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                init(eglBase.eglBaseContext, null)
-                setMirror(true) // Siempre espejo para vista propia
-                setEnableHardwareScaler(true)
-            }
-        },
-        update = { renderer ->
-            // Asignar este renderer como sink local del engine
-            if (CallEngineProvider.isInitialized) {
-                CallEngineProvider.engine.localVideoSink = renderer
-            }
-        },
-        onRelease = { renderer ->
-            if (CallEngineProvider.isInitialized) {
-                CallEngineProvider.engine.localVideoSink = null
-            }
-            renderer.release()
-            eglBase.release()
-        },
-        modifier = modifier
-    )
+    Box(
+        modifier = modifier.background(CallSurface2),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Person,
+            contentDescription = "Video Local",
+            tint = CallBlue,
+            modifier = Modifier.size(32.dp)
+        )
+    }
 }
 
 // ─── Fondo animado ────────────────────────────────────────────────────────────
