@@ -23,13 +23,15 @@ targets:
     info:
       path: iosApp/iosApp/Info.plist
       properties:
-        CFBundleShortVersionString: '2.2.6'
+        CFBundleShortVersionString: '2.2.7'
         CFBundleVersion: '48'
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arg.nutriia
         DEVELOPMENT_TEAM: X423NH338U
         CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "Apple Distribution"
+        PROVISIONING_PROFILE_SPECIFIER: "NutriIA Profile"
         IPHONEOS_DEPLOYMENT_TARGET: '15.0'
         SWIFT_VERSION: '5.0'
         TARGETED_DEVICE_FAMILY: '1'
@@ -37,7 +39,7 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
         CURRENT_PROJECT_VERSION: '48'
-        MARKETING_VERSION: '2.2.6'
+        MARKETING_VERSION: '2.2.7'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
     dependencies:
