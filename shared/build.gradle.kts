@@ -15,7 +15,8 @@ kotlin {
             baseName = "Shared"
             isStatic = true
             freeCompilerArgs += listOf(
-                "-Xdisable-phases=DevirtualizationAnalysis"
+                "-Xdisable-phases=DevirtualizationAnalysis",
+                "-g"
             )
         }
     }
