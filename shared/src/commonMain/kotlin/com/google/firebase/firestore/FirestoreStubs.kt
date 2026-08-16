@@ -12,7 +12,7 @@ class Timestamp(val seconds: Long = 0L, val nanoseconds: Int = 0) {
 
 enum class MetadataChanges { EXCLUDE, INCLUDE }
 
-class DocumentSnapshot(
+open class DocumentSnapshot(
     val id: String = "doc_id",
     val data: Map<String, Any?>? = emptyMap()
 ) {

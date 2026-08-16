@@ -129,8 +129,8 @@ class VinculacionRepository {
                 .endAt(q + "\uF8FF")
                 .limit(20)
                 .get().await()
-                .documents.mapNotNull { doc -> doc.data?.let { d -> NutriologoPublico.fromMap(d, doc.id) } }
-                .filter { !esEspecialidadGinecologica(it.especialidad) }
+                .documents.mapNotNull { doc -> doc.data?.let { NutriologoPublico.fromMap(it, doc.id) } }
+                .filter { nutriologo -> !esEspecialidadGinecologica(nutriologo.especialidad) }
 
             Result.success(porNombre)
         } catch (e: Exception) {
