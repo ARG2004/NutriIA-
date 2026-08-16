@@ -8,6 +8,8 @@ expect fun openUrl(url: String)
 
 expect fun platformLog(tag: String, msg: String)
 
+expect fun isVoiceOverActive(): Boolean
+
 fun generateUUID(): String {
     val chars = "0123456789abcdef"
     val time = currentTimeMillis().toString(16)

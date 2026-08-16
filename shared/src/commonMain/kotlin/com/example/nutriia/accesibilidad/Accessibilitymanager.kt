@@ -42,25 +42,42 @@ enum class IdiomaVoz(
 // ─── Repositorio ──────────────────────────────────────────────────────────────
 class AccessibilityRepository(context: Any? = null) {
 
-    private val _modeFlow = MutableStateFlow(AccessibilityMode.NORMAL)
+    private val _modeFlow = MutableStateFlow(
+        runCatching {
+            AccessibilityMode.valueOf(
+                com.example.nutriia.platform.PlatformPreferences.getString("accessibility_mode") ?: AccessibilityMode.NORMAL.name
+            )
+        }.getOrDefault(AccessibilityMode.NORMAL)
+    )
     val modeFlow: Flow<AccessibilityMode> = _modeFlow.asStateFlow()
 
-    private val _langFlow = MutableStateFlow(IdiomaVoz.ESPANOL_MX)
+    private val _langFlow = MutableStateFlow(
+        runCatching {
+            IdiomaVoz.valueOf(
+                com.example.nutriia.platform.PlatformPreferences.getString("accessibility_lang") ?: IdiomaVoz.ESPANOL_MX.name
+            )
+        }.getOrDefault(IdiomaVoz.ESPANOL_MX)
+    )
     val langFlow: Flow<IdiomaVoz> = _langFlow.asStateFlow()
 
-    private val _primeraVezFlow = MutableStateFlow(false)
+    private val _primeraVezFlow = MutableStateFlow(
+        com.example.nutriia.platform.PlatformPreferences.getBoolean("accessibility_primera_vez", true)
+    )
     val primeraVezFlow: Flow<Boolean> = _primeraVezFlow.asStateFlow()
 
     suspend fun saveMode(mode: AccessibilityMode) {
         _modeFlow.value = mode
+        com.example.nutriia.platform.PlatformPreferences.putString("accessibility_mode", mode.name)
     }
 
     suspend fun saveLang(lang: IdiomaVoz) {
         _langFlow.value = lang
+        com.example.nutriia.platform.PlatformPreferences.putString("accessibility_lang", lang.name)
     }
 
     suspend fun marcarPrimeraVezCompletada() {
         _primeraVezFlow.value = false
+        com.example.nutriia.platform.PlatformPreferences.putBoolean("accessibility_primera_vez", false)
     }
 }
 

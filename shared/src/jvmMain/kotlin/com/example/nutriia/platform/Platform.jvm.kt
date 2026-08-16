@@ -11,3 +11,5 @@ actual fun openUrl(url: String) {
 actual fun platformLog(tag: String, msg: String) {
     println("[NutriIA-$tag] $msg")
 }
+
+actual fun isVoiceOverActive(): Boolean = false

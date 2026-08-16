@@ -1,28 +1,59 @@
 package com.example.nutriia.firebase.auth
 
-class FirebaseAuth {
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.auth.auth
+
+class FirebaseAuth private constructor() {
     companion object {
-        fun getInstance(): FirebaseAuth = FirebaseAuth()
+        private var _instance: FirebaseAuth? = null
+        fun getInstance(): FirebaseAuth = _instance ?: FirebaseAuth().also { _instance = it }
     }
-    val currentUser: FirebaseUser? get() = FirebaseUser()
-    suspend fun signInWithEmailAndPassword(email: String, pass: String): AuthResult = AuthResult()
-    suspend fun createUserWithEmailAndPassword(email: String, pass: String): AuthResult = AuthResult()
-    suspend fun sendPasswordResetEmail(email: String) {}
-    fun signOut() {}
+
+    private val delegate get() = Firebase.auth
+
+    val currentUser: FirebaseUser?
+        get() = delegate.currentUser?.let { FirebaseUser(it) }
+
+    suspend fun signInWithEmailAndPassword(email: String, pass: String): AuthResult {
+        val result = delegate.signInWithEmailAndPassword(email, pass)
+        return AuthResult(result.user?.let { FirebaseUser(it) })
+    }
+
+    suspend fun createUserWithEmailAndPassword(email: String, pass: String): AuthResult {
+        val result = delegate.createUserWithEmailAndPassword(email, pass)
+        return AuthResult(result.user?.let { FirebaseUser(it) })
+    }
+
+    suspend fun sendPasswordResetEmail(email: String) {
+        delegate.sendPasswordResetEmail(email)
+    }
+
+    suspend fun signOut() {
+        delegate.signOut()
+    }
 }
 
-class FirebaseUser(
-    val uid: String = "user_123",
-    val email: String? = "usuario@nutriia.com",
-    val displayName: String? = "Usuario Demo"
-) {
-    suspend fun reload() {}
-    suspend fun updatePassword(pass: String) {}
-    suspend fun delete() {}
-    suspend fun reauthenticate(cred: Any?) {}
+class FirebaseUser(private val delegate: dev.gitlive.firebase.auth.FirebaseUser) {
+    val uid: String get() = delegate.uid
+    val email: String? get() = delegate.email
+    val displayName: String? get() = delegate.displayName
+
+    suspend fun reload() {
+        delegate.reload()
+    }
+
+    suspend fun updatePassword(pass: String) {
+        delegate.updatePassword(pass)
+    }
+
+    suspend fun reauthenticate(cred: Any?): Any = Unit
+
+    suspend fun delete() {
+        delegate.delete()
+    }
 }
 
-class AuthResult(val user: FirebaseUser? = FirebaseUser())
+class AuthResult(val user: FirebaseUser?)
 
 object EmailAuthProvider {
     fun credential(email: String, pass: String): Any = Unit

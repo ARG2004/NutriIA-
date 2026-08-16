@@ -260,6 +260,7 @@ fun NutriIAiOSApp() {
     }
 
     com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 6/11] Colectando StateFlows de Accesibilidad...")
+    val estado by loginViewModel.estado.collectAsState()
     val accessibilityMode by accessibilityVm.mode.collectAsState()
     val primeraVez by accessibilityVm.primeraVez.collectAsState()
     val primeraVezCargada by accessibilityVm.primeraVezCargada.collectAsState()
@@ -267,6 +268,7 @@ fun NutriIAiOSApp() {
     var isCheckingInitialSession by remember { mutableStateOf(true) }
     var showLoginSplash by remember { mutableStateOf(false) }
     var showResumeSplash by remember { mutableStateOf(false) }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
 
     var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
     var children by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
@@ -285,16 +287,133 @@ fun NutriIAiOSApp() {
 
     val scope = rememberCoroutineScope()
 
+    // ─── VoiceOver Detection ──────────────────────────────────────────────
+    LaunchedEffect(Unit) {
+        if (com.example.nutriia.platform.isVoiceOverActive()) {
+            accessibilityVm.setMode(AccessibilityMode.BLIND)
+        }
+    }
+
+    // ─── Persistir Última Pantalla Interna ────────────────────────────────
+    LaunchedEffect(currentScreen) {
+        if (esPantallaModuloInterno(currentScreen)) {
+            SessionManager.guardarUltimaPantalla(screenName = currentScreen.name)
+        }
+    }
+
+    // ─── Auto-descarte de Toast Flotante ──────────────────────────────────
+    LaunchedEffect(toastMessage) {
+        if (toastMessage != null) {
+            delay(2500)
+            toastMessage = null
+        }
+    }
+
     // ─── Control de Sesión Inicial y Primera Vez (Accesibilidad) ───────────
     LaunchedEffect(primeraVezCargada) {
         if (!primeraVezCargada) return@LaunchedEffect
-        delay(1200) // Animación del Splash inicial
-        if (primeraVez) {
-            currentScreen = Screen.ACCESIBILIDAD_INICIAL
-        } else {
-            currentScreen = Screen.LOGIN
+        loginViewModel.verificarSesion { rol, hijos ->
+            val ultimaGuardada = SessionManager.obtenerUltimaPantalla()
+            val pantallaRestaurada = try {
+                if (ultimaGuardada != null) Screen.valueOf(ultimaGuardada) else null
+            } catch (_: Exception) { null }
+
+            when (rol) {
+                "nutriologo" -> {
+                    currentScreen = if (pantallaRestaurada != null && esPantallaModuloInterno(pantallaRestaurada)) pantallaRestaurada else Screen.DASHBOARD_NUTRITIONIST
+                    accessibilityVm.sincronizarDesdeFirebase()
+                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
+                    teleconsultaVm.iniciarObservacionEntrantesNutriologo(loginViewModel.uidUsuario)
+                }
+                "ginecologo" -> {
+                    currentScreen = if (pantallaRestaurada != null && esPantallaModuloInterno(pantallaRestaurada)) pantallaRestaurada else Screen.DASHBOARD_GINECOLOGO
+                    accessibilityVm.sincronizarDesdeFirebase()
+                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
+                    teleconsultaVm.iniciarObservacionEntrantesNutriologo(loginViewModel.uidUsuario)
+                }
+                "mama_primeriza" -> {
+                    if (nombreMama.isBlank()) nombreMama = loginViewModel.nombreUsuario
+                    accessibilityVm.sincronizarDesdeFirebase()
+                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
+                    teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
+                    scope.launch {
+                        val p = loginViewModel.cargarPerfilEmbarazo()
+                        if (p != null) {
+                            perfilEmbarazo = p
+                            currentScreen = if (pantallaRestaurada != null && esPantallaModuloInterno(pantallaRestaurada)) pantallaRestaurada else Screen.DASHBOARD_MAMA_PRIMERIZA
+                        } else {
+                            currentScreen = Screen.QUIZ_MAMA_PRIMERIZA
+                        }
+                        isCheckingInitialSession = false
+                    }
+                }
+                "padre" -> {
+                    children = hijos
+                    saltarAccesibilidadEnQuiz = true
+                    val dashboardDefault = if (hijos.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
+                    currentScreen = if (pantallaRestaurada != null && esPantallaModuloInterno(pantallaRestaurada)) {
+                        pantallaRestaurada
+                    } else {
+                        dashboardDefault
+                    }
+                    accessibilityVm.sincronizarDesdeFirebase()
+                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
+                    teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
+                }
+                else -> {
+                    currentScreen = if (primeraVez) Screen.ACCESIBILIDAD_INICIAL else Screen.LOGIN
+                }
+            }
+            if (rol != "mama_primeriza") {
+                isCheckingInitialSession = false
+            }
         }
-        isCheckingInitialSession = false
+    }
+
+    // ─── Reacción a Login Exitoso con Activación Biométrica ───────────────
+    LaunchedEffect(estado) {
+        val s = estado
+        if (s is LoginUiState.Exito) {
+            if (esPantallaModuloInterno(currentScreen)) return@LaunchedEffect
+            showLoginSplash = true
+            delay(120)
+
+            val yaActivoHuella = SessionManager.huellaYaConfirmada() || SessionManager.esBiometricoActivo()
+            if (!yaActivoHuella && BiometricHelper.isAvailable()) {
+                currentScreen = Screen.BIOMETRIC_ACTIVATION
+            } else {
+                when (s.rol) {
+                    "nutriologo" -> {
+                        currentScreen = Screen.DASHBOARD_NUTRITIONIST
+                        teleconsultaVm.iniciarObservacionEntrantesNutriologo(loginViewModel.uidUsuario)
+                    }
+                    "ginecologo" -> {
+                        currentScreen = Screen.DASHBOARD_GINECOLOGO
+                        teleconsultaVm.iniciarObservacionEntrantesNutriologo(loginViewModel.uidUsuario)
+                    }
+                    "mama_primeriza" -> {
+                        if (nombreMama.isBlank()) nombreMama = loginViewModel.nombreUsuario
+                        teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
+                        val p = loginViewModel.cargarPerfilEmbarazo()
+                        if (p != null) {
+                            perfilEmbarazo = p
+                            currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
+                        } else {
+                            currentScreen = Screen.QUIZ_MAMA_PRIMERIZA
+                        }
+                    }
+                    else -> {
+                        children = s.hijos
+                        saltarAccesibilidadEnQuiz = true
+                        currentScreen = if (s.hijos.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
+                        teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
+                    }
+                }
+            }
+            delay(1380)
+            showLoginSplash = false
+            loginViewModel.resetEstado()
+        }
     }
 
     com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 7/11] Configurando ViewModelStore y ViewModelStoreOwner...")
@@ -632,12 +751,71 @@ fun NutriIAiOSApp() {
                             currentScreen = Screen.LOGIN
                         }
                     )
+                    Screen.EDITAR_PERFIL -> EditarPerfilScreen(
+                        nombreInicial   = loginViewModel.nombreUsuario,
+                        emailInicial    = loginViewModel.emailUsuario,
+                        telefonoInicial = loginViewModel.telefonoUsuario,
+                        onBack          = { currentScreen = Screen.CONFIGURACION },
+                        onGuardar       = { nombre, email, telefono ->
+                            loginViewModel.actualizarPerfil(nombre, email, telefono)
+                            toastMessage = if (telefono != loginViewModel.telefonoUsuario) "Teléfono actualizado exitosamente" else "Perfil actualizado exitosamente"
+                            currentScreen = Screen.CONFIGURACION
+                        }
+                    )
+                    Screen.EDITAR_REGION -> {
+                        val hijo = hijoParaEditar
+                        if (hijo == null) {
+                            currentScreen = Screen.CONFIGURACION
+                        } else {
+                            OnboardingQuizScreen(
+                                isAddingChild = false,
+                                saltarAccesibilidad = true,
+                                initialStep = 6,
+                                prefilledProfile = hijo,
+                                onQuizComplete = { perfilActualizado ->
+                                    val hijoActualizado = hijo.copy(
+                                        nivelIngreso = perfilActualizado.nivelIngreso,
+                                        region = perfilActualizado.region
+                                    )
+                                    loginViewModel.guardarHijo(hijoActualizado) { exito ->
+                                        if (exito) {
+                                            children = children.map { c -> if (c.id == hijoActualizado.id) hijoActualizado else c }
+                                            loginViewModel.recargarHijos()
+                                        }
+                                    }
+                                    hijoParaEditar = null
+                                    toastMessage = "Región actualizada exitosamente"
+                                    currentScreen = Screen.CONFIGURACION
+                                },
+                                onCancel = {
+                                    hijoParaEditar = null
+                                    currentScreen = Screen.CONFIGURACION
+                                }
+                            )
+                        }
+                    }
                     Screen.AYUDA -> HelpScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
                     Screen.BIOMETRIC_ACTIVATION -> BiometricActivationScreen(
                         uid = loginViewModel.uidUsuario,
                         rol = loginViewModel.rolUsuario,
-                        onActivado = { currentScreen = Screen.DASHBOARD_PARENT },
-                        onOmitido = { currentScreen = Screen.DASHBOARD_PARENT }
+                        onActivado = {
+                            val rol = loginViewModel.rolUsuario
+                            currentScreen = when (rol) {
+                                "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
+                                "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
+                                "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
+                                else -> if (children.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
+                            }
+                        },
+                        onOmitido = {
+                            val rol = loginViewModel.rolUsuario
+                            currentScreen = when (rol) {
+                                "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
+                                "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
+                                "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
+                                else -> if (children.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
+                            }
+                        }
                     )
                     else -> NutriIADashboardScreen(
                         children = children,
@@ -661,6 +839,35 @@ fun NutriIAiOSApp() {
                         onOpenRecordatorios = { currentScreen = Screen.RECORDATORIOS },
                         onAyuda = { currentScreen = Screen.AYUDA }
                     )
+                }
+
+                // ─── Toast Flotante Multiplataforma ──────────────────────────
+                AnimatedVisibility(
+                    visible = toastMessage != null,
+                    enter = fadeIn(tween(250)) + slideInVertically(initialOffsetY = { -it }),
+                    exit = fadeOut(tween(250)) + slideOutVertically(targetOffsetY = { -it }),
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF1E232A),
+                        shadowElevation = 8.dp,
+                        border = BorderStroke(1.dp, Color(0xFF689F38))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("✅", fontSize = 16.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = toastMessage ?: "",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
 
                 // ─── Splash Overlay Animado (Arranque y Transiciones) ─────────

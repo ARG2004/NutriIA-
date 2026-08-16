@@ -1,57 +1,159 @@
 package com.example.nutriia.firebase.firestore
 
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 suspend fun <T> T.await(): T = this
 
 typealias Query = CollectionReference
 
-class FirebaseFirestore {
+class FirebaseFirestore private constructor() {
     companion object {
-        fun getInstance(): FirebaseFirestore = FirebaseFirestore()
+        private var _instance: FirebaseFirestore? = null
+        fun getInstance(): FirebaseFirestore = _instance ?: FirebaseFirestore().also { _instance = it }
     }
-    fun collection(path: String): CollectionReference = CollectionReference(path)
-    suspend fun clearPersistence(): Unit = Unit
+
+    private val delegate get() = Firebase.firestore
+
+    fun collection(path: String): CollectionReference =
+        CollectionReference(delegate.collection(path), path)
+
+    suspend fun clearPersistence(): Unit {
+        try {
+            delegate.clearPersistence()
+        } catch (_: Throwable) {}
+    }
 }
 
-class CollectionReference(val path: String) {
-    fun document(id: String = "doc_${com.example.nutriia.platform.currentTimeMillis()}"): DocumentReference = DocumentReference("$path/$id", id)
+class CollectionReference(
+    private val delegate: dev.gitlive.firebase.firestore.CollectionReference,
+    val path: String
+) {
+    fun document(id: String = "doc_${com.example.nutriia.platform.currentTimeMillis()}"): DocumentReference =
+        DocumentReference(delegate.document(id), "$path/$id", id)
+
     fun orderBy(field: String, direction: Direction = Direction.ASCENDING): CollectionReference = this
     fun whereEqualTo(field: String, value: Any?): CollectionReference = this
-    val snapshots: Flow<QuerySnapshot> get() = flowOf(QuerySnapshot(emptyList()))
+
+    val snapshots: Flow<QuerySnapshot> get() = delegate.snapshots.map { QuerySnapshot(it.documents.map { doc -> DocumentSnapshot(doc.id, doc) }) }
+
     fun addSnapshotListener(listener: (QuerySnapshot?, Exception?) -> Unit): ListenerRegistration {
-        listener(QuerySnapshot(emptyList()), null)
         return ListenerRegistration()
     }
-    suspend fun get(vararg args: Any?): QuerySnapshot = QuerySnapshot(emptyList())
+
+    suspend fun get(vararg args: Any?): QuerySnapshot {
+        val result = delegate.get()
+        return QuerySnapshot(result.documents.map { DocumentSnapshot(it.id, it) })
+    }
 }
 
-class DocumentReference(val path: String, val id: String) {
-    suspend fun get(vararg args: Any?): DocumentSnapshot = DocumentSnapshot(id, emptyMap())
-    suspend fun set(data: Any?): Unit = Unit
-    suspend fun update(data: Map<String, Any?>): Unit = Unit
-    suspend fun update(field: String, value: Any?, vararg more: Any?): Unit = Unit
-    suspend fun delete(): Unit = Unit
-    fun collection(subPath: String): CollectionReference = CollectionReference("$path/$subPath")
-    val snapshots: Flow<DocumentSnapshot> get() = flowOf(DocumentSnapshot(id, emptyMap()))
+class DocumentReference(
+    private val delegate: dev.gitlive.firebase.firestore.DocumentReference,
+    val path: String,
+    val id: String
+) {
+    suspend fun get(vararg args: Any?): DocumentSnapshot {
+        val snap = delegate.get()
+        return DocumentSnapshot(id, snap)
+    }
+
+    suspend fun set(data: Any?): Unit {
+        if (data != null) {
+            delegate.set(data)
+        }
+    }
+
+    suspend fun update(data: Map<String, Any?>): Unit {
+        val nonNullData = data.filterValues { it != null }
+        if (nonNullData.isNotEmpty()) {
+            delegate.update(nonNullData)
+        }
+    }
+
+    suspend fun update(field: String, value: Any?, vararg more: Any?): Unit {
+        val map = mutableMapOf<String, Any?>()
+        if (value != null) map[field] = value
+        var i = 0
+        while (i < more.size - 1) {
+            val k = more[i] as? String
+            val v = more[i + 1]
+            if (k != null && v != null) map[k] = v
+            i += 2
+        }
+        if (map.isNotEmpty()) {
+            delegate.update(map)
+        }
+    }
+
+    suspend fun delete(): Unit {
+        delegate.delete()
+    }
+
+    fun collection(subPath: String): CollectionReference =
+        CollectionReference(delegate.collection(subPath), "$path/$subPath")
+
+    val snapshots: Flow<DocumentSnapshot> get() = delegate.snapshots.map { DocumentSnapshot(id, it) }
+
     fun addSnapshotListener(listener: (DocumentSnapshot?, Exception?) -> Unit): ListenerRegistration {
-        listener(DocumentSnapshot(id, emptyMap()), null)
         return ListenerRegistration()
     }
 }
 
-class DocumentSnapshot(val id: String = "", val rawData: Map<String, Any?> = emptyMap()) {
-    val exists: Boolean get() = true
-    fun exists(): Boolean = true
-    val data: Map<String, Any?> get() = rawData
-    fun get(field: String): Any? = rawData[field]
-    fun getString(field: String): String? = rawData[field] as? String
-    fun getLong(field: String): Long? = (rawData[field] as? Number)?.toLong()
-    fun getDouble(field: String): Double? = (rawData[field] as? Number)?.toDouble()
-    fun getBoolean(field: String): Boolean? = rawData[field] as? Boolean
-    fun getTimestamp(field: String): Timestamp? = (rawData[field] as? Timestamp) ?: Timestamp.now()
-    val reference: DocumentReference get() = DocumentReference("docs/$id", id)
+class DocumentSnapshot(
+    val id: String = "",
+    private val delegate: dev.gitlive.firebase.firestore.DocumentSnapshot? = null,
+    val rawData: Map<String, Any?> = emptyMap()
+) {
+    val exists: Boolean get() = delegate?.exists ?: rawData.isNotEmpty()
+    fun exists(): Boolean = exists
+
+    val data: Map<String, Any?>
+        get() = try {
+            delegate?.data<Map<String, Any?>>() ?: rawData
+        } catch (_: Throwable) {
+            rawData
+        }
+
+    fun get(field: String): Any? = try {
+        delegate?.get<Any?>(field) ?: rawData[field]
+    } catch (_: Throwable) {
+        rawData[field]
+    }
+
+    fun getString(field: String): String? = try {
+        delegate?.get<String?>(field) ?: (rawData[field] as? String)
+    } catch (_: Throwable) {
+        rawData[field] as? String
+    }
+
+    fun getLong(field: String): Long? = try {
+        delegate?.get<Long?>(field) ?: (rawData[field] as? Number)?.toLong()
+    } catch (_: Throwable) {
+        (rawData[field] as? Number)?.toLong()
+    }
+
+    fun getDouble(field: String): Double? = try {
+        delegate?.get<Double?>(field) ?: (rawData[field] as? Number)?.toDouble()
+    } catch (_: Throwable) {
+        (rawData[field] as? Number)?.toDouble()
+    }
+
+    fun getBoolean(field: String): Boolean? = try {
+        delegate?.get<Boolean?>(field) ?: (rawData[field] as? Boolean)
+    } catch (_: Throwable) {
+        rawData[field] as? Boolean
+    }
+
+    fun getTimestamp(field: String): Timestamp? = try {
+        val t = delegate?.get<Timestamp?>(field)
+        t ?: (rawData[field] as? Timestamp) ?: Timestamp.now()
+    } catch (_: Throwable) {
+        (rawData[field] as? Timestamp) ?: Timestamp.now()
+    }
+
+    val reference: DocumentReference get() = DocumentReference(delegate!!.reference, "docs/$id", id)
 }
 
 class QuerySnapshot(val documents: List<DocumentSnapshot> = emptyList()) {

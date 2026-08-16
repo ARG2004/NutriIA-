@@ -18,3 +18,5 @@ actual fun platformLog(tag: String, msg: String) {
     platform.Foundation.NSLog("[NutriIA-%s] %s", tag, msg)
     println("[NutriIA-$tag] $msg")
 }
+
+actual fun isVoiceOverActive(): Boolean = platform.UIKit.UIAccessibilityIsVoiceOverRunning()

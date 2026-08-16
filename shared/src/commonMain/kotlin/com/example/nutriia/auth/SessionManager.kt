@@ -1,53 +1,55 @@
 package com.example.nutriia.auth
 
+import com.example.nutriia.platform.PlatformPreferences
+
 object SessionManager {
-    private val storage = mutableMapOf<String, Any>()
 
     fun guardarSesion(uid: String) {
-        storage["user_uid"] = uid
+        PlatformPreferences.putString("user_uid", uid)
     }
 
     fun guardarSesion(context: Any?, uid: String) {
-        storage["user_uid"] = uid
+        PlatformPreferences.putString("user_uid", uid)
     }
 
     fun obtenerUid(context: Any? = null): String? {
-        return storage["user_uid"] as? String
+        return PlatformPreferences.getString("user_uid")
     }
 
     fun marcarBiometricoActivo(context: Any? = null, activo: Boolean = true) {
-        storage["biometric_activo"] = activo
+        PlatformPreferences.putBoolean("biometric_activo", activo)
     }
 
     fun esBiometricoActivo(context: Any? = null): Boolean {
-        return (storage["biometric_activo"] as? Boolean) ?: false
+        return PlatformPreferences.getBoolean("biometric_activo", false)
     }
 
     fun marcarActivacionHuellaMostrada(context: Any? = null) {
-        storage["activacion_huella_mostrada"] = true
+        PlatformPreferences.putBoolean("activacion_huella_mostrada", true)
     }
 
     fun yaSeMostroActivacionHuella(context: Any? = null): Boolean {
-        return (storage["activacion_huella_mostrada"] as? Boolean) ?: false
+        return PlatformPreferences.getBoolean("activacion_huella_mostrada", false)
     }
 
     fun marcarHuellaConfirmada(context: Any? = null) {
-        storage["huella_confirmada"] = true
+        PlatformPreferences.putBoolean("huella_confirmada", true)
     }
 
     fun huellaYaConfirmada(context: Any? = null): Boolean {
-        return (storage["huella_confirmada"] as? Boolean) ?: false
+        return PlatformPreferences.getBoolean("huella_confirmada", false)
     }
 
     fun guardarUltimaPantalla(context: Any? = null, screenName: String = "") {
-        storage["ultima_pantalla"] = screenName
+        PlatformPreferences.putString("ultima_pantalla", screenName)
     }
 
     fun obtenerUltimaPantalla(context: Any? = null): String? {
-        return storage["ultima_pantalla"] as? String
+        return PlatformPreferences.getString("ultima_pantalla")
     }
 
     fun limpiarSesion(context: Any? = null) {
-        storage.clear()
+        PlatformPreferences.remove("user_uid")
+        PlatformPreferences.remove("ultima_pantalla")
     }
 }
