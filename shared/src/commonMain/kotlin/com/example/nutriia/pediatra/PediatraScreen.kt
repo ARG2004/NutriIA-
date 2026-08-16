@@ -30,15 +30,8 @@ import com.example.nutriia.vinculacion.VinculacionViewModel
 import com.example.nutriia.util.PermissionHelper
 import com.example.nutriia.util.PermissionType
 import com.example.nutriia.util.rememberPermissionState
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.core.Preview
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.CameraSelector
-import androidx.camera.view.PreviewView
-import androidx.core.content.ContextCompat
 import android.util.Log
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -49,10 +42,6 @@ import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
@@ -639,130 +628,82 @@ private fun BusquedaPorCodigo(
     }
 }
 
-@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 @Composable
 private fun QrScannerDialog(
     onDismiss: () -> Unit,
     onCodeScanned: (String) -> Unit
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    val cameraPermissionState = rememberPermissionState(PermissionType.CAMERA) {}
-    val hasPermission = PermissionHelper.hasPermissions(context, PermissionHelper.getRequiredPermissions(PermissionType.CAMERA))
-
-    LaunchedEffect(Unit) {
-        if (!hasPermission) {
-            cameraPermissionState.requestPermission()
-        }
-    }
+    var manualCode by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Escanear código QR", fontWeight = FontWeight.Bold) },
+        title = { Text("Escanear o ingresar código QR", fontWeight = FontWeight.Bold) },
         text = {
-            if (hasPermission) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp)
+                        .height(160.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.Black)
-                ) {
-                    AndroidView(
-                        factory = { ctx ->
-                            val previewView = PreviewView(ctx).apply {
-                                scaleType = PreviewView.ScaleType.FILL_CENTER
-                            }
-                            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                            cameraProviderFuture.addListener({
-                                val cameraProvider = cameraProviderFuture.get()
-                                
-                                val preview = Preview.Builder().build().also {
-                                    it.setSurfaceProvider(previewView.surfaceProvider)
-                                }
-
-                                val scanner = BarcodeScanning.getClient(
-                                    BarcodeScannerOptions.Builder()
-                                        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
-                                        .build()
-                                )
-
-                                val imageAnalysis = ImageAnalysis.Builder()
-                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                    .build()
-
-                                imageAnalysis.setAnalyzer(
-                                    ContextCompat.getMainExecutor(ctx)
-                                ) { imageProxy ->
-                                    val mediaImage = imageProxy.image
-                                    if (mediaImage != null) {
-                                        val image = InputImage.fromMediaImage(
-                                            mediaImage,
-                                            imageProxy.imageInfo.rotationDegrees
-                                        )
-                                        scanner.process(image)
-                                            .addOnSuccessListener { barcodes ->
-                                                val barcode = barcodes.firstOrNull()
-                                                val rawValue = barcode?.rawValue
-                                                if (rawValue != null) {
-                                                    val cleanCode = if (rawValue.startsWith("nutriia://vincular/")) {
-                                                        rawValue.substringAfter("nutriia://vincular/")
-                                                    } else {
-                                                        rawValue
-                                                    }
-                                                    onCodeScanned(cleanCode)
-                                                }
-                                            }
-                                            .addOnCompleteListener {
-                                                imageProxy.close()
-                                            }
-                                    } else {
-                                        imageProxy.close()
-                                    }
-                                }
-
-                                try {
-                                    cameraProvider.unbindAll()
-                                    cameraProvider.bindToLifecycle(
-                                        lifecycleOwner,
-                                        CameraSelector.DEFAULT_BACK_CAMERA,
-                                        preview,
-                                        imageAnalysis
-                                    )
-                                } catch (e: Exception) {
-                                    Log.e("QrScannerDialog", "Error binding camera", e)
-                                }
-                            }, ContextCompat.getMainExecutor(ctx))
-                            previewView
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    
-                    Box(
-                        modifier = Modifier
-                            .size(180.dp)
-                            .align(Alignment.Center)
-                            .border(2.dp, Color.White.copy(0.8f), RoundedCornerShape(12.dp))
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp),
+                        .background(Color(0xFF1E1E1E)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "Se requieren permisos de cámara para escanear el código QR.",
-                        textAlign = TextAlign.Center,
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.QrCodeScanner,
+                            contentDescription = "Código QR",
+                            tint = Color.White,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Ingresa o pega el código QR del especialista a vincular",
+                            textAlign = TextAlign.Center,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 13.sp
+                        )
+                    }
                 }
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = manualCode,
+                    onValueChange = { manualCode = it },
+                    label = { Text("Código o enlace") },
+                    placeholder = { Text("Ej. NUT-12345 o nutriia://vincular/...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            Button(
+                onClick = {
+                    val rawValue = manualCode.trim()
+                    if (rawValue.isNotEmpty()) {
+                        val cleanCode = if (rawValue.startsWith("nutriia://vincular/")) {
+                            rawValue.substringAfter("nutriia://vincular/")
+                        } else {
+                            rawValue
+                        }
+                        onCodeScanned(cleanCode)
+                    }
+                },
+                enabled = manualCode.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = PGreen)
+            ) {
+                Text("Vincular", fontWeight = FontWeight.Bold)
+            }
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancelar", color = Color.Gray, fontWeight = FontWeight.Bold)
