@@ -31,27 +31,75 @@ import kotlinx.coroutines.launch
 // ═══════════════════════════════════════════════════════════════════════════
 
 import com.example.nutriia.accesibilidad.*
+import com.example.nutriia.alerta.AlertaViewModel
 import com.example.nutriia.alerta.AlertasScreen
 import com.example.nutriia.analisisIA.AnalisisScreen
+import com.example.nutriia.analisisIA.AnalisisViewModel
 import com.example.nutriia.auth.*
 import com.example.nutriia.ayuda.HelpScreen
+import com.example.nutriia.chatbot.ChatViewModel
 import com.example.nutriia.chatbot.NutriChatScreen
 import com.example.nutriia.configuracion.*
 import com.example.nutriia.crecimiento.CrecimientoScreen
+import com.example.nutriia.crecimiento.CrecimientoViewModel
 import com.example.nutriia.dashboard.NutriIADashboardScreen
 import com.example.nutriia.dashboard.NutritionistDashboardScreen
+import com.example.nutriia.dashboard.NutritionistDashboardViewModel
 import com.example.nutriia.dashboard.PacienteResumen
 import com.example.nutriia.embarazo.*
 import com.example.nutriia.expediente.PacienteExpedienteScreen
+import com.example.nutriia.expediente.PacienteExpedienteViewModel
 import com.example.nutriia.ginecologo.*
 import com.example.nutriia.lactancia.LactanciaScreen
+import com.example.nutriia.lactancia.LactanciaViewModel
 import com.example.nutriia.nutriente.NutrientesScreen
+import com.example.nutriia.nutriente.NutrientesViewModel
 import com.example.nutriia.payment.*
+import com.example.nutriia.pediatra.PediatraDashboardViewModel
 import com.example.nutriia.pediatra.PediatraScreen
+import com.example.nutriia.solidos.AlimentacionViewModel
 import com.example.nutriia.solidos.SolidosScreen
 import com.example.nutriia.teleconsulta.*
 import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.ui.theme.NutriIATheme
+import com.example.nutriia.vinculacion.VinculacionViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.viewmodel.CreationExtras
+import kotlin.reflect.KClass
+
+object IOSViewModelFactory : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T {
+        val vm: ViewModel = when (modelClass) {
+            LoginViewModel::class -> LoginViewModel()
+            AccessibilityViewModel::class -> AccessibilityViewModel()
+            NutriSharedViewModel::class -> NutriSharedViewModel()
+            TeleconsultaViewModel::class -> TeleconsultaViewModel()
+            VinculacionViewModel::class -> VinculacionViewModel()
+            AlimentacionViewModel::class -> AlimentacionViewModel()
+            PediatraDashboardViewModel::class -> PediatraDashboardViewModel()
+            PaymentViewModel::class -> PaymentViewModel()
+            NutrientesViewModel::class -> NutrientesViewModel()
+            LactanciaViewModel::class -> LactanciaViewModel()
+            PacienteExpedienteEmbarazoViewModel::class -> PacienteExpedienteEmbarazoViewModel()
+            GinecologoViewModel::class -> GinecologoViewModel()
+            GinecologoDashboardViewModel::class -> GinecologoDashboardViewModel()
+            PacienteExpedienteViewModel::class -> PacienteExpedienteViewModel()
+            EmbarazoDashboardViewModel::class -> EmbarazoDashboardViewModel()
+            NutritionistDashboardViewModel::class -> NutritionistDashboardViewModel()
+            CrecimientoViewModel::class -> CrecimientoViewModel()
+            ConfiguracionViewModel::class -> ConfiguracionViewModel()
+            ChatViewModel::class -> ChatViewModel()
+            AnalisisViewModel::class -> AnalisisViewModel()
+            RegisterViewModel::class -> RegisterViewModel()
+            AlertaViewModel::class -> AlertaViewModel()
+            else -> throw IllegalArgumentException("ViewModel no registrado para iOS: ${modelClass.simpleName}")
+        }
+        return vm as T
+    }
+}
 
 // ─── Enum de Pantallas 1:1 idéntico a Android MainActivity.kt ─────────────
 enum class Screen {
@@ -252,8 +300,10 @@ fun NutriIAiOSApp() {
     com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 7/11] Configurando ViewModelStore y ViewModelStoreOwner...")
     val viewModelStore = remember { androidx.lifecycle.ViewModelStore() }
     val viewModelStoreOwner = remember {
-        object : androidx.lifecycle.ViewModelStoreOwner {
+        object : androidx.lifecycle.ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
             override val viewModelStore: androidx.lifecycle.ViewModelStore = viewModelStore
+            override val defaultViewModelProviderFactory: ViewModelProvider.Factory = IOSViewModelFactory
+            override val defaultViewModelCreationExtras: CreationExtras = CreationExtras.Empty
         }
     }
 
