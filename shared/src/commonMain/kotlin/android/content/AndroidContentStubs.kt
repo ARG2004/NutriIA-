@@ -8,6 +8,7 @@ interface SharedPreferences {
         fun putInt(key: String, value: Int): Editor
         fun putBoolean(key: String, value: Boolean): Editor
         fun remove(key: String): Editor
+        fun clear(): Editor
         fun apply()
         fun commit(): Boolean
     }
@@ -36,6 +37,7 @@ open class Context {
             override fun putInt(key: String, value: Int): SharedPreferences.Editor { map[key] = value; return this }
             override fun putBoolean(key: String, value: Boolean): SharedPreferences.Editor { map[key] = value; return this }
             override fun remove(key: String): SharedPreferences.Editor { map.remove(key); return this }
+            override fun clear(): SharedPreferences.Editor { map.clear(); return this }
             override fun apply() {}
             override fun commit(): Boolean = true
         }

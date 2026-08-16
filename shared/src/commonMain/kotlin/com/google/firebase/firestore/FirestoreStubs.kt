@@ -38,7 +38,10 @@ class QuerySnapshot(
     val documents: List<DocumentSnapshot> = emptyList()
 ) : Iterable<DocumentSnapshot> {
     override fun iterator(): Iterator<DocumentSnapshot> = documents.iterator()
+    val isEmpty: Boolean get() = documents.isEmpty()
+    val isNotEmpty: Boolean get() = documents.isNotEmpty()
     fun isEmpty(): Boolean = documents.isEmpty()
+    fun isNotEmpty(): Boolean = documents.isNotEmpty()
     fun size(): Int = documents.size
 }
 

@@ -315,7 +315,7 @@ class RepositorioLogin(private val context: Context) {
                 )
             ).await()
             true
-        } catch (e: java.lang.Exception) {
+        } catch (e: Throwable) {
             android.util.Log.e("RepositorioLogin", "Error al eliminar datos de verificación ARCO: ${e.message}")
             false
         }
