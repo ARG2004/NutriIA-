@@ -77,7 +77,7 @@ jobs:
           fi
 
       - name: 7. Build iOS Multiplatform Framework
-        run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace -DKONAN_ARCH=arm64
+        run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace --no-daemon -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC" -DKONAN_ARCH=arm64
 
       - name: 8. Package & Upload iOS IPA to TestFlight (If Configured)
         env:
