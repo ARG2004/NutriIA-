@@ -341,38 +341,57 @@ class RepositorioLogin {
     suspend fun guardarHijo(uid: String, child: ChildProfile): Boolean {
         return try {
             val childId = child.id.ifBlank { generateUUID() }
+            val datosHijo = mapOf(
+                "id"               to childId,
+                "name"             to child.name,
+                "nombre"           to child.name,
+                "nombreHijo"       to child.name,
+                "birthDate"        to child.birthDate,
+                "fechaNacimiento"  to child.birthDate,
+                "weightKg"         to child.weightKg,
+                "peso"             to child.weightKg,
+                "heightCm"         to child.heightCm,
+                "talla"            to child.heightCm,
+                "hasAllergies"     to child.hasAllergies,
+                "allergiesDetail"  to child.allergiesDetail,
+                "hasConditions"    to child.hasConditions,
+                "conditionsDetail" to child.conditionsDetail,
+                "sexo"             to (child.sexo?.name ?: ""),
+                "nivelIngreso"     to child.nivelIngreso.name,
+                "region"           to child.region.name,
+                "creadoEn"         to FechaUtils.fechaHoraActual(),
+                "fechaCreacion"    to FechaUtils.fechaActual(),
+                "horaCreacion"     to FechaUtils.horaActual()
+            )
             db.collection("usuarios").document(uid)
                 .collection("hijos").document(childId)
-                .set(mapOf(
-                    "id"               to childId,
-                    "name"             to child.name,
-                    "birthDate"        to child.birthDate,
-                    "weightKg"         to child.weightKg,
-                    "heightCm"         to child.heightCm,
-                    "hasAllergies"     to child.hasAllergies,
-                    "allergiesDetail"  to child.allergiesDetail,
-                    "hasConditions"    to child.hasConditions,
-                    "conditionsDetail" to child.conditionsDetail,
-                    "sexo"             to (child.sexo?.name ?: ""),
-                    "nivelIngreso"     to child.nivelIngreso.name,
-                    "region"           to child.region.name,
-                    "creadoEn"         to FechaUtils.fechaHoraActual(),
-                    "fechaCreacion"    to FechaUtils.fechaActual(),
-                    "horaCreacion"     to FechaUtils.horaActual()
-                )).await()
+                .set(datosHijo).await()
+
+            // Sincronizar nombreHijo en el documento principal del usuario
+            try {
+                db.collection("usuarios").document(uid).update("nombreHijo", child.name).await()
+            } catch (_: Exception) {}
+
             true
         } catch (e: Exception) { false }
     }
 
     suspend fun cargarHijos(uid: String): List<ChildProfile> {
         return try {
+            val parentDoc = try {
+                db.collection("usuarios").document(uid).get().await()
+            } catch (_: Exception) { null }
+            val fallbackChildName = parentDoc?.getString("nombreHijo")?.takeIf { it.isNotBlank() } ?: "Mi Pequeño/a"
+
             val docs = db.collection("usuarios").document(uid)
                 .collection("hijos").get().await().documents
-            docs.mapNotNull { doc ->
-                val name = doc.getString("name") 
-                    ?: doc.getString("nombre") 
-                    ?: doc.getString("nombreHijo") 
-                    ?: return@mapNotNull null
+
+            val hijosList = docs.mapNotNull { doc ->
+                val name = doc.getString("name")
+                    ?: doc.getString("nombre")
+                    ?: doc.getString("nombreHijo")
+                    ?: doc.getString("childName")
+                    ?: fallbackChildName
                 
                 val weight = doc.getString("weightKg") 
                     ?: doc.getDouble("weightKg")?.toString() 
@@ -410,6 +429,26 @@ class RepositorioLogin {
                         ?.let { runCatching { RegionMexico.valueOf(it) }.getOrDefault(RegionMexico.CENTRO) }
                         ?: RegionMexico.CENTRO
                 )
+            }
+
+            if (hijosList.isNotEmpty()) {
+                hijosList
+            } else if (parentDoc != null && !parentDoc.getString("nombreHijo").isNullOrBlank()) {
+                // Fallback para usuarios antiguos que tienen nombreHijo en el doc principal
+                val nombreHijo = parentDoc.getString("nombreHijo")!!.trim()
+                listOf(
+                    ChildProfile(
+                        id = generateUUID(),
+                        name = nombreHijo,
+                        birthDate = parentDoc.getString("birthDate") ?: parentDoc.getString("fechaNacimiento") ?: "",
+                        weightKg = parentDoc.getString("weightKg") ?: parentDoc.getString("peso") ?: "",
+                        heightCm = parentDoc.getString("heightCm") ?: parentDoc.getString("talla") ?: "",
+                        nivelIngreso = NivelIngreso.BASICO,
+                        region = RegionMexico.CENTRO
+                    )
+                )
+            } else {
+                emptyList()
             }
         } catch (e: Exception) { 
             com.example.nutriia.platform.Log.e("LoginRepository", "Error cargando hijos de $uid: ${e.message}")

@@ -499,7 +499,9 @@ fun NutriIAiOSApp() {
                     teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
                 }
                 else -> {
-                    currentScreen = if (primeraVez) Screen.ACCESIBILIDAD_INICIAL else Screen.LOGIN
+                    if (currentScreen == Screen.LOGIN || currentScreen == Screen.ACCESIBILIDAD_INICIAL) {
+                        currentScreen = if (primeraVez) Screen.ACCESIBILIDAD_INICIAL else Screen.LOGIN
+                    }
                 }
             }
             if (rol != "mama_primeriza") {
@@ -514,6 +516,16 @@ fun NutriIAiOSApp() {
         if (s is LoginUiState.Exito) {
             if (esPantallaModuloInterno(currentScreen)) return@LaunchedEffect
             showLoginSplash = true
+
+            // Sincronizar hijos y sesión de inmediato para evitar que el quiz aparezca erróneamente
+            children = s.hijos
+            if (s.hijos.isNotEmpty()) {
+                activeChildIndex = 0
+            }
+            saltarAccesibilidadEnQuiz = true
+            SessionManager.guardarSesion(loginViewModel.uidUsuario)
+            SessionManager.guardarUltimoUid(loginViewModel.uidUsuario)
+
             delay(120)
 
             val yaActivoHuella = SessionManager.huellaYaConfirmada() || SessionManager.esBiometricoActivo()
@@ -541,8 +553,6 @@ fun NutriIAiOSApp() {
                         }
                     }
                     else -> {
-                        children = s.hijos
-                        saltarAccesibilidadEnQuiz = true
                         currentScreen = if (s.hijos.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
                         teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
                     }
@@ -550,7 +560,6 @@ fun NutriIAiOSApp() {
             }
             delay(1380)
             showLoginSplash = false
-            loginViewModel.resetEstado()
         }
     }
 
@@ -969,6 +978,9 @@ fun NutriIAiOSApp() {
                         uid = loginViewModel.uidUsuario,
                         rol = loginViewModel.rolUsuario,
                         onActivado = {
+                            SessionManager.marcarBiometricoActivo(activo = true)
+                            SessionManager.marcarHuellaConfirmada()
+                            SessionManager.guardarUltimoUid(loginViewModel.uidUsuario)
                             val rol = loginViewModel.rolUsuario
                             currentScreen = when (rol) {
                                 "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
@@ -978,6 +990,8 @@ fun NutriIAiOSApp() {
                             }
                         },
                         onOmitido = {
+                            SessionManager.marcarActivacionHuellaMostrada()
+                            SessionManager.guardarUltimoUid(loginViewModel.uidUsuario)
                             val rol = loginViewModel.rolUsuario
                             currentScreen = when (rol) {
                                 "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST

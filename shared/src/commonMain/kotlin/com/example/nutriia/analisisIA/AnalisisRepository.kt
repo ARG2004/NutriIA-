@@ -70,6 +70,7 @@ class AnalisisRepository {
 
             val visionModels = listOf(
                 "qwen/qwen3.6-27b",
+                "openai/gpt-oss-120b",
                 "llama-3.2-11b-vision-preview",
                 "llama-3.2-90b-vision-preview"
             )
@@ -102,14 +103,20 @@ class AnalisisRepository {
 
                 val result = PlatformHttp.postJson(
                     url = "https://api.groq.com/openai/v1/chat/completions",
-                    headers = mapOf("Authorization" to "Bearer $apiKey", "User-Agent" to "NutriIA-iOS/2.2.7"),
+                    headers = mapOf(
+                        "Authorization" to "Bearer $apiKey",
+                        "Content-Type" to "application/json; charset=utf-8"
+                    ),
                     jsonBody = payload,
                     timeoutMs = 25000L
                 )
 
                 if (result.isSuccess) {
-                    rawResponse = result.getOrNull()
-                    if (!rawResponse.isNullOrBlank()) break
+                    val body = result.getOrNull()
+                    if (!body.isNullOrBlank()) {
+                        rawResponse = body
+                        break
+                    }
                 }
             }
 
@@ -164,17 +171,7 @@ class AnalisisRepository {
                 }
             """.trimIndent()
 
-            val payload = buildGroqRequest("llama-3.3-70b-versatile", prompt, 250)
-            val result = PlatformHttp.postJson(
-                url = "https://api.groq.com/openai/v1/chat/completions",
-                headers = mapOf("Authorization" to "Bearer $apiKey"),
-                jsonBody = payload,
-                timeoutMs = 20000L
-            )
-
-            if (result.isFailure) return Result.success(NutritionInfo())
-
-            val rawBody = result.getOrNull() ?: ""
+            val rawBody = queryGroqText(prompt, 250) ?: return Result.success(NutritionInfo())
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
             val obj = json.parseToJsonElement(cleaned).jsonObject
@@ -205,7 +202,6 @@ class AnalisisRepository {
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
         return try {
-            val apiKey = PlatformConfig.groqApiKey
             val prompt = """
                 Eres un pediatra nutriólogo con experiencia clínica en México.
                 Guías de referencia: NOM-043-SSA2, AAP, OMS.
@@ -229,19 +225,9 @@ class AnalisisRepository {
                 }
             """.trimIndent()
 
-            val payload = buildGroqRequest("llama-3.3-70b-versatile", prompt, 600)
-            val result = PlatformHttp.postJson(
-                url = "https://api.groq.com/openai/v1/chat/completions",
-                headers = mapOf("Authorization" to "Bearer $apiKey"),
-                jsonBody = payload,
-                timeoutMs = 25000L
-            )
+            val rawBody = queryGroqText(prompt, 600)
+                ?: return Result.failure(Exception("Error al comunicarse con el asistente de análisis pediátrico"))
 
-            if (result.isFailure) {
-                return Result.failure(Exception("Error en análisis pediátrico: ${result.exceptionOrNull()?.message}"))
-            }
-
-            val rawBody = result.getOrNull() ?: ""
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
             val obj = json.parseToJsonElement(cleaned).jsonObject
@@ -275,7 +261,6 @@ class AnalisisRepository {
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
         return try {
-            val apiKey = PlatformConfig.groqApiKey
             val semanasText = if (perfil != null) "${perfil.semanas} semanas de gestación" else "Gestación"
             val condicionesText = if (perfil != null && perfil.condiciones.isNotEmpty()) perfil.condiciones.joinToString(", ") else "ninguna"
 
@@ -301,19 +286,9 @@ class AnalisisRepository {
                 }
             """.trimIndent()
 
-            val payload = buildGroqRequest("llama-3.3-70b-versatile", prompt, 600)
-            val result = PlatformHttp.postJson(
-                url = "https://api.groq.com/openai/v1/chat/completions",
-                headers = mapOf("Authorization" to "Bearer $apiKey"),
-                jsonBody = payload,
-                timeoutMs = 25000L
-            )
+            val rawBody = queryGroqText(prompt, 600)
+                ?: return Result.failure(Exception("Error al comunicarse con el asistente de análisis gestacional"))
 
-            if (result.isFailure) {
-                return Result.failure(Exception("Error en análisis de embarazo: ${result.exceptionOrNull()?.message}"))
-            }
-
-            val rawBody = result.getOrNull() ?: ""
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
             val obj = json.parseToJsonElement(cleaned).jsonObject
@@ -406,6 +381,36 @@ class AnalisisRepository {
     // ══════════════════════════════════════════════════════════════════════════
     // HELPERS PRIVADOS
     // ══════════════════════════════════════════════════════════════════════════
+
+    private suspend fun queryGroqText(prompt: String, maxTokens: Int): String? {
+        val apiKey = PlatformConfig.groqApiKey
+        if (apiKey.isBlank()) return null
+
+        val candidateModels = listOf(
+            "qwen/qwen3.6-27b",
+            "openai/gpt-oss-20b",
+            "groq/compound-mini",
+            "llama-3.3-70b-versatile"
+        )
+
+        for (model in candidateModels) {
+            val payload = buildGroqRequest(model, prompt, maxTokens)
+            val result = PlatformHttp.postJson(
+                url = "https://api.groq.com/openai/v1/chat/completions",
+                headers = mapOf(
+                    "Authorization" to "Bearer $apiKey",
+                    "Content-Type" to "application/json; charset=utf-8"
+                ),
+                jsonBody = payload,
+                timeoutMs = 25000L
+            )
+            if (result.isSuccess) {
+                val body = result.getOrNull()
+                if (!body.isNullOrBlank()) return body
+            }
+        }
+        return null
+    }
 
     private fun buildGroqRequest(model: String, prompt: String, maxTokens: Int): String {
         return buildJsonObject {

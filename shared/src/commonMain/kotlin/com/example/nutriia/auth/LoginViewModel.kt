@@ -179,39 +179,33 @@ class LoginViewModel : ViewModel() {
         BiometricHelper.prompt(
             activity = activity,
             onSuccess = {
-                val uidLocal = SessionManager.obtenerUid()
+                val uidLocal = SessionManager.obtenerUltimoUid()
+                    ?: SessionManager.obtenerUid()
+                    ?: repositorio.obtenerUsuarioActual()?.uid
+
                 if (uidLocal != null) {
                     viewModelScope.launch {
+                        _estado.value = LoginUiState.Loading
                         val rol = repositorio.obtenerRol(uidLocal)
                         val hijos = if (rol == "padre") repositorio.cargarHijos(uidLocal) else emptyList()
+                        SessionManager.guardarSesion(uidLocal)
                         cargarDatosSesion(uidLocal, rol, "")
                         _estado.value = LoginUiState.Exito(rol = rol, hijos = hijos)
                         onExito(uidLocal)
                     }
                 } else {
-                    val usuarioFirebase = repositorio.obtenerUsuarioActual()
-                    if (usuarioFirebase != null) {
-                        viewModelScope.launch {
-                            val rol = repositorio.obtenerRol(usuarioFirebase.uid)
-                            val hijos = if (rol == "padre") repositorio.cargarHijos(usuarioFirebase.uid) else emptyList()
-                            SessionManager.guardarSesion(usuarioFirebase.uid)
-                            cargarDatosSesion(usuarioFirebase.uid, rol, usuarioFirebase.email ?: "")
-                            _estado.value = LoginUiState.Exito(rol = rol, hijos = hijos)
-                            onExito(usuarioFirebase.uid)
-                        }
-                    } else {
-                        _estado.value = LoginUiState.Error(
-                            "Primero inicia sesión con tu correo y contraseña para activar el acceso con huella."
-                        )
-                        onFail()
-                    }
+                    _estado.value = LoginUiState.Error(
+                        "Primero inicia sesión con tu correo y contraseña para activar el acceso con huella."
+                    )
+                    onFail()
                 }
             },
-            onFail = { }
+            onFail = { onFail() }
         )
     }
 
     fun olvidarDispositivo(context: Any? = null) {
+        SessionManager.olvidarBiometriaCompleta()
         repositorio.cerrarSesionBiometrica()
     }
 }

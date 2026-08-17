@@ -31,6 +31,7 @@ actual object PlatformHttp {
             )
             request.setHTTPMethod("POST")
             request.setValue("application/json; charset=utf-8", forHTTPHeaderField = "Content-Type")
+            request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 NutriIA/2.2.7", forHTTPHeaderField = "User-Agent")
             headers.forEach { (k, v) -> request.setValue(v, forHTTPHeaderField = k) }
 
             val bodyBytes = jsonBody.encodeToByteArray()
@@ -79,6 +80,7 @@ actual object PlatformHttp {
                 timeoutInterval = timeoutMs / 1000.0
             )
             request.setHTTPMethod("GET")
+            request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 NutriIA/2.2.7", forHTTPHeaderField = "User-Agent")
             headers.forEach { (k, v) -> request.setValue(v, forHTTPHeaderField = k) }
 
             val session = NSURLSession.sharedSession

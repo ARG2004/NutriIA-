@@ -103,30 +103,48 @@ class ChatbotRepository {
                 }
             }
 
-            val requestBodyJson = buildJsonObject {
-                put("model", "llama-3.1-8b-instant")
-                put("messages", messagesArray)
-                put("max_tokens", 500)
-                put("temperature", 0.5)
-            }.toString()
-
-            val responseResult = PlatformHttp.postJson(
-                url = "https://api.groq.com/openai/v1/chat/completions",
-                headers = mapOf(
-                    "Authorization" to "Bearer $apiKey",
-                    "Content-Type" to "application/json; charset=utf-8"
-                ),
-                jsonBody = requestBodyJson,
-                timeoutMs = 30000L
+            val candidateModels = listOf(
+                "qwen/qwen3.6-27b",
+                "openai/gpt-oss-20b",
+                "groq/compound-mini",
+                "llama-3.3-70b-versatile"
             )
 
-            if (responseResult.isFailure) {
-                val err = responseResult.exceptionOrNull()
-                Log.e(TAG, "Error from Groq: ${err?.message}")
+            var rawBody: String? = null
+
+            for (model in candidateModels) {
+                val requestBodyJson = buildJsonObject {
+                    put("model", model)
+                    put("messages", messagesArray)
+                    put("max_tokens", 500)
+                    put("temperature", 0.5)
+                }.toString()
+
+                val responseResult = PlatformHttp.postJson(
+                    url = "https://api.groq.com/openai/v1/chat/completions",
+                    headers = mapOf(
+                        "Authorization" to "Bearer $apiKey",
+                        "Content-Type" to "application/json; charset=utf-8"
+                    ),
+                    jsonBody = requestBodyJson,
+                    timeoutMs = 30000L
+                )
+
+                if (responseResult.isSuccess) {
+                    val body = responseResult.getOrNull()
+                    if (!body.isNullOrBlank()) {
+                        rawBody = body
+                        break
+                    }
+                } else {
+                    Log.w(TAG, "Fallo modelo $model: ${responseResult.exceptionOrNull()?.message}")
+                }
+            }
+
+            if (rawBody.isNullOrBlank()) {
                 return@withContext Result.failure(Exception("Hubo un error comunicándose con el asistente."))
             }
 
-            val rawBody = responseResult.getOrNull() ?: ""
             val jsonRoot = json.parseToJsonElement(rawBody).jsonObject
             var content = jsonRoot["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
                 ?.get("message")?.jsonObject
