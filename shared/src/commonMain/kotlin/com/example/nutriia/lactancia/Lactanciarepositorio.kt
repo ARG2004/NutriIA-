@@ -9,6 +9,11 @@ import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.toLocalDateTime
 
 class LactanciaRepository {
 
@@ -115,6 +120,31 @@ class LactanciaRepository {
         }
     }
 
+    suspend fun getLastFeedings(childId: String, limit: Long = 10, ownerUid: String? = null): Result<List<FeedingLog>> {
+        return try {
+            val snapshot = feedingCol(childId, ownerUid).get()
+            val logs = snapshot.documents.mapNotNull { doc ->
+                runCatching {
+                    val data = doc.data<Map<String, Any?>>()
+                    FeedingLog(
+                        id = data["id"] as? String ?: doc.id,
+                        childId = data["childId"] as? String ?: "",
+                        userId = data["userId"] as? String ?: "",
+                        date = data["date"] as? String ?: "",
+                        startTime = data["startTime"] as? String ?: "",
+                        durationMinutes = (data["durationMinutes"] as? Long)?.toInt() ?: 0,
+                        side = data["side"] as? String ?: BreastSide.LEFT.name,
+                        formulaMl = (data["formulaMl"] as? Long)?.toInt() ?: 0,
+                        notes = data["notes"] as? String ?: ""
+                    )
+                }.getOrNull()
+            }.sortedByDescending { it.date + it.startTime }.take(limit.toInt())
+            Result.success(logs)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getDailySummary(childId: String, date: String, ownerUid: String? = null): Result<DailyFeedingSummary> {
         return try {
             val snapshot = feedingCol(childId, ownerUid)
@@ -144,6 +174,24 @@ class LactanciaRepository {
                 avgIntervalMinutes = calcAvgInterval(logs)
             )
             Result.success(summary)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getWeeklySummaries(childId: String, ownerUid: String? = null): Result<List<DailyFeedingSummary>> {
+        return try {
+            val summaries = mutableListOf<DailyFeedingSummary>()
+            val now = Clock.System.now()
+            val tz = TimeZone.currentSystemDefault()
+
+            for (i in 0 until 7) {
+                val instant = now.minus(i, DateTimeUnit.DAY, tz)
+                val localDate = instant.toLocalDateTime(tz).date
+                val dateStr = "${localDate.year}-${localDate.monthNumber.toString().padStart(2, '0')}-${localDate.dayOfMonth.toString().padStart(2, '0')}"
+                getDailySummary(childId, dateStr, ownerUid).getOrNull()?.let { summaries.add(it) }
+            }
+            Result.success(summaries.reversed())
         } catch (e: Exception) {
             Result.failure(e)
         }

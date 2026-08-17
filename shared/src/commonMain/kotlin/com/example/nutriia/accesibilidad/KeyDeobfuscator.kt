@@ -1,16 +1,25 @@
 package com.example.nutriia.accesibilidad
 
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+
 object KeyDeobfuscator {
 
     private val MASK = byteArrayOf(0x57, 0x39, 0x41, 0x6E, 0x75, 0x74, 0x72, 0x49, 0x41, 0x21, 0x39, 0x38)
 
+    @OptIn(ExperimentalEncodingApi::class)
     fun deobfuscate(key: String): String {
         if (key.isBlank() || key == "TU_CLAVE_GROQ_AQUI") return ""
         val trimmed = key.trim()
         if (trimmed.startsWith("gsk_")) return trimmed
 
         return try {
-            val decodedBytes = decodeBase64Bytes(trimmed)
+            val decodedBytes = try {
+                Base64.decode(trimmed)
+            } catch (_: Exception) {
+                decodeBase64Bytes(trimmed)
+            }
+
             if (decodedBytes.isEmpty()) return trimmed
 
             val xorResult = ByteArray(decodedBytes.size)
