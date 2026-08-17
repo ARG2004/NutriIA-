@@ -3,6 +3,7 @@ package com.example.nutriia.firebase.firestore
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 suspend fun <T> T.await(): T = this
@@ -37,15 +38,22 @@ class CollectionReference(
     fun orderBy(field: String, direction: Direction = Direction.ASCENDING): CollectionReference = this
     fun whereEqualTo(field: String, value: Any?): CollectionReference = this
 
-    val snapshots: Flow<QuerySnapshot> get() = delegate.snapshots.map { QuerySnapshot(it.documents.map { doc -> DocumentSnapshot(doc.id, doc) }) }
+    val snapshots: Flow<QuerySnapshot>
+        get() = delegate.snapshots
+            .map { QuerySnapshot(it.documents.map { doc -> DocumentSnapshot(doc.id, doc) }) }
+            .catch { emit(QuerySnapshot(emptyList())) }
 
     fun addSnapshotListener(listener: (QuerySnapshot?, Exception?) -> Unit): ListenerRegistration {
         return ListenerRegistration()
     }
 
     suspend fun get(vararg args: Any?): QuerySnapshot {
-        val result = delegate.get()
-        return QuerySnapshot(result.documents.map { DocumentSnapshot(it.id, it) })
+        return try {
+            val result = delegate.get()
+            QuerySnapshot(result.documents.map { DocumentSnapshot(it.id, it) })
+        } catch (_: Throwable) {
+            QuerySnapshot(emptyList())
+        }
     }
 }
 
@@ -55,46 +63,61 @@ class DocumentReference(
     val id: String
 ) {
     suspend fun get(vararg args: Any?): DocumentSnapshot {
-        val snap = delegate.get()
-        return DocumentSnapshot(id, snap)
+        return try {
+            val snap = delegate.get()
+            DocumentSnapshot(id, snap)
+        } catch (_: Throwable) {
+            DocumentSnapshot(id)
+        }
     }
 
     suspend fun set(data: Any?): Unit {
-        if (data != null) {
-            delegate.set(data)
-        }
+        try {
+            if (data != null) {
+                delegate.set(data)
+            }
+        } catch (_: Throwable) {}
     }
 
     suspend fun update(data: Map<String, Any?>): Unit {
-        val nonNullData = data.filterValues { it != null }
-        if (nonNullData.isNotEmpty()) {
-            delegate.update(nonNullData)
-        }
+        try {
+            val nonNullData = data.filterValues { it != null }
+            if (nonNullData.isNotEmpty()) {
+                delegate.update(nonNullData)
+            }
+        } catch (_: Throwable) {}
     }
 
     suspend fun update(field: String, value: Any?, vararg more: Any?): Unit {
-        val map = mutableMapOf<String, Any?>()
-        if (value != null) map[field] = value
-        var i = 0
-        while (i < more.size - 1) {
-            val k = more[i] as? String
-            val v = more[i + 1]
-            if (k != null && v != null) map[k] = v
-            i += 2
-        }
-        if (map.isNotEmpty()) {
-            delegate.update(map)
-        }
+        try {
+            val map = mutableMapOf<String, Any?>()
+            if (value != null) map[field] = value
+            var i = 0
+            while (i < more.size - 1) {
+                val k = more[i] as? String
+                val v = more[i + 1]
+                if (k != null && v != null) map[k] = v
+                i += 2
+            }
+            if (map.isNotEmpty()) {
+                delegate.update(map)
+            }
+        } catch (_: Throwable) {}
     }
 
     suspend fun delete(): Unit {
-        delegate.delete()
+        try {
+            delegate.delete()
+        } catch (_: Throwable) {}
     }
 
     fun collection(subPath: String): CollectionReference =
         CollectionReference(delegate.collection(subPath), "$path/$subPath")
 
-    val snapshots: Flow<DocumentSnapshot> get() = delegate.snapshots.map { DocumentSnapshot(id, it) }
+    val snapshots: Flow<DocumentSnapshot>
+        get() = delegate.snapshots
+            .map { DocumentSnapshot(id, it) }
+            .catch { emit(DocumentSnapshot(id)) }
 
     fun addSnapshotListener(listener: (DocumentSnapshot?, Exception?) -> Unit): ListenerRegistration {
         return ListenerRegistration()

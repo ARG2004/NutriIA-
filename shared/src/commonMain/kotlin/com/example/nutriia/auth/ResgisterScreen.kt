@@ -191,7 +191,7 @@ fun RegisterTypeScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(52.dp))
+            Spacer(Modifier.height(68.dp))
             Row(Modifier.fillMaxWidth()) {
                 IconButton(
                     onClick  = {
@@ -415,16 +415,32 @@ private fun AccountTypeCard(
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = RegDarkGreen)
-                    Spacer(Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        title,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        color = RegDarkGreen,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(Modifier.width(6.dp))
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(tagColor.copy(alpha = 0.12f))
                             .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Text(tag, fontSize = 10.sp, color = tagColor, fontWeight = FontWeight.Bold)
+                        Text(
+                            tag,
+                            fontSize = 10.sp,
+                            color = tagColor,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
                 Spacer(Modifier.height(4.dp))

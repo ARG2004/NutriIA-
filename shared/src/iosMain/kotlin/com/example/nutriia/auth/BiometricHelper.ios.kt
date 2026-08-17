@@ -7,6 +7,7 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import platform.Foundation.NSError
 import platform.LocalAuthentication.LAContext
+import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthentication
 import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthenticationWithBiometrics
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
@@ -18,7 +19,9 @@ actual object BiometricHelper {
             val laContext = LAContext()
             memScoped {
                 val errorPtr = alloc<kotlinx.cinterop.ObjCObjectVar<NSError?>>()
-                laContext.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, errorPtr.ptr)
+                val hasBiometrics = laContext.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, errorPtr.ptr)
+                if (hasBiometrics) true
+                else laContext.canEvaluatePolicy(LAPolicyDeviceOwnerAuthentication, errorPtr.ptr)
             }
         } catch (_: Throwable) {
             false
@@ -32,8 +35,9 @@ actual object BiometricHelper {
     ) {
         try {
             val laContext = LAContext()
+            laContext.localizedCancelTitle = "Cancelar"
             laContext.evaluatePolicy(
-                policy = LAPolicyDeviceOwnerAuthenticationWithBiometrics,
+                policy = LAPolicyDeviceOwnerAuthentication,
                 localizedReason = "Accede a tu cuenta de NutrIA de forma segura"
             ) { success, _ ->
                 dispatch_async(dispatch_get_main_queue()) {
