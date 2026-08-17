@@ -7,6 +7,9 @@ import platform.Foundation.NSLocale
 import platform.Speech.*
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
+import platform.darwin.dispatch_after
+import platform.darwin.dispatch_time
+import platform.darwin.DISPATCH_TIME_NOW
 
 actual class PlatformVoiceInput actual constructor() {
 
@@ -14,6 +17,7 @@ actual class PlatformVoiceInput actual constructor() {
     private var speechRecognizer: SFSpeechRecognizer? = null
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
     private var recognitionTask: SFSpeechRecognitionTask? = null
+    private var currentSilenceToken: Long = 0L
 
     actual fun isAvailable(): Boolean {
         return try {
@@ -33,7 +37,7 @@ actual class PlatformVoiceInput actual constructor() {
         try {
             stopListening()
 
-            // 1. Solicitar permisos de reconocimiento de voz y micrófono si aún no se han otorgado
+            // 1. Solicitar permisos de reconocimiento de voz y micrófono
             SFSpeechRecognizer.requestAuthorization { authStatus ->
                 dispatch_async(dispatch_get_main_queue()) {
                     if (authStatus != SFSpeechRecognizerAuthorizationStatus.SFSpeechRecognizerAuthorizationStatusAuthorized) {
@@ -102,18 +106,39 @@ actual class PlatformVoiceInput actual constructor() {
             engine.prepare()
             engine.startAndReturnError(null)
 
+            var lastTranscription = ""
+
             recognitionTask = recognizer.recognitionTaskWithRequest(request) { result, error ->
                 if (result != null) {
                     val text = result.bestTranscription.formattedString
-                    if (result.isFinal()) {
-                        onFinalResult(text)
-                    } else {
+                    lastTranscription = text
+
+                    dispatch_async(dispatch_get_main_queue()) {
                         onPartialResult(text)
+
+                        if (result.isFinal()) {
+                            currentSilenceToken++
+                            onFinalResult(text)
+                            stopListening()
+                        } else if (text.isNotBlank()) {
+                            // Detector de silencio para iOS: si no hay más voz por 1.3 segundos, finalizar
+                            val thisToken = ++currentSilenceToken
+                            val delayNanoseconds = (1.3 * 1_000_000_000).toLong()
+                            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayNanoseconds), dispatch_get_main_queue()) {
+                                if (thisToken == currentSilenceToken && lastTranscription.isNotBlank()) {
+                                    val finalPhrase = lastTranscription
+                                    stopListening()
+                                    onFinalResult(finalPhrase)
+                                }
+                            }
+                        }
                     }
                 }
                 if (error != null) {
-                    onError(error.localizedDescription ?: "Error en el reconocimiento")
-                    stopListening()
+                    dispatch_async(dispatch_get_main_queue()) {
+                        onError(error.localizedDescription ?: "Error en el reconocimiento")
+                        stopListening()
+                    }
                 }
             }
         } catch (t: Throwable) {
@@ -124,6 +149,7 @@ actual class PlatformVoiceInput actual constructor() {
 
     actual fun stopListening() {
         try {
+            currentSilenceToken++
             audioEngine?.stop()
             audioEngine?.inputNode?.removeTapOnBus(0u)
             audioEngine = null

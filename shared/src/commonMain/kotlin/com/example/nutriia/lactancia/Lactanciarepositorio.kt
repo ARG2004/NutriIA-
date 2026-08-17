@@ -67,24 +67,29 @@ class LactanciaRepository {
 
     fun observeFeedingsByDate(childId: String, date: String, ownerUid: String? = null): Flow<List<FeedingLog>> {
         return try {
+            val dateSlash = com.example.nutriia.util.DateMigrationHelper.convertYyyyMmDdToDdMmYyyy(date)
+            val dateIso = com.example.nutriia.util.DateMigrationHelper.convertDdMmYyyyToYyyyMmDd(date)
+
             feedingCol(childId, ownerUid)
-                .where { "date".equalTo(date) }
                 .snapshots
                 .map { snapshot ->
                     snapshot.documents.mapNotNull { doc ->
                         runCatching {
                             val data = doc.data<Map<String, Any?>>()
-                            FeedingLog(
-                                id = data["id"] as? String ?: doc.id,
-                                childId = data["childId"] as? String ?: "",
-                                userId = data["userId"] as? String ?: "",
-                                date = data["date"] as? String ?: "",
-                                startTime = data["startTime"] as? String ?: "",
-                                durationMinutes = (data["durationMinutes"] as? Long)?.toInt() ?: 0,
-                                side = data["side"] as? String ?: BreastSide.LEFT.name,
-                                formulaMl = (data["formulaMl"] as? Long)?.toInt() ?: 0,
-                                notes = data["notes"] as? String ?: ""
-                            )
+                            val docDate = data["date"] as? String ?: ""
+                            if (docDate == date || docDate == dateSlash || docDate == dateIso) {
+                                FeedingLog(
+                                    id = data["id"] as? String ?: doc.id,
+                                    childId = data["childId"] as? String ?: "",
+                                    userId = data["userId"] as? String ?: "",
+                                    date = docDate,
+                                    startTime = data["startTime"] as? String ?: "",
+                                    durationMinutes = (data["durationMinutes"] as? Long)?.toInt() ?: (data["durationMinutes"] as? Number)?.toInt() ?: 0,
+                                    side = data["side"] as? String ?: BreastSide.LEFT.name,
+                                    formulaMl = (data["formulaMl"] as? Long)?.toInt() ?: (data["formulaMl"] as? Number)?.toInt() ?: 0,
+                                    notes = data["notes"] as? String ?: ""
+                                )
+                            } else null
                         }.getOrNull()
                     }.sortedByDescending { it.startTime }
                 }

@@ -62,10 +62,16 @@ class NutrienteRepository {
 
     fun observarPorHijoYFecha(childId: String?, fecha: String): Flow<List<RegistroNutrientes>> {
         val uid = auth.currentUser?.uid ?: return flowOf(emptyList())
+        val dateSlash = com.example.nutriia.util.DateMigrationHelper.convertYyyyMmDdToDdMmYyyy(fecha)
+        val dateIso = com.example.nutriia.util.DateMigrationHelper.convertDdMmYyyyToYyyyMmDd(fecha)
+
         return try {
-            coleccion(childId).where { "fecha".equalTo(fecha) }.snapshots.map { snapshot ->
+            coleccion(childId).snapshots.map { snapshot ->
                 snapshot.documents.mapNotNull { doc ->
-                    runCatching { RegistroNutrientes.fromMap(doc.data()) }.getOrNull()
+                    runCatching {
+                        val reg = RegistroNutrientes.fromMap(doc.data())
+                        if (reg.fecha == fecha || reg.fecha == dateSlash || reg.fecha == dateIso) reg else null
+                    }.getOrNull()
                 }
             }
         } catch (e: Exception) {
@@ -75,10 +81,16 @@ class NutrienteRepository {
 
     suspend fun obtenerPorHijoYFecha(childId: String?, fecha: String): List<RegistroNutrientes> {
         val uid = auth.currentUser?.uid ?: return emptyList()
+        val dateSlash = com.example.nutriia.util.DateMigrationHelper.convertYyyyMmDdToDdMmYyyy(fecha)
+        val dateIso = com.example.nutriia.util.DateMigrationHelper.convertDdMmYyyyToYyyyMmDd(fecha)
+
         return try {
-            val snapshot = coleccion(childId).where { "fecha".equalTo(fecha) }.get()
+            val snapshot = coleccion(childId).get()
             snapshot.documents.mapNotNull { doc ->
-                runCatching { RegistroNutrientes.fromMap(doc.data()) }.getOrNull()
+                runCatching {
+                    val reg = RegistroNutrientes.fromMap(doc.data())
+                    if (reg.fecha == fecha || reg.fecha == dateSlash || reg.fecha == dateIso) reg else null
+                }.getOrNull()
             }
         } catch (e: Exception) {
             emptyList()

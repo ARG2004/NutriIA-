@@ -305,6 +305,18 @@ fun NutriIAiOSApp() {
         }
     }
 
+    // ─── Sincronizar Perfil de Hijo Activo con NutriSharedViewModel ──────
+    LaunchedEffect(activeChild?.id) {
+        activeChild?.id?.let { id ->
+            if (id.isNotBlank()) {
+                val uid = loginViewModel.uidUsuario.ifBlank {
+                    com.example.nutriia.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                }
+                if (uid.isNotBlank()) sharedVm.cargarPerfil(uid, id)
+            }
+        }
+    }
+
     // ─── Persistir Última Pantalla Interna ────────────────────────────────
     LaunchedEffect(currentScreen) {
         if (esPantallaModuloInterno(currentScreen)) {
