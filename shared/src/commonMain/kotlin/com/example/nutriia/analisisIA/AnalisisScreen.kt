@@ -197,13 +197,38 @@ fun AnalisisScreen(
                         perfilEmbarazo = perfilEmbarazo,
                         isEmbarazo     = esModoEmbarazo,
                         onTomarFoto    = {
-                            viewModel.abrirCamara()
+                            com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
+                                if (base64.isNotBlank()) {
+                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                }
+                            }
+                        },
+                        onSeleccionarGaleria = {
+                            com.example.nutriia.platform.PlatformImagePicker.launchGallery { base64 ->
+                                if (base64.isNotBlank()) {
+                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                }
+                            }
                         },
                         onVolver       = { viewModel.resetear(); onNavigateBack() }
                     )
                     is AnalisisUiState.Capturando -> PantallaCaptura(
-                                                onIniciarCamara = { },
-                        onCapturar      = { viewModel.analizarFoto("", child, perfilEmbarazo, esModoEmbarazo) },
+                        onIniciarCamara = {
+                            com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
+                                if (base64.isNotBlank()) {
+                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                } else {
+                                    viewModel.cancelarCamara()
+                                }
+                            }
+                        },
+                        onCapturar      = {
+                            com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
+                                if (base64.isNotBlank()) {
+                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                }
+                            }
+                        },
                         onCancelar      = { viewModel.cancelarCamara() }
                     )
                     is AnalisisUiState.Analizando -> PantallaAnalizando(
@@ -242,6 +267,7 @@ private fun PantallaInicial(
     perfilEmbarazo : PerfilEmbarazo? = null,
     isEmbarazo     : Boolean = false,
     onTomarFoto    : () -> Unit,
+    onSeleccionarGaleria: () -> Unit = {},
     onVolver       : () -> Unit
 ) {
     var mostrarGuia by remember { mutableStateOf(false) }
@@ -430,10 +456,36 @@ private fun PantallaInicial(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    "Escanear Alimento",
+                    "Escanear Alimento con Cámara",
                     fontWeight = FontWeight.SemiBold,
                     fontSize   = if (esAccesible) 18.sp else 16.sp,
                     color      = Color.White
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            OutlinedButton(
+                onClick  = onSeleccionarGaleria,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (esAccesible) 64.dp else 48.dp),
+                shape  = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenPrimary),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, GreenPrimary)
+            ) {
+                Icon(
+                    Icons.Outlined.PhotoLibrary,
+                    contentDescription = null,
+                    tint = GreenPrimary,
+                    modifier = Modifier.size(if (esAccesible) 24.dp else 18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Seleccionar de Galería",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize   = if (esAccesible) 17.sp else 15.sp,
+                    color      = GreenPrimary
                 )
             }
 

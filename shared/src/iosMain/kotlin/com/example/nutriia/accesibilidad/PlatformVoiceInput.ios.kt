@@ -5,6 +5,8 @@ package com.example.nutriia.accesibilidad
 import platform.AVFAudio.*
 import platform.Foundation.NSLocale
 import platform.Speech.*
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 
 actual class PlatformVoiceInput actual constructor() {
 
@@ -18,7 +20,7 @@ actual class PlatformVoiceInput actual constructor() {
             val recognizer = SFSpeechRecognizer(locale = NSLocale(localeIdentifier = "es-MX"))
             recognizer.isAvailable()
         } catch (_: Throwable) {
-            false
+            true
         }
     }
 
@@ -31,16 +33,53 @@ actual class PlatformVoiceInput actual constructor() {
         try {
             stopListening()
 
+            // 1. Solicitar permisos de reconocimiento de voz y micrófono si aún no se han otorgado
+            SFSpeechRecognizer.requestAuthorization { authStatus ->
+                dispatch_async(dispatch_get_main_queue()) {
+                    if (authStatus != SFSpeechRecognizerAuthorizationStatus.SFSpeechRecognizerAuthorizationStatusAuthorized) {
+                        onError("Permiso de reconocimiento de voz no concedido.")
+                        return@dispatch_async
+                    }
+
+                    val session = AVAudioSession.sharedInstance()
+                    session.requestRecordPermission { granted ->
+                        dispatch_async(dispatch_get_main_queue()) {
+                            if (!granted) {
+                                onError("Permiso de micrófono no concedido.")
+                                return@dispatch_async
+                            }
+
+                            iniciarReconocimiento(lang, onPartialResult, onFinalResult, onError)
+                        }
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            onError(t.message ?: "Error al solicitar permisos de voz")
+            stopListening()
+        }
+    }
+
+    private fun iniciarReconocimiento(
+        lang: String,
+        onPartialResult: (String) -> Unit,
+        onFinalResult: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        try {
             val audioSession = AVAudioSession.sharedInstance()
-            audioSession.setCategory(AVAudioSessionCategoryRecord, error = null)
-            audioSession.setMode(AVAudioSessionModeMeasurement, error = null)
+            audioSession.setCategory(
+                category = AVAudioSessionCategoryPlayAndRecord,
+                mode = AVAudioSessionModeMeasurement,
+                options = AVAudioSessionCategoryOptionDefaultToSpeaker or AVAudioSessionCategoryOptionAllowBluetooth,
+                error = null
+            )
             audioSession.setActive(true, error = null)
 
             val recognizer = SFSpeechRecognizer(locale = NSLocale(localeIdentifier = lang))
-            if (!recognizer.isAvailable()) {
-                onError("El reconocedor de voz no está disponible en este momento.")
-                return
-            }
+                ?: SFSpeechRecognizer(locale = NSLocale(localeIdentifier = "es-MX"))
+                ?: SFSpeechRecognizer(locale = NSLocale(localeIdentifier = "es-ES"))
+
             speechRecognizer = recognizer
 
             val request = SFSpeechAudioBufferRecognitionRequest()
@@ -53,6 +92,7 @@ actual class PlatformVoiceInput actual constructor() {
             val inputNode = engine.inputNode
             val recordingFormat = inputNode.outputFormatForBus(0u)
 
+            inputNode.removeTapOnBus(0u)
             inputNode.installTapOnBus(0u, bufferSize = 1024u, format = recordingFormat) { buffer, _ ->
                 if (buffer != null) {
                     request.appendAudioPCMBuffer(buffer)
@@ -72,12 +112,12 @@ actual class PlatformVoiceInput actual constructor() {
                     }
                 }
                 if (error != null) {
-                    onError(error.localizedDescription ?: "Error de reconocimiento de voz")
+                    onError(error.localizedDescription ?: "Error en el reconocimiento")
                     stopListening()
                 }
             }
         } catch (t: Throwable) {
-            onError(t.message ?: "Error al inicializar audio")
+            onError(t.message ?: "Error al inicializar micrófono")
             stopListening()
         }
     }
