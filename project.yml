@@ -24,7 +24,7 @@ targets:
       path: iosApp/iosApp/Info.plist
       properties:
         CFBundleShortVersionString: '2.2.7'
-        CFBundleVersion: '56'
+        CFBundleVersion: '57'
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arg.nutriia

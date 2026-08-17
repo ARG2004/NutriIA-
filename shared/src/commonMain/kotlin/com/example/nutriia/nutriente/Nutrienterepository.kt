@@ -1,43 +1,87 @@
 package com.example.nutriia.nutriente
 
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.auth.auth
+import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 typealias NutrientesRepositorio = NutrienteRepository
 
 class NutrienteRepository {
 
-    private val nutrientesState = MutableStateFlow<Map<String, List<RegistroNutrientes>>>(emptyMap())
+    private val db get() = Firebase.firestore
+    private val auth get() = Firebase.auth
+
+    private fun coleccion(childId: String?) =
+        if (!childId.isNullOrEmpty()) {
+            db.collection("usuarios")
+                .document(auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
+                .collection("hijos")
+                .document(childId)
+                .collection("nutrientes")
+        } else {
+            db.collection("usuarios")
+                .document(auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
+                .collection("nutrientes")
+        }
 
     suspend fun guardar(registro: RegistroNutrientes): Result<Unit> {
-        val key = registro.childId.ifEmpty { "general" }
-        val current = nutrientesState.value[key] ?: emptyList()
-        val updated = current.filter { it.id != registro.id } + registro
-        nutrientesState.value = nutrientesState.value + (key to updated)
-        return Result.success(Unit)
+        return try {
+            auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+            coleccion(registro.childId).document(registro.id).set(registro.toMap())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun eliminar(childId: String?, registroId: String): Result<Unit> {
-        val key = childId?.ifEmpty { "general" } ?: "general"
-        val current = nutrientesState.value[key] ?: emptyList()
-        val updated = current.filter { it.id != registroId }
-        nutrientesState.value = nutrientesState.value + (key to updated)
-        return Result.success(Unit)
+        return try {
+            auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+            coleccion(childId).document(registroId).delete()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun observarPorHijo(childId: String?): Flow<List<RegistroNutrientes>> {
-        val key = childId?.ifEmpty { "general" } ?: "general"
-        return nutrientesState.map { it[key] ?: emptyList() }
+        val uid = auth.currentUser?.uid ?: return flowOf(emptyList())
+        return try {
+            coleccion(childId).snapshots.map { snapshot ->
+                snapshot.documents.mapNotNull { doc ->
+                    runCatching { RegistroNutrientes.fromMap(doc.data()) }.getOrNull()
+                }.sortedByDescending { it.fecha }
+            }
+        } catch (e: Exception) {
+            flowOf(emptyList())
+        }
     }
 
     fun observarPorHijoYFecha(childId: String?, fecha: String): Flow<List<RegistroNutrientes>> {
-        val key = childId?.ifEmpty { "general" } ?: "general"
-        return nutrientesState.map { map -> (map[key] ?: emptyList()).filter { it.fecha == fecha } }
+        val uid = auth.currentUser?.uid ?: return flowOf(emptyList())
+        return try {
+            coleccion(childId).where { "fecha".equalTo(fecha) }.snapshots.map { snapshot ->
+                snapshot.documents.mapNotNull { doc ->
+                    runCatching { RegistroNutrientes.fromMap(doc.data()) }.getOrNull()
+                }
+            }
+        } catch (e: Exception) {
+            flowOf(emptyList())
+        }
     }
 
     suspend fun obtenerPorHijoYFecha(childId: String?, fecha: String): List<RegistroNutrientes> {
-        val key = childId?.ifEmpty { "general" } ?: "general"
-        return (nutrientesState.value[key] ?: emptyList()).filter { it.fecha == fecha }
+        val uid = auth.currentUser?.uid ?: return emptyList()
+        return try {
+            val snapshot = coleccion(childId).where { "fecha".equalTo(fecha) }.get()
+            snapshot.documents.mapNotNull { doc ->
+                runCatching { RegistroNutrientes.fromMap(doc.data()) }.getOrNull()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 }

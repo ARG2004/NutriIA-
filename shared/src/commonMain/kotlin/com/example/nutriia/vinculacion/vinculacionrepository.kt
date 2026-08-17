@@ -2,27 +2,39 @@ package com.example.nutriia.vinculacion
 
 import com.example.nutriia.platform.currentTimeMillis
 import com.example.nutriia.platform.generateUUID
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.auth.auth
+import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 class VinculacionRepository {
 
-    fun observarHijo(padreUid: String, childId: String): Flow<Map<String, Any?>?> = kotlinx.coroutines.flow.flowOf(null)
+    private val db get() = Firebase.firestore
+    private val auth get() = Firebase.auth
 
-    private val vinculacionesState = MutableStateFlow<Map<String, Vinculacion>>(emptyMap())
-    private val nutriologosState   = MutableStateFlow<Map<String, NutriologoPublico>>(emptyMap())
-    private val planesState        = MutableStateFlow<Map<String, PlanAlimentario>>(emptyMap())
+    private val colVinculaciones get() = db.collection("vinculaciones")
+    private val colNutriologosPublicos get() = db.collection("nutriologos_publicos")
 
-    fun observarVinculacionesDelPadre(padreUid: String = ""): Flow<List<Vinculacion>> {
-        return vinculacionesState.map { map ->
-            if (padreUid.isEmpty()) map.values.toList() else map.values.filter { it.padreUid == padreUid }
-        }
+    private fun generarCodigo(nombre: String): String {
+        val limpio = nombre.trim().filter { it.isLetter() }.take(4).uppercase()
+        val random = (1000..9999).random()
+        return "NUT-$limpio-$random"
     }
 
-    fun observarVinculacionesDelNutriologo(nutriologoUid: String = ""): Flow<List<Vinculacion>> {
-        return vinculacionesState.map { map ->
-            if (nutriologoUid.isEmpty()) map.values.toList() else map.values.filter { it.nutriologoUid == nutriologoUid }
+    fun observarHijo(padreUid: String, childId: String): Flow<Map<String, Any?>?> {
+        val uid = padreUid.ifBlank { auth.currentUser?.uid ?: "" }
+        if (uid.isBlank() || childId.isBlank()) return flowOf(null)
+        return try {
+            db.collection("usuarios")
+                .document(uid)
+                .collection("hijos")
+                .document(childId)
+                .snapshots
+                .map { if (it.exists) it.data() else null }
+        } catch (e: Exception) {
+            flowOf(null)
         }
     }
 
@@ -32,58 +44,107 @@ class VinculacionRepository {
         cedula:       String,
         email:        String
     ): Result<NutriologoPublico> {
-        val uid = "nutri_${nombre.hashCode()}"
-        val codigo = "NUTRI-${generateUUID().take(6).uppercase()}"
-        val perfil = NutriologoPublico(
-            uid          = uid,
-            nombre       = nombre,
-            especialidad = especialidad,
-            cedula       = cedula,
-            codigo       = codigo,
-            email        = email.trim().lowercase()
-        )
-        nutriologosState.value = nutriologosState.value + (uid to perfil)
-        return Result.success(perfil)
+        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+
+        return try {
+            val docRef = colNutriologosPublicos.document(uid)
+            val snap = docRef.get()
+            val existingCode = if (snap.exists) {
+                snap.data<Map<String, Any?>>()["codigo"] as? String
+            } else null
+
+            val codigo = if (!existingCode.isNullOrBlank()) existingCode else generarCodigo(nombre)
+
+            val perfil = NutriologoPublico(
+                uid          = uid,
+                nombre       = nombre,
+                especialidad = especialidad,
+                cedula       = cedula,
+                codigo       = codigo,
+                email        = email.trim().lowercase()
+            )
+            docRef.set(perfil.toMap())
+            Result.success(perfil)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun obtenerMiPerfilPublico(): Result<NutriologoPublico?> {
-        return Result.success(nutriologosState.value.values.firstOrNull())
-    }
-
-    suspend fun responderSolicitud(vinculacionId: String, aceptar: Boolean): Result<Unit> {
-        val current = vinculacionesState.value[vinculacionId] ?: return Result.failure(Exception("No encontrada"))
-        val updated = current.copy(
-            estado = if (aceptar) EstadoVinculacion.ACTIVO else EstadoVinculacion.RECHAZADO
-        )
-        vinculacionesState.value = vinculacionesState.value + (vinculacionId to updated)
-        return Result.success(Unit)
+        val uid = auth.currentUser?.uid ?: return Result.success(null)
+        return try {
+            val doc = colNutriologosPublicos.document(uid).get()
+            if (doc.exists) {
+                Result.success(NutriologoPublico.fromMap(doc.data(), doc.id))
+            } else {
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun buscarNutriologoPorCodigo(codigo: String): Result<NutriologoPublico?> {
         val q = codigo.trim().uppercase()
         if (q.isEmpty()) return Result.success(null)
-        val found = nutriologosState.value.values.firstOrNull { it.codigo.uppercase() == q }
-        return Result.success(found)
+
+        return try {
+            val snap = colNutriologosPublicos.where { "codigo".equalTo(q) }.get()
+            val doc = snap.documents.firstOrNull()
+            if (doc != null && doc.exists) {
+                Result.success(NutriologoPublico.fromMap(doc.data(), doc.id))
+            } else {
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun buscarNutriologoPorEmail(email: String): Result<NutriologoPublico?> {
         val e = email.trim().lowercase()
         if (e.isEmpty()) return Result.success(null)
-        val found = nutriologosState.value.values.firstOrNull { it.email.lowercase() == e }
-        return Result.success(found)
+
+        return try {
+            val snap = colNutriologosPublicos.where { "email".equalTo(e) }.get()
+            val doc = snap.documents.firstOrNull()
+            if (doc != null && doc.exists) {
+                Result.success(NutriologoPublico.fromMap(doc.data(), doc.id))
+            } else {
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
-        return Result.success(nutriologosState.value.values.take(limite.toInt()))
+        return try {
+            val snap = colNutriologosPublicos.get()
+            val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
+                runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+            }
+            Result.success(lista)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun buscarNutriologosEnDirectorio(query: String): Result<List<NutriologoPublico>> {
         val q = query.trim()
-        if (q.isBlank()) return listarNutriologos()
-        val filtrado = nutriologosState.value.values.filter {
-            it.nombre.contains(q, ignoreCase = true) || it.especialidad.contains(q, ignoreCase = true)
+        return try {
+            val snap = colNutriologosPublicos.get()
+            val todos = snap.documents.mapNotNull { doc ->
+                runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+            }
+            if (q.isBlank()) return Result.success(todos)
+            val filtrados = todos.filter {
+                it.nombre.contains(q, ignoreCase = true) || it.especialidad.contains(q, ignoreCase = true)
+            }
+            Result.success(filtrados)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-        return Result.success(filtrado)
     }
 
     suspend fun solicitarVinculacion(
@@ -92,38 +153,120 @@ class VinculacionRepository {
         childId:     String,
         childNombre: String
     ): Result<Vinculacion> {
-        val padreUid = "padre_default"
+        val padreUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
         val docId = Vinculacion.docId(nutriologo.uid, padreUid)
-        val vinc = Vinculacion(
-            id               = docId,
-            nutriologoUid    = nutriologo.uid,
-            nutriologoNombre = nutriologo.nombre,
-            padreUid         = padreUid,
-            padreNombre      = padreNombre,
-            childId          = childId,
-            childNombre      = childNombre,
-            estado           = EstadoVinculacion.PENDIENTE,
-            creadoEn         = currentTimeMillis()
-        )
-        vinculacionesState.value = vinculacionesState.value + (docId to vinc)
-        return Result.success(vinc)
+
+        return try {
+            val vinc = Vinculacion(
+                id               = docId,
+                nutriologoUid    = nutriologo.uid,
+                nutriologoNombre = nutriologo.nombre,
+                padreUid         = padreUid,
+                padreNombre      = padreNombre,
+                childId          = childId,
+                childNombre      = childNombre,
+                estado           = EstadoVinculacion.PENDIENTE,
+                creadoEn         = currentTimeMillis()
+            )
+            colVinculaciones.document(docId).set(vinc.toMap())
+            Result.success(vinc)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun responderSolicitud(vinculacionId: String, aceptar: Boolean): Result<Unit> {
+        return try {
+            val nuevoEstado = if (aceptar) EstadoVinculacion.ACTIVO else EstadoVinculacion.RECHAZADO
+            colVinculaciones.document(vinculacionId).update(
+                mapOf(
+                    "estado" to nuevoEstado.name,
+                    "respondidoEn" to currentTimeMillis()
+                )
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun revocarVinculacion(vinculacionId: String): Result<Unit> {
-        val current = vinculacionesState.value[vinculacionId] ?: return Result.failure(Exception("No encontrada"))
-        val updated = current.copy(estado = EstadoVinculacion.REVOCADO)
-        vinculacionesState.value = vinculacionesState.value + (vinculacionId to updated)
-        return Result.success(Unit)
+        return try {
+            colVinculaciones.document(vinculacionId).update(
+                mapOf(
+                    "estado" to EstadoVinculacion.REVOCADO.name,
+                    "revocadoEn" to currentTimeMillis()
+                )
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun observarVinculacionesDelPadre(padreUid: String = ""): Flow<List<Vinculacion>> {
+        val uid = padreUid.ifBlank { auth.currentUser?.uid ?: "" }
+        if (uid.isBlank()) return flowOf(emptyList())
+
+        return try {
+            colVinculaciones.where { "padreUid".equalTo(uid) }.snapshots.map { snapshot ->
+                snapshot.documents.mapNotNull { doc ->
+                    runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+                }
+            }
+        } catch (e: Exception) {
+            flowOf(emptyList())
+        }
+    }
+
+    fun observarVinculacionesDelNutriologo(nutriologoUid: String = ""): Flow<List<Vinculacion>> {
+        val uid = nutriologoUid.ifBlank { auth.currentUser?.uid ?: "" }
+        if (uid.isBlank()) return flowOf(emptyList())
+
+        return try {
+            colVinculaciones.where { "nutriologoUid".equalTo(uid) }.snapshots.map { snapshot ->
+                snapshot.documents.mapNotNull { doc ->
+                    runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+                }
+            }
+        } catch (e: Exception) {
+            flowOf(emptyList())
+        }
     }
 
     suspend fun guardarPlan(plan: PlanAlimentario): Result<Unit> {
-        val id = if (plan.id.isEmpty()) generateUUID() else plan.id
-        val newPlan = plan.copy(id = id)
-        planesState.value = planesState.value + (plan.childId to newPlan)
-        return Result.success(Unit)
+        return try {
+            val id = if (plan.id.isEmpty()) generateUUID() else plan.id
+            val docRef = db.collection("usuarios")
+                .document(plan.padreUid.ifBlank { auth.currentUser?.uid ?: "" })
+                .collection("hijos")
+                .document(plan.childId)
+                .collection("planes_alimentarios")
+                .document(id)
+
+            docRef.set(plan.toMap())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun observarPlanActivo(childId: String): Flow<PlanAlimentario?> {
-        return planesState.map { it[childId] }
+        val uid = auth.currentUser?.uid ?: return flowOf(null)
+        return try {
+            db.collection("usuarios")
+                .document(uid)
+                .collection("hijos")
+                .document(childId)
+                .collection("planes_alimentarios")
+                .snapshots
+                .map { snapshot ->
+                    snapshot.documents.firstOrNull()?.let { doc ->
+                        runCatching { PlanAlimentario.fromMap(doc.id, doc.data()) }.getOrNull()
+                    }
+                }
+        } catch (e: Exception) {
+            flowOf(null)
+        }
     }
 }

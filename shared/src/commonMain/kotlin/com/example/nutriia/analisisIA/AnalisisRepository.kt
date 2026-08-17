@@ -3,6 +3,7 @@ package com.example.nutriia.analisisIA
 import com.example.nutriia.accesibilidad.KeyDeobfuscator
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.platform.Log
+import com.example.nutriia.platform.PlatformConfig
 import com.example.nutriia.platform.PlatformHttp
 import com.example.nutriia.platform.currentTimeMillis
 import com.example.nutriia.platform.generateUUID
@@ -39,7 +40,7 @@ class AnalisisRepository {
 
     suspend fun detectarAlimento(base64Image: String): Result<FoodDetectionResult> {
         return try {
-            val apiKey = KeyDeobfuscator.deobfuscate("TU_CLAVE_GROQ_AQUI")
+            val apiKey = PlatformConfig.groqApiKey
             val prompt = """
                 Eres un experto en nutrición, gastronomía Y visión por computadora.
                 Tu tarea es identificar con máxima precisión el contenido de la imagen.
@@ -145,7 +146,7 @@ class AnalisisRepository {
 
     suspend fun obtenerNutricion(foodName: String): Result<NutritionInfo> {
         return try {
-            val apiKey = KeyDeobfuscator.deobfuscate("TU_CLAVE_GROQ_AQUI")
+            val apiKey = PlatformConfig.groqApiKey
             val prompt = """
                 Eres un nutriólogo experto en composición de alimentos con acceso a tablas nutricionales INSP, USDA y NOM-043.
                 Proporciona los valores nutricionales por 100g de: "$foodName"
@@ -203,7 +204,7 @@ class AnalisisRepository {
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
         return try {
-            val apiKey = KeyDeobfuscator.deobfuscate("TU_CLAVE_GROQ_AQUI")
+            val apiKey = PlatformConfig.groqApiKey
             val prompt = """
                 Eres un pediatra nutriólogo con experiencia clínica en México.
                 Guías de referencia: NOM-043-SSA2, AAP, OMS.
@@ -273,7 +274,7 @@ class AnalisisRepository {
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
         return try {
-            val apiKey = KeyDeobfuscator.deobfuscate("TU_CLAVE_GROQ_AQUI")
+            val apiKey = PlatformConfig.groqApiKey
             val semanasText = if (perfil != null) "${perfil.semanas} semanas de gestación" else "Gestación"
             val condicionesText = if (perfil != null && perfil.condiciones.isNotEmpty()) perfil.condiciones.joinToString(", ") else "ninguna"
 
