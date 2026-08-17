@@ -38,10 +38,10 @@ import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.loc
-import com.example.nutriia.shared.NutriaMascotaHeader
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.resources.*
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TOKENS DE DISEÑO — sistema Sol unificado con acento índigo/violeta
@@ -332,7 +332,7 @@ fun AlertasScreen(
                 item {
                     AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
                         MascotBanner(
-                            drawableRes = 0,
+                            drawableRes = com.example.nutriia.resources.Res.drawable.ic_notificacion,
                             titulo      = "Alertas y recordatorios",
                             subtitulo   = "Programa notificaciones para comidas,\nvacunas, citas y mediciones",
                             accentColor = Sol.Indigo
@@ -445,11 +445,11 @@ fun AlertasScreen(
 // ═══════════════════════════════════════════════════════════════════════════════
 @Composable
 private fun MascotBanner(
-    drawableRes: Int = 0,
+    drawableRes: org.jetbrains.compose.resources.DrawableResource = com.example.nutriia.resources.Res.drawable.ic_notificacion,
     titulo:      String,
     subtitulo:   String,
     accentColor: Color = Sol.Indigo,
-    mascotSize:  androidx.compose.ui.unit.Dp = 80.dp
+    mascotSize:  androidx.compose.ui.unit.Dp = 110.dp
 ) {
     val inf   = rememberInfiniteTransition(label = "mb")
     val float by inf.animateFloat(
@@ -468,8 +468,10 @@ private fun MascotBanner(
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            NutriaMascotaHeader(
-                modifier = Modifier
+            Image(
+                painter            = org.jetbrains.compose.resources.painterResource(drawableRes),
+                contentDescription = null,
+                modifier           = Modifier
                     .size(mascotSize)
                     .graphicsLayer { translationY = -float }
             )

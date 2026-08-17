@@ -30,6 +30,7 @@ import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.Voz
+import com.example.nutriia.resources.*
 import kotlin.random.Random
 
 val NutriaGreen     = Color(0xFF689F38)
@@ -311,7 +312,11 @@ fun MascotaMinimalista() {
     com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [MascotaMinimalista] Componiendo mascota...")
     Box(contentAlignment = Alignment.Center,
         modifier = Modifier.size(300.dp).semantics { contentDescription = "" }) {
-        com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.fillMaxSize())
+        Image(
+            painter = org.jetbrains.compose.resources.painterResource(com.example.nutriia.resources.Res.drawable.ic_nutria),
+            contentDescription = "NutrIA Mascota",
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 

@@ -39,6 +39,7 @@ import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
 import com.example.nutriia.accesibilidad.vibrateTap
 import com.example.nutriia.shared.NutriSharedViewModel
+import com.example.nutriia.resources.*
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
 
@@ -108,7 +109,7 @@ private fun SolCard(
 
 @Composable
 private fun MascotBanner(
-    drawableRes: Int,
+    drawableRes: org.jetbrains.compose.resources.DrawableResource,
     titulo:      String,
     subtitulo:   String,
     accentColor: Color = Sol.Purple,
@@ -131,8 +132,10 @@ private fun MascotBanner(
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            com.example.nutriia.shared.NutriaMascotaHeader(
-                modifier = Modifier
+            Image(
+                painter            = org.jetbrains.compose.resources.painterResource(drawableRes),
+                contentDescription = null,
+                modifier           = Modifier
                     .size(mascotSize)
                     .graphicsLayer { translationY = -float }
             )
@@ -296,7 +299,7 @@ fun NutrientesScreen(
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
                     MascotBanner(
-                        drawableRes = 0,
+                        drawableRes = com.example.nutriia.resources.Res.drawable.ic_nutriente,
                         titulo      = "Nutrición de $childName",
                         subtitulo   = "Lleva el control diario de\ncalorías, macros y micronutrientes",
                         accentColor = Sol.Purple,

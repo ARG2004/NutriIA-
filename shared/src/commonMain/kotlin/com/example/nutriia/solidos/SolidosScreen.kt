@@ -41,6 +41,7 @@ import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.shared.NutriSharedViewModel
+import com.example.nutriia.resources.*
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.PerfilSaludNino
 import com.example.nutriia.sueldo.RecetaMexicana
@@ -145,7 +146,7 @@ private fun CollapseCard(
 
 @Composable
 private fun MascotBanner(
-    drawableRes: Int,
+    drawableRes: org.jetbrains.compose.resources.DrawableResource,
     titulo:      String,
     subtitulo:   String,
     accentColor: Color = Sol.Orange
@@ -167,8 +168,10 @@ private fun MascotBanner(
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            com.example.nutriia.shared.NutriaMascotaHeader(
-                modifier = Modifier.size(80.dp).graphicsLayer { translationY = -float }
+            Image(
+                painter            = org.jetbrains.compose.resources.painterResource(drawableRes),
+                contentDescription = null,
+                modifier           = Modifier.size(110.dp).graphicsLayer { translationY = -float }
             )
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
@@ -659,7 +662,7 @@ private fun LazyListScope.tabRegistrados(
     item {
         AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
             MascotBanner(
-                drawableRes = 0,
+                drawableRes = com.example.nutriia.resources.Res.drawable.ic_registro,
                 titulo      = "Alimentos introducidos",
                 subtitulo   = "Registra todo lo que tu bebé ya probó\ny lleva el control de reacciones",
                 accentColor = Sol.Orange
@@ -880,7 +883,7 @@ private fun LazyListScope.tabPlanSemanal(
     item {
         AnimatedVisibility(visible = visible, enter = fadeIn(tween(300, 80))) {
             MascotBanner(
-                drawableRes = 0,
+                drawableRes = com.example.nutriia.resources.Res.drawable.ic_plansemana,
                 titulo      = "Plan semanal personalizado",
                 subtitulo   = "Basado en los alimentos que ya introdujiste,\nadaptado a la edad y alergias",
                 accentColor = Sol.Green
@@ -1059,7 +1062,7 @@ private fun LazyListScope.tabRecetas(
     item {
         AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
             MascotBanner(
-                drawableRes = 0,
+                drawableRes = com.example.nutriia.resources.Res.drawable.ic_recetas,
                 titulo      = "Recetas mexicanas para bebés",
                 subtitulo   = "Filtradas por edad y alergias,\nlistas para preparar en casa",
                 accentColor = Sol.OrangeMid

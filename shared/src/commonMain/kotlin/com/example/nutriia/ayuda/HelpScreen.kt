@@ -38,6 +38,7 @@ import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.loc
+import com.example.nutriia.resources.*
 import kotlinx.coroutines.delay
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ private val GrayBorder   = Color(0xFFE0E0D8)
 // ─── Modelos ──────────────────────────────────────────────────────────────────
 
 data class HelpScreenItem(
-    val resId: Int,
+    val res: org.jetbrains.compose.resources.DrawableResource,
     val label: String
 )
 
@@ -82,8 +83,8 @@ private fun buildModules(): List<HelpModule> = listOf(
         description = "Al abrir NutriIA verás el perfil activo de tu hijo con su peso, talla y última medición registrada. Desliza lateralmente para cambiar entre perfiles. Desde aquí accedes a todos los módulos de seguimiento y al botón de NutriBot en la parte inferior.",
         tip         = "Los íconos de ayuda, ajustes y salir siempre están visibles en la parte superior derecha.",
         screens     = listOf(
-            HelpScreenItem(0, "Vista de módulos"),
-            HelpScreenItem(0,    "Perfil con datos")
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_dashboard_modules, "Vista de módulos"),
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_dashboard_data,    "Perfil con datos")
         )
     ),
 
@@ -96,9 +97,9 @@ private fun buildModules(): List<HelpModule> = listOf(
         description = "Registra los alimentos sólidos que ya probó tu bebé y lleva control de posibles reacciones alérgicas. El plan semanal se genera automáticamente según la edad, alergias detectadas y alimentos ya introducidos. La sección de recetas filtra opciones aptas para tu hijo.",
         tip         = "Revisa la alerta de alérgenos pendientes para llevar una introducción segura y ordenada.",
         screens     = listOf(
-            HelpScreenItem(0, "Alimentos registrados"),
-            HelpScreenItem(0,       "Plan semanal"),
-            HelpScreenItem(0,    "Recetas mexicanas")
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_food_registered, "Alimentos registrados"),
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_food_plan,       "Plan semanal"),
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_food_recipes,    "Recetas mexicanas")
         )
     ),
 
@@ -111,10 +112,10 @@ private fun buildModules(): List<HelpModule> = listOf(
         description = "Registra mediciones periódicas de peso y talla. El módulo calcula el IMC y lo ubica dentro de los percentiles de la OMS para 0–60 meses. Consulta el historial completo de mediciones y las gráficas de peso y talla por edad.",
         tip         = "Para menores de 2 años se usa peso/longitud en lugar del IMC estándar, tal como recomienda la OMS.",
         screens     = listOf(
-            HelpScreenItem(0,     "IMC actual"),
-            HelpScreenItem(0,  "Detalle"),
-            HelpScreenItem(0, "Historial"),
-            HelpScreenItem(0,  "Gráficas OMS")
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_growth_imc,     "IMC actual"),
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_growth_detail,  "Detalle"),
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_growth_history, "Historial"),
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_growth_charts,  "Gráficas OMS")
         )
     ),
 
@@ -127,7 +128,7 @@ private fun buildModules(): List<HelpModule> = listOf(
         description = "Lleva el control diario de calorías, macronutrientes y micronutrientes. Selecciona si registras ayer, hoy o mañana. El módulo muestra la recomendación de textura y número de comidas según el rango de edad activo del niño.",
         tip         = "El conteo inicia en cero cada día. Usa «Anotar lo que comió» para registrar cada comida.",
         screens     = listOf(
-            HelpScreenItem(0, "Registro diario")
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_nutrients, "Registro diario")
         )
     ),
 
@@ -140,7 +141,7 @@ private fun buildModules(): List<HelpModule> = listOf(
         description = "Toma o sube una foto del platillo. La IA identifica el alimento, obtiene sus datos nutricionales y genera un análisis personalizado según la edad y el perfil del niño. Asegúrate de que el alimento esté bien encuadrado y los ingredientes sean visibles.",
         tip         = "Coloca el alimento dentro del marco con buena iluminación para obtener el mejor resultado.",
         screens     = listOf(
-            HelpScreenItem(0, "Escanear alimento")
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_analysis, "Escanear alimento")
         )
     ),
 
@@ -153,7 +154,7 @@ private fun buildModules(): List<HelpModule> = listOf(
         description = "Conecta el perfil del niño con su nutriólogo o pediatra mediante código único, correo o directorio. Una vez vinculado, el especialista puede consultar el seguimiento en tiempo real. Puedes tener más de un especialista vinculado.",
         tip         = "Solicita el código NUTRI de tu especialista para vincularlo de forma segura y directa.",
         screens     = listOf(
-            HelpScreenItem(0, "Vinculación")
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_specialist, "Vinculación")
         )
     ),
 
@@ -166,7 +167,7 @@ private fun buildModules(): List<HelpModule> = listOf(
         description = "Programa recordatorios para tomas de comida, vacunas, citas médicas y registros de medición. Las alertas se organizan por categoría. Toca «Nueva alerta» para crear un recordatorio personalizado.",
         tip         = "Activa los permisos de notificación del sistema para recibir los recordatorios en el momento exacto.",
         screens     = listOf(
-            HelpScreenItem(0, "Mis alertas")
+            HelpScreenItem(com.example.nutriia.resources.Res.drawable.help_screen_alerts, "Mis alertas")
         )
     )
 )
@@ -552,7 +553,6 @@ private fun ScreenCarousel(screens: List<HelpScreenItem>, idioma: IdiomaVoz) {
             val screen = screens[page]
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
 
-                // Marco con fondo suave — imagen a tamaño real sin recorte
                 Box(
                     modifier         = Modifier
                         .fillMaxWidth()
@@ -561,7 +561,12 @@ private fun ScreenCarousel(screens: List<HelpScreenItem>, idioma: IdiomaVoz) {
                         .background(Color(0xFFF0F0EC)),
                     contentAlignment = Alignment.Center
                 ) {
-                    com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.size(100.dp))
+                    Image(
+                        painter = org.jetbrains.compose.resources.painterResource(screen.res),
+                        contentDescription = screen.label,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
                 }
 
                 Spacer(Modifier.height(10.dp))

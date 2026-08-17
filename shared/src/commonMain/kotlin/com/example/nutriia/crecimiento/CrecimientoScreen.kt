@@ -42,6 +42,7 @@ import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.resources.*
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PALETA — Médico Cálido
@@ -411,7 +412,11 @@ private fun ResumenCard(m: MedicionCrecimiento?, meses: Int, interp: Interpretac
                             .background(s.light).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.size(60.dp))
+                        Image(
+                            painter = org.jetbrains.compose.resources.painterResource(com.example.nutriia.resources.Res.drawable.ic_header),
+                            contentDescription = null,
+                            modifier = Modifier.size(60.dp)
+                        )
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text(s.mensaje, fontWeight = FontWeight.Bold, color = s.color, fontSize = 13.sp)
@@ -895,7 +900,11 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
                 }
 
                 Spacer(Modifier.height(4.dp))
-                com.example.nutriia.shared.NutriaMascotaHeader(modifier = Modifier.size(120.dp))
+                Image(
+                    painter = org.jetbrains.compose.resources.painterResource(com.example.nutriia.resources.Res.drawable.ic_crecimiento),
+                    contentDescription = null,
+                    modifier = Modifier.size(120.dp)
+                )
                 Spacer(Modifier.height(8.dp))
 
                 style?.let { s ->
