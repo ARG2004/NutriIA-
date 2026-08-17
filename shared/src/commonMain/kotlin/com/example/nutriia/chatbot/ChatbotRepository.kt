@@ -128,9 +128,13 @@ class ChatbotRepository {
 
             val rawBody = responseResult.getOrNull() ?: ""
             val jsonRoot = json.parseToJsonElement(rawBody).jsonObject
-            val content = jsonRoot["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
+            var content = jsonRoot["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
                 ?.get("message")?.jsonObject
                 ?.get("content")?.jsonPrimitive?.contentOrNull ?: ""
+
+            if (content.contains("<think>") && content.contains("</think>")) {
+                content = content.substringAfter("</think>").trim()
+            }
 
             if (content.isBlank()) {
                 return@withContext Result.failure(Exception("Respuesta vacía del asistente de IA."))

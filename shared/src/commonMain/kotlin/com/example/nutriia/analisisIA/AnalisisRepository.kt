@@ -69,6 +69,7 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
+                "qwen/qwen3.6-27b",
                 "llama-3.2-11b-vision-preview",
                 "llama-3.2-90b-vision-preview"
             )
@@ -429,6 +430,9 @@ class AnalisisRepository {
 
     private fun extractJsonSubstring(input: String): String {
         var str = input.trim()
+        if (str.contains("<think>") && str.contains("</think>")) {
+            str = str.substringAfter("</think>").trim()
+        }
         if (str.contains("```json")) {
             str = str.substringAfter("```json").substringBefore("```").trim()
         } else if (str.contains("```")) {
