@@ -16,11 +16,19 @@ class CrecimientoRepository {
     private val auth get() = Firebase.auth
 
     private fun col(childId: String, ownerUid: String? = null) =
-        db.collection("usuarios")
-            .document(ownerUid ?: auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
-            .collection("hijos")
-            .document(childId)
-            .collection("crecimiento")
+        if (childId.isEmpty()) {
+            db.collection("usuarios")
+                .document(ownerUid ?: auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
+                .collection("perfilEmbarazo")
+                .document("unico")
+                .collection("crecimiento")
+        } else {
+            db.collection("usuarios")
+                .document(ownerUid ?: auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
+                .collection("hijos")
+                .document(childId)
+                .collection("crecimiento")
+        }
 
     suspend fun guardarMedicion(childId: String, m: MedicionCrecimiento, ownerUid: String? = null): Result<String> {
         return try {
@@ -39,6 +47,7 @@ class CrecimientoRepository {
                 "tallaCm" to m.tallaCm,
                 "circCefCm" to m.circCefCm,
                 "notas" to m.notas,
+                "notes" to m.notas,
                 "creadoEnMillis" to currentTimeMillis(),
                 "fechaCreacion" to FechaUtils.fechaActual(),
                 "horaCreacion" to FechaUtils.horaActual()
@@ -69,16 +78,35 @@ class CrecimientoRepository {
             col(childId, ownerUid).snapshots.map { snapshot ->
                 snapshot.documents.mapNotNull { doc ->
                     runCatching {
-                        val data = doc.data<Map<String, Any?>>()
+                        val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
+                        val childIdDoc = runCatching { doc.get<String?>("childId") }.getOrNull() ?: childId
+                        val userId = runCatching { doc.get<String?>("userId") }.getOrNull() ?: ""
+                        val fecha = runCatching { doc.get<String?>("fecha") }.getOrNull() ?: ""
+                        val peso = runCatching { doc.get<Double?>("pesoKg") }.getOrNull()
+                            ?: runCatching { doc.get<Long?>("pesoKg")?.toDouble() }.getOrNull()
+                            ?: runCatching { doc.get<String?>("pesoKg")?.toDoubleOrNull() }.getOrNull()
+                            ?: 0.0
+                        val talla = runCatching { doc.get<Double?>("tallaCm") }.getOrNull()
+                            ?: runCatching { doc.get<Long?>("tallaCm")?.toDouble() }.getOrNull()
+                            ?: runCatching { doc.get<String?>("tallaCm")?.toDoubleOrNull() }.getOrNull()
+                            ?: 0.0
+                        val circCef = runCatching { doc.get<Double?>("circCefCm") }.getOrNull()
+                            ?: runCatching { doc.get<Long?>("circCefCm")?.toDouble() }.getOrNull()
+                            ?: runCatching { doc.get<String?>("circCefCm")?.toDoubleOrNull() }.getOrNull()
+                            ?: 0.0
+                        val notas = runCatching { doc.get<String?>("notas") }.getOrNull()
+                            ?: runCatching { doc.get<String?>("notes") }.getOrNull()
+                            ?: ""
+
                         MedicionCrecimiento(
-                            id = data["id"] as? String ?: doc.id,
-                            childId = data["childId"] as? String ?: childId,
-                            userId = data["userId"] as? String ?: "",
-                            fecha = data["fecha"] as? String ?: "",
-                            pesoKg = (data["pesoKg"] as? Double) ?: ((data["pesoKg"] as? Long)?.toDouble() ?: 0.0),
-                            tallaCm = (data["tallaCm"] as? Double) ?: ((data["tallaCm"] as? Long)?.toDouble() ?: 0.0),
-                            circCefCm = (data["circCefCm"] as? Double) ?: ((data["circCefCm"] as? Long)?.toDouble() ?: 0.0),
-                            notas = data["notas"] as? String ?: (data["notes"] as? String ?: "")
+                            id = id,
+                            childId = childIdDoc,
+                            userId = userId,
+                            fecha = fecha,
+                            pesoKg = peso,
+                            tallaCm = talla,
+                            circCefCm = circCef,
+                            notas = notas
                         )
                     }.getOrNull()
                 }.sortedByDescending { it.fecha }

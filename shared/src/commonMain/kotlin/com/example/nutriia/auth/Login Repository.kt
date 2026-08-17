@@ -366,32 +366,55 @@ class RepositorioLogin {
 
     suspend fun cargarHijos(uid: String): List<ChildProfile> {
         return try {
-            db.collection("usuarios").document(uid)
-                .collection("hijos").get().await()
-                .documents.mapNotNull { doc ->
-                    val name = doc.getString("name") ?: return@mapNotNull null
-                    ChildProfile(
-                        id               = doc.getString("id") ?: doc.id,
-                        name             = name,
-                        birthDate        = doc.getString("birthDate") ?: "",
-                        weightKg         = doc.getString("weightKg") ?: "",
-                        heightCm         = doc.getString("heightCm") ?: "",
-                        hasAllergies     = doc.getBoolean("hasAllergies") ?: false,
-                        allergiesDetail  = doc.getString("allergiesDetail") ?: "",
-                        hasConditions    = doc.getBoolean("hasConditions") ?: false,
-                        conditionsDetail = doc.getString("conditionsDetail") ?: "",
-                        sexo             = doc.getString("sexo")
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { runCatching { Sexo.valueOf(it) }.getOrNull() },
-                        nivelIngreso     = doc.getString("nivelIngreso")
-                            ?.let { runCatching { NivelIngreso.valueOf(it) }.getOrDefault(NivelIngreso.BASICO) }
-                            ?: NivelIngreso.BASICO,
-                        region           = doc.getString("region")
-                            ?.let { runCatching { RegionMexico.valueOf(it) }.getOrDefault(RegionMexico.CENTRO) }
-                            ?: RegionMexico.CENTRO
-                    )
-                }
-        } catch (e: Exception) { emptyList() }
+            val docs = db.collection("usuarios").document(uid)
+                .collection("hijos").get().await().documents
+            docs.mapNotNull { doc ->
+                val name = doc.getString("name") 
+                    ?: doc.getString("nombre") 
+                    ?: doc.getString("nombreHijo") 
+                    ?: return@mapNotNull null
+                
+                val weight = doc.getString("weightKg") 
+                    ?: doc.getDouble("weightKg")?.toString() 
+                    ?: doc.getString("peso") 
+                    ?: doc.getDouble("peso")?.toString() 
+                    ?: ""
+                
+                val height = doc.getString("heightCm") 
+                    ?: doc.getDouble("heightCm")?.toString() 
+                    ?: doc.getString("talla") 
+                    ?: doc.getDouble("talla")?.toString() 
+                    ?: ""
+                
+                val birthDate = doc.getString("birthDate") 
+                    ?: doc.getString("fechaNacimiento") 
+                    ?: ""
+
+                ChildProfile(
+                    id               = doc.getString("id") ?: doc.id,
+                    name             = name,
+                    birthDate        = birthDate,
+                    weightKg         = weight,
+                    heightCm         = height,
+                    hasAllergies     = doc.getBoolean("hasAllergies") ?: (doc.getBoolean("tieneAlergias") ?: false),
+                    allergiesDetail  = doc.getString("allergiesDetail") ?: (doc.getString("alergias") ?: ""),
+                    hasConditions    = doc.getBoolean("hasConditions") ?: (doc.getBoolean("tieneCondiciones") ?: false),
+                    conditionsDetail = doc.getString("conditionsDetail") ?: (doc.getString("condiciones") ?: ""),
+                    sexo             = doc.getString("sexo")
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { runCatching { Sexo.valueOf(it) }.getOrNull() },
+                    nivelIngreso     = doc.getString("nivelIngreso")
+                        ?.let { runCatching { NivelIngreso.valueOf(it) }.getOrDefault(NivelIngreso.BASICO) }
+                        ?: NivelIngreso.BASICO,
+                    region           = doc.getString("region")
+                        ?.let { runCatching { RegionMexico.valueOf(it) }.getOrDefault(RegionMexico.CENTRO) }
+                        ?: RegionMexico.CENTRO
+                )
+            }
+        } catch (e: Exception) { 
+            com.example.nutriia.platform.Log.e("LoginRepository", "Error cargando hijos de $uid: ${e.message}")
+            emptyList() 
+        }
     }
 
     suspend fun guardarPerfilEmbarazo(uid: String, perfil: PerfilEmbarazo): Boolean {

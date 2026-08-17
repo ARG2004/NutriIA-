@@ -114,7 +114,7 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-            BUILD_NUM="67"
+            BUILD_NUM="68"
             xcodebuild archive \
               -project iosApp.xcodeproj \
               -scheme NutriIA \
@@ -125,6 +125,11 @@ jobs:
               ARCHS=arm64 \
               MARKETING_VERSION="2.2.7" \
               CURRENT_PROJECT_VERSION="$BUILD_NUM"
+
+            # Inyectar recursos de Compose Multiplatform directamente en el paquete de la app
+            APP_DIR="$RUNNER_TEMP/NutriIA.xcarchive/Products/Applications/NutriIA.app"
+            mkdir -p "$APP_DIR/compose-resources/composeResources/com.example.nutriia.resources/drawable" || true
+            cp -R shared/src/commonMain/composeResources/drawable/* "$APP_DIR/compose-resources/composeResources/com.example.nutriia.resources/drawable/" 2>/dev/null || true
 
             xcodebuild -exportArchive \
               -archivePath $RUNNER_TEMP/NutriIA.xcarchive \

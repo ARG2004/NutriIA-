@@ -110,22 +110,39 @@ class PediatraRepository {
             consultasCol(padreUid, childId).snapshots.map { snapshot ->
                 snapshot.documents.mapNotNull { doc ->
                     runCatching {
-                        val data = doc.data<Map<String, Any?>>()
-                        val notasTexto = data["notas"] as? String ?: (data["texto"] as? String ?: "")
+                        val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
+                        val fecha = runCatching { doc.get<String?>("fecha") }.getOrNull() ?: ""
+                        val nombreMedico = runCatching { doc.get<String?>("nombreMedico") }.getOrNull() ?: ""
+                        val motivo = runCatching { doc.get<String?>("motivo") }.getOrNull() ?: ""
+                        val notasTexto = runCatching { doc.get<String?>("notas") }.getOrNull() 
+                            ?: runCatching { doc.get<String?>("texto") }.getOrNull() 
+                            ?: ""
+                        val proxCita = runCatching { doc.get<String?>("proximaCita") }.getOrNull() ?: ""
+                        val peso = runCatching { doc.get<Double?>("pesoEnConsulta") }.getOrNull()
+                            ?: runCatching { doc.get<Long?>("pesoEnConsulta")?.toDouble() }.getOrNull()
+                            ?: 0.0
+                        val talla = runCatching { doc.get<Double?>("tallaEnConsulta") }.getOrNull()
+                            ?: runCatching { doc.get<Long?>("tallaEnConsulta")?.toDouble() }.getOrNull()
+                            ?: 0.0
+                        val tipo = runCatching { doc.get<String?>("tipo") }.getOrNull() ?: "consulta"
+                        val autorUid = runCatching { doc.get<String?>("autorUid") }.getOrNull() ?: ""
+                        val autorNombre = runCatching { doc.get<String?>("autorNombre") }.getOrNull() ?: "Nutriólogo"
+                        val cId = runCatching { doc.get<String?>("childId") }.getOrNull() ?: childId
+
                         Consulta(
-                            id = data["id"] as? String ?: doc.id,
-                            fecha = data["fecha"] as? String ?: "",
-                            nombreMedico = data["nombreMedico"] as? String ?: "",
-                            motivo = data["motivo"] as? String ?: "",
+                            id = id,
+                            fecha = fecha,
+                            nombreMedico = nombreMedico,
+                            motivo = motivo,
                             notas = notasTexto,
                             texto = notasTexto,
-                            proximaCita = data["proximaCita"] as? String ?: "",
-                            pesoEnConsulta = (data["pesoEnConsulta"] as? Double) ?: ((data["pesoEnConsulta"] as? Long)?.toDouble() ?: 0.0),
-                            tallaEnConsulta = (data["tallaEnConsulta"] as? Double) ?: ((data["tallaEnConsulta"] as? Long)?.toDouble() ?: 0.0),
-                            tipo = data["tipo"] as? String ?: "consulta",
-                            autorUid = data["autorUid"] as? String ?: "",
-                            autorNombre = data["autorNombre"] as? String ?: "Nutriólogo",
-                            childId = data["childId"] as? String ?: childId
+                            proximaCita = proxCita,
+                            pesoEnConsulta = peso,
+                            tallaEnConsulta = talla,
+                            tipo = tipo,
+                            autorUid = autorUid,
+                            autorNombre = autorNombre,
+                            childId = cId
                         )
                     }.getOrNull()
                 }

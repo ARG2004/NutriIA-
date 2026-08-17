@@ -9,11 +9,6 @@ import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.toLocalDateTime
 
 class LactanciaRepository {
 
@@ -25,15 +20,22 @@ class LactanciaRepository {
             .document(ownerUid ?: auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
             .collection("hijos")
             .document(childId)
-            .collection("lactancia")
+            .collection("lactancia_tomas")
+
+    private fun manualPumpingCol(childId: String, ownerUid: String? = null) =
+        db.collection("usuarios")
+            .document(ownerUid ?: auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
+            .collection("hijos")
+            .document(childId)
+            .collection("extraccion_manual")
 
     suspend fun saveFeedingLog(childId: String, log: FeedingLog, ownerUid: String? = null): Result<String> {
         return try {
             val currentUid = auth.currentUser?.uid
                 ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
 
-            val id = if (log.id.isBlank()) generateUUID() else log.id
-            val docRef = feedingCol(childId, ownerUid).document(id)
+            val id = if (log.id.isEmpty()) generateUUID() else log.id
+            val ref = feedingCol(childId, ownerUid).document(id)
 
             val data = mapOf<String, Any?>(
                 "id" to id,
@@ -45,11 +47,11 @@ class LactanciaRepository {
                 "side" to log.side,
                 "formulaMl" to log.formulaMl,
                 "notes" to log.notes,
-                "createdAtMillis" to currentTimeMillis(),
+                "creadoEnMillis" to currentTimeMillis(),
                 "fechaCreacion" to FechaUtils.fechaActual(),
                 "horaCreacion" to FechaUtils.horaActual()
             )
-            docRef.set(data)
+            ref.set(data)
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -75,19 +77,27 @@ class LactanciaRepository {
                 .map { snapshot ->
                     snapshot.documents.mapNotNull { doc ->
                         runCatching {
-                            val data = doc.data<Map<String, Any?>>()
-                            val docDate = data["date"] as? String ?: ""
+                            val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
+                            val docDate = runCatching { doc.get<String?>("date") }.getOrNull() ?: ""
                             if (docDate == date || docDate == dateSlash || docDate == dateIso) {
+                                val cId = runCatching { doc.get<String?>("childId") }.getOrNull() ?: ""
+                                val uId = runCatching { doc.get<String?>("userId") }.getOrNull() ?: ""
+                                val sTime = runCatching { doc.get<String?>("startTime") }.getOrNull() ?: ""
+                                val dur = runCatching { doc.get<Long?>("durationMinutes")?.toInt() }.getOrNull() ?: 0
+                                val side = runCatching { doc.get<String?>("side") }.getOrNull() ?: BreastSide.LEFT.name
+                                val fMl = runCatching { doc.get<Long?>("formulaMl")?.toInt() }.getOrNull() ?: 0
+                                val notes = runCatching { doc.get<String?>("notes") }.getOrNull() ?: ""
+
                                 FeedingLog(
-                                    id = data["id"] as? String ?: doc.id,
-                                    childId = data["childId"] as? String ?: "",
-                                    userId = data["userId"] as? String ?: "",
+                                    id = id,
+                                    childId = cId,
+                                    userId = uId,
                                     date = docDate,
-                                    startTime = data["startTime"] as? String ?: "",
-                                    durationMinutes = (data["durationMinutes"] as? Long)?.toInt() ?: (data["durationMinutes"] as? Number)?.toInt() ?: 0,
-                                    side = data["side"] as? String ?: BreastSide.LEFT.name,
-                                    formulaMl = (data["formulaMl"] as? Long)?.toInt() ?: (data["formulaMl"] as? Number)?.toInt() ?: 0,
-                                    notes = data["notes"] as? String ?: ""
+                                    startTime = sTime,
+                                    durationMinutes = dur,
+                                    side = side,
+                                    formulaMl = fMl,
+                                    notes = notes
                                 )
                             } else null
                         }.getOrNull()
@@ -105,17 +115,26 @@ class LactanciaRepository {
                 .map { snapshot ->
                     snapshot.documents.mapNotNull { doc ->
                         runCatching {
-                            val data = doc.data<Map<String, Any?>>()
+                            val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
+                            val cId = runCatching { doc.get<String?>("childId") }.getOrNull() ?: ""
+                            val uId = runCatching { doc.get<String?>("userId") }.getOrNull() ?: ""
+                            val docDate = runCatching { doc.get<String?>("date") }.getOrNull() ?: ""
+                            val sTime = runCatching { doc.get<String?>("startTime") }.getOrNull() ?: ""
+                            val dur = runCatching { doc.get<Long?>("durationMinutes")?.toInt() }.getOrNull() ?: 0
+                            val side = runCatching { doc.get<String?>("side") }.getOrNull() ?: BreastSide.LEFT.name
+                            val fMl = runCatching { doc.get<Long?>("formulaMl")?.toInt() }.getOrNull() ?: 0
+                            val notes = runCatching { doc.get<String?>("notes") }.getOrNull() ?: ""
+
                             FeedingLog(
-                                id = data["id"] as? String ?: doc.id,
-                                childId = data["childId"] as? String ?: "",
-                                userId = data["userId"] as? String ?: "",
-                                date = data["date"] as? String ?: "",
-                                startTime = data["startTime"] as? String ?: "",
-                                durationMinutes = (data["durationMinutes"] as? Long)?.toInt() ?: 0,
-                                side = data["side"] as? String ?: BreastSide.LEFT.name,
-                                formulaMl = (data["formulaMl"] as? Long)?.toInt() ?: 0,
-                                notes = data["notes"] as? String ?: ""
+                                id = id,
+                                childId = cId,
+                                userId = uId,
+                                date = docDate,
+                                startTime = sTime,
+                                durationMinutes = dur,
+                                side = side,
+                                formulaMl = fMl,
+                                notes = notes
                             )
                         }.getOrNull()
                     }.sortedByDescending { it.date + it.startTime }
@@ -130,17 +149,26 @@ class LactanciaRepository {
             val snapshot = feedingCol(childId, ownerUid).get()
             val logs = snapshot.documents.mapNotNull { doc ->
                 runCatching {
-                    val data = doc.data<Map<String, Any?>>()
+                    val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
+                    val cId = runCatching { doc.get<String?>("childId") }.getOrNull() ?: ""
+                    val uId = runCatching { doc.get<String?>("userId") }.getOrNull() ?: ""
+                    val docDate = runCatching { doc.get<String?>("date") }.getOrNull() ?: ""
+                    val sTime = runCatching { doc.get<String?>("startTime") }.getOrNull() ?: ""
+                    val dur = runCatching { doc.get<Long?>("durationMinutes")?.toInt() }.getOrNull() ?: 0
+                    val side = runCatching { doc.get<String?>("side") }.getOrNull() ?: BreastSide.LEFT.name
+                    val fMl = runCatching { doc.get<Long?>("formulaMl")?.toInt() }.getOrNull() ?: 0
+                    val notes = runCatching { doc.get<String?>("notes") }.getOrNull() ?: ""
+
                     FeedingLog(
-                        id = data["id"] as? String ?: doc.id,
-                        childId = data["childId"] as? String ?: "",
-                        userId = data["userId"] as? String ?: "",
-                        date = data["date"] as? String ?: "",
-                        startTime = data["startTime"] as? String ?: "",
-                        durationMinutes = (data["durationMinutes"] as? Long)?.toInt() ?: 0,
-                        side = data["side"] as? String ?: BreastSide.LEFT.name,
-                        formulaMl = (data["formulaMl"] as? Long)?.toInt() ?: 0,
-                        notes = data["notes"] as? String ?: ""
+                        id = id,
+                        childId = cId,
+                        userId = uId,
+                        date = docDate,
+                        startTime = sTime,
+                        durationMinutes = dur,
+                        side = side,
+                        formulaMl = fMl,
+                        notes = notes
                     )
                 }.getOrNull()
             }.sortedByDescending { it.date + it.startTime }.take(limit.toInt())
@@ -152,68 +180,46 @@ class LactanciaRepository {
 
     suspend fun getDailySummary(childId: String, date: String, ownerUid: String? = null): Result<DailyFeedingSummary> {
         return try {
-            val snapshot = feedingCol(childId, ownerUid)
-                .where { "date".equalTo(date) }
-                .get()
-
+            val snapshot = feedingCol(childId, ownerUid).get()
             val logs = snapshot.documents.mapNotNull { doc ->
                 runCatching {
-                    val data = doc.data<Map<String, Any?>>()
-                    FeedingLog(
-                        startTime = data["startTime"] as? String ?: "",
-                        durationMinutes = (data["durationMinutes"] as? Long)?.toInt() ?: 0,
-                        side = data["side"] as? String ?: "",
-                        formulaMl = (data["formulaMl"] as? Long)?.toInt() ?: 0
-                    )
+                    val docDate = runCatching { doc.get<String?>("date") }.getOrNull() ?: ""
+                    if (docDate == date) {
+                        val sTime = runCatching { doc.get<String?>("startTime") }.getOrNull() ?: ""
+                        val dur = runCatching { doc.get<Long?>("durationMinutes")?.toInt() }.getOrNull() ?: 0
+                        val side = runCatching { doc.get<String?>("side") }.getOrNull() ?: ""
+                        val fMl = runCatching { doc.get<Long?>("formulaMl")?.toInt() }.getOrNull() ?: 0
+
+                        FeedingLog(
+                            startTime = sTime,
+                            durationMinutes = dur,
+                            side = side,
+                            formulaMl = fMl
+                        )
+                    } else null
                 }.getOrNull()
             }
 
-            val summary = DailyFeedingSummary(
-                date = date,
-                totalSessions = logs.size,
-                totalMinutes = logs.sumOf { it.durationMinutes },
-                totalFormulaMl = logs.filter { it.side == BreastSide.FORMULA.name }.sumOf { it.formulaMl },
-                leftSessions = logs.count { it.side == BreastSide.LEFT.name },
-                rightSessions = logs.count { it.side == BreastSide.RIGHT.name },
-                formulaSessions = logs.count { it.side == BreastSide.FORMULA.name },
-                avgIntervalMinutes = calcAvgInterval(logs)
+            val totalSessions = logs.size
+            val totalMinutes = logs.sumOf { it.durationMinutes }
+            val totalFormulaMl = logs.sumOf { it.formulaMl }
+            val leftSessions = logs.count { it.side.equals("LEFT", ignoreCase = true) || it.side.contains("izq", ignoreCase = true) }
+            val rightSessions = logs.count { it.side.equals("RIGHT", ignoreCase = true) || it.side.contains("der", ignoreCase = true) }
+            val formulaSessions = logs.count { it.formulaMl > 0 }
+
+            Result.success(
+                DailyFeedingSummary(
+                    date = date,
+                    totalSessions = totalSessions,
+                    totalMinutes = totalMinutes,
+                    totalFormulaMl = totalFormulaMl,
+                    leftSessions = leftSessions,
+                    rightSessions = rightSessions,
+                    formulaSessions = formulaSessions
+                )
             )
-            Result.success(summary)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    suspend fun getWeeklySummaries(childId: String, ownerUid: String? = null): Result<List<DailyFeedingSummary>> {
-        return try {
-            val summaries = mutableListOf<DailyFeedingSummary>()
-            val now = Clock.System.now()
-            val tz = TimeZone.currentSystemDefault()
-
-            for (i in 0 until 7) {
-                val instant = now.minus(i, DateTimeUnit.DAY, tz)
-                val localDate = instant.toLocalDateTime(tz).date
-                val dateStr = "${localDate.year}-${localDate.monthNumber.toString().padStart(2, '0')}-${localDate.dayOfMonth.toString().padStart(2, '0')}"
-                getDailySummary(childId, dateStr, ownerUid).getOrNull()?.let { summaries.add(it) }
-            }
-            Result.success(summaries.reversed())
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    private fun calcAvgInterval(logs: List<FeedingLog>): Int {
-        if (logs.size < 2) return 0
-        val times = logs.mapNotNull {
-            val parts = it.startTime.split(":")
-            if (parts.size == 2) {
-                val h = parts[0].toIntOrNull() ?: 0
-                val m = parts[1].toIntOrNull() ?: 0
-                h * 60 + m
-            } else null
-        }.sorted()
-        if (times.size < 2) return 0
-        val diffs = times.zipWithNext { a, b -> b - a }
-        return if (diffs.isNotEmpty()) diffs.average().toInt() else 0
     }
 }

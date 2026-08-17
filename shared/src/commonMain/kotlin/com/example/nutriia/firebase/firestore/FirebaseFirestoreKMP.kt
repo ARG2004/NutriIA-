@@ -133,44 +133,59 @@ class DocumentSnapshot(
     fun exists(): Boolean = exists
 
     val data: Map<String, Any?>
-        get() = try {
-            delegate?.data<Map<String, Any?>>() ?: rawData
-        } catch (_: Throwable) {
-            rawData
-        }
+        get() = rawData
 
     fun get(field: String): Any? = try {
-        delegate?.get<Any?>(field) ?: rawData[field]
+        runCatching { delegate?.get<String?>(field) }.getOrNull()
+            ?: runCatching { delegate?.get<Double?>(field) }.getOrNull()
+            ?: runCatching { delegate?.get<Long?>(field) }.getOrNull()
+            ?: runCatching { delegate?.get<Boolean?>(field) }.getOrNull()
+            ?: rawData[field]
     } catch (_: Throwable) {
         rawData[field]
     }
 
     fun getString(field: String): String? = try {
-        delegate?.get<String?>(field) ?: (rawData[field] as? String)
+        runCatching { delegate?.get<String?>(field) }.getOrNull()
+            ?: runCatching { delegate?.get<Double?>(field)?.toString() }.getOrNull()
+            ?: runCatching { delegate?.get<Long?>(field)?.toString() }.getOrNull()
+            ?: (rawData[field] as? String)
+            ?: rawData[field]?.toString()
     } catch (_: Throwable) {
-        rawData[field] as? String
+        (rawData[field] as? String) ?: rawData[field]?.toString()
     }
 
     fun getLong(field: String): Long? = try {
-        delegate?.get<Long?>(field) ?: (rawData[field] as? Number)?.toLong()
+        runCatching { delegate?.get<Long?>(field) }.getOrNull()
+            ?: runCatching { delegate?.get<Double?>(field)?.toLong() }.getOrNull()
+            ?: runCatching { delegate?.get<String?>(field)?.toLongOrNull() }.getOrNull()
+            ?: (rawData[field] as? Number)?.toLong()
+            ?: (rawData[field] as? String)?.toLongOrNull()
     } catch (_: Throwable) {
-        (rawData[field] as? Number)?.toLong()
+        (rawData[field] as? Number)?.toLong() ?: (rawData[field] as? String)?.toLongOrNull()
     }
 
     fun getDouble(field: String): Double? = try {
-        delegate?.get<Double?>(field) ?: (rawData[field] as? Number)?.toDouble()
+        runCatching { delegate?.get<Double?>(field) }.getOrNull()
+            ?: runCatching { delegate?.get<Long?>(field)?.toDouble() }.getOrNull()
+            ?: runCatching { delegate?.get<String?>(field)?.toDoubleOrNull() }.getOrNull()
+            ?: (rawData[field] as? Number)?.toDouble()
+            ?: (rawData[field] as? String)?.toDoubleOrNull()
     } catch (_: Throwable) {
-        (rawData[field] as? Number)?.toDouble()
+        (rawData[field] as? Number)?.toDouble() ?: (rawData[field] as? String)?.toDoubleOrNull()
     }
 
     fun getBoolean(field: String): Boolean? = try {
-        delegate?.get<Boolean?>(field) ?: (rawData[field] as? Boolean)
+        runCatching { delegate?.get<Boolean?>(field) }.getOrNull()
+            ?: runCatching { delegate?.get<String?>(field)?.toBooleanStrictOrNull() }.getOrNull()
+            ?: (rawData[field] as? Boolean)
+            ?: (rawData[field] as? String)?.toBooleanStrictOrNull()
     } catch (_: Throwable) {
-        rawData[field] as? Boolean
+        (rawData[field] as? Boolean) ?: (rawData[field] as? String)?.toBooleanStrictOrNull()
     }
 
     fun getTimestamp(field: String): Timestamp? = try {
-        val t = delegate?.get<Timestamp?>(field)
+        val t = runCatching { delegate?.get<Timestamp?>(field) }.getOrNull()
         t ?: (rawData[field] as? Timestamp) ?: Timestamp.now()
     } catch (_: Throwable) {
         (rawData[field] as? Timestamp) ?: Timestamp.now()
@@ -200,13 +215,10 @@ object FieldValue {
     fun serverTimestamp(): Any = serverTimestamp
 }
 
-data class Timestamp(val seconds: Long = 0L, val nanoseconds: Int = 0) : Comparable<Timestamp> {
-    val time: Long get() = seconds * 1000 + (nanoseconds / 1_000_000)
+class Timestamp(val seconds: Long = 0, val nanoseconds: Int = 0) {
+    val time: Long get() = seconds * 1000 + (nanoseconds / 1000000)
+    fun toMillis(): Long = time
     companion object {
         fun now(): Timestamp = Timestamp(com.example.nutriia.platform.currentTimeMillis() / 1000, 0)
-    }
-    override operator fun compareTo(other: Timestamp): Int {
-        val s = seconds.compareTo(other.seconds)
-        return if (s != 0) s else nanoseconds.compareTo(other.nanoseconds)
     }
 }

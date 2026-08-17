@@ -51,6 +51,7 @@ class SolidosRepository {
                 "fechaIntroduccion" to a.fechaIntroduccion,
                 "reaccion" to a.reaccion.name,
                 "notas" to a.notas,
+                "notes" to a.notas,
                 "creadoEnMillis" to currentTimeMillis(),
                 "fechaCreacion" to FechaUtils.fechaActual(),
                 "horaCreacion" to FechaUtils.horaActual()
@@ -79,6 +80,7 @@ class SolidosRepository {
                 "fechaIntroduccion" to a.fechaIntroduccion,
                 "reaccion" to a.reaccion.name,
                 "notas" to a.notas,
+                "notes" to a.notas,
                 "creadoEnMillis" to currentTimeMillis(),
                 "fechaCreacion" to FechaUtils.fechaActual(),
                 "horaCreacion" to FechaUtils.horaActual()
@@ -118,17 +120,24 @@ class SolidosRepository {
             col(childId, ownerUid).snapshots.map { snapshot ->
                 snapshot.documents.mapNotNull { doc ->
                     runCatching {
-                        val data = doc.data<Map<String, Any?>>()
-                        val grupoStr = data["grupo"] as? String ?: GrupoAlimento.FRUTAS.name
-                        val reaccionStr = data["reaccion"] as? String ?: ReaccionAlimento.NINGUNA.name
+                        val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
+                        val nombre = runCatching { doc.get<String?>("nombre") }.getOrNull() ?: ""
+                        if (nombre.isBlank()) return@mapNotNull null
+
+                        val grupoStr = runCatching { doc.get<String?>("grupo") }.getOrNull() ?: GrupoAlimento.FRUTAS.name
+                        val fechaStr = runCatching { doc.get<String?>("fechaIntroduccion") }.getOrNull() ?: ""
+                        val reaccionStr = runCatching { doc.get<String?>("reaccion") }.getOrNull() ?: ReaccionAlimento.NINGUNA.name
+                        val notasStr = runCatching { doc.get<String?>("notas") }.getOrNull() 
+                            ?: runCatching { doc.get<String?>("notes") }.getOrNull() 
+                            ?: ""
 
                         AlimentoIntroducido(
-                            id = data["id"] as? String ?: doc.id,
-                            nombre = data["nombre"] as? String ?: "",
+                            id = id,
+                            nombre = nombre,
                             grupo = runCatching { GrupoAlimento.valueOf(grupoStr) }.getOrDefault(GrupoAlimento.FRUTAS),
-                            fechaIntroduccion = data["fechaIntroduccion"] as? String ?: "",
+                            fechaIntroduccion = fechaStr,
                             reaccion = runCatching { ReaccionAlimento.valueOf(reaccionStr) }.getOrDefault(ReaccionAlimento.NINGUNA),
-                            notas = data["notas"] as? String ?: (data["notes"] as? String ?: "")
+                            notas = notasStr
                         )
                     }.getOrNull()
                 }
