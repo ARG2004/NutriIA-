@@ -1,71 +1,114 @@
 package com.example.nutriia.payment
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
+import com.example.nutriia.platform.currentTimeMillis
+import com.example.nutriia.platform.generateUUID
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.auth.auth
+import dev.gitlive.firebase.firestore.firestore
 
 class PaymentRepository {
 
-    private val pagosState = MutableStateFlow<Map<String, PagoTeleconsulta>>(emptyMap())
+    private val db get() = Firebase.firestore
+    private val auth get() = Firebase.auth
+    private val col get() = db.collection("pagos_teleconsulta")
 
     suspend fun crearPagoPendiente(
         nutriologoUid: String,
         childId:       String,
         montoCentavos: Int,
         moneda:        String = "MXN",
-        padreUid:      String = "padre_default",
+        padreUid:      String = "",
         paypalOrderId: String = ""
     ): Result<PagoTeleconsulta> {
-        val id = com.example.nutriia.platform.generateUUID()
-        val pago = PagoTeleconsulta(
-            id            = id,
-            padreUid      = padreUid,
-            nutriologoUid = nutriologoUid,
-            childId       = childId,
-            montoCentavos = montoCentavos,
-            moneda        = moneda,
-            paypalOrderId = paypalOrderId,
-            estado        = EstadoPago.PENDIENTE
-        )
-        pagosState.value = pagosState.value + (id to pago)
-        return Result.success(pago)
+        val uid = padreUid.ifBlank { auth.currentUser?.uid ?: return Result.failure(Exception("No autenticado")) }
+
+        return try {
+            val id = generateUUID()
+            val pago = PagoTeleconsulta(
+                id            = id,
+                padreUid      = uid,
+                nutriologoUid = nutriologoUid,
+                childId       = childId,
+                montoCentavos = montoCentavos,
+                moneda        = moneda,
+                paypalOrderId = paypalOrderId,
+                estado        = EstadoPago.PENDIENTE
+            )
+            col.document(id).set(pago.toMap())
+            Result.success(pago)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun confirmarPago(pagoId: String, paypalOrderId: String = ""): Result<Unit> {
-        val current = pagosState.value[pagoId] ?: return Result.failure(Exception("No encontrado"))
-        pagosState.value = pagosState.value + (pagoId to current.copy(
-            estado = EstadoPago.COMPLETADO,
-            paypalOrderId = paypalOrderId
-        ))
-        return Result.success(Unit)
+        return try {
+            col.document(pagoId).update(
+                mapOf(
+                    "paypalOrderId" to paypalOrderId,
+                    "estado"        to EstadoPago.COMPLETADO.name,
+                    "completadoEnMillis" to currentTimeMillis()
+                )
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun cancelarPago(pagoId: String): Result<Unit> {
-        val current = pagosState.value[pagoId] ?: return Result.failure(Exception("No encontrado"))
-        pagosState.value = pagosState.value + (pagoId to current.copy(estado = EstadoPago.FALLIDO))
-        return Result.success(Unit)
+        return try {
+            col.document(pagoId).update(mapOf("estado" to EstadoPago.FALLIDO.name))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verificarPagoCompletado(pagoId: String): Result<Boolean> {
+        return try {
+            val doc = col.document(pagoId).get()
+            val pago = if (doc.exists) PagoTeleconsulta.fromMap(doc.id, doc.data()) else null
+            Result.success(pago?.estado == EstadoPago.COMPLETADO)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun obtenerPagoVigente(padreUid: String, nutriologoUid: String): Result<PagoTeleconsulta?> {
-        val pago = pagosState.value.values.firstOrNull {
-            it.padreUid == padreUid && it.nutriologoUid == nutriologoUid && it.estado == EstadoPago.COMPLETADO && it.llamadaId.isEmpty()
+        val uid = padreUid.ifBlank { auth.currentUser?.uid ?: return Result.failure(Exception("No autenticado")) }
+        return try {
+            val query = col
+                .where { "padreUid".equalTo(uid) }
+                .where { "nutriologoUid".equalTo(nutriologoUid) }
+                .where { "estado".equalTo(EstadoPago.COMPLETADO.name) }
+                .get()
+
+            val pago = query.documents.mapNotNull { doc ->
+                runCatching { PagoTeleconsulta.fromMap(doc.id, doc.data()) }.getOrNull()
+            }.firstOrNull { it.llamadaId.isEmpty() }
+
+            Result.success(pago)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-        return Result.success(pago)
     }
 
     suspend fun marcarPagoUsado(pagoId: String, llamadaId: String): Result<Unit> {
-        val current = pagosState.value[pagoId]
-        if (current != null) {
-            pagosState.value = pagosState.value + (pagoId to current.copy(llamadaId = llamadaId))
+        return try {
+            col.document(pagoId).update(mapOf("llamadaId" to llamadaId))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-        return Result.success(Unit)
     }
 
     suspend fun reactivarPago(pagoId: String): Result<Unit> {
-        val current = pagosState.value[pagoId]
-        if (current != null) {
-            pagosState.value = pagosState.value + (pagoId to current.copy(llamadaId = ""))
+        return try {
+            col.document(pagoId).update(mapOf("llamadaId" to ""))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-        return Result.success(Unit)
     }
 }
