@@ -23,8 +23,26 @@ targets:
     info:
       path: iosApp/iosApp/Info.plist
       properties:
+        CFBundleDevelopmentRegion: es
+        CFBundleExecutable: NutriIA
+        CFBundleIdentifier: com.arg.nutriia
+        CFBundleInfoDictionaryVersion: '6.0'
+        CFBundleName: NutriIA
+        CFBundlePackageType: APPL
         CFBundleShortVersionString: '2.2.7'
-        CFBundleVersion: '60'
+        CFBundleVersion: '61'
+        LSRequiresIPhoneOS: true
+        CADisableMinimumFrameDurationOnPhone: true
+        UILaunchStoryboardName: LaunchScreen
+        ITSAppUsesNonExemptEncryption: false
+        NSSpeechRecognitionUsageDescription: "NutrIA utiliza el reconocimiento de voz para facilitar la accesibilidad y dictado de información médica y nutricional."
+        NSMicrophoneUsageDescription: "NutrIA utiliza el micrófono para las teleconsultas y la interacción por voz."
+        NSCameraUsageDescription: "NutrIA utiliza la cámara para la teleconsulta y el análisis visual de alimentos."
+        NSPhotoLibraryUsageDescription: "NutrIA utiliza la galería para adjuntar fotos a tu expediente nutricional."
+        NSFaceIDUsageDescription: "NutrIA utiliza Face ID para un inicio de sesión rápido y seguro."
+        NSLocationWhenInUseUsageDescription: "NutrIA utiliza tu ubicación para sugerirte especialistas y servicios cercanos."
+        NSBluetoothAlwaysUsageDescription: "NutrIA utiliza Bluetooth para conectarse a dispositivos y básculas inteligentes."
+        NSBluetoothPeripheralUsageDescription: "NutrIA utiliza Bluetooth para comunicarse con dispositivos cercanos de salud."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.arg.nutriia
@@ -38,7 +56,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
-        CURRENT_PROJECT_VERSION: '56'
+        CURRENT_PROJECT_VERSION: '61'
         MARKETING_VERSION: '2.2.7'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
