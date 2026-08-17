@@ -25,7 +25,7 @@ actual object PlatformHttp {
             }
 
             val request = NSMutableURLRequest.requestWithURL(
-                uRL = nsUrl,
+                URL = nsUrl,
                 cachePolicy = NSURLRequestReloadIgnoringCacheData,
                 timeoutInterval = timeoutMs / 1000.0
             )
@@ -74,7 +74,7 @@ actual object PlatformHttp {
             }
 
             val request = NSMutableURLRequest.requestWithURL(
-                uRL = nsUrl,
+                URL = nsUrl,
                 cachePolicy = NSURLRequestReloadIgnoringCacheData,
                 timeoutInterval = timeoutMs / 1000.0
             )
