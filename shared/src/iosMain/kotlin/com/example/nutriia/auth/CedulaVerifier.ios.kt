@@ -295,18 +295,6 @@ actual suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula {
                 deferred.complete(ResultadoCedula(valida = false, mensaje = "URL inválida"))
                 cleanup()
             }
-
-            // Timeout de seguridad en el WebView: 25 segundos
-            dispatch_async(dispatch_get_main_queue()) {
-                kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) {
-                    kotlinx.coroutines.delay(25000L)
-                    if (!deferred.isCompleted) {
-                        Log.w(TAG, "[WEBVIEW] Timeout de seguridad de 25s alcanzado")
-                        deferred.complete(ResultadoCedula(valida = false, mensaje = "Tiempo de espera agotado al consultar la SEP"))
-                        cleanup()
-                    }
-                }
-            }
         } catch (e: Throwable) {
             Log.e(TAG, "[WEBVIEW] Excepción inicializando WKWebView: ${e.message}")
             if (!deferred.isCompleted) {

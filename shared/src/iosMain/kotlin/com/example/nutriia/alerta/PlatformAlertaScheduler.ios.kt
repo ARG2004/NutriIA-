@@ -12,7 +12,7 @@ actual object PlatformAlertaScheduler {
 
         val content = UNMutableNotificationContent()
         content.setTitle(alerta.titulo)
-        content.setBody(alerta.mensaje)
+        content.setBody(alerta.descripcion.ifBlank { alerta.titulo })
         content.setSound(UNNotificationSound.defaultSound())
 
         val (horaInt, minutoInt) = parseHora(alerta.hora)
