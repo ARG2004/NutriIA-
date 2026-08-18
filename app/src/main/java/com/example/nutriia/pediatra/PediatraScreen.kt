@@ -300,6 +300,9 @@ fun PediatraScreen(
         textoCodigo = ""
         textoEmail  = ""
         queryDir    = ""
+        if (modoBusqueda == ModoBusqueda.DIRECTORIO) {
+            vinculacionViewModel.cargarDirectorio()
+        }
     }
 
     Scaffold(
@@ -458,7 +461,12 @@ fun PediatraScreen(
                             }
                         }
                     } else if (directorio.isEmpty()) {
-                        item { DirectorioVacio(query = queryDir) }
+                        item {
+                            DirectorioVacio(
+                                query = queryDir,
+                                onRecargar = { vinculacionViewModel.cargarDirectorio() }
+                            )
+                        }
                     } else {
                         item {
                             Text(
@@ -994,10 +1002,8 @@ private fun NutriologoDirectorioRow(nutriologo: NutriologoPublico, onSolicitar: 
     }
 }
 
-// ─── Directorio vacío ─────────────────────────────────────────────────────────
-
 @Composable
-private fun DirectorioVacio(query: String) {
+private fun DirectorioVacio(query: String, onRecargar: () -> Unit = {}) {
     Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Rounded.SearchOff, null, tint = PGreen.copy(alpha = 0.3f), modifier = Modifier.size(48.dp))
@@ -1007,6 +1013,16 @@ private fun DirectorioVacio(query: String) {
                 fontSize = 13.sp, color = Color.Gray, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 40.dp)
             )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onRecargar,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PGreen)
+            ) {
+                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Actualizar directorio", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

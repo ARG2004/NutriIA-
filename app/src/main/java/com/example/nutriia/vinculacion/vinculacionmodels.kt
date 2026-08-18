@@ -74,11 +74,11 @@ data class NutriologoPublico(
     companion object {
         fun fromMap(map: Map<String, Any?>, fallbackId: String = ""): NutriologoPublico = NutriologoPublico(
             uid          = (map["uid"] as? String ?: "").takeIf { it.isNotBlank() } ?: fallbackId,
-            nombre       = map["nombre"]        as? String ?: "",
-            especialidad = map["especialidad"]  as? String ?: "",
-            cedula       = map["cedula"]        as? String ?: "",
-            codigo       = map["codigo"]        as? String ?: "",
-            email        = map["email"]         as? String ?: ""
+            nombre       = (map["nombre"] ?: map["name"] ?: map["nombreCompleto"]) as? String ?: "",
+            especialidad = (map["especialidad"] ?: map["specialty"] ?: map["profesion"]) as? String ?: "Nutrición Pediátrica",
+            cedula       = (map["cedula"] ?: map["license"] ?: map["cedulaProfesional"]) as? String ?: "",
+            codigo       = (map["codigo"] ?: map["code"]) as? String ?: if (fallbackId.isNotBlank()) "NUT-${fallbackId.take(4).uppercase()}-1001" else "",
+            email        = (map["email"] ?: map["correo"]) as? String ?: ""
         )
     }
 }

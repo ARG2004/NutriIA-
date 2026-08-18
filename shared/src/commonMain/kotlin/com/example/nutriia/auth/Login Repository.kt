@@ -53,6 +53,21 @@ class RepositorioLogin {
                 ?: return ResultadoAuth.Error("No se pudo obtener el usuario")
 
             val rol   = obtenerRol(usuario.uid)
+            if (rol == "nutriologo") {
+                try {
+                    val userDoc = db.collection("usuarios").document(usuario.uid).get().await()
+                    val uNombre = userDoc.getString("nombre") ?: ""
+                    val uEspecialidad = userDoc.getString("especialidad") ?: "Nutrición Pediátrica"
+                    val uCedula = userDoc.getString("cedula") ?: ""
+                    val uEmail = userDoc.getString("email") ?: usuario.email ?: ""
+                    com.example.nutriia.vinculacion.VinculacionRepository().publicarPerfilNutriologo(
+                        nombre = uNombre,
+                        especialidad = uEspecialidad,
+                        cedula = uCedula,
+                        email = uEmail
+                    )
+                } catch (_: Exception) {}
+            }
             guardarRolCache(usuario.uid, rol)
             SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, rol)
