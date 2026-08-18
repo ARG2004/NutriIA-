@@ -10,6 +10,7 @@ import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.utils.FechaUtils
 import com.example.nutriia.platform.generateUUID
+import com.example.nutriia.platform.currentTimeMillis
 import com.example.nutriia.firebase.auth.FirebaseAuth
 import com.example.nutriia.firebase.auth.FirebaseUser
 import com.example.nutriia.firebase.firestore.FirebaseFirestore
