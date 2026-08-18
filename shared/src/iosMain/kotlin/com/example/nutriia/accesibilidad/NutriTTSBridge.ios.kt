@@ -25,4 +25,12 @@ actual class NutriTTSBridge actual constructor() {
             CrashStorage.saveCrash(msg)
         }
     }
+
+    actual fun isSpeaking(): Boolean {
+        return try {
+            iosTts.isSpeaking()
+        } catch (_: Throwable) {
+            false
+        }
+    }
 }

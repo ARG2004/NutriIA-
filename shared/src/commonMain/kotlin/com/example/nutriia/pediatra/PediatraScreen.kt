@@ -121,6 +121,15 @@ fun PediatraScreen(
         }
     }
 
+    LaunchedEffect(queryDir) {
+        if (queryDir.isBlank()) {
+            vinculacionViewModel.cargarDirectorio()
+        } else {
+            kotlinx.coroutines.delay(400)
+            vinculacionViewModel.buscarEnDirectorio(queryDir)
+        }
+    }
+
     // ── Voice Commands Logic ──────────────────────────────────────────────────
     var isListening by remember { mutableStateOf(false) }
     val voiceManager = remember { VoiceInputManager() }

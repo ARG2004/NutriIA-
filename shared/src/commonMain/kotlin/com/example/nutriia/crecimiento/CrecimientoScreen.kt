@@ -1061,7 +1061,7 @@ private fun DialogoMedicion(
         },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (esAccesible) {
+                if (esBlind) {
                     CampoTextoAccesible(
                         valor          = fecha,
                         onValorChange  = { fecha = it },

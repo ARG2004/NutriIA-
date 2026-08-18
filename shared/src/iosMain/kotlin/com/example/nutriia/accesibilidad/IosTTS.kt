@@ -67,4 +67,12 @@ class IosNutriTTS {
             CrashStorage.saveCrash(msg)
         }
     }
+
+    fun isSpeaking(): Boolean {
+        return try {
+            sharedSynthesizer.isSpeaking()
+        } catch (_: Throwable) {
+            false
+        }
+    }
 }

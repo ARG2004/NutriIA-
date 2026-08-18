@@ -7,4 +7,5 @@ actual class NutriTTSBridge actual constructor() {
     actual fun stop() {
         println("TTS stop")
     }
+    actual fun isSpeaking(): Boolean = false
 }

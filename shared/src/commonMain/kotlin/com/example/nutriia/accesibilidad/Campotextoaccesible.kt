@@ -937,15 +937,23 @@ private fun iniciarEscuchaConReintento(
 
         val isSkip = command.contains("no lo tengo") || command.contains("no tengo") || command == "no" || 
                      command.contains("don't have it") || command.contains("dont have it") || command == "skip" || 
-                     command == "omitir" || command.contains("sin notas") || command == "ninguna"
-        val isSend = command.contains("enviar") || command.contains("send") || command.contains("terminar") || command.contains("finalizar")
-        
-        if (command == "siguiente" || command == "continuar" || command == "next" || command == "continue" || command == "ok" || 
-            command.contains("guardar") || command.contains("save") || command == "listo" || command == "ready" || isSkip || isSend) {
-            
+                     command == "omitir" || command.contains("sin notas") || command == "ninguna" || command == "nada" || command == "ninguno"
+        val isSave = command.contains("guardar") || command.contains("save") || command.contains("finalizar") || 
+                     command.contains("terminar") || command.contains("enviar") || command.contains("send") || 
+                     command == "listo" || command == "ready"
+        val isNext = command == "siguiente" || command == "continuar" || command == "next" || command == "continue" || command == "ok"
+
+        if (isNext || isSave || isSkip) {
             if (isFinal) {
                 if (isSkip) {
                     onValorChange("")
+                } else if (isSave) {
+                    // Si el comando fue únicamente 'guardar', 'listo', etc., no escribir 'guardar' en las notas
+                    val textoLimpio = command.replace("guardar", "").replace("save", "").replace("finalizar", "").replace("terminar", "").replace("listo", "").trim()
+                    if (textoLimpio.isNotBlank()) {
+                        val resultado = sanitizarResultadoVoz(textoLimpio, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
+                        onValorChange(resultado)
+                    }
                 }
                 if (onNext != null) {
                     onNext.invoke()

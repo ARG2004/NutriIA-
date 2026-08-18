@@ -118,8 +118,8 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "97")
-            MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.2.33")
+            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "98")
+            MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.2.34")
             echo "Building iOS App with Marketing Version: $MARKETING_VER, Build: $BUILD_NUM"
             xcodebuild archive \
               -project iosApp.xcodeproj \

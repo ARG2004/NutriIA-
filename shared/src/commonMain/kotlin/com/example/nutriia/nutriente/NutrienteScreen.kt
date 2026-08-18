@@ -831,7 +831,7 @@ private fun AgregarRegistroDialog(
                     }
                 }
                 item {
-                    if (esAccesible) {
+                    if (esBlind) {
                         CampoTextoAccesible(
                             valor          = alimento,
                             onValorChange  = { alimento = it },

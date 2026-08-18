@@ -105,7 +105,7 @@ class AnalisisViewModel : ViewModel() {
                     analysis = analysis
                 )
                 resultadoActual = completo
-                _uiState.value = AnalisisUiState.Exito(completo)
+                _uiState.value = AnalisisUiState.Exito(completo, base64Image)
 
             } catch (e: Exception) {
                 _uiState.value = AnalisisUiState.Error("Error procesando imagen: ${e.message}")

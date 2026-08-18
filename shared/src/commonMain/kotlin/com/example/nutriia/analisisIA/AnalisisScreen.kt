@@ -38,6 +38,19 @@ import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.ui.theme.ChildProfile
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.toComposeImageBitmap
+
+@OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+private fun decodeBase64ToBitmap(base64: String): androidx.compose.ui.graphics.ImageBitmap? {
+    if (base64.isBlank()) return null
+    return try {
+        val clean = if (base64.contains(",")) base64.substringAfter(",") else base64
+        val bytes = kotlin.io.encoding.Base64.Default.decode(clean.trim().replace("\n", "").replace("\r", ""))
+        org.jetbrains.skia.Image.makeFromEncoded(bytes).toComposeImageBitmap()
+    } catch (_: Throwable) {
+        null
+    }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PALETA DE COLORES — Dinámica: Verde para Niño | Rosado para Embarazo
@@ -256,12 +269,13 @@ fun AnalisisScreen(
                         onCancelar = { viewModel.cancelarAnalisis() }
                     )
                     is AnalisisUiState.Exito -> PantallaResultado(
-                        resultado  = state.resultado,
-                        child      = child,
-                        isEmbarazo = esModoEmbarazo,
-                        onGuardar  = { viewModel.guardarEnHistorial(if (esModoEmbarazo) "embarazo" else (child?.id ?: "embarazo")) },
-                        onNuevo    = { viewModel.resetear() },
-                        onVolver   = { viewModel.resetear(); onNavigateBack() }
+                        resultado   = state.resultado,
+                        base64Image = state.base64Image,
+                        child       = child,
+                        isEmbarazo  = esModoEmbarazo,
+                        onGuardar   = { viewModel.guardarEnHistorial(if (esModoEmbarazo) "embarazo" else (child?.id ?: "embarazo")) },
+                        onNuevo     = { viewModel.resetear() },
+                        onVolver    = { viewModel.resetear(); onNavigateBack() }
                     )
                     is AnalisisUiState.Guardado -> PantallaGuardado(
                         onNuevo  = { viewModel.resetear() },
@@ -1044,39 +1058,51 @@ private fun PantallaAnalizando(mensaje: String, onCancelar: () -> Unit) {
 
 @Composable
 private fun PantallaResultado(
-    resultado  : AnalisisCompleto,
-    child      : ChildProfile? = null,
-    isEmbarazo : Boolean = false,
-    onGuardar  : () -> Unit,
-    onNuevo    : () -> Unit,
-    onVolver   : () -> Unit
+    resultado   : AnalisisCompleto,
+    base64Image : String = "",
+    child       : ChildProfile? = null,
+    isEmbarazo  : Boolean = false,
+    onGuardar   : () -> Unit,
+    onNuevo     : () -> Unit,
+    onVolver    : () -> Unit
 ) {
     val food      = resultado.foodDetection
     val nutrition = resultado.nutrition
     val analysis  = resultado.analysis
 
+    val esNoComestible = food.foodType.lowercase() == "objeto_no_comestible" || 
+                         food.foodType.lowercase().contains("no_comestible") ||
+                         food.foodName.lowercase().contains("no comestible") ||
+                         food.foodName.lowercase().contains("gimnasio") ||
+                         food.foodName.lowercase().contains("máquina") ||
+                         food.foodName.lowercase().contains("maquina") ||
+                         analysis.warnings.any { it.lowercase().contains("no comestible") || it.lowercase().contains("no es un alimento") || it.lowercase().contains("no recomendado") }
+
     val targetNombre = if (isEmbarazo) "Tu Embarazo" else (child?.name ?: "tu bebé")
     val (recomColor, recomBg, recomBadge, recomLabel) = when {
+        esNoComestible -> listOf(RedSoft, RedLight, "✕", "No comestible")
         analysis.recommended -> listOf(GreenPrimary, GreenLight, "✓", "Recomendado para $targetNombre")
         !analysis.recommended && analysis.warnings.isNotEmpty() -> listOf(RedSoft, RedLight, "✕", "No recomendado para $targetNombre")
         else -> listOf(AccentOrange, AccentOrangeL, "!", "Con precaución para $targetNombre")
     }
 
-    val mealChipText = when (food.foodType.lowercase()) {
-        "objeto_no_comestible" -> "📦 Objeto no comestible"
-        "desayuno" -> "☕ Desayuno / Café"
-        "comida"   -> "🍲 Comida / Almuerzo"
-        "cena"     -> "🌙 Cena"
-        "snack"    -> "🍎 Colación / Snack"
-        "bebida"   -> "🥤 Bebida"
-        "fruta"    -> "🍓 Fruta fresca"
-        "verdura"  -> "🥗 Verdura"
-        "cereal"   -> "🌾 Cereal / Grano"
-        "lacteo"   -> "🥛 Lácteo"
-        else       -> "🍽️ Platillo o elemento"
+    val mealChipText = when {
+        esNoComestible -> "📦 Objeto no comestible"
+        food.foodType.lowercase() == "desayuno" -> "☕ Desayuno / Café"
+        food.foodType.lowercase() == "comida"   -> "🍲 Comida / Almuerzo"
+        food.foodType.lowercase() == "cena"     -> "🌙 Cena"
+        food.foodType.lowercase() == "snack"    -> "🍎 Colación / Snack"
+        food.foodType.lowercase() == "bebida"   -> "🥤 Bebida"
+        food.foodType.lowercase() == "fruta"    -> "🍓 Fruta fresca"
+        food.foodType.lowercase() == "verdura"  -> "🥗 Verdura"
+        food.foodType.lowercase() == "cereal"   -> "🌾 Cereal / Grano"
+        food.foodType.lowercase() == "lacteo"   -> "🥛 Lácteo"
+        else -> "🍽️ Platillo o elemento"
     }
 
-    val foodBitmap: androidx.compose.ui.graphics.ImageBitmap? = null
+    val foodBitmap: androidx.compose.ui.graphics.ImageBitmap? = remember(base64Image) {
+        decodeBase64ToBitmap(base64Image)
+    }
 
     Column(
         modifier = Modifier

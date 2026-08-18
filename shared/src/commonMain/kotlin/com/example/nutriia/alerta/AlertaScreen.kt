@@ -944,7 +944,7 @@ private fun AlertaDialog(
 
                 // Título
                 item {
-                    if (esAccesible) {
+                    if (esBlind) {
                         CampoTextoAccesible(
                             valor          = titulo,
                             onValorChange  = { titulo = it },
@@ -982,7 +982,7 @@ private fun AlertaDialog(
                 // Descripción
                 if (!esBlind || campoActivo >= 2) {
                     item {
-                        if (esAccesible) {
+                        if (esBlind) {
                             CampoTextoAccesible(
                                 valor          = descripcion,
                                 onValorChange  = { descripcion = it },
@@ -1023,7 +1023,7 @@ private fun AlertaDialog(
                 // Hora
                 if (!esBlind || campoActivo >= 1) {
                     item {
-                    if (esAccesible) {
+                    if (esBlind) {
                         CampoTextoAccesible(
                             valor          = hora,
                             onValorChange  = { hora = it },
@@ -1088,7 +1088,7 @@ private fun AlertaDialog(
 
                 if (esUnica && (!esBlind || campoActivo >= 3)) {
                     item {
-                        if (esAccesible) {
+                        if (esBlind) {
                             CampoTextoAccesible(
                                 valor          = fechaUnica,
                                 onValorChange  = { if (it.length <= 10) fechaUnica = it },

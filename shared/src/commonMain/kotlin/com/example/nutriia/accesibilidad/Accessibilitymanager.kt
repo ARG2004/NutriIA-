@@ -121,12 +121,23 @@ class NutriTTS(context: Any? = null, private var idioma: IdiomaVoz = IdiomaVoz.E
         hablarEnCola(if (idioma == IdiomaVoz.INGLES) enTexto else esTexto)
     }
 
-    fun estaHablando(): Boolean = false
+    fun estaHablando(): Boolean = bridge.isSpeaking()
 
     suspend fun hablarYEsperar(texto: String, margenMs: Long = 600L) {
         if (texto.isBlank()) return
         bridge.speak(texto, idioma.localeVoz)
-        kotlinx.coroutines.delay(margenMs)
+        val palabras = texto.split(" ").filter { it.isNotBlank() }.size
+        val tiempoEstimadoMs = (texto.length * 65L).coerceAtLeast(palabras * 360L) + margenMs
+        var tiempoTranscurrido = 0L
+        kotlinx.coroutines.delay(350L)
+        tiempoTranscurrido += 350L
+        while (estaHablando() && tiempoTranscurrido < 25_000L) {
+            kotlinx.coroutines.delay(200L)
+            tiempoTranscurrido += 200L
+        }
+        if (tiempoTranscurrido < tiempoEstimadoMs) {
+            kotlinx.coroutines.delay(tiempoEstimadoMs - tiempoTranscurrido)
+        }
     }
 
     fun hablarYEsperarLocalizado(esTexto: String, enTexto: String, margenMs: Long = 600L) {

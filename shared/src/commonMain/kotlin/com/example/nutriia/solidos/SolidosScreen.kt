@@ -1363,7 +1363,7 @@ private fun AgregarAlimentoDialog(
                 // ── FECHA ─────────────────────────────────────────────────────
                 androidx.compose.animation.AnimatedVisibility(visible = !esBlind || campoActivo >= 1) {
                     Column {
-                        if (esAccesible) {
+                        if (esBlind) {
                             CampoTextoAccesible(
                                 valor          = fecha,
                                 onValorChange  = { fecha = it },
@@ -1395,7 +1395,7 @@ private fun AgregarAlimentoDialog(
 
                 // ── GRUPO ALIMENTICIO ──────────────────
                 if (!esBlind || campoActivo >= 2) {
-                    if (esAccesible) {
+                    if (esBlind) {
                         var grupoTexto by remember(grupo) { mutableStateOf(grupo.label) }
                         CampoTextoAccesible(
                             valor          = grupoTexto,

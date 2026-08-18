@@ -147,7 +147,19 @@ class VinculacionRepository {
                     if (esEspecialidadGinecologica(perfil.especialidad)) Result.success(null)
                     else Result.success(perfil)
                 } else {
-                    Result.success(null)
+                    // Fallback a colección usuarios
+                    val userByCode = db.collection("usuarios").where { "codigo".equalTo(q) }.get().documents.firstOrNull()
+                        ?: db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get().documents.firstOrNull {
+                            val nut = runCatching { NutriologoPublico.fromMap(it.data(), it.id) }.getOrNull()
+                            nut?.codigo?.equals(q, ignoreCase = true) == true || it.id.equals(q, ignoreCase = true)
+                        }
+                    if (userByCode != null && userByCode.exists) {
+                        val perfil = NutriologoPublico.fromMap(userByCode.data(), userByCode.id)
+                        if (!esEspecialidadGinecologica(perfil.especialidad)) Result.success(perfil)
+                        else Result.success(null)
+                    } else {
+                        Result.success(null)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -177,7 +189,19 @@ class VinculacionRepository {
                 if (found != null && !esEspecialidadGinecologica(found.especialidad)) {
                     Result.success(found)
                 } else {
-                    Result.success(null)
+                    // Fallback a colección usuarios
+                    val userSnap = db.collection("usuarios").where { "email".equalTo(e) }.get()
+                    val userDoc = userSnap.documents.firstOrNull {
+                        val rol = runCatching { it.data<Map<String, Any?>>()["rol"] as? String }.getOrNull() ?: ""
+                        rol.equals("nutriologo", ignoreCase = true)
+                    }
+                    if (userDoc != null && userDoc.exists) {
+                        val perfil = NutriologoPublico.fromMap(userDoc.data(), userDoc.id)
+                        if (!esEspecialidadGinecologica(perfil.especialidad)) Result.success(perfil)
+                        else Result.success(null)
+                    } else {
+                        Result.success(null)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -188,9 +212,17 @@ class VinculacionRepository {
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
         return try {
             val snap = colNutriologosPublicos.get()
-            val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
+            var lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
             }.filter { !esEspecialidadGinecologica(it.especialidad) }
+
+            if (lista.isEmpty()) {
+                val snapUsuarios = db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get()
+                val listaUsuarios = snapUsuarios.documents.take(limite.toInt()).mapNotNull { doc ->
+                    runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                }.filter { !esEspecialidadGinecologica(it.especialidad) }
+                lista = listaUsuarios
+            }
             Result.success(lista)
         } catch (e: Exception) {
             Result.failure(e)
@@ -201,9 +233,18 @@ class VinculacionRepository {
         val q = query.trim()
         return try {
             val snap = colNutriologosPublicos.get()
-            val todos = snap.documents.mapNotNull { doc ->
+            var todos = snap.documents.mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
             }.filter { !esEspecialidadGinecologica(it.especialidad) }
+
+            if (todos.isEmpty()) {
+                val snapUsuarios = db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get()
+                val listaUsuarios = snapUsuarios.documents.mapNotNull { doc ->
+                    runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                }.filter { !esEspecialidadGinecologica(it.especialidad) }
+                todos = listaUsuarios
+            }
+
             if (q.isBlank()) return Result.success(todos)
             val filtrados = todos.filter {
                 it.nombre.contains(q, ignoreCase = true) || it.especialidad.contains(q, ignoreCase = true) || it.codigo.contains(q, ignoreCase = true) || it.email.contains(q, ignoreCase = true)

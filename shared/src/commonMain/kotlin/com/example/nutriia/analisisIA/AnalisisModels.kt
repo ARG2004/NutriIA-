@@ -55,7 +55,7 @@ sealed class AnalisisUiState {
     object Idle : AnalisisUiState()
     object Capturando : AnalisisUiState()
     data class Analizando(val mensaje: String) : AnalisisUiState()
-    data class Exito(val resultado: AnalisisCompleto) : AnalisisUiState()
+    data class Exito(val resultado: AnalisisCompleto, val base64Image: String = "") : AnalisisUiState()
     object Guardado : AnalisisUiState()
     data class Error(val mensaje: String) : AnalisisUiState()
 }

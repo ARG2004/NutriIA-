@@ -879,7 +879,7 @@ fun AddFeedingDialog(
                     }
                 }
 
-                if (esAccesible) {
+                if (esBlind) {
                     CampoTextoAccesible(
                         valor = timeInput,
                         onValorChange = { timeInput = it },
