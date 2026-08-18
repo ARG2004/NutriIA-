@@ -98,7 +98,7 @@ fun PediatraScreen(
     val exito                by vinculacionViewModel.exito.collectAsState()
     val nutriologoSel        by vinculacionViewModel.nutriologoSeleccionado.collectAsState()
 
-    val vinculacionesHijo = vinculaciones.filter { it.childId == childId }
+    val vinculacionesHijo = vinculaciones.filter { it.childId == childId || it.childId.isBlank() }
     val activas           = vinculacionesHijo.filter { it.estado == EstadoVinculacion.ACTIVO }
     val pendientes        = vinculacionesHijo.filter { it.estado == EstadoVinculacion.PENDIENTE }
 
