@@ -5,12 +5,13 @@ import platform.Foundation.NSBundle
 
 actual object PlatformConfig {
 
+    @Deprecated("Configura GROQ_API_KEY en Info.plist o Config.xcconfig")
     private const val OBFUSCATED_FALLBACK = "MEoqMUUBJDwpTkhBYW0IODMyNhB2b0l0AH4lFxdHNBB4c3QID28zLz48PjwME1FyAQ8RCiZGRx0="
 
     actual val groqApiKey: String
         get() {
             val plistKey = NSBundle.mainBundle.objectForInfoDictionaryKey("GROQ_API_KEY") as? String
-            if (!plistKey.isNullOrBlank()) {
+            if (!plistKey.isNullOrBlank() && !plistKey.startsWith("$(")) {
                 val deob = KeyDeobfuscator.deobfuscate(plistKey)
                 if (deob.isNotBlank()) return deob
             }

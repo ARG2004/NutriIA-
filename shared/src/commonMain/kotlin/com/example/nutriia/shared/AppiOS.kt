@@ -302,13 +302,6 @@ fun NutriIAiOSApp() {
 
     val scope = rememberCoroutineScope()
 
-    // ─── VoiceOver Detection ──────────────────────────────────────────────
-    LaunchedEffect(Unit) {
-        if (com.example.nutriia.platform.isVoiceOverActive()) {
-            accessibilityVm.setMode(AccessibilityMode.BLIND)
-        }
-    }
-
     // ─── Sincronizar Perfil de Hijo Activo con NutriSharedViewModel ──────
     LaunchedEffect(activeChild?.id) {
         activeChild?.id?.let { id ->
@@ -464,19 +457,16 @@ fun NutriIAiOSApp() {
                 "nutriologo" -> {
                     currentScreen = if (pantallaRestaurada != null && esPantallaModuloInterno(pantallaRestaurada)) pantallaRestaurada else Screen.DASHBOARD_NUTRITIONIST
                     accessibilityVm.sincronizarDesdeFirebase()
-                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
                     teleconsultaVm.iniciarObservacionEntrantesNutriologo(loginViewModel.uidUsuario)
                 }
                 "ginecologo" -> {
                     currentScreen = if (pantallaRestaurada != null && esPantallaModuloInterno(pantallaRestaurada)) pantallaRestaurada else Screen.DASHBOARD_GINECOLOGO
                     accessibilityVm.sincronizarDesdeFirebase()
-                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
                     teleconsultaVm.iniciarObservacionEntrantesNutriologo(loginViewModel.uidUsuario)
                 }
                 "mama_primeriza" -> {
                     if (nombreMama.isBlank()) nombreMama = loginViewModel.nombreUsuario
                     accessibilityVm.sincronizarDesdeFirebase()
-                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
                     teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
                     scope.launch {
                         val p = loginViewModel.cargarPerfilEmbarazo()
@@ -499,7 +489,6 @@ fun NutriIAiOSApp() {
                         dashboardDefault
                     }
                     accessibilityVm.sincronizarDesdeFirebase()
-                    if (com.example.nutriia.platform.isVoiceOverActive()) accessibilityVm.setMode(AccessibilityMode.BLIND)
                     teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
                 }
                 else -> {

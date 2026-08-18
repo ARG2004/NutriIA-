@@ -2,7 +2,9 @@
 
 package com.example.nutriia.accesibilidad
 
+import com.example.nutriia.platform.CrashStorage
 import platform.AVFAudio.*
+import platform.Foundation.NSLog
 import platform.Foundation.NSLocale
 import platform.Speech.*
 import platform.darwin.dispatch_async
@@ -22,9 +24,12 @@ actual class PlatformVoiceInput actual constructor() {
     actual fun isAvailable(): Boolean {
         return try {
             val recognizer = SFSpeechRecognizer(locale = NSLocale(localeIdentifier = "es-MX"))
-            recognizer.isAvailable()
-        } catch (_: Throwable) {
-            true
+            recognizer?.isAvailable() ?: false
+        } catch (t: Throwable) {
+            val msg = "⚠️ [PlatformVoiceInput] isAvailable() check failed: ${t.message}\n${t.stackTraceToString()}"
+            NSLog("%s", msg)
+            CrashStorage.saveCrash(msg)
+            false
         }
     }
 
@@ -159,7 +164,11 @@ actual class PlatformVoiceInput actual constructor() {
 
             recognitionTask?.cancel()
             recognitionTask = null
-        } catch (_: Throwable) {}
+        } catch (t: Throwable) {
+            val msg = "⚠️ [PlatformVoiceInput] stopListening error: ${t.message}\n${t.stackTraceToString()}"
+            NSLog("%s", msg)
+            CrashStorage.saveCrash(msg)
+        }
     }
 
     actual fun cancel() {

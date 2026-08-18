@@ -34,3 +34,5 @@ Thumbs.db
 *.csr
 *.certSigningRequest
 cert_base64.txt
+*.xcconfig
+

@@ -85,11 +85,15 @@ jobs:
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
           KEYCHAIN_PASSWORD: ${{ secrets.MI_CLAVE_KEYCHAIN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
             echo "Secretos de App Store Connect no configurados; omitiendo envío a TestFlight."
           else
             brew install xcodegen
+            if [ ! -f iosApp/Config.xcconfig ]; then
+              echo "GROQ_API_KEY = ${GROQ_API_KEY:-}" > iosApp/Config.xcconfig
+            fi
             xcodegen generate
 
             # Garantizar que todas las cadenas de propósito de privacidad existan en Info.plist tras xcodegen
@@ -114,8 +118,8 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "79")
-            MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.2.15")
+            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "80")
+            MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.2.16")
             echo "Building iOS App with Marketing Version: $MARKETING_VER, Build: $BUILD_NUM"
             xcodebuild archive \
               -project iosApp.xcodeproj \

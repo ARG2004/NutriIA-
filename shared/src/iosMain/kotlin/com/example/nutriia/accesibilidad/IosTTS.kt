@@ -2,7 +2,9 @@
 
 package com.example.nutriia.accesibilidad
 
+import com.example.nutriia.platform.CrashStorage
 import platform.AVFAudio.*
+import platform.Foundation.NSLog
 
 class IosNutriTTS {
 
@@ -20,7 +22,11 @@ class IosNutriTTS {
                 error = null
             )
             session.setActive(true, error = null)
-        } catch (_: Throwable) {}
+        } catch (t: Throwable) {
+            val msg = "⚠️ [IosNutriTTS] Error in setupAudioSession: ${t.message}\n${t.stackTraceToString()}"
+            NSLog("%s", msg)
+            CrashStorage.saveCrash(msg)
+        }
     }
 
     fun speak(text: String, lang: String = "es-MX") {
@@ -43,7 +49,11 @@ class IosNutriTTS {
             utterance.volume = 1.0f
 
             sharedSynthesizer.speakUtterance(utterance)
-        } catch (_: Throwable) {}
+        } catch (t: Throwable) {
+            val msg = "❌ [IosNutriTTS] Error in speak(): ${t.message}\n${t.stackTraceToString()}"
+            NSLog("%s", msg)
+            CrashStorage.saveCrash(msg)
+        }
     }
 
     fun stop() {
@@ -51,6 +61,10 @@ class IosNutriTTS {
             if (sharedSynthesizer.isSpeaking()) {
                 sharedSynthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
             }
-        } catch (_: Throwable) {}
+        } catch (t: Throwable) {
+            val msg = "⚠️ [IosNutriTTS] Error in stop(): ${t.message}\n${t.stackTraceToString()}"
+            NSLog("%s", msg)
+            CrashStorage.saveCrash(msg)
+        }
     }
 }

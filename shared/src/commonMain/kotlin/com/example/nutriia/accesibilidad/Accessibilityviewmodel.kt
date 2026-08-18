@@ -37,6 +37,9 @@ class AccessibilityViewModel : ViewModel() {
     private val _primeraVezCargada = MutableStateFlow(false)
     val primeraVezCargada = _primeraVezCargada.asStateFlow()
 
+    private val _modoCargado = MutableStateFlow(false)
+    val modoCargado = _modoCargado.asStateFlow()
+
     init {
         viewModelScope.launch {
             repo.primeraVezFlow.first()
@@ -44,6 +47,7 @@ class AccessibilityViewModel : ViewModel() {
         }
         viewModelScope.launch {
             val modoGuardado = repo.modeFlow.first()
+            _modoCargado.value = true
             if (modoGuardado == AccessibilityMode.BLIND) {
                 iniciarTTS(null)
             }

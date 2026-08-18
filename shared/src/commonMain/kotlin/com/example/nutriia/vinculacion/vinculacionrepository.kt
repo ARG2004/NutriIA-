@@ -5,10 +5,16 @@ import com.example.nutriia.platform.generateUUID
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.firestore.firestore
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class VinculacionRepository {
 
     private val db get() = Firebase.firestore
@@ -17,6 +23,17 @@ class VinculacionRepository {
     private val colVinculaciones get() = db.collection("vinculaciones")
     private val colNutriologosPublicos get() = db.collection("nutriologos_publicos")
 
+    private suspend fun getAuthUser(): dev.gitlive.firebase.auth.FirebaseUser? {
+        auth.currentUser?.let { return it }
+        return try {
+            withTimeoutOrNull(3000L) {
+                auth.authStateChanged.filterNotNull().first()
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun generarCodigo(nombre: String): String {
         val limpio = nombre.trim().filter { it.isLetter() }.take(4).uppercase()
         val random = (1000..9999).random()
@@ -24,17 +41,34 @@ class VinculacionRepository {
     }
 
     fun observarHijo(padreUid: String, childId: String): Flow<Map<String, Any?>?> {
-        val uid = padreUid.ifBlank { auth.currentUser?.uid ?: "" }
-        if (uid.isBlank() || childId.isBlank()) return flowOf(null)
-        return try {
-            db.collection("usuarios")
-                .document(uid)
-                .collection("hijos")
-                .document(childId)
-                .snapshots
-                .map { if (it.exists) it.data() else null }
-        } catch (e: Exception) {
-            flowOf(null)
+        if (childId.isBlank()) return flowOf(null)
+        if (padreUid.isNotBlank()) {
+            return try {
+                db.collection("usuarios")
+                    .document(padreUid)
+                    .collection("hijos")
+                    .document(childId)
+                    .snapshots
+                    .map { if (it.exists) it.data() else null }
+            } catch (e: Exception) {
+                flowOf(null)
+            }
+        }
+        return auth.authStateChanged.flatMapLatest { user ->
+            val uid = user?.uid ?: ""
+            if (uid.isBlank()) flowOf(null)
+            else {
+                try {
+                    db.collection("usuarios")
+                        .document(uid)
+                        .collection("hijos")
+                        .document(childId)
+                        .snapshots
+                        .map { if (it.exists) it.data() else null }
+                } catch (e: Exception) {
+                    flowOf(null)
+                }
+            }
         }
     }
 
@@ -44,7 +78,8 @@ class VinculacionRepository {
         cedula:       String,
         email:        String
     ): Result<NutriologoPublico> {
-        val uid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+        val user = getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+        val uid = user.uid
 
         return try {
             val docRef = colNutriologosPublicos.document(uid)
@@ -71,7 +106,8 @@ class VinculacionRepository {
     }
 
     suspend fun obtenerMiPerfilPublico(): Result<NutriologoPublico?> {
-        val uid = auth.currentUser?.uid ?: return Result.success(null)
+        val user = getAuthUser() ?: return Result.success(null)
+        val uid = user.uid
         return try {
             val doc = colNutriologosPublicos.document(uid).get()
             if (doc.exists) {
@@ -168,7 +204,8 @@ class VinculacionRepository {
         childId:     String,
         childNombre: String
     ): Result<Vinculacion> {
-        val padreUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+        val user = getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+        val padreUid = user.uid
         val docId = Vinculacion.docId(nutriologo.uid, padreUid, childId)
 
         return try {
@@ -220,40 +257,70 @@ class VinculacionRepository {
     }
 
     fun observarVinculacionesDelPadre(padreUid: String = ""): Flow<List<Vinculacion>> {
-        val uid = padreUid.ifBlank { auth.currentUser?.uid ?: "" }
-        if (uid.isBlank()) return flowOf(emptyList())
-
-        return try {
-            colVinculaciones.where { "padreUid".equalTo(uid) }.snapshots.map { snapshot ->
-                snapshot.documents.mapNotNull { doc ->
-                    runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+        if (padreUid.isNotBlank()) {
+            return try {
+                colVinculaciones.where { "padreUid".equalTo(padreUid) }.snapshots.map { snapshot ->
+                    snapshot.documents.mapNotNull { doc ->
+                        runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+                    }
+                }
+            } catch (e: Exception) {
+                flowOf(emptyList())
+            }
+        }
+        return auth.authStateChanged.flatMapLatest { user ->
+            val uid = user?.uid ?: ""
+            if (uid.isBlank()) flowOf(emptyList())
+            else {
+                try {
+                    colVinculaciones.where { "padreUid".equalTo(uid) }.snapshots.map { snapshot ->
+                        snapshot.documents.mapNotNull { doc ->
+                            runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+                        }
+                    }
+                } catch (e: Exception) {
+                    flowOf(emptyList())
                 }
             }
-        } catch (e: Exception) {
-            flowOf(emptyList())
         }
     }
 
     fun observarVinculacionesDelNutriologo(nutriologoUid: String = ""): Flow<List<Vinculacion>> {
-        val uid = nutriologoUid.ifBlank { auth.currentUser?.uid ?: "" }
-        if (uid.isBlank()) return flowOf(emptyList())
-
-        return try {
-            colVinculaciones.where { "nutriologoUid".equalTo(uid) }.snapshots.map { snapshot ->
-                snapshot.documents.mapNotNull { doc ->
-                    runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+        if (nutriologoUid.isNotBlank()) {
+            return try {
+                colVinculaciones.where { "nutriologoUid".equalTo(nutriologoUid) }.snapshots.map { snapshot ->
+                    snapshot.documents.mapNotNull { doc ->
+                        runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+                    }
+                }
+            } catch (e: Exception) {
+                flowOf(emptyList())
+            }
+        }
+        return auth.authStateChanged.flatMapLatest { user ->
+            val uid = user?.uid ?: ""
+            if (uid.isBlank()) flowOf(emptyList())
+            else {
+                try {
+                    colVinculaciones.where { "nutriologoUid".equalTo(uid) }.snapshots.map { snapshot ->
+                        snapshot.documents.mapNotNull { doc ->
+                            runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
+                        }
+                    }
+                } catch (e: Exception) {
+                    flowOf(emptyList())
                 }
             }
-        } catch (e: Exception) {
-            flowOf(emptyList())
         }
     }
 
     suspend fun guardarPlan(plan: PlanAlimentario): Result<Unit> {
+        val user = getAuthUser()
+        val defaultPadreUid = user?.uid ?: ""
         return try {
             val id = if (plan.id.isEmpty()) generateUUID() else plan.id
             val docRef = db.collection("usuarios")
-                .document(plan.padreUid.ifBlank { auth.currentUser?.uid ?: "" })
+                .document(plan.padreUid.ifBlank { defaultPadreUid })
                 .collection("hijos")
                 .document(plan.childId)
                 .collection("planes_alimentarios")
@@ -267,21 +334,26 @@ class VinculacionRepository {
     }
 
     fun observarPlanActivo(childId: String): Flow<PlanAlimentario?> {
-        val uid = auth.currentUser?.uid ?: return flowOf(null)
-        return try {
-            db.collection("usuarios")
-                .document(uid)
-                .collection("hijos")
-                .document(childId)
-                .collection("planes_alimentarios")
-                .snapshots
-                .map { snapshot ->
-                    snapshot.documents.firstOrNull()?.let { doc ->
-                        runCatching { PlanAlimentario.fromMap(doc.id, doc.data()) }.getOrNull()
-                    }
+        return auth.authStateChanged.flatMapLatest { user ->
+            val uid = user?.uid ?: ""
+            if (uid.isBlank() || childId.isBlank()) flowOf(null)
+            else {
+                try {
+                    db.collection("usuarios")
+                        .document(uid)
+                        .collection("hijos")
+                        .document(childId)
+                        .collection("planes_alimentarios")
+                        .snapshots
+                        .map { snapshot ->
+                            snapshot.documents.firstOrNull()?.let { doc ->
+                                runCatching { PlanAlimentario.fromMap(doc.id, doc.data()) }.getOrNull()
+                            }
+                        }
+                } catch (e: Exception) {
+                    flowOf(null)
                 }
-        } catch (e: Exception) {
-            flowOf(null)
+            }
         }
     }
 }

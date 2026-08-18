@@ -2,6 +2,8 @@ package com.example.nutriia.firebase.auth
 
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class FirebaseAuth private constructor() {
     companion object {
@@ -13,6 +15,9 @@ class FirebaseAuth private constructor() {
 
     val currentUser: FirebaseUser?
         get() = delegate.currentUser?.let { FirebaseUser(it) }
+
+    val authStateChanged: Flow<FirebaseUser?>
+        get() = delegate.authStateChanged.map { user -> user?.let { FirebaseUser(it) } }
 
     suspend fun signInWithEmailAndPassword(email: String, pass: String): AuthResult {
         val result = delegate.signInWithEmailAndPassword(email, pass)
