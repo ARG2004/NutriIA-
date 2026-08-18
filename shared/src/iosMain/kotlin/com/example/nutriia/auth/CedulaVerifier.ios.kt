@@ -105,18 +105,10 @@ actual suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula {
             webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
             webViewRef = webView
 
-            // Agregar a la ventana para garantizar ciclo de vida de renderizado WebKit
-            val scenes = UIApplication.sharedApplication.connectedScenes.allObjects
-            val activeScene = scenes.filterIsInstance<platform.UIKit.UIWindowScene>().firstOrNull {
-                it.activationState == platform.UIKit.UISceneActivationStateForegroundActive
-            } ?: scenes.filterIsInstance<platform.UIKit.UIWindowScene>().firstOrNull()
-
-            val targetWindow = activeScene?.windows?.filterIsInstance<platform.UIKit.UIWindow>()?.firstOrNull { it.isKeyWindow() }
-                ?: activeScene?.windows?.filterIsInstance<platform.UIKit.UIWindow>()?.firstOrNull()
-                ?: UIApplication.sharedApplication.keyWindow
-                ?: UIApplication.sharedApplication.windows.firstOrNull() as? platform.UIKit.UIWindow
-
-            targetWindow?.addSubview(webView)
+            // Agregar a la vista activa para garantizar ciclo de vida de renderizado WebKit
+            val rootVC = UIApplication.sharedApplication.keyWindow?.rootViewController
+                ?: (UIApplication.sharedApplication.windows.firstOrNull() as? platform.UIKit.UIWindow)?.rootViewController
+            rootVC?.view?.addSubview(webView)
 
             val navDelegate = object : NSObject(), WKNavigationDelegateProtocol {
                 override fun webView(webView: WKWebView, didFinishNavigation: WKNavigation?) {
