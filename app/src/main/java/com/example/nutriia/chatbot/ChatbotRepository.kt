@@ -106,7 +106,7 @@ class ChatbotRepository {
 
             val requestBodyJson = gson.toJson(
                 mapOf(
-                    "model"       to "llama-3.1-8b-instant",
+                    "model"       to "openai/gpt-oss-120b",
                     "messages"    to messages,
                     "max_tokens"  to 500,
                     "temperature" to 0.5

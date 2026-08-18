@@ -101,7 +101,7 @@ class PlanEmbarazoIARepository {
             }
 
             val requestBodyJson = buildJsonObject {
-                put("model", "llama-3.3-70b-versatile")
+                put("model", "openai/gpt-oss-120b")
                 put("messages", messagesArray)
                 put("max_tokens", 1800)
                 put("temperature", 0.3)

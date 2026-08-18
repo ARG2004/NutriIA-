@@ -69,10 +69,7 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
-                "qwen/qwen3.6-27b",
-                "openai/gpt-oss-120b",
-                "llama-3.2-11b-vision-preview",
-                "llama-3.2-90b-vision-preview"
+                "qwen/qwen3.6-27b"
             )
 
             var rawResponse: String? = null
@@ -387,10 +384,10 @@ class AnalisisRepository {
         if (apiKey.isBlank()) return null
 
         val candidateModels = listOf(
-            "qwen/qwen3.6-27b",
+            "openai/gpt-oss-120b",
             "openai/gpt-oss-20b",
-            "groq/compound-mini",
-            "llama-3.3-70b-versatile"
+            "qwen/qwen3.6-27b",
+            "groq/compound-mini"
         )
 
         for (model in candidateModels) {

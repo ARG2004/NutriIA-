@@ -98,16 +98,25 @@ actual suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula {
             config.userContentController = userController
 
             val webView = WKWebView(
-                frame = cValue { CGRectMake(0.0, 0.0, 1.0, 1.0) },
+                frame = cValue { CGRectMake(0.0, 0.0, 50.0, 50.0) },
                 configuration = config
             )
             webView.alpha = 0.01
+            webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
             webViewRef = webView
 
             // Agregar a la ventana para garantizar ciclo de vida de renderizado WebKit
-            val keyWindow = UIApplication.sharedApplication.keyWindow 
+            val scenes = UIApplication.sharedApplication.connectedScenes.allObjects
+            val activeScene = scenes.filterIsInstance<platform.UIKit.UIWindowScene>().firstOrNull {
+                it.activationState == platform.UIKit.UISceneActivationStateForegroundActive
+            } ?: scenes.filterIsInstance<platform.UIKit.UIWindowScene>().firstOrNull()
+
+            val targetWindow = activeScene?.windows?.filterIsInstance<platform.UIKit.UIWindow>()?.firstOrNull { it.isKeyWindow() }
+                ?: activeScene?.windows?.filterIsInstance<platform.UIKit.UIWindow>()?.firstOrNull()
+                ?: UIApplication.sharedApplication.keyWindow
                 ?: UIApplication.sharedApplication.windows.firstOrNull() as? platform.UIKit.UIWindow
-            keyWindow?.addSubview(webView)
+
+            targetWindow?.addSubview(webView)
 
             val navDelegate = object : NSObject(), WKNavigationDelegateProtocol {
                 override fun webView(webView: WKWebView, didFinishNavigation: WKNavigation?) {

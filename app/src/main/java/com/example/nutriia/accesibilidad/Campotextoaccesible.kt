@@ -274,8 +274,7 @@ fun CampoTextoAccesible(
                     Triple(InputModoCiego.BRAILLE,  "Braille",  Icons.Rounded.GridOn)
                 )
                 AccessibilityMode.MUTE -> listOf(
-                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard),
-                    Triple(InputModoCiego.SENAS,    "Señas",    Icons.Rounded.Gesture)
+                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
                 )
                 else -> listOf(
                     Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
@@ -385,17 +384,34 @@ fun CampoTextoAccesible(
                         .clickable { if (!activo) onFocus?.invoke() },
                     readOnly        = !activo,
                     enabled         = true,
+                    singleLine      = !esCampoFecha && !esCampoHora,
+                    trailingIcon    = if (activo && onNext != null && valor.isNotBlank()) {
+                        {
+                            IconButton(
+                                onClick = {
+                                    vibrateSuccess(haptic)
+                                    onNext.invoke()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ArrowForward,
+                                    contentDescription = "Siguiente campo",
+                                    tint = colorPrimario
+                                )
+                            }
+                        }
+                    } else null,
                     shape           = RoundedCornerShape(16.dp),
                     keyboardOptions = keyboardOptions.copy(
                         imeAction = if (onNext != null) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
                     ),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                         onNext = {
-                            vibrateTap(haptic)
+                            vibrateSuccess(haptic)
                             onNext?.invoke()
                         },
                         onDone = {
-                            vibrateTap(haptic)
+                            vibrateSuccess(haptic)
                             onNext?.invoke()
                         }
                     ),
@@ -576,6 +592,24 @@ fun CampoTextoAccesible(
                         },
                         label           = { Text(etiqueta) },
                         placeholder     = { Text(placeholder) },
+                        singleLine      = !esCampoFecha && !esCampoHora,
+                        trailingIcon    = if (activo && onNext != null && valor.isNotBlank()) {
+                            {
+                                IconButton(
+                                    onClick = {
+                                        vibrateSuccess(haptic)
+                                        ttsManager?.hablar("Avanzando al siguiente campo")
+                                        onNext.invoke()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowForward,
+                                        contentDescription = "Siguiente campo",
+                                        tint = colorPrimario
+                                    )
+                                }
+                            }
+                        } else null,
                         modifier        = Modifier.fillMaxWidth()
                             .semantics { contentDescription = "$etiqueta. Valor actual: ${valor.ifEmpty { "vacío" }}" },
                         shape           = RoundedCornerShape(16.dp),
@@ -584,11 +618,13 @@ fun CampoTextoAccesible(
                         ),
                         keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                             onNext = {
-                                vibrateTap(haptic)
+                                vibrateSuccess(haptic)
+                                ttsManager?.hablar("Avanzando al siguiente campo")
                                 onNext?.invoke()
                             },
                             onDone = {
-                                vibrateTap(haptic)
+                                vibrateSuccess(haptic)
+                                ttsManager?.hablar("Avanzando al siguiente campo")
                                 onNext?.invoke()
                             }
                         ),

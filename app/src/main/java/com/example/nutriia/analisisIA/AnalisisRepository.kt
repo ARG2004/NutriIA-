@@ -103,8 +103,6 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
-                "llama-3.2-11b-vision-preview",
-                "llama-3.2-90b-vision-preview",
                 "qwen/qwen3.6-27b"
             )
 
@@ -337,7 +335,7 @@ class AnalisisRepository {
                 - NO inflés ni deflés los valores: la precisión es crítica para niños
             """.trimIndent()
 
-            val requestBody = buildGroqRequest("llama-3.3-70b-versatile", prompt, 250)
+            val requestBody = buildGroqRequest("openai/gpt-oss-120b", prompt, 250)
 
             val response = http.newCall(
                 Request.Builder()
@@ -452,7 +450,7 @@ class AnalisisRepository {
                 - Devuelve SOLO el JSON, sin texto adicional ni <think>.
             """.trimIndent()
 
-            val requestBody = buildGroqRequest("llama-3.3-70b-versatile", prompt, 700)
+            val requestBody = buildGroqRequest("openai/gpt-oss-120b", prompt, 700)
 
             Log.d(TAG, "[LLM] Analizando ${food.foodName} para niño de $ageText...")
 
@@ -562,7 +560,7 @@ class AnalisisRepository {
                 - Devuelve SOLO el JSON, sin texto adicional ni <think>.
             """.trimIndent()
 
-            val requestBody = buildGroqRequest("llama-3.3-70b-versatile", prompt, 700)
+            val requestBody = buildGroqRequest("openai/gpt-oss-120b", prompt, 700)
 
             Log.d(TAG, "[LLM] Analizando ${food.foodName} para embarazo ($semanasText)...")
 

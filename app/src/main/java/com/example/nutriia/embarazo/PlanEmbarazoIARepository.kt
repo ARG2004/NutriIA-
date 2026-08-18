@@ -103,7 +103,7 @@ class PlanEmbarazoIARepository {
 
             val requestBodyJson = gson.toJson(
                 mapOf(
-                    "model"            to "llama-3.3-70b-versatile",
+                    "model"            to "openai/gpt-oss-120b",
                     "messages"         to messages,
                     "max_tokens"       to 1800,
                     "temperature"      to 0.3,

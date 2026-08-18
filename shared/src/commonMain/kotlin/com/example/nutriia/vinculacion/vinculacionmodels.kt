@@ -32,8 +32,9 @@ data class Vinculacion(
     )
 
     companion object {
-        fun docId(nutriologoUid: String, padreUid: String) =
-            "${nutriologoUid}_${padreUid}"
+        fun docId(nutriologoUid: String, padreUid: String, childId: String = "") =
+            if (childId.isNotBlank()) "${nutriologoUid}_${padreUid}_${childId}"
+            else "${nutriologoUid}_${padreUid}"
 
         fun fromMap(id: String, map: Map<String, Any?>): Vinculacion = Vinculacion(
             id               = id,

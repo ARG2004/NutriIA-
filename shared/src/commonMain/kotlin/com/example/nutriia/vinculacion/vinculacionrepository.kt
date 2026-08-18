@@ -154,7 +154,7 @@ class VinculacionRepository {
         childNombre: String
     ): Result<Vinculacion> {
         val padreUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
-        val docId = Vinculacion.docId(nutriologo.uid, padreUid)
+        val docId = Vinculacion.docId(nutriologo.uid, padreUid, childId)
 
         return try {
             val vinc = Vinculacion(

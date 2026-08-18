@@ -104,10 +104,10 @@ class ChatbotRepository {
             }
 
             val candidateModels = listOf(
-                "qwen/qwen3.6-27b",
+                "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
-                "groq/compound-mini",
-                "llama-3.3-70b-versatile"
+                "qwen/qwen3.6-27b",
+                "groq/compound-mini"
             )
 
             var rawBody: String? = null

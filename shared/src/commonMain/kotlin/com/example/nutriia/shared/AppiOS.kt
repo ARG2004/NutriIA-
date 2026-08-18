@@ -295,6 +295,10 @@ fun NutriIAiOSApp() {
     var nombreMama by remember { mutableStateOf("") }
     var semanasEmbarazo by remember { mutableIntStateOf(1) }
     var pacienteSeleccionado by remember { mutableStateOf<PacienteResumen?>(null) }
+    var pagoNutriologoUid by remember { mutableStateOf("") }
+    var pagoNutriologoNombre by remember { mutableStateOf("") }
+    var pagoIdExitoso by remember { mutableStateOf("") }
+    var pagoPantallaRetorno by remember { mutableStateOf(Screen.PEDIATRA_DASHBOARD) }
 
     val scope = rememberCoroutineScope()
 
@@ -832,7 +836,15 @@ fun NutriIAiOSApp() {
                             padreNombre = loginViewModel.nombreUsuario,
                             childId = child.id,
                             childNombre = child.name,
-                            onAbrirPago = { _, _, _ -> },
+                            pagoNutriologoUid = pagoNutriologoUid,
+                            pagoNutriologoNombre = pagoNutriologoNombre,
+                            pagoIdExitoso = pagoIdExitoso,
+                            onAbrirPago = { nutriologoUid, nutriologoNombre, _ ->
+                                pagoNutriologoUid = nutriologoUid
+                                pagoNutriologoNombre = nutriologoNombre
+                                pagoPantallaRetorno = Screen.PEDIATRA_DASHBOARD
+                                currentScreen = Screen.PAGO_TELECONSULTA
+                            },
                             onBack = { currentScreen = Screen.DASHBOARD_PARENT }
                         )
                     } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
@@ -845,9 +857,31 @@ fun NutriIAiOSApp() {
                         teleconsultaViewModel = teleconsultaVm,
                         mamaUid = loginViewModel.uidUsuario,
                         mamaNombre = loginViewModel.nombreUsuario,
-                        onAbrirPago = { _, _, _ -> },
+                        onAbrirPago = { gineUid, gineNombre, _ ->
+                            pagoNutriologoUid = gineUid
+                            pagoNutriologoNombre = gineNombre
+                            pagoPantallaRetorno = Screen.CITAS_EMBARAZO
+                            currentScreen = Screen.PAGO_TELECONSULTA
+                        },
                         onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
                     )
+                    Screen.PAGO_TELECONSULTA -> {
+                        val childId = activeChild?.id ?: loginViewModel.uidUsuario
+                        val childName = activeChild?.name ?: loginViewModel.nombreUsuario
+                        PaymentGateScreen(
+                            nutriologoUid = pagoNutriologoUid,
+                            nutriologoNombre = pagoNutriologoNombre,
+                            childId = childId,
+                            childNombre = childName,
+                            onPagoConfirmado = {
+                                pagoIdExitoso = "PAGO_EXITOSO"
+                                currentScreen = pagoPantallaRetorno
+                            },
+                            onCancelar = {
+                                currentScreen = pagoPantallaRetorno
+                            }
+                        )
+                    }
                     Screen.VINCULACION_GINECOLOGO -> VinculacionGinecologoScreen(
                         onNavigateToDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS },
                         onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
