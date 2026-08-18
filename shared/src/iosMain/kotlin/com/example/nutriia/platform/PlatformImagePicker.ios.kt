@@ -84,8 +84,8 @@ actual object PlatformImagePicker {
     }
 
     private fun resizeImage(image: UIImage, maxDimension: Double): UIImage {
-        val width = image.size.useContents { width }
-        val height = image.size.useContents { height }
+        val width = image.size.useContents { this.width }
+        val height = image.size.useContents { this.height }
         if (width <= 0.0 || height <= 0.0 || (width <= maxDimension && height <= maxDimension)) return image
 
         val ratio = if (width > height) maxDimension / width else maxDimension / height
