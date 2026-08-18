@@ -108,6 +108,33 @@ private fun esCorreoDictado(texto: String): Boolean =
 private fun tieneDiezDigitos(texto: String): Boolean =
     texto.filter { it.isDigit() }.length >= 10
 
+fun coincideNombreConTitular(nombreIngresado: String, nombreTitularSEP: String): Boolean {
+    if (nombreIngresado.isBlank() || nombreTitularSEP.isBlank()) return false
+    fun limpiar(s: String): List<String> {
+        return s.lowercase()
+            .replace("á", "a").replace("é", "e").replace("í", "i")
+            .replace("ó", "o").replace("ú", "u").replace("ü", "u")
+            .replace("ñ", "n")
+            .replace(Regex("""[^a-z0-9\s]"""), " ")
+            .split(Regex("""\s+"""))
+            .filter { 
+                it.isNotBlank() && it !in setOf(
+                    "dr", "dra", "lic", "med", "doctor", "doctora", "licenciado", "licenciada", 
+                    "nut", "nutriologo", "nutriologa", "gine", "ginecologo", "ginecologa",
+                    "de", "del", "la", "las", "los", "y", "san", "santa"
+                ) 
+            }
+    }
+    val palabrasIngresadas = limpiar(nombreIngresado)
+    val palabrasTitular = limpiar(nombreTitularSEP)
+    if (palabrasIngresadas.isEmpty() || palabrasTitular.isEmpty()) return false
+    val coincidencias = palabrasIngresadas.count { palabra ->
+        palabrasTitular.any { tit -> tit == palabra || (palabra.length >= 4 && (tit.startsWith(palabra) || palabra.startsWith(tit))) }
+    }
+    val minimoRequerido = if (palabrasIngresadas.size == 1) 1 else 2.coerceAtMost(palabrasIngresadas.size)
+    return coincidencias >= minimoRequerido
+}
+
 // ─── MODELOS DE DATOS ─────────────────────────────────────────────────────────
 
 data class ParentRegisterData(
@@ -1598,7 +1625,7 @@ fun NutritionistRegisterScreen(
                             Text("Verificando cédula ante la SEP...", fontSize = 12.sp, color = Color.Gray)
                         }
                     } else if (verificadoCedulaState != null) {
-                        TarjetaResumenCedula(verificadoCedulaState!!)
+                        TarjetaResumenCedula(verificadoCedulaState!!, nombreUsuario = data.name)
                     }
                 }
             }
@@ -1695,6 +1722,13 @@ fun NutritionistRegisterScreen(
 
             // ── Comando de voz "registrarme" (solo modo BLIND) ────────────────
             // Lambda compartida para ejecutar el registro (usada por botón y voz)
+            val nombreNoCoincideNutri = remember(data.name, verificadoCedulaState) {
+                verificadoCedulaState?.valida == true &&
+                verificadoCedulaState?.nombreTitular?.isNotBlank() == true &&
+                data.name.isNotBlank() &&
+                !coincideNombreConTitular(data.name, verificadoCedulaState?.nombreTitular ?: "")
+            }
+
             val ejecutarRegistroNutri: () -> Unit = {
                 var hasErrors = false
                 if (data.name.isBlank()) { nameError = loc("El nombre es requerido", "Name is required"); hasErrors = true }
@@ -1707,6 +1741,7 @@ fun NutritionistRegisterScreen(
                 else if (digitosCed.length < 6) { licenseError = loc("La cédula debe contener al menos 6 dígitos", "License must have at least 6 digits"); hasErrors = true }
                 else if (verificadoCedulaState == null) { licenseError = loc("Verificando cédula ante la SEP, por favor espera...", "Verifying license, please wait..."); hasErrors = true }
                 else if (!verificadoCedulaState!!.valida) { licenseError = verificadoCedulaState!!.mensaje.ifBlank { loc("Cédula no válida ante la SEP", "Invalid license number") }; hasErrors = true }
+                else if (nombreNoCoincideNutri) { licenseError = loc("Error, datos no coinciden, inténtelo de nuevo", "Error, data does not match, please try again"); hasErrors = true }
                 if (data.email.isBlank()) { emailError = loc("El correo es requerido", "Email is required"); hasErrors = true }
                 else if (!(data.email.contains("@") && data.email.contains("."))) { emailError = loc("Correo inválido", "Invalid email"); hasErrors = true }
                 if (data.password.length < 6) { passwordError = loc("Mínimo 6 caracteres", "Minimum 6 characters"); hasErrors = true }
@@ -1783,7 +1818,7 @@ fun NutritionistRegisterScreen(
             Spacer(Modifier.height(36.dp))
             Button(
                 onClick = { ejecutarRegistroNutri() },
-                enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedula,
+                enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedula && !nombreNoCoincideNutri,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(if (esBlind) 70.dp else 56.dp)
@@ -2158,7 +2193,7 @@ fun GinecologistRegisterScreen(
                             Text("Verificando cédula ante la SEP...", fontSize = 12.sp, color = Color.Gray)
                         }
                     } else if (verificadoCedulaGineState != null) {
-                        TarjetaResumenCedula(verificadoCedulaGineState!!)
+                        TarjetaResumenCedula(verificadoCedulaGineState!!, nombreUsuario = data.name)
                     }
                 }
             }
@@ -2230,6 +2265,13 @@ fun GinecologistRegisterScreen(
             }
 
             // ── Comando de voz "registrarme" (solo modo BLIND) ────────────────
+            val nombreNoCoincideGine = remember(data.name, verificadoCedulaGineState) {
+                verificadoCedulaGineState?.valida == true &&
+                verificadoCedulaGineState?.nombreTitular?.isNotBlank() == true &&
+                data.name.isNotBlank() &&
+                !coincideNombreConTitular(data.name, verificadoCedulaGineState?.nombreTitular ?: "")
+            }
+
             val ejecutarRegistroGine: () -> Unit = {
                 var hasErrors = false
                 if (data.name.isBlank()) { nameError = loc("Nombre requerido", "Name required"); hasErrors = true }
@@ -2241,6 +2283,7 @@ fun GinecologistRegisterScreen(
                 else if (digitosGine.length < 6) { licenseError = loc("Mínimo 6 dígitos", "Min 6 digits"); hasErrors = true }
                 else if (verificadoCedulaGineState == null) { licenseError = loc("Verificando cédula ante la SEP...", "Verifying license..."); hasErrors = true }
                 else if (!verificadoCedulaGineState!!.valida) { licenseError = verificadoCedulaGineState!!.mensaje.ifBlank { loc("Cédula no válida ante la SEP", "Invalid license number") }; hasErrors = true }
+                else if (nombreNoCoincideGine) { licenseError = loc("Error, datos no coinciden, inténtelo de nuevo", "Error, data does not match, please try again"); hasErrors = true }
                 if (data.email.isBlank() || !(data.email.contains("@") && data.email.contains("."))) { emailError = loc("Email inválido", "Invalid email"); hasErrors = true }
                 if (data.password.length < 6) { passwordError = loc("Mínimo 6 caracteres", "Min 6 characters"); hasErrors = true }
                 if (confirmPassword != data.password) { confirmError = loc("No coinciden", "No match"); hasErrors = true }
@@ -2309,9 +2352,13 @@ fun GinecologistRegisterScreen(
 
             Button(
                 onClick = { ejecutarRegistroGine() },
+                enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedulaGine && !nombreNoCoincideGine,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = RegRosaGine)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = RegRosaGine,
+                    disabledContainerColor = Color.LightGray
+                )
             ) {
                 if (estado is RegisterUiState.Loading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -2510,50 +2557,64 @@ private fun RegisterField(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-fun TarjetaResumenCedula(res: ResultadoCedula) {
+fun TarjetaResumenCedula(res: ResultadoCedula, nombreUsuario: String = "") {
+    val noCoincide = res.valida && res.nombreTitular.isNotBlank() && nombreUsuario.isNotBlank() && !coincideNombreConTitular(nombreUsuario, res.nombreTitular)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
             .background(
-                if (res.valida) Color(0xFFF1F8E9) else Color(0xFFFFF3E0),
+                if (noCoincide) Color(0xFFFFEBEE) else if (res.valida) Color(0xFFF1F8E9) else Color(0xFFFFF3E0),
                 shape = RoundedCornerShape(12.dp)
             )
             .border(
                 1.dp,
-                if (res.valida) Color(0xFFAED581) else Color(0xFFFFB74D),
+                if (noCoincide) Color(0xFFE57373) else if (res.valida) Color(0xFFAED581) else Color(0xFFFFB74D),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                if (res.valida) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
+                if (noCoincide) Icons.Rounded.ErrorOutline else if (res.valida) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
                 contentDescription = null,
-                tint = if (res.valida) Color(0xFF2E7D32) else Color(0xFFE65100),
+                tint = if (noCoincide) Color(0xFFC62828) else if (res.valida) Color(0xFF2E7D32) else Color(0xFFE65100),
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                if (res.valida) "Cédula profesional verificada ante la SEP" else res.mensaje,
+                if (noCoincide) "Error, datos no coinciden, inténtelo de nuevo"
+                else if (res.valida) "Cédula profesional verificada ante la SEP" 
+                else res.mensaje,
                 fontSize = 13.sp,
-                color = if (res.valida) Color(0xFF1B5E20) else Color(0xFFE65100),
+                color = if (noCoincide) Color(0xFFC62828) else if (res.valida) Color(0xFF1B5E20) else Color(0xFFE65100),
                 fontWeight = FontWeight.Bold
             )
         }
 
         if (res.valida) {
             Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = Color(0xFFC8E6C9), thickness = 1.dp)
+            HorizontalDivider(color = if (noCoincide) Color(0xFFFFCDD2) else Color(0xFFC8E6C9), thickness = 1.dp)
             Spacer(Modifier.height(6.dp))
 
             if (res.cedula.isNotBlank()) RenglonDetalleCedula("Núm. Cédula", res.cedula)
-            if (res.nombreTitular.isNotBlank()) RenglonDetalleCedula("Nombre", res.nombreTitular)
+            if (res.nombreTitular.isNotBlank()) RenglonDetalleCedula("Titular Oficial SEP", res.nombreTitular)
             if (res.genero.isNotBlank()) RenglonDetalleCedula("Género", res.genero)
             if (res.institucion.isNotBlank()) RenglonDetalleCedula("Institución", res.institucion)
             if (res.profesion.isNotBlank()) RenglonDetalleCedula("Profesión", res.profesion)
             if (res.entidad.isNotBlank()) RenglonDetalleCedula("Entidad Federativa", res.entidad)
             if (res.anoRegistro.isNotBlank()) RenglonDetalleCedula("Año de Registro", res.anoRegistro)
+
+            if (noCoincide) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "El nombre ingresado no corresponde a la persona titular de la cédula ante la SEP.",
+                    fontSize = 11.sp,
+                    color = Color(0xFFC62828),
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
