@@ -1605,7 +1605,7 @@ fun NutritionistRegisterScreen(
                         },
                         label         = loc("Cédula profesional", "Professional license"),
                         icon          = Icons.Rounded.Badge,
-                        error         = licenseError ?: if (verificadoCedulaState?.valida == false) verificadoCedulaState?.mensaje else null,
+                        error         = licenseError,
                         placeholder   = "Ej. 12345678",
                         a11yLabel     = loc(
                             "Campo 4 de 7. Cédula profesional. Di tu número de cédula.",
@@ -2186,7 +2186,8 @@ fun GinecologistRegisterScreen(
                         },
                         label           = loc("Cédula profesional", "Professional license"),
                         icon            = Icons.Rounded.Badge,
-                        error           = licenseError ?: if (verificadoCedulaGineState?.valida == false) verificadoCedulaGineState?.mensaje else null,
+                        error           = licenseError,
+                        placeholder     = "Ej. 12345678",
                         a11yActive      = esAccesible,
                         activo          = campoActivo == 3,
                         onFocus         = { campoActivo = 3 },
