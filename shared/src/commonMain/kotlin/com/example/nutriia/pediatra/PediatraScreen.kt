@@ -67,6 +67,7 @@ private enum class ModoBusqueda { CODIGO, EMAIL, DIRECTORIO }
 fun PediatraScreen(
     vinculacionViewModel:  VinculacionViewModel  = viewModel(),
     teleconsultaViewModel: TeleconsultaViewModel = viewModel(),
+    a11yVm:                AccessibilityViewModel = viewModel(),
     padreUid:              String,
     padreNombre:           String,
     childId:               String,
@@ -80,7 +81,6 @@ fun PediatraScreen(
     onAbrirPago:           (nutriologoUid: String, nutriologoNombre: String, tipo: TipoLlamada) -> Unit,
     onBack:                () -> Unit = {}
 ) {
-    val a11yVm: AccessibilityViewModel = viewModel()
     val a11yMode     by a11yVm.mode.collectAsState()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val esBlind      = a11yMode == AccessibilityMode.BLIND

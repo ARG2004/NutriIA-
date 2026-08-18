@@ -70,13 +70,13 @@ fun LactanciaScreen(
     childId: String,
     childName: String,
     ageMonths: Int,
+    a11yVm: AccessibilityViewModel = viewModel(),
     onNavigateBack: () -> Unit,
     viewModel: LactanciaViewModel = viewModel()
 ) {
     // ─────────────────────────────────────────────────────────────────────────
     // ACCESIBILIDAD
     // ─────────────────────────────────────────────────────────────────────────
-    val a11yVm: AccessibilityViewModel = viewModel()
     val a11yMode     by a11yVm.mode.collectAsState()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val ttsManager   = a11yVm.ttsManager

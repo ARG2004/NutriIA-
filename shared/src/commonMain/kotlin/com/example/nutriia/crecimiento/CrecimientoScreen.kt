@@ -85,12 +85,12 @@ fun CrecimientoScreen(
     ageMonths: Int,
     sexo: Sexo? = null,
     onNavigateBack: () -> Unit,
+    a11yVm: AccessibilityViewModel = viewModel(),
     viewModel: CrecimientoViewModel = viewModel()
 ) {
     // ─────────────────────────────────────────────────────────────────────────
     // ACCESIBILIDAD
     // ─────────────────────────────────────────────────────────────────────────
-    val a11yVm: AccessibilityViewModel = viewModel()
     val a11yMode     by a11yVm.mode.collectAsState()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val ttsManager   = a11yVm.ttsManager

@@ -782,19 +782,19 @@ fun NutriIAiOSApp() {
 
                     // Módulos Clínicos
                     Screen.LACTANCIA -> activeChild?.let { child ->
-                        LactanciaScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                        LactanciaScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
                     } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
 
                     Screen.SOLIDOS -> activeChild?.let { child ->
-                        SolidosScreen(uid = loginViewModel.uidUsuario, childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
+                        SolidosScreen(uid = loginViewModel.uidUsuario, childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), sharedVm = sharedVm, a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
                     } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
 
                     Screen.CRECIMIENTO -> activeChild?.let { child ->
-                        CrecimientoScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), sexo = child.sexo, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                        CrecimientoScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), sexo = child.sexo, a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
                     } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
 
                     Screen.NUTRIENTES -> activeChild?.let { child ->
-                        NutrientesScreen(childId = child.id, childName = child.name, mesesEdad = mesesDeVida(child.birthDate), onBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
+                        NutrientesScreen(childId = child.id, childName = child.name, mesesEdad = mesesDeVida(child.birthDate), sharedVm = sharedVm, a11yVm = accessibilityVm, onBack = { currentScreen = Screen.DASHBOARD_PARENT })
                     } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
 
                     Screen.CHAT_IA -> {
@@ -815,10 +815,10 @@ fun NutriIAiOSApp() {
                     Screen.RECORDATORIOS -> {
                         val rol = loginViewModel.rolUsuario
                         if (rol == "mama_primeriza") {
-                            AlertasScreen(childId = null, childName = "Mi Embarazo", onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
+                            AlertasScreen(childId = null, childName = "Mi Embarazo", a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
                         } else {
                             activeChild?.let { child ->
-                                AlertasScreen(childId = child.id, childName = child.name, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                                AlertasScreen(childId = child.id, childName = child.name, a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
                             } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
                         }
                     }
@@ -829,6 +829,7 @@ fun NutriIAiOSApp() {
                             padreNombre = loginViewModel.nombreUsuario,
                             childId = child.id,
                             childNombre = child.name,
+                            a11yVm = accessibilityVm,
                             pagoNutriologoUid = pagoNutriologoUid,
                             pagoNutriologoNombre = pagoNutriologoNombre,
                             pagoIdExitoso = pagoIdExitoso,

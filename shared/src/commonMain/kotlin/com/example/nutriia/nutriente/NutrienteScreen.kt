@@ -165,9 +165,9 @@ fun NutrientesScreen(
     region:    RegionMexico         = RegionMexico.CENTRO,
     sharedVm:  NutriSharedViewModel,
     onBack:    () -> Unit,
+    a11yVm:    AccessibilityViewModel = viewModel(),
     vm:        NutrientesViewModel  = viewModel()
 ) {
-    val a11yVm: AccessibilityViewModel = viewModel()
     val a11yMode     by a11yVm.mode.collectAsState()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val ttsManager   = a11yVm.ttsManager
