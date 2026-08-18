@@ -103,7 +103,8 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
-                "qwen/qwen3.6-27b"
+                "llama-3.2-11b-vision-preview",
+                "llama-3.2-90b-vision-preview"
             )
 
             var rawBody: String? = null

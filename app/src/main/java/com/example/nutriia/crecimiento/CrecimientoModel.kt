@@ -42,6 +42,26 @@ data class MedicionCrecimiento(
 ) {
     val imc: Double get() =
         if (tallaCm > 0) pesoKg / ((tallaCm / 100.0) * (tallaCm / 100.0)) else 0.0
+
+    fun fechaEpoch(): Long {
+        val f = fecha.trim()
+        if (f.isBlank()) return creadoEn?.seconds ?: 0L
+        val yyyymmdd = Regex("""^(\d{4})[-/](\d{1,2})[-/](\d{1,2})""").find(f)
+        if (yyyymmdd != null) {
+            val y = yyyymmdd.groupValues[1].toLongOrNull() ?: 0L
+            val m = yyyymmdd.groupValues[2].toLongOrNull() ?: 0L
+            val d = yyyymmdd.groupValues[3].toLongOrNull() ?: 0L
+            return y * 10000 + m * 100 + d
+        }
+        val ddmmyyyy = Regex("""^(\d{1,2})[-/](\d{1,2})[-/](\d{4})""").find(f)
+        if (ddmmyyyy != null) {
+            val d = ddmmyyyy.groupValues[1].toLongOrNull() ?: 0L
+            val m = ddmmyyyy.groupValues[2].toLongOrNull() ?: 0L
+            val y = ddmmyyyy.groupValues[3].toLongOrNull() ?: 0L
+            return y * 10000 + m * 100 + d
+        }
+        return creadoEn?.seconds ?: 0L
+    }
 }
 
 data class PuntoOMS(

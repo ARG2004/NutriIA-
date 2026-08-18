@@ -52,7 +52,7 @@ class CrecimientoViewModel : ViewModel() {
                 }
                 .collect { lista ->
                     val ordenada          = lista.sortedWith(
-                        compareByDescending<MedicionCrecimiento> { it.fecha }
+                        compareByDescending<MedicionCrecimiento> { it.fechaEpoch() }
                             .thenByDescending { it.creadoEn?.seconds ?: 0L }
                             .thenByDescending { it.creadoEn?.nanoseconds ?: 0 }
                     )

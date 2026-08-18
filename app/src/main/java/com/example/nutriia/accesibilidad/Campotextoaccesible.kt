@@ -115,8 +115,8 @@ fun CampoTextoAccesible(
     }
 
     // ── AUTO-INICIO DE VOZ ────────────────────────────────────────────────────
-    LaunchedEffect(modoEntrada, voiceManagerListo, activo) {
-        if (!activo) return@LaunchedEffect
+    LaunchedEffect(modoEntrada, voiceManagerListo, activo, a11yMode) {
+        if (!activo || a11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
         if (modoEntrada != InputModoCiego.VOZ) return@LaunchedEffect
         if (!voiceManagerListo) return@LaunchedEffect
 
@@ -126,15 +126,15 @@ fun CampoTextoAccesible(
             "$descripcionVoz. Si prefieres, di: cambiar a teclado, o: cambiar a teclado braille."
         }
         if (ttsManager != null) {
-            ttsManager.hablarYEsperar(instruccionCompleta, margenMs = 800L)
+            ttsManager.hablarYEsperar(instruccionCompleta, margenMs = 1200L)
         } else {
             val palabras = instruccionCompleta.split(" ").size
-            delay((palabras * 90L) + 1000L)
+            delay((palabras * 100L) + 1200L)
         }
 
         if (tienePermiso && voiceEstado == VoiceInputState.IDLE) {
             if (ttsManager != null) {
-                ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 400L)
+                ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 600L)
             } else {
                 delay(1200L)
             }
@@ -159,33 +159,31 @@ fun CampoTextoAccesible(
     // ── Reactivar mic cuando hay error ───────────────────────────────────────
     val errorActual = voiceManager?.errorMsg?.value ?: ""
     val errorCodigo = voiceManager?.errorCodigo?.value ?: -1
-    LaunchedEffect(errorCodigo, activo) {
-        if (!activo) return@LaunchedEffect
-        if (errorActual.isEmpty() || errorCodigo == -1) return@LaunchedEffect
+    LaunchedEffect(errorCodigo, activo, a11yMode) {
+        if (!activo || a11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
         if (modoEntrada != InputModoCiego.VOZ) return@LaunchedEffect
+        if (errorCodigo == -1) return@LaunchedEffect
 
-        val esRecuperable = voiceManager?.esErrorRecuperable() == true
+        val errorTexto = errorActual.lowercase()
+        val errorReintentable = errorTexto.contains("tiempo") ||
+                errorTexto.contains("reconoc") ||
+                errorTexto.contains("audio") ||
+                errorTexto.contains("servidor") ||
+                errorTexto.contains("timeout") ||
+                errorTexto.contains("no speech") ||
+                errorCodigo in listOf(1, 2, 3, 6, 7, 8)
 
-        if (esRecuperable && tienePermiso) {
-            delay(600L)
+        if (errorReintentable && tienePermiso) {
+            val avisoReintento = if (idioma == IdiomaVoz.INGLES) {
+                "I didn't hear you. Say what you want to type, or say: change to keyboard."
+            } else {
+                "No te escuché. Di lo que quieres escribir, o di: cambiar a teclado."
+            }
             if (ttsManager != null) {
-                ttsManager.hablarYEsperar("Habla de nuevo.", margenMs = 500L)
+                ttsManager.hablarYEsperar(avisoReintento, margenMs = 800L)
             } else {
                 delay(2000L)
             }
-            iniciarEscuchaConReintento(
-                voiceManager  = voiceManager,
-                idioma        = idioma,
-                modoAccesible = true,
-                esCampoFecha  = esCampoFecha,
-                esCampoHora   = esCampoHora,
-                keyboardOptions = keyboardOptions,
-                ttsManager    = ttsManager,
-                onValorChange = onValorChange,
-                onNext        = onNext,
-                onCommandParsed = onCommandParsed,
-                onSwitchModo    = { modoEntrada = it }
-            )
         } else {
             ttsManager?.hablar(Voz.VOZ_ERROR_MIC)
         }
@@ -268,14 +266,15 @@ fun CampoTextoAccesible(
     Column(modifier = modifier.fillMaxWidth()) {
         val opcionesDisponibles = remember(a11yMode) {
             when (a11yMode) {
-                AccessibilityMode.MUTE -> listOf(
-                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
-                )
-                else -> listOf(
+                AccessibilityMode.BLIND -> listOf(
                     Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard),
                     Triple(InputModoCiego.VOZ,      "Voz",      Icons.Rounded.Mic),
                     Triple(InputModoCiego.BRAILLE,  "Braille",  Icons.Rounded.GridOn)
                 )
+                AccessibilityMode.MUTE -> listOf(
+                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
+                )
+                else -> emptyList()
             }
         }
 

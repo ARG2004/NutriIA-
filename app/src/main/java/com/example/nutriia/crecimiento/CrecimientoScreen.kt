@@ -759,7 +759,10 @@ private fun TimelineHistorial(
         Text("Historial de mediciones", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = C_Text)
         Spacer(Modifier.height(12.dp))
 
-        val sorted = historial.sortedByDescending { it.fecha }
+        val sorted = historial.sortedWith(
+            compareByDescending<MedicionCrecimiento> { it.fechaEpoch() }
+                .thenByDescending { it.creadoEn?.seconds ?: 0L }
+        )
         sorted.forEachIndexed { idx, m ->
             val interp = interpretarIMC(m.imc, ageMonths)
             val style  = imcStyle(interp.categoria)

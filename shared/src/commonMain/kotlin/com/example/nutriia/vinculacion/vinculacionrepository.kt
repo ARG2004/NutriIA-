@@ -84,6 +84,11 @@ class VinculacionRepository {
         }
     }
 
+    private fun esEspecialidadGinecologica(especialidad: String): Boolean {
+        val esp = especialidad.lowercase()
+        return esp.contains("ginec") || esp.contains("obstet")
+    }
+
     suspend fun buscarNutriologoPorCodigo(codigo: String): Result<NutriologoPublico?> {
         val q = codigo.trim().uppercase()
         if (q.isEmpty()) return Result.success(null)
@@ -92,7 +97,12 @@ class VinculacionRepository {
             val snap = colNutriologosPublicos.where { "codigo".equalTo(q) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
-                Result.success(NutriologoPublico.fromMap(doc.data(), doc.id))
+                val perfil = NutriologoPublico.fromMap(doc.data(), doc.id)
+                if (esEspecialidadGinecologica(perfil.especialidad)) {
+                    Result.success(null)
+                } else {
+                    Result.success(perfil)
+                }
             } else {
                 Result.success(null)
             }
@@ -109,7 +119,12 @@ class VinculacionRepository {
             val snap = colNutriologosPublicos.where { "email".equalTo(e) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
-                Result.success(NutriologoPublico.fromMap(doc.data(), doc.id))
+                val perfil = NutriologoPublico.fromMap(doc.data(), doc.id)
+                if (esEspecialidadGinecologica(perfil.especialidad)) {
+                    Result.success(null)
+                } else {
+                    Result.success(perfil)
+                }
             } else {
                 Result.success(null)
             }
@@ -123,7 +138,7 @@ class VinculacionRepository {
             val snap = colNutriologosPublicos.get()
             val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
-            }
+            }.filter { !esEspecialidadGinecologica(it.especialidad) }
             Result.success(lista)
         } catch (e: Exception) {
             Result.failure(e)
@@ -136,7 +151,7 @@ class VinculacionRepository {
             val snap = colNutriologosPublicos.get()
             val todos = snap.documents.mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
-            }
+            }.filter { !esEspecialidadGinecologica(it.especialidad) }
             if (q.isBlank()) return Result.success(todos)
             val filtrados = todos.filter {
                 it.nombre.contains(q, ignoreCase = true) || it.especialidad.contains(q, ignoreCase = true)

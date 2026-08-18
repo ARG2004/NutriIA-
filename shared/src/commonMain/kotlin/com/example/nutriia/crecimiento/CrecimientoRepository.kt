@@ -148,7 +148,10 @@ class CrecimientoRepository {
                             notas = notas
                         )
                     }.getOrNull()
-                }.sortedByDescending { it.fecha }
+                }.sortedWith(
+                    compareByDescending<MedicionCrecimiento> { it.fechaEpoch() }
+                        .thenByDescending { it.creadoEn?.seconds ?: 0L }
+                )
             }
         } catch (e: Exception) {
             flowOf(emptyList())
