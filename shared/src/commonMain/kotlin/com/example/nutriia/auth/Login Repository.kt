@@ -223,6 +223,16 @@ class RepositorioLogin {
 
             db.collection("usuarios").document(usuario.uid).set(datosUsuario).await()
 
+            // Publicar perfil público para que aparezca en el directorio de especialistas
+            try {
+                com.example.nutriia.vinculacion.VinculacionRepository().publicarPerfilNutriologo(
+                    nombre       = nombre,
+                    especialidad = especialidad,
+                    cedula       = cedula,
+                    email        = email
+                )
+            } catch (_: Exception) {}
+
             guardarRolCache(usuario.uid, "nutriologo")
             SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, "nutriologo")
@@ -371,6 +381,35 @@ class RepositorioLogin {
             try {
                 db.collection("usuarios").document(uid).update("nombreHijo", child.name).await()
             } catch (_: Exception) {}
+
+            // Crear registro inicial en subcolección de crecimiento si se ingresó peso o talla
+            val pesoNum = child.weightKg.replace(",", ".").toDoubleOrNull() ?: 0.0
+            val tallaNum = child.heightCm.replace(",", ".").toDoubleOrNull() ?: 0.0
+            if (pesoNum > 0.0 || tallaNum > 0.0) {
+                try {
+                    val crecCol = db.collection("usuarios").document(uid)
+                        .collection("hijos").document(childId).collection("crecimiento")
+                    val existing = crecCol.get().await().documents
+                    if (existing.isEmpty()) {
+                        val crecId = generateUUID()
+                        val datosCrec = mapOf(
+                            "id" to crecId,
+                            "childId" to childId,
+                            "userId" to uid,
+                            "fecha" to FechaUtils.fechaActual(),
+                            "pesoKg" to pesoNum,
+                            "tallaCm" to tallaNum,
+                            "circCefCm" to 0.0,
+                            "notas" to "Registro inicial de nacimiento / perfil",
+                            "notes" to "Initial record",
+                            "creadoEnMillis" to currentTimeMillis(),
+                            "fechaCreacion" to FechaUtils.fechaActual(),
+                            "horaCreacion" to FechaUtils.horaActual()
+                        )
+                        crecCol.document(crecId).set(datosCrec).await()
+                    }
+                } catch (_: Exception) {}
+            }
 
             true
         } catch (e: Exception) { false }

@@ -131,6 +131,10 @@ fun coincideNombreConTitular(nombreIngresado: String, nombreTitularSEP: String):
     val coincidencias = palabrasIngresadas.count { palabra ->
         palabrasTitular.any { tit -> tit == palabra || (palabra.length >= 4 && (tit.startsWith(palabra) || palabra.startsWith(tit))) }
     }
+    val minimoRequerido = if (palabrasIngresadas.size == 1) 1 else 2.coerceAtMost(palabrasIngresadas.size)
+    return coincidencias >= minimoRequerido
+}
+
 fun esProfesionValidaNutriologo(profesionSEP: String): Boolean {
     if (profesionSEP.isBlank()) return true
     val p = profesionSEP.lowercase()

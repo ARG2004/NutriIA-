@@ -168,16 +168,13 @@ fun CampoTextoAccesible(
     Column(modifier = modifier.fillMaxWidth()) {
         val opcionesDisponibles = remember(a11yMode) {
             when (a11yMode) {
-                AccessibilityMode.BLIND -> listOf(
-                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard),
-                    Triple(InputModoCiego.VOZ,      "Voz",      Icons.Rounded.Mic),
-                    Triple(InputModoCiego.BRAILLE,  "Braille",  Icons.Rounded.GridOn)
-                )
                 AccessibilityMode.MUTE -> listOf(
                     Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
                 )
                 else -> listOf(
-                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
+                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard),
+                    Triple(InputModoCiego.VOZ,      "Voz",      Icons.Rounded.Mic),
+                    Triple(InputModoCiego.BRAILLE,  "Braille",  Icons.Rounded.GridOn)
                 )
             }
         }

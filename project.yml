@@ -31,8 +31,8 @@ targets:
         CFBundleInfoDictionaryVersion: '6.0'
         CFBundleName: NutriIA
         CFBundlePackageType: APPL
-        CFBundleShortVersionString: '2.2.8'
-        CFBundleVersion: '72'
+        CFBundleShortVersionString: '2.2.9'
+        CFBundleVersion: '73'
         LSRequiresIPhoneOS: true
         CADisableMinimumFrameDurationOnPhone: true
         UILaunchStoryboardName: LaunchScreen

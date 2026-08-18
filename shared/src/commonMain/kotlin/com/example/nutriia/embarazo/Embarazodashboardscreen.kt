@@ -2984,11 +2984,13 @@ fun GatekeeperForm(
     
 
     val scrollState = rememberScrollState()
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFFFF5F9))
+            .imePadding()
             .padding(24.dp)
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -3077,8 +3079,20 @@ fun GatekeeperForm(
                         label = { Text(loc("Peso antes del embarazo (kg)", "Pregnancy pre-weight (kg)")) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        trailingIcon = if (pesoPreInput.isNotBlank()) {
+                            {
+                                IconButton(onClick = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }) {
+                                    Icon(Icons.Rounded.ArrowForward, contentDescription = "Siguiente", tint = Color(0xFFD4679A))
+                                }
+                            }
+                        } else null,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Next
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
                         ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFEC9BBF),
@@ -3094,8 +3108,21 @@ fun GatekeeperForm(
                         label = { Text(loc("Estatura (ej. 165 cm o 1.65 m)", "Height (e.g., 165 cm or 1.65 m)")) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        trailingIcon = if (estaturaInput.isNotBlank()) {
+                            {
+                                IconButton(onClick = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }) {
+                                    Icon(Icons.Rounded.ArrowForward, contentDescription = "Siguiente", tint = Color(0xFFD4679A))
+                                }
+                            }
+                        } else null,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                            imeAction = if (perfil.fechaUltimaMenstruacion.isBlank()) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) },
+                            onDone = { focusManager.clearFocus(); ejecutarGuardarGatekeeper() }
                         ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFEC9BBF),
@@ -3112,9 +3139,23 @@ fun GatekeeperForm(
                             placeholder = { Text("DD/MM/YYYY") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
                             trailingIcon = {
-                                Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = Color.Gray)
+                                if (fumInput.isNotBlank()) {
+                                    IconButton(onClick = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }) {
+                                        Icon(Icons.Rounded.ArrowForward, contentDescription = "Siguiente", tint = Color(0xFFD4679A))
+                                    }
+                                } else {
+                                    Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = Color.Gray)
+                                }
                             },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Next
+                            ),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                onNext = { focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
+                            ),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color(0xFFEC9BBF),
                                 unfocusedBorderColor = Color.LightGray
@@ -3130,8 +3171,20 @@ fun GatekeeperForm(
                         label = { Text(loc("Peso actual hoy (kg)", "Current weight today (kg)")) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        trailingIcon = if (pesoActInput.isNotBlank()) {
+                            {
+                                IconButton(onClick = { focusManager.clearFocus(); ejecutarGuardarGatekeeper() }) {
+                                    Icon(Icons.Rounded.Check, contentDescription = "Guardar", tint = Color(0xFF2E7D32))
+                                }
+                            }
+                        } else null,
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onDone = { focusManager.clearFocus(); ejecutarGuardarGatekeeper() }
                         ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFEC9BBF),

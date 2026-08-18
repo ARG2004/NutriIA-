@@ -123,7 +123,7 @@ jobs:
               -sdk iphoneos \
               ONLY_ACTIVE_ARCH=NO \
               ARCHS=arm64 \
-              MARKETING_VERSION="2.2.8" \
+              MARKETING_VERSION="2.2.9" \
               CURRENT_PROJECT_VERSION="$BUILD_NUM"
 
             # Inyectar recursos de Compose Multiplatform directamente en el paquete de la app

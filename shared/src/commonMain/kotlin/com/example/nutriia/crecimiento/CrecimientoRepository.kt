@@ -76,7 +76,46 @@ class CrecimientoRepository {
     fun observarHistorial(childId: String, ownerUid: String? = null): Flow<List<MedicionCrecimiento>> {
         return try {
             col(childId, ownerUid).snapshots.map { snapshot ->
-                snapshot.documents.mapNotNull { doc ->
+                val docs = snapshot.documents
+                if (docs.isEmpty() && childId.isNotBlank()) {
+                    val uid = ownerUid ?: auth.currentUser?.uid
+                    if (!uid.isNullOrBlank()) {
+                        val childDoc = runCatching {
+                            db.collection("usuarios").document(uid).collection("hijos").document(childId).get()
+                        }.getOrNull()
+                        if (childDoc != null && childDoc.exists) {
+                            val peso = runCatching { childDoc.get<Double?>("weightKg") }.getOrNull()
+                                ?: runCatching { childDoc.get<String?>("weightKg")?.replace(",", ".")?.toDoubleOrNull() }.getOrNull()
+                                ?: runCatching { childDoc.get<Double?>("peso") }.getOrNull()
+                                ?: runCatching { childDoc.get<String?>("peso")?.replace(",", ".")?.toDoubleOrNull() }.getOrNull()
+                                ?: 0.0
+                            val talla = runCatching { childDoc.get<Double?>("heightCm") }.getOrNull()
+                                ?: runCatching { childDoc.get<String?>("heightCm")?.replace(",", ".")?.toDoubleOrNull() }.getOrNull()
+                                ?: runCatching { childDoc.get<Double?>("talla") }.getOrNull()
+                                ?: runCatching { childDoc.get<String?>("talla")?.replace(",", ".")?.toDoubleOrNull() }.getOrNull()
+                                ?: 0.0
+                            val fechaNac = runCatching { childDoc.get<String?>("birthDate") }.getOrNull()
+                                ?: runCatching { childDoc.get<String?>("fechaNacimiento") }.getOrNull()
+                                ?: FechaUtils.fechaActual()
+                            if (peso > 0.0 || talla > 0.0) {
+                                val inicial = MedicionCrecimiento(
+                                    id = "inicial_$childId",
+                                    childId = childId,
+                                    userId = uid,
+                                    fecha = fechaNac,
+                                    pesoKg = peso,
+                                    tallaCm = talla,
+                                    circCefCm = 0.0,
+                                    notas = "Medición inicial de registro"
+                                )
+                                // Auto-guardar en subcolección para sincronizar
+                                runCatching { guardarMedicion(childId, inicial, ownerUid) }
+                                return@map listOf(inicial)
+                            }
+                        }
+                    }
+                }
+                docs.mapNotNull { doc ->
                     runCatching {
                         val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
                         val childIdDoc = runCatching { doc.get<String?>("childId") }.getOrNull() ?: childId
