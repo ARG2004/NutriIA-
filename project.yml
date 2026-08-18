@@ -22,6 +22,8 @@ targets:
           - '*.webp'
           - Info.plist
           - compose-resources
+    resources:
+      - path: iosApp/iosApp/GoogleService-Info.plist
     info:
       path: iosApp/iosApp/Info.plist
       properties:

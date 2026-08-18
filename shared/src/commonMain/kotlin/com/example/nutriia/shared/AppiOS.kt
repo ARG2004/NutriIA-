@@ -55,6 +55,7 @@ import com.example.nutriia.lactancia.LactanciaViewModel
 import com.example.nutriia.nutriente.NutrientesScreen
 import com.example.nutriia.nutriente.NutrientesViewModel
 import com.example.nutriia.payment.*
+import com.example.nutriia.platform.isVoiceOverActive
 import com.example.nutriia.pediatra.PediatraDashboardViewModel
 import com.example.nutriia.pediatra.PediatraScreen
 import com.example.nutriia.solidos.AlimentacionViewModel
@@ -276,6 +277,12 @@ fun NutriIAiOSApp() {
     val accessibilityMode by accessibilityVm.mode.collectAsState()
     val primeraVez by accessibilityVm.primeraVez.collectAsState()
     val primeraVezCargada by accessibilityVm.primeraVezCargada.collectAsState()
+
+    LaunchedEffect(primeraVezCargada) {
+        if (primeraVezCargada && isVoiceOverActive() && accessibilityMode != AccessibilityMode.BLIND) {
+            accessibilityVm.setMode(AccessibilityMode.BLIND)
+        }
+    }
 
     var isCheckingInitialSession by remember { mutableStateOf(true) }
     var showLoginSplash by remember { mutableStateOf(false) }

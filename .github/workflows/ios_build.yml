@@ -79,7 +79,25 @@ jobs:
       - name: 7. Build iOS Multiplatform Framework
         run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace --no-daemon -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC" -DKONAN_ARCH=arm64
 
-      - name: 8. Package & Upload iOS IPA to TestFlight (If Configured)
+      - name: 8. Generate and Validate iOS Project (No Signing)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          brew install xcodegen
+          if [ ! -f iosApp/Config.xcconfig ]; then
+            echo "GROQ_API_KEY = ${GROQ_API_KEY:-}" > iosApp/Config.xcconfig
+          fi
+          xcodegen generate
+          xcodebuild \
+            -project iosApp.xcodeproj \
+            -scheme NutriIA \
+            -configuration Debug \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: 9. Package & Upload iOS IPA to TestFlight (If Configured)
         env:
           APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
