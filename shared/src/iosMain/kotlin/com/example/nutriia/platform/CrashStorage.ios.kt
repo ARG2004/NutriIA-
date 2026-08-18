@@ -1,5 +1,7 @@
 package com.example.nutriia.platform
 
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.crashlytics.crashlytics
 import platform.Foundation.NSUserDefaults
 
 actual object CrashStorage {
@@ -10,6 +12,11 @@ actual object CrashStorage {
             val defaults = NSUserDefaults.standardUserDefaults
             defaults.setObject(crashText, forKey = KEY_CRASH)
             defaults.synchronize()
+        } catch (_: Throwable) {}
+
+        try {
+            Firebase.crashlytics.log(crashText)
+            Firebase.crashlytics.recordException(Exception(crashText))
         } catch (_: Throwable) {}
     }
 

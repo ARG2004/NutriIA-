@@ -5,6 +5,7 @@ import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.platform.Log
 import com.example.nutriia.platform.PlatformConfig
 import com.example.nutriia.platform.PlatformHttp
+import com.example.nutriia.platform.RemoteConfigManager
 import com.example.nutriia.platform.currentTimeMillis
 import com.example.nutriia.platform.generateUUID
 import com.example.nutriia.ui.theme.ChildProfile
@@ -68,12 +69,13 @@ class AnalisisRepository {
                 Devuelve SOLO el JSON, sin texto adicional ni markdown.
             """.trimIndent()
 
-            val visionModels = listOf(
+            val visionRemote = RemoteConfigManager.getVisionModel()
+            val visionModels = (listOf(visionRemote) + listOf(
                 "qwen/qwen3.6-27b",
                 "meta-llama/llama-4-scout-17b-16e-instruct",
                 "llama-3.2-11b-vision-preview",
                 "llama-3.2-90b-vision-preview"
-            )
+            )).distinct()
 
             var rawResponse: String? = null
             var lastError: String? = null
@@ -391,7 +393,8 @@ class AnalisisRepository {
         val apiKey = PlatformConfig.groqApiKey
         if (apiKey.isBlank()) return null
 
-        val candidateModels = listOf(
+        val primaryRemote = RemoteConfigManager.getPrimaryModel()
+        val candidateModels = (listOf(primaryRemote) + listOf(
             "openai/gpt-oss-120b",
             "openai/gpt-oss-20b",
             "qwen/qwen3.6-27b",
@@ -400,7 +403,7 @@ class AnalisisRepository {
             "llama3-70b-8192",
             "llama3-8b-8192",
             "groq/compound-mini"
-        )
+        )).distinct()
 
         for (model in candidateModels) {
             val payload = buildGroqRequest(model, prompt, maxTokens)

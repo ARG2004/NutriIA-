@@ -444,6 +444,10 @@ fun NutriIAiOSApp() {
         }
     }
 
+    LaunchedEffect(Unit) {
+        com.example.nutriia.platform.RemoteConfigManager.fetchConfigs()
+    }
+
     // ─── Control de Sesión Inicial y Primera Vez (Accesibilidad) ───────────
     LaunchedEffect(primeraVezCargada) {
         if (!primeraVezCargada) return@LaunchedEffect
