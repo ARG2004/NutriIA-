@@ -26,7 +26,7 @@ class VinculacionRepository {
     private suspend fun getAuthUser(): dev.gitlive.firebase.auth.FirebaseUser? {
         auth.currentUser?.let { return it }
         return try {
-            withTimeoutOrNull(3000L) {
+            withTimeoutOrNull(5000L) {
                 auth.authStateChanged.filterNotNull().first()
             }
         } catch (_: Exception) {
@@ -210,49 +210,53 @@ class VinculacionRepository {
     }
 
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
-        return try {
-            val snap = colNutriologosPublicos.get()
-            var lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
-                runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
-            }.filter { !esEspecialidadGinecologica(it.especialidad) }
-
-            if (lista.isEmpty()) {
-                val snapUsuarios = db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get()
-                val listaUsuarios = snapUsuarios.documents.take(limite.toInt()).mapNotNull { doc ->
+        // Retry up to 3 attempts — first Firestore snapshot on iOS cold-start can be empty
+        var intentos = 0
+        while (intentos < 3) {
+            try {
+                val snap = colNutriologosPublicos.get()
+                var lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
                     runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
                 }.filter { !esEspecialidadGinecologica(it.especialidad) }
-                lista = listaUsuarios
+
+                if (lista.isNotEmpty()) return Result.success(lista)
+
+                if (intentos < 2) {
+                    // Snapshot vacío en primer intento iOS — esperar y reintentar
+                    kotlinx.coroutines.delay(1500L)
+                    intentos++
+                    continue
+                }
+
+                // Último intento: fallback a colección usuarios
+                val snapUsuarios = db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get()
+                lista = snapUsuarios.documents.take(limite.toInt()).mapNotNull { doc ->
+                    runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                }.filter { !esEspecialidadGinecologica(it.especialidad) }
+                return Result.success(lista)
+            } catch (e: Exception) {
+                if (intentos >= 2) return Result.failure(e)
+                kotlinx.coroutines.delay(1500L)
+                intentos++
             }
-            Result.success(lista)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
+        return Result.success(emptyList())
     }
 
     suspend fun buscarNutriologosEnDirectorio(query: String): Result<List<NutriologoPublico>> {
         val q = query.trim()
-        return try {
-            val snap = colNutriologosPublicos.get()
-            var todos = snap.documents.mapNotNull { doc ->
-                runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
-            }.filter { !esEspecialidadGinecologica(it.especialidad) }
-
-            if (todos.isEmpty()) {
-                val snapUsuarios = db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get()
-                val listaUsuarios = snapUsuarios.documents.mapNotNull { doc ->
-                    runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
-                }.filter { !esEspecialidadGinecologica(it.especialidad) }
-                todos = listaUsuarios
-            }
-
-            if (q.isBlank()) return Result.success(todos)
-            val filtrados = todos.filter {
-                it.nombre.contains(q, ignoreCase = true) || it.especialidad.contains(q, ignoreCase = true) || it.codigo.contains(q, ignoreCase = true) || it.email.contains(q, ignoreCase = true)
-            }
-            Result.success(filtrados)
-        } catch (e: Exception) {
-            Result.failure(e)
+        // Reusar listarNutriologos con retry para obtener la lista base
+        val baseResult = listarNutriologos(100)
+        if (baseResult.isFailure) return Result.failure(baseResult.exceptionOrNull()!!)
+        val todos = baseResult.getOrDefault(emptyList())
+        if (q.isBlank()) return Result.success(todos)
+        val filtrados = todos.filter {
+            it.nombre.contains(q, ignoreCase = true) ||
+            it.especialidad.contains(q, ignoreCase = true) ||
+            it.codigo.contains(q, ignoreCase = true) ||
+            it.email.contains(q, ignoreCase = true)
         }
+        return Result.success(filtrados)
     }
 
     suspend fun solicitarVinculacion(

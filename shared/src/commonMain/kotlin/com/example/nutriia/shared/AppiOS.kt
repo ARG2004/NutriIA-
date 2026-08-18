@@ -65,6 +65,7 @@ import com.example.nutriia.ui.theme.NutriIATheme
 import com.example.nutriia.util.PermissionType
 import com.example.nutriia.util.PlatformPermissionHelper
 import com.example.nutriia.vinculacion.VinculacionViewModel
+import com.example.nutriia.vinculacion.DirectorioNutriologosScreen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
@@ -112,7 +113,7 @@ enum class Screen {
     VINCULACION_GINECOLOGO, DIRECTORIO_GINECOLOGOS,
     LACTANCIA, SOLIDOS, CRECIMIENTO, SUENO, MICRONUTRIENTES, NEURODESARROLLO, MEAL_PLANNING, CHAT_IA, DIARIO_VISUAL, RECORDATORIOS,
     NUTRIENTES, DIETA, CONFIGURACION, EDITAR_PERFIL, EDITAR_REGION, PEDIATRA_DASHBOARD, PACIENTE_EXPEDIENTE, EXPEDIENTE_EMBARAZO, AYUDA, PAGO_TELECONSULTA,
-    BIOMETRIC_ACTIVATION, NUTRICION_EMBARAZO, CITAS_EMBARAZO
+    BIOMETRIC_ACTIVATION, NUTRICION_EMBARAZO, CITAS_EMBARAZO, DIRECTORIO_NUTRIOLOGOS
 }
 
 fun mesesDeVida(fechaNacimiento: String): Int {
@@ -839,6 +840,7 @@ fun NutriIAiOSApp() {
                                 pagoPantallaRetorno = Screen.PEDIATRA_DASHBOARD
                                 currentScreen = Screen.PAGO_TELECONSULTA
                             },
+                            onAbrirDirectorio = { currentScreen = Screen.DIRECTORIO_NUTRIOLOGOS },
                             onBack = { currentScreen = Screen.DASHBOARD_PARENT }
                         )
                     } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
@@ -885,6 +887,16 @@ fun NutriIAiOSApp() {
                         onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA },
                         onVinculado = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
                     )
+
+                    Screen.DIRECTORIO_NUTRIOLOGOS -> activeChild?.let { child ->
+                        DirectorioNutriologosScreen(
+                            padreNombre = loginViewModel.nombreUsuario,
+                            childId = child.id,
+                            childNombre = child.name,
+                            onBack = { currentScreen = Screen.PEDIATRA_DASHBOARD },
+                            onVinculado = { currentScreen = Screen.PEDIATRA_DASHBOARD }
+                        )
+                    } ?: run { currentScreen = Screen.PEDIATRA_DASHBOARD }
 
                     Screen.PACIENTE_EXPEDIENTE -> pacienteSeleccionado?.let { pac ->
                         PacienteExpedienteScreen(

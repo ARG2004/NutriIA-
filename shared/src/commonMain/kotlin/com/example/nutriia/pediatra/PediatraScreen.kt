@@ -79,6 +79,7 @@ fun PediatraScreen(
     padreNombreCompleto:    String               = padreNombre,
     onLlamadaIniciada:      () -> Unit           = {},
     onAbrirPago:           (nutriologoUid: String, nutriologoNombre: String, tipo: TipoLlamada) -> Unit,
+    onAbrirDirectorio:     () -> Unit             = {},
     onBack:                () -> Unit = {}
 ) {
     val a11yMode     by a11yVm.mode.collectAsState()
@@ -388,7 +389,17 @@ fun PediatraScreen(
             }
 
             item {
-                SelectorModoBusqueda(modoActual = modoBusqueda, onSeleccionar = { modoBusqueda = it })
+                SelectorModoBusqueda(
+                    modoActual   = modoBusqueda,
+                    onSeleccionar = { nuevo ->
+                        if (nuevo == ModoBusqueda.DIRECTORIO) {
+                            // En iOS navegamos a pantalla completa separada
+                            onAbrirDirectorio()
+                        } else {
+                            modoBusqueda = nuevo
+                        }
+                    }
+                )
                 Spacer(Modifier.height(16.dp))
             }
 

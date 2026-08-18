@@ -2,6 +2,7 @@ package com.example.nutriia.vinculacion
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -11,6 +12,9 @@ import kotlinx.coroutines.launch
 class VinculacionViewModel : ViewModel() {
 
     private val repo = VinculacionRepository()
+
+    // ── Job del observer del padre (cancelable para forzar refresh) ────────────
+    private var padreObserverJob: Job? = null
 
     // ── Estado compartido ──────────────────────────────────────────────────────
     private val _vinculaciones = MutableStateFlow<List<Vinculacion>>(emptyList())
@@ -55,9 +59,16 @@ class VinculacionViewModel : ViewModel() {
     }
 
     fun initComoPadre() {
-        repo.observarVinculacionesDelPadre()
+        padreObserverJob?.cancel()
+        padreObserverJob = repo.observarVinculacionesDelPadre()
             .onEach { _vinculaciones.value = it }
             .launchIn(viewModelScope)
+    }
+
+    /** Fuerza re-suscripción al Flow del padre — útil al regresar del directorio en iOS */
+    fun recargarVinculaciones() {
+        initComoPadre()
+        cargarDirectorio()
     }
 
     // ═════════════════════════════════════════════════════════════════════════
