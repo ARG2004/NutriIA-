@@ -1,22 +1,17 @@
 package com.example.nutriia.platform
 
-import dev.gitlive.firebase.Firebase
-import dev.gitlive.firebase.crashlytics.crashlytics
+import platform.Foundation.NSLog
 import platform.Foundation.NSUserDefaults
 
 actual object CrashStorage {
     private const val KEY_CRASH = "LAST_CRASH_LOG_NUTRIIA"
 
     actual fun saveCrash(crashText: String) {
+        NSLog("⚠️ [CrashStorage] %s", crashText)
         try {
             val defaults = NSUserDefaults.standardUserDefaults
             defaults.setObject(crashText, forKey = KEY_CRASH)
             defaults.synchronize()
-        } catch (_: Throwable) {}
-
-        try {
-            Firebase.crashlytics.log(crashText)
-            Firebase.crashlytics.recordException(Exception(crashText))
         } catch (_: Throwable) {}
     }
 

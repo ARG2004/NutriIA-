@@ -38,10 +38,6 @@ kotlin {
             implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
             implementation("dev.gitlive:firebase-auth:2.1.0")
             implementation("dev.gitlive:firebase-firestore:2.1.0")
-            implementation("dev.gitlive:firebase-config:2.1.0")
-        }
-        iosMain.dependencies {
-            implementation("dev.gitlive:firebase-crashlytics:2.1.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
