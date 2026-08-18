@@ -61,8 +61,7 @@ actual object PlatformImagePicker {
             ) {
                 val image = didFinishPickingMediaWithInfo[UIImagePickerControllerOriginalImage] as? UIImage
                 if (image != null) {
-                    val resized = resizeImage(image, maxDimension = 1024.0)
-                    val data = UIImageJPEGRepresentation(resized, 0.7)
+                    val data = UIImageJPEGRepresentation(image, 0.6)
                     if (data != null) {
                         val base64 = data.base64EncodedStringWithOptions(0u)
                         onImage(base64)
@@ -81,29 +80,5 @@ actual object PlatformImagePicker {
         activeDelegate = delegate
         picker.delegate = delegate
         rootVC.presentViewController(picker, animated = true, completion = null)
-    }
-
-    private fun resizeImage(image: UIImage, maxDimension: Double): UIImage {
-        val width = image.size.useContents { this.width }
-        val height = image.size.useContents { this.height }
-        if (width <= 0.0 || height <= 0.0 || (width <= maxDimension && height <= maxDimension)) return image
-
-        val ratio = if (width > height) maxDimension / width else maxDimension / height
-        val newWidth = width * ratio
-        val newHeight = height * ratio
-        val newSize = kotlinx.cinterop.cValue<platform.CoreGraphics.CGSize> {
-            this.width = newWidth
-            this.height = newHeight
-        }
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-        image.drawInRect(kotlinx.cinterop.cValue<platform.CoreGraphics.CGRect> {
-            origin.x = 0.0
-            origin.y = 0.0
-            size.width = newWidth
-            size.height = newHeight
-        })
-        val resized = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        return resized ?: image
     }
 }
