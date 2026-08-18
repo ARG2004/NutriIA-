@@ -387,10 +387,7 @@ class AnalisisRepository {
         val candidateModels = listOf(
             "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-            "qwen/qwen3.6-27b",
-            "groq/compound-mini"
+            "mixtral-8x7b-32768"
         )
 
         for (model in candidateModels) {

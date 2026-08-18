@@ -199,14 +199,24 @@ fun AnalisisScreen(
                         onTomarFoto    = {
                             com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
                                 if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                    viewModel.analizarFoto(
+                                        base64Image    = base64,
+                                        child          = child,
+                                        perfilEmbarazo = perfilEmbarazo,
+                                        isEmbarazo     = esModoEmbarazo
+                                    )
                                 }
                             }
                         },
                         onSeleccionarGaleria = {
                             com.example.nutriia.platform.PlatformImagePicker.launchGallery { base64 ->
                                 if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                    viewModel.analizarFoto(
+                                        base64Image    = base64,
+                                        child          = child,
+                                        perfilEmbarazo = perfilEmbarazo,
+                                        isEmbarazo     = esModoEmbarazo
+                                    )
                                 }
                             }
                         },
@@ -216,7 +226,12 @@ fun AnalisisScreen(
                         onIniciarCamara = {
                             com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
                                 if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                    viewModel.analizarFoto(
+                                        base64Image    = base64,
+                                        child          = child,
+                                        perfilEmbarazo = perfilEmbarazo,
+                                        isEmbarazo     = esModoEmbarazo
+                                    )
                                 } else {
                                     viewModel.cancelarCamara()
                                 }
@@ -225,7 +240,12 @@ fun AnalisisScreen(
                         onCapturar      = {
                             com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
                                 if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(base64, child, perfilEmbarazo, esModoEmbarazo)
+                                    viewModel.analizarFoto(
+                                        base64Image    = base64,
+                                        child          = child,
+                                        perfilEmbarazo = perfilEmbarazo,
+                                        isEmbarazo     = esModoEmbarazo
+                                    )
                                 }
                             }
                         },

@@ -2,6 +2,33 @@ package com.example.nutriia.vinculacion
 
 import com.example.nutriia.platform.currentTimeMillis
 
+private fun parseMillis(value: Any?): Long? {
+    if (value == null) return null
+    return when (value) {
+        is Long -> value
+        is Int -> value.toLong()
+        is Double -> value.toLong()
+        is Float -> value.toLong()
+        is String -> value.toLongOrNull()
+        is Map<*, *> -> {
+            val sec = (value["seconds"] ?: value["_seconds"]) as? Number
+            val nano = (value["nanoseconds"] ?: value["_nanoseconds"]) as? Number ?: 0
+            if (sec != null) {
+                (sec.toLong() * 1000L) + (nano.toLong() / 1_000_000L)
+            } else null
+        }
+        else -> {
+            val str = value.toString()
+            if (str.contains("seconds=")) {
+                val secMatch = Regex("seconds=([0-9]+)").find(str)?.groupValues?.getOrNull(1)?.toLongOrNull()
+                if (secMatch != null) secMatch * 1000L else str.toLongOrNull()
+            } else {
+                str.toLongOrNull()
+            }
+        }
+    }
+}
+
 // ─── Estado de la vinculación ─────────────────────────────────────────────────
 enum class EstadoVinculacion { PENDIENTE, ACTIVO, RECHAZADO, REVOCADO }
 
@@ -38,17 +65,17 @@ data class Vinculacion(
 
         fun fromMap(id: String, map: Map<String, Any?>): Vinculacion = Vinculacion(
             id               = id,
-            nutriologoUid    = map["nutriologoUid"]    as? String ?: "",
-            nutriologoNombre = map["nutriologoNombre"] as? String ?: "",
-            padreUid         = map["padreUid"]         as? String ?: "",
-            padreNombre      = map["padreNombre"]       as? String ?: "",
-            childId          = map["childId"]           as? String ?: "",
-            childNombre      = map["childNombre"]       as? String ?: "",
+            nutriologoUid    = (map["nutriologoUid"] ?: map["nutriologo_uid"]) as? String ?: "",
+            nutriologoNombre = (map["nutriologoNombre"] ?: map["nutriologo_nombre"]) as? String ?: "",
+            padreUid         = (map["padreUid"] ?: map["padre_uid"]) as? String ?: "",
+            padreNombre      = (map["padreNombre"] ?: map["padre_nombre"]) as? String ?: "",
+            childId          = (map["childId"] ?: map["child_id"] ?: map["hijoId"]) as? String ?: "",
+            childNombre      = (map["childNombre"] ?: map["child_nombre"] ?: map["hijoNombre"]) as? String ?: "",
             estado           = runCatching {
                 EstadoVinculacion.valueOf(map["estado"] as? String ?: "")
             }.getOrDefault(EstadoVinculacion.PENDIENTE),
-            creadoEn         = map["creadoEn"]      as? Long,
-            actualizadoEn    = map["actualizadoEn"] as? Long
+            creadoEn         = parseMillis(map["creadoEn"] ?: map["creado_en"]),
+            actualizadoEn    = parseMillis(map["actualizadoEn"] ?: map["actualizado_en"] ?: map["respondidoEn"] ?: map["revocadoEn"])
         )
     }
 }
@@ -128,7 +155,7 @@ data class PlanAlimentario(
             fechaInicio      = map["fechaInicio"]      as? String ?: "",
             fechaFin         = map["fechaFin"]         as? String ?: "",
             activo           = map["activo"]           as? Boolean ?: true,
-            creadoEn         = map["creadoEn"]         as? Long
+            creadoEn         = parseMillis(map["creadoEn"] ?: map["creado_en"])
         )
     }
 }
