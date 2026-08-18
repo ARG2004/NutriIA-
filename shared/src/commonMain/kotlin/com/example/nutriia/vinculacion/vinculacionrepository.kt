@@ -130,6 +130,7 @@ class VinculacionRepository {
         if (q.isEmpty()) return Result.success(null)
 
         return try {
+            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.where { "codigo".equalTo(q) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
@@ -152,6 +153,7 @@ class VinculacionRepository {
         if (e.isEmpty()) return Result.success(null)
 
         return try {
+            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.where { "email".equalTo(e) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
@@ -171,6 +173,7 @@ class VinculacionRepository {
 
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
         return try {
+            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.get()
             val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
@@ -184,6 +187,7 @@ class VinculacionRepository {
     suspend fun buscarNutriologosEnDirectorio(query: String): Result<List<NutriologoPublico>> {
         val q = query.trim()
         return try {
+            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.get()
             val todos = snap.documents.mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()

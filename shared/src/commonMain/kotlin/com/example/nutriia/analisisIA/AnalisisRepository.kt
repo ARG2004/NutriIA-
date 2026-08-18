@@ -69,11 +69,13 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
+                "meta-llama/llama-4-scout-17b-16e-instruct",
                 "llama-3.2-11b-vision-preview",
                 "llama-3.2-90b-vision-preview"
             )
 
             var rawResponse: String? = null
+            var lastError: String? = null
 
             for (modelName in visionModels) {
                 val payload = buildJsonObject {
@@ -115,11 +117,15 @@ class AnalisisRepository {
                         rawResponse = body
                         break
                     }
+                } else {
+                    lastError = result.exceptionOrNull()?.message ?: "Error desconocido con modelo $modelName"
+                    println("⚠️ [AnalisisIA] Modelo $modelName falló: $lastError")
                 }
             }
 
             if (rawResponse.isNullOrBlank()) {
-                return Result.failure(Exception("No se pudo conectar a los modelos de visión de IA."))
+                val msg = lastError ?: "No se pudo conectar a los modelos de visión de IA."
+                return Result.failure(Exception("No se pudo conectar a los modelos de visión de IA. Detalle: $msg"))
             }
 
             val content = extractGroqContent(rawResponse)
