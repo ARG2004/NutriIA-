@@ -69,6 +69,7 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
+                "qwen/qwen3.6-27b",
                 "meta-llama/llama-4-scout-17b-16e-instruct",
                 "llama-3.2-11b-vision-preview",
                 "llama-3.2-90b-vision-preview"
@@ -391,9 +392,10 @@ class AnalisisRepository {
         if (apiKey.isBlank()) return null
 
         val candidateModels = listOf(
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768"
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.6-27b",
+            "groq/compound-mini"
         )
 
         for (model in candidateModels) {

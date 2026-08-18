@@ -104,12 +104,14 @@ class ChatbotRepository {
             }
 
             val candidateModels = listOf(
-                "llama-3.3-70b-versatile",
-                "llama-3.1-8b-instant",
-                "mixtral-8x7b-32768"
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.6-27b",
+                "groq/compound-mini"
             )
 
             var rawBody: String? = null
+            var lastError: String? = null
 
             for (model in candidateModels) {
                 val requestBodyJson = buildJsonObject {
@@ -136,12 +138,14 @@ class ChatbotRepository {
                         break
                     }
                 } else {
-                    Log.w(TAG, "Fallo modelo $model: ${responseResult.exceptionOrNull()?.message}")
+                    lastError = responseResult.exceptionOrNull()?.message
+                    Log.w(TAG, "Fallo modelo $model: $lastError")
                 }
             }
 
             if (rawBody.isNullOrBlank()) {
-                return@withContext Result.failure(Exception("Hubo un error comunicándose con el asistente."))
+                val detalle = if (!lastError.isNullOrBlank()) " ($lastError)" else ""
+                return@withContext Result.failure(Exception("Hubo un error comunicándose con el asistente$detalle."))
             }
 
             val jsonRoot = json.parseToJsonElement(rawBody).jsonObject
