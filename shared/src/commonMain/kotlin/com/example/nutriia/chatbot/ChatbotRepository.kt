@@ -107,6 +107,10 @@ class ChatbotRepository {
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
                 "qwen/qwen3.6-27b",
+                "gemma2-9b-it",
+                "llama-3.1-8b-instant",
+                "llama3-70b-8192",
+                "llama3-8b-8192",
                 "groq/compound-mini"
             )
 
