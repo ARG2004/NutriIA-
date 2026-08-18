@@ -6,12 +6,15 @@ import com.example.nutriia.platform.generateUUID
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.firestore.firestore
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 private const val TAG = "TeleconsultaRepo"
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TeleconsultaRepository {
 
     private val db get() = Firebase.firestore
@@ -208,43 +211,52 @@ class TeleconsultaRepository {
     }
 
     fun observarLlamadasEntrantes(padreUid: String): Flow<SolicitudLlamada?> {
-        return try {
-            col.where { "receptorUid".equalTo(padreUid) }
-                .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                .snapshots.map { querySnapshot ->
-                    querySnapshot.documents.firstOrNull()?.let { doc ->
-                        SolicitudLlamada.fromMap(doc.id, doc.data())
+        return auth.authStateChanged.flatMapLatest { user ->
+            if (user == null) flowOf(null)
+            else try {
+                col.where { "receptorUid".equalTo(padreUid) }
+                    .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
+                    .snapshots.map { querySnapshot ->
+                        querySnapshot.documents.firstOrNull()?.let { doc ->
+                            SolicitudLlamada.fromMap(doc.id, doc.data())
+                        }
                     }
-                }
-        } catch (e: Exception) {
-            flowOf(null)
+            } catch (e: Exception) {
+                flowOf(null)
+            }
         }
     }
 
     fun observarLlamadasEntrantesNutriologo(nutriologoUid: String): Flow<SolicitudLlamada?> {
-        return try {
-            col.where { "receptorUid".equalTo(nutriologoUid) }
-                .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                .snapshots.map { querySnapshot ->
-                    querySnapshot.documents.firstOrNull()?.let { doc ->
-                        SolicitudLlamada.fromMap(doc.id, doc.data())
+        return auth.authStateChanged.flatMapLatest { user ->
+            if (user == null) flowOf(null)
+            else try {
+                col.where { "receptorUid".equalTo(nutriologoUid) }
+                    .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
+                    .snapshots.map { querySnapshot ->
+                        querySnapshot.documents.firstOrNull()?.let { doc ->
+                            SolicitudLlamada.fromMap(doc.id, doc.data())
+                        }
                     }
-                }
-        } catch (e: Exception) {
-            flowOf(null)
+            } catch (e: Exception) {
+                flowOf(null)
+            }
         }
     }
 
     fun observarHistorial(nutriologoUid: String): Flow<List<SolicitudLlamada>> {
-        return try {
-            col.where { "nutriologoUid".equalTo(nutriologoUid) }
-                .snapshots.map { querySnapshot ->
-                    querySnapshot.documents.map { doc ->
-                        SolicitudLlamada.fromMap(doc.id, doc.data())
+        return auth.authStateChanged.flatMapLatest { user ->
+            if (user == null) flowOf(emptyList())
+            else try {
+                col.where { "nutriologoUid".equalTo(nutriologoUid) }
+                    .snapshots.map { querySnapshot ->
+                        querySnapshot.documents.map { doc ->
+                            SolicitudLlamada.fromMap(doc.id, doc.data())
+                        }
                     }
-                }
-        } catch (e: Exception) {
-            flowOf(emptyList())
+            } catch (e: Exception) {
+                flowOf(emptyList())
+            }
         }
     }
 }
