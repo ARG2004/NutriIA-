@@ -84,8 +84,8 @@ actual object PlatformImagePicker {
     }
 
     private fun resizeImage(image: UIImage, maxDimension: Double): UIImage {
-        val width = image.size.useContents { width }
-        val height = image.size.useContents { height }
+        val width = image.size.useContents { this.width }
+        val height = image.size.useContents { this.height }
         if (width <= maxDimension && height <= maxDimension) return image
 
         val ratio = if (width > height) maxDimension / width else maxDimension / height
@@ -96,7 +96,7 @@ actual object PlatformImagePicker {
             this.height = newHeight
         }
         UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-        image.drawInRect(kotlinx.cinterop.cValue {
+        image.drawInRect(kotlinx.cinterop.cValue<platform.CoreGraphics.CGRect> {
             origin.x = 0.0
             origin.y = 0.0
             size.width = newWidth

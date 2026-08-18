@@ -8,6 +8,7 @@ import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -108,7 +109,7 @@ class TeleconsultaRepository {
 
     fun observarLlamada(llamadaId: String): Flow<SolicitudLlamada?> {
         return try {
-            col.document(llamadaId).snapshots.map { snapshot ->
+            col.document(llamadaId).snapshots.conflate().map { snapshot ->
                 if (snapshot.exists) {
                     val data = snapshot.data<Map<String, Any?>>()
                     SolicitudLlamada.fromMap(snapshot.id, data)
@@ -159,7 +160,7 @@ class TeleconsultaRepository {
 
     fun observarIceCandidatesOffer(llamadaId: String): Flow<List<IceCandidateData>> {
         return try {
-            col.document(llamadaId).collection("iceCandidatesOffer").snapshots.map { querySnapshot ->
+            col.document(llamadaId).collection("iceCandidatesOffer").snapshots.conflate().map { querySnapshot ->
                 querySnapshot.documents.map { doc ->
                     IceCandidateData.fromMap(doc.data())
                 }
@@ -171,7 +172,7 @@ class TeleconsultaRepository {
 
     fun observarIceCandidatesAnswer(llamadaId: String): Flow<List<IceCandidateData>> {
         return try {
-            col.document(llamadaId).collection("iceCandidatesAnswer").snapshots.map { querySnapshot ->
+            col.document(llamadaId).collection("iceCandidatesAnswer").snapshots.conflate().map { querySnapshot ->
                 querySnapshot.documents.map { doc ->
                     IceCandidateData.fromMap(doc.data())
                 }
@@ -216,7 +217,7 @@ class TeleconsultaRepository {
             else try {
                 col.where { "receptorUid".equalTo(padreUid) }
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                    .snapshots.map { querySnapshot ->
+                    .snapshots.conflate().map { querySnapshot ->
                         querySnapshot.documents.firstOrNull()?.let { doc ->
                             SolicitudLlamada.fromMap(doc.id, doc.data())
                         }
@@ -233,7 +234,7 @@ class TeleconsultaRepository {
             else try {
                 col.where { "receptorUid".equalTo(nutriologoUid) }
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                    .snapshots.map { querySnapshot ->
+                    .snapshots.conflate().map { querySnapshot ->
                         querySnapshot.documents.firstOrNull()?.let { doc ->
                             SolicitudLlamada.fromMap(doc.id, doc.data())
                         }
@@ -249,7 +250,7 @@ class TeleconsultaRepository {
             if (user == null) flowOf(emptyList())
             else try {
                 col.where { "nutriologoUid".equalTo(nutriologoUid) }
-                    .snapshots.map { querySnapshot ->
+                    .snapshots.conflate().map { querySnapshot ->
                         querySnapshot.documents.map { doc ->
                             SolicitudLlamada.fromMap(doc.id, doc.data())
                         }
