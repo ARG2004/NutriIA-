@@ -126,11 +126,11 @@ class VinculacionRepository {
     }
 
     suspend fun buscarNutriologoPorCodigo(codigo: String): Result<NutriologoPublico?> {
-        val q = codigo.trim().uppercase()
+        val raw = codigo.trim()
+        val q = Regex("NUT-[A-Za-z0-9-]+", RegexOption.IGNORE_CASE).find(raw)?.value?.uppercase() ?: raw.uppercase()
         if (q.isEmpty()) return Result.success(null)
 
         return try {
-            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.where { "codigo".equalTo(q) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
@@ -141,7 +141,14 @@ class VinculacionRepository {
                     Result.success(perfil)
                 }
             } else {
-                Result.success(null)
+                val docById = colNutriologosPublicos.document(q).get()
+                if (docById.exists) {
+                    val perfil = NutriologoPublico.fromMap(docById.data(), docById.id)
+                    if (esEspecialidadGinecologica(perfil.especialidad)) Result.success(null)
+                    else Result.success(perfil)
+                } else {
+                    Result.success(null)
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -153,7 +160,6 @@ class VinculacionRepository {
         if (e.isEmpty()) return Result.success(null)
 
         return try {
-            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.where { "email".equalTo(e) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
@@ -164,7 +170,15 @@ class VinculacionRepository {
                     Result.success(perfil)
                 }
             } else {
-                Result.success(null)
+                val allSnap = colNutriologosPublicos.get()
+                val found = allSnap.documents.mapNotNull { docItem ->
+                    runCatching { NutriologoPublico.fromMap(docItem.data(), docItem.id) }.getOrNull()
+                }.firstOrNull { it.email.trim().equals(e, ignoreCase = true) }
+                if (found != null && !esEspecialidadGinecologica(found.especialidad)) {
+                    Result.success(found)
+                } else {
+                    Result.success(null)
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -173,7 +187,6 @@ class VinculacionRepository {
 
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
         return try {
-            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.get()
             val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
@@ -187,14 +200,13 @@ class VinculacionRepository {
     suspend fun buscarNutriologosEnDirectorio(query: String): Result<List<NutriologoPublico>> {
         val q = query.trim()
         return try {
-            getAuthUser() ?: return Result.failure(Exception("No se pudo autenticar"))
             val snap = colNutriologosPublicos.get()
             val todos = snap.documents.mapNotNull { doc ->
                 runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
             }.filter { !esEspecialidadGinecologica(it.especialidad) }
             if (q.isBlank()) return Result.success(todos)
             val filtrados = todos.filter {
-                it.nombre.contains(q, ignoreCase = true) || it.especialidad.contains(q, ignoreCase = true)
+                it.nombre.contains(q, ignoreCase = true) || it.especialidad.contains(q, ignoreCase = true) || it.codigo.contains(q, ignoreCase = true) || it.email.contains(q, ignoreCase = true)
             }
             Result.success(filtrados)
         } catch (e: Exception) {

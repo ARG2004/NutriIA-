@@ -229,6 +229,18 @@ fun NutriIADashboardScreen(
     val edadInfo    = obtenerEdadTexto(child.birthDate)
     val ageMonths   = calcAgeMonths(child.birthDate)
 
+    // ── Voice Commands Logic ──────────────────────────────────────────────────
+    var isListening by remember { mutableStateOf(false) }
+    val voiceManager = remember { VoiceInputManager() }
+    val voiceState by voiceManager.estado
+
+    // FIX: Evitar fugas de ServiceConnection al destruir el Composable
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceManager.liberar()
+        }
+    }
+
     LaunchedEffect(currentPage) { onPageChange(currentPage) }
 
     LaunchedEffect(Unit) {
@@ -236,10 +248,22 @@ fun NutriIADashboardScreen(
         val msg = if (esNutriologo)
             "Bienvenido. Entraste como nutriólogo o nutrióloga. " +
                     "Aquí puedes gestionar los perfiles de tus pacientes. " +
-                    "Los botones Ajustes y Salir están en la esquina superior derecha."
+                    "Los módulos disponibles son: Directorio de especialistas, Expediente, Teleconsulta, Ajustes y Salir. " +
+                    "¿A qué módulo te gustaría ir?"
         else
-            VozDash.bienvenidaPadre(child.name, etapa.nombre, edadInfo)
-        a11yVm.hablar(msg)
+            VozDash.bienvenidaPadre(child.name, etapa.nombre, edadInfo) + " " +
+                    "Los módulos disponibles son: Lactancia, Alimentación, Crecimiento, Nutrientes, " +
+                    "Análisis NutriIA, Alertas, NutriBot, Pediatra o Nutriólogo, Ajustes, Ayuda y Salir. " +
+                    "¿A qué módulo te gustaría ir?"
+
+        if (a11yVm.ttsManager != null) {
+            a11yVm.ttsManager?.hablarYEsperar(msg, margenMs = 500L)
+        } else {
+            a11yVm.hablar(msg)
+            val palabras = msg.split(" ").size
+            kotlinx.coroutines.delay((palabras * 90L) + 800L)
+        }
+        isListening = true
     }
 
     LaunchedEffect(currentPage) {
@@ -270,23 +294,8 @@ fun NutriIADashboardScreen(
         onOpenRecordatorios   = onOpenRecordatorios
     )
 
-    // ── Voice Commands Logic ──────────────────────────────────────────────────
-    var isListening by remember { mutableStateOf(false) }
-    val voiceManager = remember { VoiceInputManager() }
-    val voiceState by voiceManager.estado
-
-    // FIX: Evitar fugas de ServiceConnection al destruir el Composable
-    DisposableEffect(Unit) {
-        onDispose {
-            voiceManager.liberar()
-        }
-    }
-
     LaunchedEffect(isListening) {
         if (isListening && a11yMode == AccessibilityMode.BLIND) {
-            a11yVm.hablar(VozDash.COMANDOS_GUIA)
-            // Aumentamos el delay a 9 segundos para permitir que el TTS termine la lista de comandos y la pregunta final
-            kotlinx.coroutines.delay(9500)
             voiceManager.escuchar(a11yVm.idioma.value, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
                 isListening = false
@@ -296,35 +305,35 @@ fun NutriIADashboardScreen(
                         a11yVm.hablar(VozDash.moduloAbierto("Lactancia"))
                         onOpenLactancia(currentPage)
                     }
-                    cmd.contains("alimentos") || cmd.contains("alimentación") || cmd.contains("solidos") || cmd.contains("alimentacion") -> {
+                    cmd.contains("alimentos") || cmd.contains("alimentación") || cmd.contains("solidos") || cmd.contains("alimentacion") || cmd.contains("comida") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Alimentación"))
                         onOpenSolidos(currentPage)
                     }
-                    cmd.contains("crecimiento") -> {
+                    cmd.contains("crecimiento") || cmd.contains("medicion") || cmd.contains("medición") || cmd.contains("peso") || cmd.contains("talla") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Crecimiento"))
                         onOpenCrecimiento(currentPage)
                     }
-                    cmd.contains("nutrientes") -> {
+                    cmd.contains("nutrientes") || cmd.contains("vitaminas") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Nutrientes"))
                         onOpenMicronutrientes(currentPage)
                     }
-                    cmd.contains("pediatra") || cmd.contains("nutriólogo") || cmd.contains("medico") || cmd.contains("médico") -> {
+                    cmd.contains("pediatra") || cmd.contains("nutriólogo") || cmd.contains("nutriologo") || cmd.contains("medico") || cmd.contains("médico") || cmd.contains("doctor") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Pediatra o Nutriólogo"))
                         onOpenPediatra(currentPage)
                     }
-                    cmd.contains("análisis") || cmd.contains("analisis") || cmd.contains("ia") || cmd.contains("diario") -> {
+                    cmd.contains("análisis") || cmd.contains("analisis") || cmd.contains("ia") || cmd.contains("diario") || cmd.contains("foto") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Análisis NutriIA"))
                         onOpenDiario(currentPage)
                     }
-                    cmd.contains("alarmas") || cmd.contains("alertas") || cmd.contains("alerta") || cmd.contains("alarma") -> {
+                    cmd.contains("alarmas") || cmd.contains("alertas") || cmd.contains("alerta") || cmd.contains("alarma") || cmd.contains("recordatorio") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Alertas"))
                         onOpenRecordatorios(currentPage)
                     }
-                    cmd.contains("nutribot") || cmd.contains("chat") || cmd.contains("consultar") -> {
+                    cmd.contains("nutribot") || cmd.contains("chat") || cmd.contains("consultar") || cmd.contains("bot") -> {
                         a11yVm.hablar("Abriendo NutriBot.")
                         onOpenChatIA(currentPage)
                     }
-                    cmd.contains("ajustes") || cmd.contains("configuración") || cmd.contains("configuracion") -> {
+                    cmd.contains("ajustes") || cmd.contains("configuración") || cmd.contains("configuracion") || cmd.contains("perfil") -> {
                         a11yVm.hablar("Abriendo ajustes.")
                         onConfiguracion()
                     }
@@ -332,11 +341,17 @@ fun NutriIADashboardScreen(
                         a11yVm.hablar("Abriendo centro de ayuda.")
                         onAyuda()
                     }
-                    cmd.contains("salir") || cmd.contains("cerrar sesión") -> {
+                    cmd.contains("salir") || cmd.contains("cerrar sesión") || cmd.contains("cerrar sesion") -> {
                         a11yVm.hablar("Cerrando sesión.")
                         onLogout()
                     }
-                    else -> a11yVm.hablar("No entendí el comando. Intenta decir abrir crecimiento o alarmas.")
+                    cmd.contains("agregar hijo") || cmd.contains("nuevo hijo") || cmd.contains("registrar hijo") -> {
+                        a11yVm.hablar("Abriendo registro de nuevo hijo.")
+                        onAddChild()
+                    }
+                    else -> {
+                        a11yVm.hablar("No entendí el módulo. Di por ejemplo Lactancia, Crecimiento, o NutriBot.")
+                    }
                 }
             }
         }

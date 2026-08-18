@@ -1316,19 +1316,7 @@ fun NutritionistRegisterScreen(
             delay(400L)
             buscandoCedula = true
             val res = CedulaVerifier.verificarCedulaConRateLimit(digitos)
-            if (res.valida) {
-                val repo = RepositorioLogin()
-                if (repo.esCedulaRegistrada(digitos)) {
-                    verificadoCedulaState = ResultadoCedula(
-                        valida = false,
-                        mensaje = "La cédula profesional $digitos ya pertenece a otro especialista registrado en NutrIA."
-                    )
-                } else {
-                    verificadoCedulaState = res
-                }
-            } else {
-                verificadoCedulaState = res
-            }
+            verificadoCedulaState = res
             buscandoCedula = false
         } else {
             verificadoCedulaState = null
@@ -1846,7 +1834,7 @@ fun NutritionistRegisterScreen(
             Spacer(Modifier.height(36.dp))
             Button(
                 onClick = { ejecutarRegistroNutri() },
-                enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedula && !nombreNoCoincideNutri && !profesionInvalidaNutri,
+                enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedula && verificadoCedulaState?.valida == true && !nombreNoCoincideNutri && !profesionInvalidaNutri,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(if (esBlind) 70.dp else 56.dp)
@@ -1859,7 +1847,8 @@ fun NutritionistRegisterScreen(
                 shape  = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor         = RegTeal,
-                    disabledContainerColor = Color.LightGray
+                    disabledContainerColor = Color(0xFFC4C4C4),
+                    disabledContentColor   = Color.White
                 )
             ) {
                 if (estado is RegisterUiState.Loading) {
@@ -1940,19 +1929,7 @@ fun GinecologistRegisterScreen(
             delay(400L)
             buscandoCedulaGine = true
             val res = CedulaVerifier.verificarCedula(digitos)
-            if (res.valida) {
-                val repo = RepositorioLogin()
-                if (repo.esCedulaRegistrada(digitos)) {
-                    verificadoCedulaGineState = ResultadoCedula(
-                        valida = false,
-                        mensaje = "La cédula profesional $digitos ya pertenece a otro especialista registrado en NutrIA."
-                    )
-                } else {
-                    verificadoCedulaGineState = res
-                }
-            } else {
-                verificadoCedulaGineState = res
-            }
+            verificadoCedulaGineState = res
             buscandoCedulaGine = false
         } else {
             verificadoCedulaGineState = null
@@ -2389,12 +2366,13 @@ fun GinecologistRegisterScreen(
 
             Button(
                 onClick = { ejecutarRegistroGine() },
-                enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedulaGine && !nombreNoCoincideGine && !profesionInvalidaGine,
+                enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedulaGine && verificadoCedulaGineState?.valida == true && !nombreNoCoincideGine && !profesionInvalidaGine,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = RegRosaGine,
-                    disabledContainerColor = Color.LightGray
+                    disabledContainerColor = Color(0xFFC4C4C4),
+                    disabledContentColor = Color.White
                 )
             ) {
                 if (estado is RegisterUiState.Loading) {
@@ -2601,51 +2579,51 @@ fun TarjetaResumenCedula(
     nombreUsuario: String = "",
     esGinecologo: Boolean = false
 ) {
-    val nombreNoCoincide = res.valida && res.nombreTitular.isNotBlank() && nombreUsuario.isNotBlank() && !coincideNombreConTitular(nombreUsuario, res.nombreTitular)
     val profesionNoCoincide = res.valida && res.profesion.isNotBlank() && (
         if (esGinecologo) !esProfesionValidaGinecologo(res.profesion)
         else !esProfesionValidaNutriologo(res.profesion)
     )
-    val hayError = nombreNoCoincide || profesionNoCoincide
+    val nombreNoCoincide = res.valida && res.nombreTitular.isNotBlank() && nombreUsuario.isNotBlank() && !coincideNombreConTitular(nombreUsuario, res.nombreTitular)
+    val hayError = profesionNoCoincide || nombreNoCoincide
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp)
+            .padding(top = 10.dp)
             .background(
-                if (hayError) Color(0xFFFFEBEE) else if (res.valida) Color(0xFFF1F8E9) else Color(0xFFFFF3E0),
-                shape = RoundedCornerShape(12.dp)
+                if (hayError) Color(0xFFFFF0F2) else if (res.valida) Color(0xFFF1F8E9) else Color(0xFFFFF3E0),
+                shape = RoundedCornerShape(16.dp)
             )
             .border(
                 1.dp,
-                if (hayError) Color(0xFFE57373) else if (res.valida) Color(0xFFAED581) else Color(0xFFFFB74D),
-                shape = RoundedCornerShape(12.dp)
+                if (hayError) Color(0xFFFFCDD2) else if (res.valida) Color(0xFFAED581) else Color(0xFFFFB74D),
+                shape = RoundedCornerShape(16.dp)
             )
-            .padding(12.dp)
+            .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 if (hayError) Icons.Rounded.ErrorOutline else if (res.valida) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
                 contentDescription = null,
                 tint = if (hayError) Color(0xFFC62828) else if (res.valida) Color(0xFF2E7D32) else Color(0xFFE65100),
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
-                if (nombreNoCoincide) "Error, datos no coinciden, inténtelo de nuevo"
-                else if (profesionNoCoincide) "Error, la cédula no corresponde a la especialidad requerida"
+                if (profesionNoCoincide) "Error, la cédula no corresponde a la especialidad requerida"
+                else if (nombreNoCoincide) "Error, datos no coinciden, inténtelo de nuevo"
                 else if (res.valida) "Cédula profesional verificada ante la SEP" 
                 else res.mensaje,
-                fontSize = 13.sp,
+                fontSize = 13.5.sp,
                 color = if (hayError) Color(0xFFC62828) else if (res.valida) Color(0xFF1B5E20) else Color(0xFFE65100),
                 fontWeight = FontWeight.Bold
             )
         }
 
         if (res.valida) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             HorizontalDivider(color = if (hayError) Color(0xFFFFCDD2) else Color(0xFFC8E6C9), thickness = 1.dp)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
             if (res.cedula.isNotBlank()) RenglonDetalleCedula("Núm. Cédula", res.cedula)
             if (res.nombreTitular.isNotBlank()) RenglonDetalleCedula("Titular Oficial SEP", res.nombreTitular)
@@ -2655,22 +2633,24 @@ fun TarjetaResumenCedula(
             if (res.entidad.isNotBlank()) RenglonDetalleCedula("Entidad Federativa", res.entidad)
             if (res.anoRegistro.isNotBlank()) RenglonDetalleCedula("Año de Registro", res.anoRegistro)
 
-            if (nombreNoCoincide) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "El nombre ingresado no corresponde a la persona titular de la cédula ante la SEP.",
-                    fontSize = 11.sp,
-                    color = Color(0xFFC62828),
-                    fontWeight = FontWeight.Medium
-                )
-            } else if (profesionNoCoincide) {
-                Spacer(Modifier.height(6.dp))
+            if (profesionNoCoincide) {
+                Spacer(Modifier.height(8.dp))
                 Text(
                     if (esGinecologo) "Para registrarse como Ginecólogo/a se requiere cédula en Medicina o Ginecología."
                     else "Para registrarse como Nutriólogo/a se requiere cédula en Nutrición, Dietética o Medicina.",
-                    fontSize = 11.sp,
+                    fontSize = 11.5.sp,
                     color = Color(0xFFC62828),
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 16.sp
+                )
+            } else if (nombreNoCoincide) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "El nombre ingresado no corresponde a la persona titular de la cédula ante la SEP.",
+                    fontSize = 11.5.sp,
+                    color = Color(0xFFC62828),
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 16.sp
                 )
             }
         }
@@ -2679,18 +2659,18 @@ fun TarjetaResumenCedula(
 
 @Composable
 fun RenglonDetalleCedula(etiqueta: String, valor: String) {
-    Row(modifier = Modifier.padding(vertical = 2.dp)) {
+    Row(modifier = Modifier.padding(vertical = 2.5.dp)) {
         Text(
             "$etiqueta: ",
-            fontSize = 11.sp,
+            fontSize = 11.5.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF2E7D32)
         )
         Text(
             valor,
-            fontSize = 11.sp,
+            fontSize = 11.5.sp,
             fontWeight = FontWeight.Normal,
-            color = Color.DarkGray
+            color = Color(0xFF212121)
         )
     }
 }

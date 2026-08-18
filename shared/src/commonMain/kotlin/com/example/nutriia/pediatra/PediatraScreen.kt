@@ -108,7 +108,18 @@ fun PediatraScreen(
     var queryDir     by remember { mutableStateOf("") }
     var mostrarEscannerQR by remember { mutableStateOf(false) }
 
-        var permissionCheckStep by remember { mutableStateOf(0) }
+    var permissionCheckStep by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        vinculacionViewModel.initComoPadre()
+        vinculacionViewModel.cargarDirectorio()
+    }
+
+    LaunchedEffect(modoBusqueda) {
+        if (modoBusqueda == ModoBusqueda.DIRECTORIO) {
+            vinculacionViewModel.cargarDirectorio()
+        }
+    }
 
     // ── Voice Commands Logic ──────────────────────────────────────────────────
     var isListening by remember { mutableStateOf(false) }
@@ -355,6 +366,7 @@ fun PediatraScreen(
                         onCodeScanned = { code ->
                             textoCodigo = code
                             mostrarEscannerQR = false
+                            vinculacionViewModel.buscarPorCodigo(code)
                         }
                     )
                 }

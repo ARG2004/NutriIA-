@@ -22,7 +22,14 @@ class AnalisisRepository {
 
     private val db get() = Firebase.firestore
     private val auth get() = Firebase.auth
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        allowTrailingComma = true
+        allowSpecialFloatingPointValues = true
+        coerceInputValues = true
+    }
 
     private fun uid(): String =
         auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado")
@@ -457,10 +464,14 @@ class AnalisisRepository {
         }
         val start = str.indexOf('{')
         val end = str.lastIndexOf('}')
-        return if (start != -1 && end != -1 && end >= start) {
-            str.substring(start, end + 1)
-        } else {
-            str
+        if (start != -1 && end != -1 && end >= start) {
+            str = str.substring(start, end + 1)
         }
+        // Limpiar comas huérfanas antes de cerrar corchete o llave (ej. [a, b, ] -> [a, b] o {"a": 1, } -> {"a": 1})
+        str = str.replace(Regex(",\\s*([}\\]])"), "$1")
+        // Corregir valores vacíos malformados generados por LLMs (ej. "key": , o "key": })
+        str = str.replace(Regex(":\\s*,"), ": \"\",")
+        str = str.replace(Regex(":\\s*}"), ": \"\"}")
+        return str
     }
 }

@@ -21,7 +21,14 @@ data class ChatMessage(
 
 class ChatbotRepository {
 
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        allowTrailingComma = true
+        allowSpecialFloatingPointValues = true
+        coerceInputValues = true
+    }
 
     suspend fun sendQuery(
         query: String,
