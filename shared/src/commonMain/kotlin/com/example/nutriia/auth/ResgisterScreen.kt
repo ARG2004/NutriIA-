@@ -1486,13 +1486,21 @@ fun NutritionistRegisterScreen(
             )
             Spacer(Modifier.height(12.dp))
 
+            val nombreNoCoincideNutri = remember(data.name, verificadoCedulaState) {
+                verificadoCedulaState?.valida == true &&
+                verificadoCedulaState?.nombreTitular?.isNotBlank() == true &&
+                data.name.isNotBlank() &&
+                !coincideNombreConTitular(data.name, verificadoCedulaState?.nombreTitular ?: "")
+            }
+
             // ── Campo 1: Nombre ───────────────────────────────────────────────
             RegisterField(
                 value           = data.name,
                 onValueChange   = { data = data.copy(name = it); nameError = null },
                 label           = loc("Nombre completo", "Full name"),
                 icon            = Icons.Rounded.Person,
-                error           = nameError,
+                error           = nameError ?: if (nombreNoCoincideNutri) loc("Error, datos no coinciden, inténtelo de nuevo", "Error, data does not match, please try again") else null,
+                readOnly        = nombreNoCoincideNutri,
                 a11yLabel       = loc(
                     "Campo 1 de 7. Nombre completo. Di tu nombre y apellidos.",
                     "Field 1 of 7. Full name. Say your first and last name."
@@ -1722,13 +1730,6 @@ fun NutritionistRegisterScreen(
 
             // ── Comando de voz "registrarme" (solo modo BLIND) ────────────────
             // Lambda compartida para ejecutar el registro (usada por botón y voz)
-            val nombreNoCoincideNutri = remember(data.name, verificadoCedulaState) {
-                verificadoCedulaState?.valida == true &&
-                verificadoCedulaState?.nombreTitular?.isNotBlank() == true &&
-                data.name.isNotBlank() &&
-                !coincideNombreConTitular(data.name, verificadoCedulaState?.nombreTitular ?: "")
-            }
-
             val ejecutarRegistroNutri: () -> Unit = {
                 var hasErrors = false
                 if (data.name.isBlank()) { nameError = loc("El nombre es requerido", "Name is required"); hasErrors = true }
@@ -2080,12 +2081,20 @@ fun GinecologistRegisterScreen(
             RegisterSectionTitle(loc("Datos personales", "Personal info"), Icons.Rounded.Person, RegRosaGine)
             Spacer(Modifier.height(12.dp))
 
+            val nombreNoCoincideGine = remember(data.name, verificadoCedulaGineState) {
+                verificadoCedulaGineState?.valida == true &&
+                verificadoCedulaGineState?.nombreTitular?.isNotBlank() == true &&
+                data.name.isNotBlank() &&
+                !coincideNombreConTitular(data.name, verificadoCedulaGineState?.nombreTitular ?: "")
+            }
+
             RegisterField(
                 value           = data.name,
                 onValueChange   = { data = data.copy(name = it); nameError = null },
                 label           = loc("Nombre completo", "Full name"),
                 icon            = Icons.Rounded.Person,
-                error           = nameError,
+                error           = nameError ?: if (nombreNoCoincideGine) loc("Error, datos no coinciden, inténtelo de nuevo", "Error, data does not match, please try again") else null,
+                readOnly        = nombreNoCoincideGine,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                 a11yActive      = esAccesible,
                 activo          = campoActivo == 0,
@@ -2265,13 +2274,6 @@ fun GinecologistRegisterScreen(
             }
 
             // ── Comando de voz "registrarme" (solo modo BLIND) ────────────────
-            val nombreNoCoincideGine = remember(data.name, verificadoCedulaGineState) {
-                verificadoCedulaGineState?.valida == true &&
-                verificadoCedulaGineState?.nombreTitular?.isNotBlank() == true &&
-                data.name.isNotBlank() &&
-                !coincideNombreConTitular(data.name, verificadoCedulaGineState?.nombreTitular ?: "")
-            }
-
             val ejecutarRegistroGine: () -> Unit = {
                 var hasErrors = false
                 if (data.name.isBlank()) { nameError = loc("Nombre requerido", "Name required"); hasErrors = true }
@@ -2469,6 +2471,7 @@ private fun RegisterField(
     keyboardOptions: KeyboardOptions  = KeyboardOptions.Default,
     a11yActive:      Boolean          = false,
     activo:          Boolean          = true,
+    readOnly:        Boolean          = false,
     onFocus:         (() -> Unit)?    = null,
     onNext:          (() -> Unit)?    = null,
     ttsManager:      NutriTTS?        = null,
@@ -2482,7 +2485,7 @@ private fun RegisterField(
     if (a11yActive) {
         CampoTextoAccesible(
             valor          = value,
-            onValorChange  = onValueChange,
+            onValorChange  = { if (!readOnly) onValueChange(it) },
             etiqueta       = label,
             descripcionVoz = a11yLabel.ifEmpty { label },
             placeholder    = placeholder ?: "",
@@ -2490,7 +2493,7 @@ private fun RegisterField(
             idioma         = idioma,
             colorPrimario  = RegGreen,
             keyboardOptions = finalKeyboardOptions,
-            activo         = activo,
+            activo         = activo && !readOnly,
             onFocus        = onFocus,
             onNext         = onNext
         )
@@ -2506,7 +2509,8 @@ private fun RegisterField(
     } else {
         OutlinedTextField(
             value         = value,
-            onValueChange = onValueChange,
+            onValueChange = { if (!readOnly) onValueChange(it) },
+            readOnly      = readOnly,
             modifier      = Modifier.fillMaxWidth().let { m ->
                 if (a11yLabel.isNotEmpty())
                     m.semantics {
