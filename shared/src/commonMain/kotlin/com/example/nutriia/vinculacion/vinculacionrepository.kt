@@ -330,7 +330,13 @@ class VinculacionRepository {
                 estado = EstadoVinculacion.PENDIENTE,
                 creadoEn = currentTimeMillis()
             )
-            colVinculaciones.document(docId).set(vinc.toMap())
+            // FIX iOS: .set(map) usaba el codificador genérico de gitlive para
+            // Map<String, Any?>, poco confiable en iOS/Kotlin-Native — podía escribir
+            // el documento con campos que no coincidían exactamente con lo que tus
+            // reglas de Firestore comparan (ej. padreUid), dando permission-denied
+            // aunque las reglas fueran correctas. Ahora mandamos el objeto @Serializable
+            // directo, que usa el serializador real generado por el compilador.
+            colVinculaciones.document(docId).set(vinc)
             Result.success(vinc)
         } catch (e: Exception) {
             Result.failure(e)
@@ -340,11 +346,11 @@ class VinculacionRepository {
     suspend fun responderSolicitud(vinculacionId: String, aceptar: Boolean): Result<Unit> {
         return try {
             val nuevoEstado = if (aceptar) EstadoVinculacion.ACTIVO else EstadoVinculacion.RECHAZADO
+            // FIX iOS: .update(vararg Pair) es más confiable que .update(mapOf(...))
+            // para el mismo problema de codificación genérica en Kotlin/Native.
             colVinculaciones.document(vinculacionId).update(
-                mapOf(
-                    "estado" to nuevoEstado.name,
-                    "respondidoEn" to currentTimeMillis()
-                )
+                "estado" to nuevoEstado.name,
+                "respondidoEn" to currentTimeMillis()
             )
             Result.success(Unit)
         } catch (e: Exception) {
@@ -355,10 +361,8 @@ class VinculacionRepository {
     suspend fun revocarVinculacion(vinculacionId: String): Result<Unit> {
         return try {
             colVinculaciones.document(vinculacionId).update(
-                mapOf(
-                    "estado" to EstadoVinculacion.REVOCADO.name,
-                    "revocadoEn" to currentTimeMillis()
-                )
+                "estado" to EstadoVinculacion.REVOCADO.name,
+                "revocadoEn" to currentTimeMillis()
             )
             Result.success(Unit)
         } catch (e: Exception) {
