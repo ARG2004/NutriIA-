@@ -106,7 +106,8 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
-            echo "Secretos de App Store Connect no configurados; omitiendo envío a TestFlight."
+            echo "AVISO: faltan APPSTORE_PRIVATE_KEY, APPSTORE_KEY_ID o APPSTORE_ISSUER_ID; se omitirá el envío a TestFlight."
+            echo "El paso 8 solo valida la compilación; para publicar el IPA configura esos secretos y los secretos de firma Apple."
           else
             brew install xcodegen
             if [ ! -f iosApp/Config.xcconfig ]; then
