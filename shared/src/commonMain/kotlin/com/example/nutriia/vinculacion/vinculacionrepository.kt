@@ -222,6 +222,28 @@ class VinculacionRepository {
         }
     }
 
+    // FIX iOS: doc.data() usa el decoder genérico de gitlive a Map<String, Any?>, que
+    // en Kotlin/Native (iOS) no decodifica igual que en Android (donde hay un camino
+    // directo vía el SDK nativo de Firebase Android). En vez de confiar en ese mapa
+    // genérico, leemos cada campo por separado con doc.get<String>(field) — reified
+    // con tipo concreto, que sí es confiable en ambas plataformas.
+    private fun nutriologoDesdeDoc(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): NutriologoPublico? {
+        return try {
+            val uidCampo = runCatching { doc.get<String?>("uid") }.getOrNull()
+            NutriologoPublico(
+                uid = uidCampo?.takeIf { it.isNotBlank() } ?: doc.id,
+                nombre = runCatching { doc.get<String?>("nombre") }.getOrNull() ?: "",
+                especialidad = runCatching { doc.get<String?>("especialidad") }.getOrNull()
+                    ?: "Nutrición Pediátrica",
+                cedula = runCatching { doc.get<String?>("cedula") }.getOrNull() ?: "",
+                codigo = runCatching { doc.get<String?>("codigo") }.getOrNull() ?: "",
+                email = runCatching { doc.get<String?>("email") }.getOrNull() ?: ""
+            )
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
         getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado en Firebase"))
 
@@ -239,7 +261,7 @@ class VinculacionRepository {
                     colNutriologosPublicos.snapshots
                         .map { snapshot ->
                             snapshot.documents.take(limite.toInt()).mapNotNull { doc ->
-                                runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                                nutriologoDesdeDoc(doc)
                             }.filter { !esEspecialidadGinecologica(it.especialidad) }
                         }
                         .filter { it.isNotEmpty() }
@@ -253,7 +275,7 @@ class VinculacionRepository {
                     // verdad no hay nutriólogos publicados (directorio legítimamente vacío)
                     val snapFinal = colNutriologosPublicos.get()
                     val listaFinal = snapFinal.documents.take(limite.toInt()).mapNotNull { doc ->
-                        runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                        nutriologoDesdeDoc(doc)
                     }.filter { !esEspecialidadGinecologica(it.especialidad) }
                     return Result.success(listaFinal)
                 }

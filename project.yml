@@ -34,7 +34,7 @@ targets:
         CFBundleName: NutriIA
         CFBundlePackageType: APPL
         CFBundleShortVersionString: '2.4.0'
-        CFBundleVersion: '106'
+        CFBundleVersion: '107'
         LSRequiresIPhoneOS: true
         CADisableMinimumFrameDurationOnPhone: true
         UILaunchStoryboardName: LaunchScreen
@@ -64,7 +64,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
-        CURRENT_PROJECT_VERSION: '106'
+        CURRENT_PROJECT_VERSION: '107'
         MARKETING_VERSION: '2.4.0'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
