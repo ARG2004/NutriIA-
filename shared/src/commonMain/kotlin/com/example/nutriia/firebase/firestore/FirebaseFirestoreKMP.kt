@@ -24,7 +24,8 @@ class FirebaseFirestore private constructor() {
     suspend fun clearPersistence(): Unit {
         try {
             delegate.clearPersistence()
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 }
 
@@ -76,7 +77,8 @@ class DocumentReference(
             if (data != null) {
                 delegate.set(data)
             }
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 
     suspend fun update(data: Map<String, Any?>): Unit {
@@ -85,7 +87,8 @@ class DocumentReference(
             if (nonNullData.isNotEmpty()) {
                 delegate.update(nonNullData)
             }
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 
     suspend fun update(field: String, value: Any?, vararg more: Any?): Unit {
@@ -102,13 +105,15 @@ class DocumentReference(
             if (map.isNotEmpty()) {
                 delegate.update(map)
             }
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 
     suspend fun delete(): Unit {
         try {
             delegate.delete()
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
     }
 
     fun collection(subPath: String): CollectionReference =
@@ -132,8 +137,19 @@ class DocumentSnapshot(
     val exists: Boolean get() = delegate?.exists ?: rawData.isNotEmpty()
     fun exists(): Boolean = exists
 
+    // BUG ORIGINAL: esto siempre regresaba rawData (emptyMap() por defecto), porque
+    // ningún constructor de DocumentSnapshot en este archivo pasaba rawData real.
+    // Resultado: TODO documento leído de Firestore llegaba con .data = {} sin importar
+    // que sí existiera en el servidor — así que fromMap() fallaba en silencio para
+    // cada documento y las listas quedaban vacías sin ningún error visible.
+    // FIX: extraer los campos reales desde el delegate de gitlive usando su propio
+    // decoder genérico (data<Map<String, Any?>>()), con fallback a rawData.
     val data: Map<String, Any?>
-        get() = rawData
+        get() = try {
+            delegate?.data<Map<String, Any?>>() ?: rawData
+        } catch (_: Throwable) {
+            rawData
+        }
 
     fun get(field: String): Any? = try {
         runCatching { delegate?.get<String?>(field) }.getOrNull()
@@ -218,7 +234,9 @@ object FieldValue {
 class Timestamp(val seconds: Long = 0, val nanoseconds: Int = 0) {
     val time: Long get() = seconds * 1000 + (nanoseconds / 1000000)
     fun toMillis(): Long = time
+
     companion object {
         fun now(): Timestamp = Timestamp(com.example.nutriia.platform.currentTimeMillis() / 1000, 0)
     }
 }
+ 
