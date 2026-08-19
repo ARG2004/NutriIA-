@@ -166,7 +166,7 @@ jobs:
               --file "$IPA_PATH" \
               --apiKey "$KEY_ID" \
               --apiIssuer "$ISSUER_ID" \
-              --verbose || echo "Subida finalizada."
+              --verbose
           fi
 
       - name: 9. Upload Android APK Artifact
