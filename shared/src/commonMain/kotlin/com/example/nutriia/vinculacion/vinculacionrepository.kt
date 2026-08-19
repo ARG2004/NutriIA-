@@ -83,10 +83,10 @@ class VinculacionRepository {
     }
 
     suspend fun publicarPerfilNutriologo(
-        nombre:       String,
+        nombre: String,
         especialidad: String,
-        cedula:       String,
-        email:        String
+        cedula: String,
+        email: String
     ): Result<NutriologoPublico> {
         val user = getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
         val uid = user.uid
@@ -101,12 +101,12 @@ class VinculacionRepository {
             val codigo = if (!existingCode.isNullOrBlank()) existingCode else generarCodigo(nombre)
 
             val perfil = NutriologoPublico(
-                uid          = uid,
-                nombre       = nombre,
+                uid = uid,
+                nombre = nombre,
                 especialidad = especialidad,
-                cedula       = cedula,
-                codigo       = codigo,
-                email        = email.trim().lowercase()
+                cedula = cedula,
+                codigo = codigo,
+                email = email.trim().lowercase()
             )
             docRef.set(perfil.toMap())
             Result.success(perfil)
@@ -151,22 +151,25 @@ class VinculacionRepository {
                     Result.success(perfil)
                 }
             } else {
-                val docById = colNutriologosPublicos.document(q).get()
-                if (docById.exists) {
-                    val perfil = NutriologoPublico.fromMap(docById.data(), docById.id)
+                // Reintento: el snapshot de nutriologos_publicos puede llegar vacío en el
+                // primer intento en iOS (cold start). NO caer a un fallback contra
+                // "usuarios" filtrado por campo: esa query siempre es rechazada por
+                // Firestore con permission-denied, porque la regla de /usuarios/{uid}
+                // depende de la variable de ruta uid (esDueno(uid)) y no puede probarse
+                // válida para una query filtrada por otro campo.
+                kotlinx.coroutines.delay(1200L)
+                val docByIdRetry = colNutriologosPublicos.document(q).get()
+                if (docByIdRetry.exists) {
+                    val perfil = NutriologoPublico.fromMap(docByIdRetry.data(), docByIdRetry.id)
                     if (esEspecialidadGinecologica(perfil.especialidad)) Result.success(null)
                     else Result.success(perfil)
                 } else {
-                    // Fallback a colección usuarios
-                    val userByCode = db.collection("usuarios").where { "codigo".equalTo(q) }.get().documents.firstOrNull()
-                        ?: db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get().documents.firstOrNull {
-                            val nut = runCatching { NutriologoPublico.fromMap(it.data(), it.id) }.getOrNull()
-                            nut?.codigo?.equals(q, ignoreCase = true) == true || it.id.equals(q, ignoreCase = true)
-                        }
-                    if (userByCode != null && userByCode.exists) {
-                        val perfil = NutriologoPublico.fromMap(userByCode.data(), userByCode.id)
-                        if (!esEspecialidadGinecologica(perfil.especialidad)) Result.success(perfil)
-                        else Result.success(null)
+                    val snapRetry = colNutriologosPublicos.where { "codigo".equalTo(q) }.get()
+                    val docRetry = snapRetry.documents.firstOrNull()
+                    if (docRetry != null && docRetry.exists) {
+                        val perfil = NutriologoPublico.fromMap(docRetry.data(), docRetry.id)
+                        if (esEspecialidadGinecologica(perfil.especialidad)) Result.success(null)
+                        else Result.success(perfil)
                     } else {
                         Result.success(null)
                     }
@@ -199,16 +202,15 @@ class VinculacionRepository {
                 if (found != null && !esEspecialidadGinecologica(found.especialidad)) {
                     Result.success(found)
                 } else {
-                    // Fallback a colección usuarios
-                    val userSnap = db.collection("usuarios").where { "email".equalTo(e) }.get()
-                    val userDoc = userSnap.documents.firstOrNull {
-                        val rol = runCatching { it.data<Map<String, Any?>>()["rol"] as? String }.getOrNull() ?: ""
-                        rol.equals("nutriologo", ignoreCase = true)
-                    }
-                    if (userDoc != null && userDoc.exists) {
-                        val perfil = NutriologoPublico.fromMap(userDoc.data(), userDoc.id)
-                        if (!esEspecialidadGinecologica(perfil.especialidad)) Result.success(perfil)
-                        else Result.success(null)
+                    // Reintento sobre nutriologos_publicos (mismo motivo que arriba: NO usar
+                    // fallback contra "usuarios" filtrado por campo, siempre da permission-denied).
+                    kotlinx.coroutines.delay(1200L)
+                    val allSnapRetry = colNutriologosPublicos.get()
+                    val foundRetry = allSnapRetry.documents.mapNotNull { docItem ->
+                        runCatching { NutriologoPublico.fromMap(docItem.data(), docItem.id) }.getOrNull()
+                    }.firstOrNull { it.email.trim().equals(e, ignoreCase = true) }
+                    if (foundRetry != null && !esEspecialidadGinecologica(foundRetry.especialidad)) {
+                        Result.success(foundRetry)
                     } else {
                         Result.success(null)
                     }
@@ -222,37 +224,36 @@ class VinculacionRepository {
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
         getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado en Firebase"))
 
-        // Retry up to 3 attempts — first Firestore snapshot on iOS cold-start can be empty
+        // Retry: el snapshot de nutriologos_publicos puede llegar vacío en el primer
+        // intento en iOS (cold start / listener aún no listo). Reintentamos varias veces
+        // sobre la MISMA colección — nunca contra "usuarios" filtrado por campo, porque
+        // esa query es rechazada por Firestore con permission-denied sin importar las
+        // reglas (la regla de /usuarios/{uid} solo puede validarse por uid de ruta, no
+        // por un query filtrado por otro campo como "rol").
+        val maxIntentos = 4
         var intentos = 0
-        while (intentos < 3) {
+        var ultimoError: Exception? = null
+        while (intentos < maxIntentos) {
             try {
                 val snap = colNutriologosPublicos.get()
-                var lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
+                val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
                     runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
                 }.filter { !esEspecialidadGinecologica(it.especialidad) }
 
-                if (lista.isNotEmpty()) return Result.success(lista)
-
-                if (intentos < 2) {
-                    // Snapshot vacío en primer intento iOS — esperar y reintentar
-                    kotlinx.coroutines.delay(1500L)
-                    intentos++
-                    continue
+                if (lista.isNotEmpty() || intentos == maxIntentos - 1) {
+                    return Result.success(lista)
                 }
 
-                // Último intento: fallback a colección usuarios
-                val snapUsuarios = db.collection("usuarios").where { "rol".equalTo("nutriologo") }.get()
-                lista = snapUsuarios.documents.take(limite.toInt()).mapNotNull { doc ->
-                    runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
-                }.filter { !esEspecialidadGinecologica(it.especialidad) }
-                return Result.success(lista)
+                kotlinx.coroutines.delay(1500L)
+                intentos++
             } catch (e: Exception) {
-                if (intentos >= 2) return Result.failure(e)
+                ultimoError = e
+                if (intentos >= maxIntentos - 1) return Result.failure(e)
                 kotlinx.coroutines.delay(1500L)
                 intentos++
             }
         }
-        return Result.success(emptyList())
+        return ultimoError?.let { Result.failure(it) } ?: Result.success(emptyList())
     }
 
     suspend fun buscarNutriologosEnDirectorio(query: String): Result<List<NutriologoPublico>> {
@@ -264,17 +265,17 @@ class VinculacionRepository {
         if (q.isBlank()) return Result.success(todos)
         val filtrados = todos.filter {
             it.nombre.contains(q, ignoreCase = true) ||
-            it.especialidad.contains(q, ignoreCase = true) ||
-            it.codigo.contains(q, ignoreCase = true) ||
-            it.email.contains(q, ignoreCase = true)
+                    it.especialidad.contains(q, ignoreCase = true) ||
+                    it.codigo.contains(q, ignoreCase = true) ||
+                    it.email.contains(q, ignoreCase = true)
         }
         return Result.success(filtrados)
     }
 
     suspend fun solicitarVinculacion(
-        nutriologo:  NutriologoPublico,
+        nutriologo: NutriologoPublico,
         padreNombre: String,
-        childId:     String,
+        childId: String,
         childNombre: String
     ): Result<Vinculacion> {
         val user = getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
@@ -283,15 +284,15 @@ class VinculacionRepository {
 
         return try {
             val vinc = Vinculacion(
-                id               = docId,
-                nutriologoUid    = nutriologo.uid,
+                id = docId,
+                nutriologoUid = nutriologo.uid,
                 nutriologoNombre = nutriologo.nombre,
-                padreUid         = padreUid,
-                padreNombre      = padreNombre,
-                childId          = childId,
-                childNombre      = childNombre,
-                estado           = EstadoVinculacion.PENDIENTE,
-                creadoEn         = currentTimeMillis()
+                padreUid = padreUid,
+                padreNombre = padreNombre,
+                childId = childId,
+                childNombre = childNombre,
+                estado = EstadoVinculacion.PENDIENTE,
+                creadoEn = currentTimeMillis()
             )
             colVinculaciones.document(docId).set(vinc.toMap())
             Result.success(vinc)
