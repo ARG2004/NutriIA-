@@ -26,8 +26,17 @@ class VinculacionRepository {
     private suspend fun getAuthUser(): dev.gitlive.firebase.auth.FirebaseUser? {
         auth.currentUser?.let { return it }
         return try {
-            withTimeoutOrNull(5000L) {
-                auth.authStateChanged.filterNotNull().first()
+            withTimeoutOrNull(8000L) {
+                var currentUser = auth.currentUser
+                while (currentUser == null) {
+                    val user = auth.authStateChanged.filterNotNull().first()
+                    if (user.uid.isNotBlank()) {
+                        currentUser = user
+                        break
+                    }
+                    kotlinx.coroutines.delay(200L)
+                }
+                currentUser
             }
         } catch (_: Exception) {
             null
@@ -56,8 +65,9 @@ class VinculacionRepository {
         }
         return auth.authStateChanged.flatMapLatest { user ->
             val uid = user?.uid ?: ""
-            if (uid.isBlank()) flowOf(null)
-            else {
+            if (uid.isBlank()) {
+                flowOf(null)
+            } else {
                 try {
                     db.collection("usuarios")
                         .document(uid)
@@ -333,8 +343,9 @@ class VinculacionRepository {
         }
         return auth.authStateChanged.flatMapLatest { user ->
             val uid = user?.uid ?: ""
-            if (uid.isBlank()) flowOf(emptyList())
-            else {
+            if (uid.isBlank()) {
+                flowOf(emptyList())
+            } else {
                 try {
                     colVinculaciones.where { "padreUid".equalTo(uid) }.snapshots.map { snapshot ->
                         snapshot.documents.mapNotNull { doc ->
@@ -362,8 +373,9 @@ class VinculacionRepository {
         }
         return auth.authStateChanged.flatMapLatest { user ->
             val uid = user?.uid ?: ""
-            if (uid.isBlank()) flowOf(emptyList())
-            else {
+            if (uid.isBlank()) {
+                flowOf(emptyList())
+            } else {
                 try {
                     colVinculaciones.where { "nutriologoUid".equalTo(uid) }.snapshots.map { snapshot ->
                         snapshot.documents.mapNotNull { doc ->
