@@ -33,7 +33,7 @@ targets:
         CFBundleInfoDictionaryVersion: '6.0'
         CFBundleName: NutriIA
         CFBundlePackageType: APPL
-        CFBundleShortVersionString: '2.2.36'
+        CFBundleShortVersionString: '2.2.37'
         CFBundleVersion: '103'
         LSRequiresIPhoneOS: true
         CADisableMinimumFrameDurationOnPhone: true
