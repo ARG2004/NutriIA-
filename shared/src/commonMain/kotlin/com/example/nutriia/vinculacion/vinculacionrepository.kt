@@ -7,6 +7,7 @@ import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -224,32 +225,45 @@ class VinculacionRepository {
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
         getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado en Firebase"))
 
-        // Retry: el snapshot de nutriologos_publicos puede llegar vacío en el primer
-        // intento en iOS (cold start / listener aún no listo). Reintentamos varias veces
-        // sobre la MISMA colección — nunca contra "usuarios" filtrado por campo, porque
-        // esa query es rechazada por Firestore con permission-denied sin importar las
-        // reglas (la regla de /usuarios/{uid} solo puede validarse por uid de ruta, no
-        // por un query filtrado por otro campo como "rol").
+        // NOTA IMPORTANTE (iOS/KMP): .get() puntual en gitlive-firebase puede resolver
+        // contra el caché local de Firestore, que en el primer arranque en iOS está vacío
+        // — y no lanza error, solo regresa 0 documentos. Por eso usamos el listener en
+        // tiempo real (snapshots) y esperamos el primer resultado real del servidor,
+        // con timeout, en vez de confiar en un solo .get().
         val maxIntentos = 4
         var intentos = 0
         var ultimoError: Exception? = null
         while (intentos < maxIntentos) {
             try {
-                val snap = colNutriologosPublicos.get()
-                val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
-                    runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
-                }.filter { !esEspecialidadGinecologica(it.especialidad) }
-
-                if (lista.isNotEmpty() || intentos == maxIntentos - 1) {
-                    return Result.success(lista)
+                val lista = kotlinx.coroutines.withTimeoutOrNull(4000L) {
+                    colNutriologosPublicos.snapshots
+                        .map { snapshot ->
+                            snapshot.documents.take(limite.toInt()).mapNotNull { doc ->
+                                runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                            }.filter { !esEspecialidadGinecologica(it.especialidad) }
+                        }
+                        .filter { it.isNotEmpty() }
+                        .first()
                 }
 
-                kotlinx.coroutines.delay(1500L)
+                if (lista != null) return Result.success(lista)
+
+                if (intentos == maxIntentos - 1) {
+                    // Último intento agotado: confirmamos con un .get() simple si de
+                    // verdad no hay nutriólogos publicados (directorio legítimamente vacío)
+                    val snapFinal = colNutriologosPublicos.get()
+                    val listaFinal = snapFinal.documents.take(limite.toInt()).mapNotNull { doc ->
+                        runCatching { NutriologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                    }.filter { !esEspecialidadGinecologica(it.especialidad) }
+                    return Result.success(listaFinal)
+                }
+
+                kotlinx.coroutines.delay(1000L)
                 intentos++
             } catch (e: Exception) {
                 ultimoError = e
                 if (intentos >= maxIntentos - 1) return Result.failure(e)
-                kotlinx.coroutines.delay(1500L)
+                kotlinx.coroutines.delay(1000L)
                 intentos++
             }
         }
