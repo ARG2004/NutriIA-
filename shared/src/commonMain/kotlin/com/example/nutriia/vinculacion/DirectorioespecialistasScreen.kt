@@ -24,11 +24,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 
 // ─── Paleta NutriIA ──────────────────────────────────────────────────────────
-private val DGreen     = Color(0xFF689F38)
+private val DGreen = Color(0xFF689F38)
 private val DDarkGreen = Color(0xFF33691E)
-private val DBgCrema   = Color(0xFFF8F9F3)
+private val DBgCrema = Color(0xFFF8F9F3)
 private val DCardWhite = Color.White
-private val DTeal      = Color(0xFF4DB6AC)
+private val DTeal = Color(0xFF4DB6AC)
 
 private val avatarPool = listOf(
     Color(0xFFEC9BBF), Color(0xFF9C8FE0), Color(0xFFFFAB76),
@@ -40,19 +40,19 @@ private val avatarPool = listOf(
  */
 @Composable
 fun DirectorioNutriologosScreen(
-    viewModel:   VinculacionViewModel = viewModel(),
+    viewModel: VinculacionViewModel = viewModel(),
     padreNombre: String,
-    childId:     String,
+    childId: String,
     childNombre: String,
-    onBack:      () -> Unit = {},
+    onBack: () -> Unit = {},
     onVinculado: () -> Unit = {}
 ) {
-    val directorio          by viewModel.directorio.collectAsState()
-    val cargando            by viewModel.cargandoDirectorio.collectAsState()
-    val cargandoAccion      by viewModel.cargando.collectAsState()
+    val directorio by viewModel.directorio.collectAsState()
+    val cargando by viewModel.cargandoDirectorio.collectAsState()
+    val cargandoAccion by viewModel.cargando.collectAsState()
     val nutriologoSeleccionado by viewModel.nutriologoSeleccionado.collectAsState()
-    val exito               by viewModel.exito.collectAsState()
-    val error               by viewModel.error.collectAsState()
+    val exito by viewModel.exito.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     var queryTexto by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -89,20 +89,20 @@ fun DirectorioNutriologosScreen(
 
     Scaffold(
         containerColor = DBgCrema,
-        snackbarHost   = { SnackbarHost(snackbarHostState) },
-        topBar         = { DirectorioTopBar(onBack = onBack) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = { DirectorioTopBar(onBack = onBack) }
     ) { padding ->
         LazyColumn(
-            modifier       = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             // Buscador
             item {
                 Spacer(Modifier.height(12.dp))
                 BuscadorDirectorio(
-                    query    = queryTexto,
+                    query = queryTexto,
                     onChange = { queryTexto = it },
-                    onClear  = { queryTexto = ""; viewModel.cargarDirectorio() }
+                    onClear = { queryTexto = ""; viewModel.cargarDirectorio() }
                 )
                 Spacer(Modifier.height(12.dp))
                 PacienteChip(childNombre = childNombre)
@@ -142,7 +142,7 @@ fun DirectorioNutriologosScreen(
                 }
                 items(directorio, key = { it.uid }) { nutriologo ->
                     NutriologoDirectorioCard(
-                        nutriologo  = nutriologo,
+                        nutriologo = nutriologo,
                         onSolicitar = { viewModel.seleccionarNutriologoDelDirectorio(nutriologo) }
                     )
                 }
@@ -153,13 +153,13 @@ fun DirectorioNutriologosScreen(
     // Modal de Confirmación
     nutriologoSeleccionado?.let { nutriologo ->
         ConfirmarVinculacionSheet(
-            nutriologo  = nutriologo,
+            nutriologo = nutriologo,
             childNombre = childNombre,
             estaCargando = cargandoAccion,
             onConfirmar = {
                 viewModel.solicitarVinculacion(
                     padreNombre = padreNombre,
-                    childId     = childId,
+                    childId = childId,
                     childNombre = childNombre
                 )
             },
@@ -215,15 +215,14 @@ private fun BuscadorDirectorio(query: String, onChange: (String) -> Unit, onClea
 private fun PacienteChip(childNombre: String) {
     Surface(
         modifier = Modifier.padding(horizontal = 20.dp),
-        color = DTeal.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, DTeal.copy(0.2f))
+        color = DGreen.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(20.dp)
     ) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.ChildCare, null, tint = DTeal, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(10.dp))
-            Text("Vinculando a: ", fontSize = 12.sp, color = Color.Gray)
-            Text(childNombre, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DTeal)
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("😊", fontSize = 14.sp)
+            Spacer(Modifier.width(8.dp))
+            Text("Vinculando a: ", fontSize = 13.sp, color = Color.Gray)
+            Text(childNombre, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DDarkGreen)
         }
     }
 }
@@ -238,32 +237,71 @@ private fun NutriologoDirectorioCard(nutriologo: NutriologoPublico, onSolicitar:
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Avatar
-            Box(Modifier.size(56.dp).background(avatarColor.copy(0.15f), CircleShape).border(2.dp, avatarColor.copy(0.4f), CircleShape), contentAlignment = Alignment.Center) {
-                Text(nutriologo.nombre.take(1).uppercase(), fontSize = 20.sp, fontWeight = FontWeight.Black, color = avatarColor)
-            }
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Avatar
+                Box(
+                    Modifier.size(56.dp).background(avatarColor.copy(0.15f), CircleShape)
+                        .border(2.dp, avatarColor.copy(0.4f), CircleShape), contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        nutriologo.nombre.take(1).uppercase(),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        color = avatarColor
+                    )
+                }
 
-            Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(16.dp))
 
-            // Info
-            Column(Modifier.weight(1f)) {
-                Text(nutriologo.nombre, fontWeight = FontWeight.ExtraBold, color = DDarkGreen, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(nutriologo.especialidad.ifBlank { "Especialista NutriIA" }, fontSize = 12.sp, color = Color.Gray)
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Verified, null, tint = DGreen, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Código: ${nutriologo.codigo}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DGreen)
+                // Info
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        nutriologo.nombre,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = DDarkGreen,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        nutriologo.especialidad.ifBlank { "Especialista NutriIA" },
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                // Botón "+ Solicitar" con texto, igual que Android
+                Button(
+                    onClick = onSolicitar,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DGreen.copy(0.1f),
+                        contentColor = DGreen
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                    elevation = null
+                ) {
+                    Icon(Icons.Rounded.PersonAdd, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Solicitar", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            // Botón Acción
-            IconButton(
-                onClick = onSolicitar,
-                modifier = Modifier.background(DGreen.copy(0.1f), RoundedCornerShape(14.dp))
+            Spacer(Modifier.height(12.dp))
+
+            // Código como chip/badge separado, igual que Android
+            Surface(
+                color = DGreen.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Rounded.PersonAdd, "Solicitar", tint = DGreen)
+                Row(
+                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Verified, null, tint = DGreen, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(nutriologo.codigo, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DGreen)
+                }
             }
         }
     }
@@ -309,7 +347,11 @@ private fun ConfirmarVinculacionSheet(
                 shape = RoundedCornerShape(18.dp),
                 enabled = !estaCargando
             ) {
-                if (estaCargando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                if (estaCargando) CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
                 else {
                     Icon(Icons.Rounded.Send, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(10.dp))

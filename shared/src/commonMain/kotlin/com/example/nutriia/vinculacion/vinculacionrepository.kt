@@ -366,13 +366,47 @@ class VinculacionRepository {
         }
     }
 
+    // FIX iOS: mismo problema que con NutriologoPublico — doc.data() (decoder genérico
+    // de gitlive a Map<String, Any?>) no decodifica confiablemente en iOS. Leemos cada
+    // campo por separado con tipo concreto.
+    private fun vinculacionDesdeDoc(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): Vinculacion? {
+        return try {
+            val estadoTexto = runCatching { doc.get<String?>("estado") }.getOrNull() ?: ""
+            val estado = runCatching { EstadoVinculacion.valueOf(estadoTexto) }
+                .getOrDefault(EstadoVinculacion.PENDIENTE)
+
+            fun leerMillis(campo: String): Long? {
+                runCatching { doc.get<Long?>(campo) }.getOrNull()?.let { return it }
+                runCatching {
+                    doc.get<dev.gitlive.firebase.firestore.Timestamp?>(campo)?.let {
+                        it.seconds * 1000L + it.nanoseconds / 1_000_000L
+                    }
+                }.getOrNull()?.let { return it }
+                return null
+            }
+
+            Vinculacion(
+                id = doc.id,
+                nutriologoUid = runCatching { doc.get<String?>("nutriologoUid") }.getOrNull() ?: "",
+                nutriologoNombre = runCatching { doc.get<String?>("nutriologoNombre") }.getOrNull() ?: "",
+                padreUid = runCatching { doc.get<String?>("padreUid") }.getOrNull() ?: "",
+                padreNombre = runCatching { doc.get<String?>("padreNombre") }.getOrNull() ?: "",
+                childId = runCatching { doc.get<String?>("childId") }.getOrNull() ?: "",
+                childNombre = runCatching { doc.get<String?>("childNombre") }.getOrNull() ?: "",
+                estado = estado,
+                creadoEn = leerMillis("creadoEn"),
+                actualizadoEn = leerMillis("actualizadoEn") ?: leerMillis("respondidoEn") ?: leerMillis("revocadoEn")
+            )
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     fun observarVinculacionesDelPadre(padreUid: String = ""): Flow<List<Vinculacion>> {
         if (padreUid.isNotBlank()) {
             return try {
                 colVinculaciones.where { "padreUid".equalTo(padreUid) }.snapshots.map { snapshot ->
-                    snapshot.documents.mapNotNull { doc ->
-                        runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
-                    }
+                    snapshot.documents.mapNotNull { doc -> vinculacionDesdeDoc(doc) }
                 }
             } catch (e: Exception) {
                 flowOf(emptyList())
@@ -385,9 +419,7 @@ class VinculacionRepository {
             } else {
                 try {
                     colVinculaciones.where { "padreUid".equalTo(uid) }.snapshots.map { snapshot ->
-                        snapshot.documents.mapNotNull { doc ->
-                            runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
-                        }
+                        snapshot.documents.mapNotNull { doc -> vinculacionDesdeDoc(doc) }
                     }
                 } catch (e: Exception) {
                     flowOf(emptyList())
@@ -400,9 +432,7 @@ class VinculacionRepository {
         if (nutriologoUid.isNotBlank()) {
             return try {
                 colVinculaciones.where { "nutriologoUid".equalTo(nutriologoUid) }.snapshots.map { snapshot ->
-                    snapshot.documents.mapNotNull { doc ->
-                        runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
-                    }
+                    snapshot.documents.mapNotNull { doc -> vinculacionDesdeDoc(doc) }
                 }
             } catch (e: Exception) {
                 flowOf(emptyList())
@@ -415,9 +445,7 @@ class VinculacionRepository {
             } else {
                 try {
                     colVinculaciones.where { "nutriologoUid".equalTo(uid) }.snapshots.map { snapshot ->
-                        snapshot.documents.mapNotNull { doc ->
-                            runCatching { Vinculacion.fromMap(doc.id, doc.data()) }.getOrNull()
-                        }
+                        snapshot.documents.mapNotNull { doc -> vinculacionDesdeDoc(doc) }
                     }
                 } catch (e: Exception) {
                     flowOf(emptyList())
