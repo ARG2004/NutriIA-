@@ -110,6 +110,7 @@ fun CitasEmbarazoScreen(
     }
 
     LaunchedEffect(permissionCheckStep) {
+        if (!esBlind) return@LaunchedEffect
         delay(500)
         when (permissionCheckStep) {
             0 -> {

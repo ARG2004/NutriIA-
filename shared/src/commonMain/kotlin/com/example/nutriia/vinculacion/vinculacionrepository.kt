@@ -210,6 +210,8 @@ class VinculacionRepository {
     }
 
     suspend fun listarNutriologos(limite: Long = 50): Result<List<NutriologoPublico>> {
+        getAuthUser() ?: return Result.failure(IllegalStateException("Usuario no autenticado en Firebase"))
+
         // Retry up to 3 attempts — first Firestore snapshot on iOS cold-start can be empty
         var intentos = 0
         while (intentos < 3) {

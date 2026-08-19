@@ -160,7 +160,7 @@ class VinculacionViewModel : ViewModel() {
             _cargandoDirectorio.value = true
             repo.listarNutriologos().fold(
                 onSuccess = { _directorio.value = it },
-                onFailure = { _error.value = "Error al cargar directorio" }
+                onFailure = { _error.value = it.message ?: "Error al cargar directorio" }
             )
             _cargandoDirectorio.value = false
         }

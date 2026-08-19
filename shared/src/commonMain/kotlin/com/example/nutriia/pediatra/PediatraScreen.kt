@@ -221,6 +221,7 @@ fun PediatraScreen(
     }
 
     LaunchedEffect(permissionCheckStep) {
+        if (!esBlind) return@LaunchedEffect
         kotlinx.coroutines.delay(500)
         when (permissionCheckStep) {
             0 -> {
