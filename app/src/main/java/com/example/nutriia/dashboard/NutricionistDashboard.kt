@@ -1,6 +1,6 @@
 package com.example.nutriia.dashboard
 
-import android.os.Build
+// import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -26,22 +26,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.teleconsulta.TeleconsultaButtons
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 import com.example.nutriia.teleconsulta.TipoLlamada
-import io.github.alexzhirkevich.qrose.options.*
-import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 
 // ─── Colores Dashboard ──────────────────────────────────────────────────────
-private val NutriGreen     = Color(0xFF689F38)
+private val NutriGreen = Color(0xFF689F38)
 private val NutriDarkGreen = Color(0xFF33691E)
-private val NutriBgCrema   = Color(0xFFF8F9F3)
+private val NutriBgCrema = Color(0xFFF8F9F3)
 private val NutriCardWhite = Color.White
-private val NutriPurple    = Color(0xFF9C8FE0)
-private val NutriTeal      = Color(0xFF4DB6AC)
-private val NutriOrange    = Color(0xFFFF8F00)
+private val NutriPurple = Color(0xFF9C8FE0)
+private val NutriTeal = Color(0xFF4DB6AC)
+private val NutriOrange = Color(0xFFFF8F00)
 
 private val nutri_avatarColors = listOf(
     Color(0xFFEC9BBF), Color(0xFF9C8FE0), Color(0xFFFFAB76),
@@ -52,15 +49,15 @@ private data class EtStageInfo(val nombre: String, val color: Color)
 
 @Composable
 fun NutritionistDashboardScreen(
-    viewModel:         NutritionistDashboardViewModel = viewModel(),
+    viewModel: NutritionistDashboardViewModel = viewModel(),
     // ── TeleconsultaViewModel compartido ─────────────────────────────────────
-    teleconsultaViewModel: TeleconsultaViewModel     = viewModel(),
-    onLogout:          () -> Unit                    = {},
-    onPatientClick:    (PacienteResumen) -> Unit      = {},
-    onNewPlan:         () -> Unit                    = {},
-    onViewAllPatients: () -> Unit                    = {}
+    teleconsultaViewModel: TeleconsultaViewModel = viewModel(),
+    onLogout: () -> Unit = {},
+    onPatientClick: (PacienteResumen) -> Unit = {},
+    onNewPlan: () -> Unit = {},
+    onViewAllPatients: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { viewModel.init() }
@@ -77,7 +74,7 @@ fun NutritionistDashboardScreen(
 
     Scaffold(
         containerColor = NutriBgCrema,
-        snackbarHost   = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             AnimatedVisibility(
                 visible = !uiState.cargando,
@@ -85,11 +82,11 @@ fun NutritionistDashboardScreen(
                 exit = fadeOut() + scaleOut()
             ) {
                 ExtendedFloatingActionButton(
-                    onClick        = onNewPlan,
+                    onClick = onNewPlan,
                     containerColor = NutriGreen,
-                    contentColor   = Color.White,
-                    shape          = RoundedCornerShape(24.dp),
-                    modifier       = Modifier.padding(bottom = 16.dp).shadow(12.dp, RoundedCornerShape(24.dp))
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.padding(bottom = 16.dp).shadow(12.dp, RoundedCornerShape(24.dp))
                 ) {
                     Icon(Icons.Rounded.PostAdd, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -108,24 +105,24 @@ fun NutritionistDashboardScreen(
         }
 
         LazyColumn(
-            modifier            = Modifier.fillMaxSize().padding(padding),
-            contentPadding      = PaddingValues(bottom = 120.dp),
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             item {
                 NutritionistTopBar(
-                    nombre       = uiState.miPerfil?.nombre ?: "Nutriólogo/a",
+                    nombre = uiState.miPerfil?.nombre ?: "Nutriólogo/a",
                     especialidad = uiState.miPerfil?.especialidad ?: "Seguimiento activo",
-                    onLogout     = onLogout
+                    onLogout = onLogout
                 )
             }
 
             item {
                 uiState.miPerfil?.let { perfil ->
                     NutritionistProfileCard(
-                        nombre       = perfil.nombre,
+                        nombre = perfil.nombre,
                         especialidad = perfil.especialidad,
-                        codigo       = perfil.codigo
+                        codigo = perfil.codigo
                     )
                 }
             }
@@ -141,8 +138,8 @@ fun NutritionistDashboardScreen(
                         enter = slideInHorizontally() + fadeIn()
                     ) {
                         SolicitudPendienteCard(
-                            solicitud  = solicitud,
-                            onAceptar  = { viewModel.aceptarSolicitud(solicitud.id) },
+                            solicitud = solicitud,
+                            onAceptar = { viewModel.aceptarSolicitud(solicitud.id) },
                             onRechazar = { viewModel.rechazarSolicitud(solicitud.id) }
                         )
                     }
@@ -153,8 +150,8 @@ fun NutritionistDashboardScreen(
                 Spacer(Modifier.height(20.dp))
                 NutritionistStatsRow(
                     totalPatients = uiState.pacientes.size,
-                    totalPlans    = uiState.planesActivos.size,
-                    activeToday   = uiState.pacientes.count { it.ultimaActualizacion == "Hoy" }
+                    totalPlans = uiState.planesActivos.size,
+                    activeToday = uiState.pacientes.count { it.ultimaActualizacion == "Hoy" }
                 )
             }
 
@@ -169,11 +166,11 @@ fun NutritionistDashboardScreen(
             item {
                 Spacer(Modifier.height(24.dp))
                 SectionHeader(
-                    title       = "Mis pacientes",
-                    icon        = Icons.Rounded.ChildCare,
-                    color       = NutriDarkGreen,
+                    title = "Mis pacientes",
+                    icon = Icons.Rounded.ChildCare,
+                    color = NutriDarkGreen,
                     actionLabel = if (uiState.pacientes.size > 3) "Ver todos" else null,
-                    onAction    = onViewAllPatients
+                    onAction = onViewAllPatients
                 )
             }
 
@@ -183,10 +180,10 @@ fun NutritionistDashboardScreen(
                     enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn()
                 ) {
                     PatientCard(
-                        patient                = paciente,
-                        onClick                = onPatientClick,
-                        nutriologoNombre       = uiState.miPerfil?.nombre ?: "",
-                        teleconsultaViewModel  = teleconsultaViewModel
+                        patient = paciente,
+                        onClick = onPatientClick,
+                        nutriologoNombre = uiState.miPerfil?.nombre ?: "",
+                        teleconsultaViewModel = teleconsultaViewModel
                     )
                 }
             }
@@ -201,7 +198,7 @@ private fun NutritionistTopBar(nombre: String, especialidad: String, onLogout: (
             .fillMaxWidth()
             .padding(start = 24.dp, end = 24.dp, top = 48.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
             Text("NutriIA", fontSize = 28.sp, fontWeight = FontWeight.Black, color = NutriDarkGreen)
@@ -231,26 +228,25 @@ private fun TopBarCircleButton(icon: ImageVector, isLogout: Boolean = false, onC
 
 @Composable
 private fun NutritionistProfileCard(nombre: String, especialidad: String, codigo: String) {
-    val qrPainter = rememberQrCodePainter(data = "nutriia://vincular/$codigo") {
-        shapes {
-            ball = QrBallShape.circle()
-            darkPixel = QrPixelShape.roundCorners(0.5f)
-        }
-    }
-
     Card(
-        modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-        shape     = RoundedCornerShape(35.dp),
-        colors    = CardDefaults.cardColors(containerColor = NutriCardWhite),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(35.dp),
+        colors = CardDefaults.cardColors(containerColor = NutriCardWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
-            modifier          = Modifier.fillMaxWidth().padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(Modifier.weight(1.2f)) {
-                Text(nombre, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, color = NutriDarkGreen, lineHeight = 26.sp)
+                Text(
+                    nombre,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 22.sp,
+                    color = NutriDarkGreen,
+                    lineHeight = 26.sp
+                )
                 Text(especialidad, fontSize = 14.sp, color = Color.Gray)
                 Spacer(Modifier.height(16.dp))
                 Surface(color = NutriGreen.copy(0.1f), shape = RoundedCornerShape(16.dp)) {
@@ -273,7 +269,12 @@ private fun NutritionistProfileCard(nombre: String, especialidad: String, codigo
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Image(painter = qrPainter, contentDescription = "QR Vincular", modifier = Modifier.fillMaxSize())
+                Icon(
+                    Icons.Rounded.QrCode2,
+                    contentDescription = "QR Vincular",
+                    tint = NutriDarkGreen,
+                    modifier = Modifier.size(72.dp)
+                )
             }
         }
     }
@@ -281,12 +282,14 @@ private fun NutritionistProfileCard(nombre: String, especialidad: String, codigo
 
 @Composable
 private fun PatientCard(
-    patient:               PacienteResumen,
-    onClick:               (PacienteResumen) -> Unit,
-    nutriologoNombre:      String,
+    patient: PacienteResumen,
+    onClick: (PacienteResumen) -> Unit,
+    nutriologoNombre: String,
     teleconsultaViewModel: TeleconsultaViewModel
 ) {
-    val avatarColor = remember { nutri_avatarColors[patient.childId.hashCode().let { if (it < 0) -it else it } % nutri_avatarColors.size] }
+    val avatarColor = remember {
+        nutri_avatarColors[patient.childId.hashCode().let { if (it < 0) -it else it } % nutri_avatarColors.size]
+    }
 
     val etapa = remember(patient.birthDate) {
         try {
@@ -297,24 +300,26 @@ private fun PatientCard(
                 val p = patient.birthDate.split("-").map { it.toInt() }
                 Triple(p[0], p[1], p[2])
             }
-            val calNac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
-            val calHoy = java.util.Calendar.getInstance()
-            val diffYears = calHoy.get(java.util.Calendar.YEAR) - calNac.get(java.util.Calendar.YEAR)
-            val diffMonths = calHoy.get(java.util.Calendar.MONTH) - calNac.get(java.util.Calendar.MONTH)
+            val currentYear = 2026
+            val currentMonth = 8
+            val diffYears = currentYear - anio
+            val diffMonths = currentMonth - mes
             val meses = diffYears * 12 + diffMonths
             when {
-                meses < 6  -> EtStageInfo("Lactancia", Color(0xFF64B5F6))
+                meses < 6 -> EtStageInfo("Lactancia", Color(0xFF64B5F6))
                 meses < 12 -> EtStageInfo("Alimentación Comp.", Color(0xFF81C784))
                 meses < 36 -> EtStageInfo("Primera Infancia", Color(0xFFFFA726))
-                else       -> null
+                else -> null
             }
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     Card(
-        modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).clickable { onClick(patient) },
-        shape     = RoundedCornerShape(32.dp),
-        colors    = CardDefaults.cardColors(containerColor = NutriCardWhite),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).clickable { onClick(patient) },
+        shape = RoundedCornerShape(32.dp),
+        colors = CardDefaults.cardColors(containerColor = NutriCardWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(Modifier.padding(20.dp)) {
@@ -323,7 +328,12 @@ private fun PatientCard(
                     modifier = Modifier.size(52.dp).clip(CircleShape).background(avatarColor.copy(0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(patient.childNombre.take(1).uppercase(), fontWeight = FontWeight.Black, fontSize = 22.sp, color = avatarColor)
+                    Text(
+                        patient.childNombre.take(1).uppercase(),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 22.sp,
+                        color = avatarColor
+                    )
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
@@ -365,7 +375,7 @@ private fun PatientCard(
 @Composable
 private fun NutritionistStatsRow(totalPatients: Int, totalPlans: Int, activeToday: Int) {
     Row(
-        modifier              = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         StatCard(Modifier.weight(1f), "$totalPatients", "Pacientes", Icons.Rounded.People, NutriPurple)
@@ -377,13 +387,13 @@ private fun NutritionistStatsRow(totalPatients: Int, totalPlans: Int, activeToda
 @Composable
 private fun StatCard(modifier: Modifier, value: String, label: String, icon: ImageVector, color: Color) {
     Card(
-        modifier  = modifier,
-        shape     = RoundedCornerShape(24.dp),
-        colors    = CardDefaults.cardColors(containerColor = NutriCardWhite),
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = NutriCardWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier            = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(icon, null, tint = color.copy(0.6f), modifier = Modifier.size(16.dp))
@@ -395,14 +405,26 @@ private fun StatCard(modifier: Modifier, value: String, label: String, icon: Ima
 }
 
 @Composable
-private fun SectionHeader(title: String, icon: ImageVector, color: Color, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+private fun SectionHeader(
+    title: String,
+    icon: ImageVector,
+    color: Color,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
     Row(
-        modifier          = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
-        Text(title, fontSize = 18.sp, fontWeight = FontWeight.Black, color = NutriDarkGreen, modifier = Modifier.weight(1f))
+        Text(
+            title,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Black,
+            color = NutriDarkGreen,
+            modifier = Modifier.weight(1f)
+        )
         if (actionLabel != null && onAction != null) {
             TextButton(onClick = onAction) {
                 Text(actionLabel, color = NutriGreen, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -414,14 +436,14 @@ private fun SectionHeader(title: String, icon: ImageVector, color: Color, action
 @Composable
 private fun ActiveMealPlansRow(planes: List<com.example.nutriia.vinculacion.PlanAlimentario>) {
     LazyRow(
-        contentPadding        = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(planes, key = { it.id }) { plan ->
             Card(
-                modifier  = Modifier.width(150.dp),
-                shape     = RoundedCornerShape(24.dp),
-                colors    = CardDefaults.cardColors(containerColor = NutriCardWhite),
+                modifier = Modifier.width(150.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = NutriCardWhite),
                 elevation = CardDefaults.cardElevation(1.dp)
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -445,15 +467,22 @@ private fun BiometrySmallStat(icon: ImageVector, value: String, label: String) {
 }
 
 @Composable
-private fun SolicitudPendienteCard(solicitud: com.example.nutriia.vinculacion.Vinculacion, onAceptar: () -> Unit, onRechazar: () -> Unit) {
+private fun SolicitudPendienteCard(
+    solicitud: com.example.nutriia.vinculacion.Vinculacion,
+    onAceptar: () -> Unit,
+    onRechazar: () -> Unit
+) {
     Card(
-        modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
-        shape     = RoundedCornerShape(24.dp),
-        colors    = CardDefaults.cardColors(containerColor = NutriOrange.copy(alpha = 0.05f)),
-        border    = BorderStroke(1.dp, NutriOrange.copy(alpha = 0.1f))
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = NutriOrange.copy(alpha = 0.05f)),
+        border = BorderStroke(1.dp, NutriOrange.copy(alpha = 0.1f))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(NutriOrange.copy(0.1f)), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(NutriOrange.copy(0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(Icons.Rounded.PersonAdd, null, tint = NutriOrange, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(12.dp))
