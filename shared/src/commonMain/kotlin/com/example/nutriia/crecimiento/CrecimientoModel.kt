@@ -1,6 +1,7 @@
 package com.example.nutriia.crecimiento
 
-import com.example.nutriia.firebase.firestore.Timestamp
+import com.example.nutriia.shared.Timestamp
+import kotlinx.serialization.Serializable
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS — CRECIMIENTO
@@ -27,8 +28,10 @@ import com.example.nutriia.firebase.firestore.Timestamp
 //   usa IMC-para-edad como indicador primario de estado nutricional.
 // ═══════════════════════════════════════════════════════════════════════════
 
+@Serializable
 enum class Sexo { NINO, NINA }
 
+@Serializable
 data class MedicionCrecimiento(
     val id:        String     = "",
     val childId:   String     = "",

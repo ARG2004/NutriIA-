@@ -34,7 +34,9 @@ class PaymentRepository {
                 paypalOrderId = paypalOrderId,
                 estado        = EstadoPago.PENDIENTE
             )
-            col.document(id).set(pago.toMap())
+            // FIX iOS: .set(map) es poco confiable en Kotlin/Native.
+            // Usamos el objeto @Serializable directo.
+            col.document(id).set(pago)
             Result.success(pago)
         } catch (e: Exception) {
             Result.failure(e)

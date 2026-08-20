@@ -38,21 +38,8 @@ class CrecimientoRepository {
             val id = if (m.id.isEmpty()) generateUUID() else m.id
             val ref = col(childId, ownerUid).document(id)
 
-            val data = mapOf<String, Any?>(
-                "id" to id,
-                "childId" to childId,
-                "userId" to currentUid,
-                "fecha" to m.fecha,
-                "pesoKg" to m.pesoKg,
-                "tallaCm" to m.tallaCm,
-                "circCefCm" to m.circCefCm,
-                "notas" to m.notas,
-                "notes" to m.notas,
-                "creadoEnMillis" to currentTimeMillis(),
-                "fechaCreacion" to FechaUtils.fechaActual(),
-                "horaCreacion" to FechaUtils.horaActual()
-            )
-            ref.set(data)
+            // FIX iOS: usar objeto @Serializable directo
+            ref.set(m.copy(id = id, userId = currentUid, childId = childId))
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)

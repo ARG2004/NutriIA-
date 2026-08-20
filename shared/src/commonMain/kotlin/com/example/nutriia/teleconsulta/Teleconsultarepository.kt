@@ -49,7 +49,8 @@ class TeleconsultaRepository {
                 estado           = EstadoLlamada.SONANDO,
                 creadoEn         = currentTimeMillis()
             )
-            docRef.set(llamada.toMap())
+            // FIX iOS: usar objeto @Serializable directo
+            docRef.set(llamada)
             Result.success(llamada)
         } catch (e: Exception) {
             Log.e(TAG, "Error al iniciar llamada: ${e.message}")
@@ -85,7 +86,8 @@ class TeleconsultaRepository {
                 estado           = EstadoLlamada.SONANDO,
                 creadoEn         = currentTimeMillis()
             )
-            docRef.set(llamada.toMap())
+            // FIX iOS: usar objeto @Serializable directo
+            docRef.set(llamada)
             Result.success(llamada)
         } catch (e: Exception) {
             Log.e(TAG, "Error al iniciar llamada como padre: ${e.message}")
@@ -141,7 +143,7 @@ class TeleconsultaRepository {
     suspend fun subirIceCandidateOffer(llamadaId: String, candidate: IceCandidateData): Result<Unit> {
         return try {
             col.document(llamadaId).collection("iceCandidatesOffer")
-                .document(generateUUID()).set(candidate.toMap())
+                .document(generateUUID()).set(candidate)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -151,7 +153,7 @@ class TeleconsultaRepository {
     suspend fun subirIceCandidateAnswer(llamadaId: String, candidate: IceCandidateData): Result<Unit> {
         return try {
             col.document(llamadaId).collection("iceCandidatesAnswer")
-                .document(generateUUID()).set(candidate.toMap())
+                .document(generateUUID()).set(candidate)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

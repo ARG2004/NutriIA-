@@ -30,7 +30,8 @@ class NutrienteRepository {
     suspend fun guardar(registro: RegistroNutrientes): Result<Unit> {
         return try {
             auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
-            coleccion(registro.childId).document(registro.id).set(registro.toMap())
+            // FIX iOS: usar objeto @Serializable directo
+            coleccion(registro.childId).document(registro.id).set(registro)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

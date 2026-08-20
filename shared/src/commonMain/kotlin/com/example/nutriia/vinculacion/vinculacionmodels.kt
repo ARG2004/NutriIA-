@@ -87,6 +87,7 @@ data class Vinculacion(
 }
 
 // ─── Perfil público del nutriólogo (colección nutriologos_publicos) ────────────
+@Serializable
 data class NutriologoPublico(
     val uid: String = "",
     val nombre: String = "",
@@ -120,6 +121,7 @@ data class NutriologoPublico(
 }
 
 // ─── Plan alimentario creado por el nutriólogo ────────────────────────────────
+@Serializable
 data class PlanAlimentario(
     val id: String = "",
     val childId: String = "",
@@ -169,6 +171,7 @@ data class PlanAlimentario(
     }
 }
 
+@Serializable
 data class ComidaPlan(
     val momento: String = "",
     val alimentos: String = "",

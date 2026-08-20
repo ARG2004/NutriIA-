@@ -10,6 +10,9 @@ import com.example.nutriia.shared.Timestamp
 // Guía clínica: ESPGHAN Complementary Feeding Guidelines (2017)
 // ═══════════════════════════════════════════════════════════════════════════
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class AlimentoIntroducido(
     val id:                String           = "",
     val childId:           String           = "",
@@ -22,6 +25,7 @@ data class AlimentoIntroducido(
     val creadoEn:          Timestamp?       = null
 )
 
+@Serializable
 enum class GrupoAlimento(val label: String, val colorHex: Long) {
     VERDURAS  ("Verduras",   0xFF43A047),
     FRUTAS    ("Frutas",     0xFFFF8F00),
@@ -32,6 +36,7 @@ enum class GrupoAlimento(val label: String, val colorHex: Long) {
     OTROS     ("Otros",      0xFF9E9E9E)
 }
 
+@Serializable
 enum class ReaccionAlimento(val label: String) {
     NINGUNA ("Sin reacción"),
     LEVE    ("Reacción leve"),
@@ -40,6 +45,7 @@ enum class ReaccionAlimento(val label: String) {
     ACEPTADO(label = "Aceptado"),
 }
 
+@Serializable
 data class AlimentoPermitido(
     val nombre:          String,
     val grupo:           GrupoAlimento,
@@ -58,6 +64,7 @@ data class AlimentoPermitido(
 // GUÍA DE EDAD — Texturas, porciones y frecuencia OMS mes a mes
 // ═══════════════════════════════════════════════════════════════════════════
 
+@Serializable
 data class GuiaEdad(
     val rangoLabel:         String,
     val texturaLabel:       String,
@@ -233,6 +240,7 @@ fun guiaParaEdad(meses: Int): GuiaEdad = when {
 // FIX v2.3: campo colacion2 añadido para mostrar la segunda colación del día
 // ═══════════════════════════════════════════════════════════════════════════
 
+@Serializable
 data class PlanSemanalSolidos(
     val diaSemana:       String,
     val desayuno:        String,

@@ -1,7 +1,9 @@
 package com.example.nutriia.ginecologo
 
 import com.example.nutriia.shared.Timestamp
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class CitaEmbarazo(
     val id: String = "",
     val fecha: String = "",

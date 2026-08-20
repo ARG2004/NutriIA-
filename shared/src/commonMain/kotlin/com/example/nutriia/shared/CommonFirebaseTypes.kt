@@ -1,5 +1,8 @@
 package com.example.nutriia.shared
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Timestamp(
     val seconds: Long = 0L,
     val nanoseconds: Int = 0

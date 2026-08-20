@@ -1,11 +1,14 @@
 package com.example.nutriia.ginecologo
 
 import com.example.nutriia.platform.currentTimeMillis
+import kotlinx.serialization.Serializable
 
 // ─── Estado de la vinculación de embarazo ──────────────────────────────────────
+@Serializable
 enum class EstadoVinculacionEmbarazo { PENDIENTE, ACTIVO, RECHAZADO, REVOCADO }
 
 // ─── Vinculación entre ginecólogo y mamá primeriza ────────────────────────────
+@Serializable
 data class VinculacionEmbarazo(
     val id:               String                    = "",
     val ginecologoUid:    String                    = "",
@@ -59,6 +62,7 @@ data class VinculacionEmbarazo(
 }
 
 // ─── Perfil público del ginecólogo ──────────────────────────────────────────
+@Serializable
 data class GinecologoPublico(
     val uid:          String = "",
     val nombre:       String = "",

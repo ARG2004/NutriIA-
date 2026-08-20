@@ -1,5 +1,7 @@
 package com.example.nutriia.nutriente
 
+import kotlinx.serialization.Serializable
+
 
 // ─── Rangos de edad según OMS ─────────────────────────────────────────────────
 // 0–6 meses: lactancia exclusiva
@@ -7,6 +9,7 @@ package com.example.nutriia.nutriente
 // 9–23 meses: 3–4 comidas/día + 1–2 snacks
 // 24+ meses: dieta variada
 
+@Serializable
 enum class RangoEdad(val label: String, val mesesMin: Int, val mesesMax: Int) {
     CERO_SEIS(     "0 – 6 meses",   0,   6),
     SEIS_OCHO(     "6 – 8 meses",   6,   8),
@@ -19,6 +22,7 @@ fun rangoEdadDesde(meses: Int): RangoEdad =
 
 // ─── Macronutrientes ──────────────────────────────────────────────────────────
 
+@Serializable
 data class Macronutrientes(
     val calorias:      Double = 0.0,   // kcal
     val proteinas:     Double = 0.0,   // g
@@ -28,6 +32,7 @@ data class Macronutrientes(
 
 // ─── Micronutrientes ──────────────────────────────────────────────────────────
 
+@Serializable
 data class Micronutrientes(
     val hierro:     Double = 0.0,   // mg
     val calcio:     Double = 0.0,   // mg
@@ -103,6 +108,7 @@ val recomendacionesOMS: Map<RangoEdad, RecomendacionOMS> = mapOf(
 
 // ─── Registro diario de nutrientes ───────────────────────────────────────────
 
+@Serializable
 data class RegistroNutrientes(
     val id:          String          = com.example.nutriia.platform.generateUUID(),
     val childId:     String          = "",

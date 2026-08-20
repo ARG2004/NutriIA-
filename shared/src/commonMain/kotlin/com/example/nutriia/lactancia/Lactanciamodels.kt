@@ -1,6 +1,7 @@
 package com.example.nutriia.lactancia
 
 import com.example.nutriia.shared.Timestamp
+import kotlinx.serialization.Serializable
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODELOS — MODULO LACTANCIA
@@ -10,6 +11,7 @@ import com.example.nutriia.shared.Timestamp
 // https://www.unicef.org/nutrition/early-childhood-nutrition
 // ═══════════════════════════════════════════════════════════════════════════
 
+@Serializable
 enum class BreastSide(val label: String) {
     LEFT("Pecho izquierdo"),
     RIGHT("Pecho derecho"),
@@ -18,6 +20,7 @@ enum class BreastSide(val label: String) {
 }
 
 /** Registro de una toma */
+@Serializable
 data class FeedingLog(
     val id: String = "",
     val childId: String = "",

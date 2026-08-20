@@ -1,9 +1,12 @@
 package com.example.nutriia.teleconsulta
 
+import kotlinx.serialization.Serializable
+
 // ══════════════════════════════════════════════════════
 // MODELOS DE TELECONSULTA — con campos de señalización WebRTC
 // ══════════════════════════════════════════════════════
 
+@Serializable
 enum class EstadoLlamada {
     INICIANDO,   // Creando documento en Firestore
     SONANDO,     // Esperando respuesta del receptor
@@ -14,9 +17,11 @@ enum class EstadoLlamada {
     OCUPADO      // Ya en otra llamada
 }
 
+@Serializable
 enum class TipoLlamada { AUDIO, VIDEO }
 
 // ─── Candidate ICE serializable para Firestore ────────────────────────────────
+@Serializable
 data class IceCandidateData(
     val sdpMid:        String = "",
     val sdpMLineIndex: Int    = 0,
@@ -38,6 +43,7 @@ data class IceCandidateData(
 }
 
 // ─── Documento principal de llamada ──────────────────────────────────────────
+@Serializable
 data class SolicitudLlamada(
     val id:               String        = "",
     val emisorUid:        String        = "", // Quién inicia (UID)

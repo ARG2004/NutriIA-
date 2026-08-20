@@ -1,9 +1,12 @@
 package com.example.nutriia.payment
 
 import com.example.nutriia.shared.Timestamp
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class EstadoPago { PENDIENTE, COMPLETADO, FALLIDO, REEMBOLSADO }
 
+@Serializable
 data class PagoTeleconsulta(
     val id:              String        = "",
     val padreUid:        String        = "",
