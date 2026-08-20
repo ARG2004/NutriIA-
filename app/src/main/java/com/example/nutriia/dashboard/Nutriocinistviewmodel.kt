@@ -19,32 +19,32 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 data class PacienteResumen(
-    val ownerUid: String = "",
-    val vinculacionId: String = "",
-    val padreUid: String = "",
-    val padreNombre: String = "",
-    val childId: String = "",
-    val childNombre: String = "",
-    val birthDate: String = "",
-    val weightKg: String = "",
-    val heightCm: String = "",
-    val hasAllergies: Boolean = false,
-    val ultimaActualizacion: String = ""
+    val ownerUid:            String  = "",
+    val vinculacionId:       String  = "",
+    val padreUid:            String  = "",
+    val padreNombre:         String  = "",
+    val childId:             String  = "",
+    val childNombre:         String  = "",
+    val birthDate:           String  = "",
+    val weightKg:            String  = "",
+    val heightCm:            String  = "",
+    val hasAllergies:        Boolean = false,
+    val ultimaActualizacion: String  = ""
 )
 
 data class NutritionistDashboardUiState(
-    val miPerfil: NutriologoPublico? = null,
-    val pacientes: List<PacienteResumen> = emptyList(),
-    val planesActivos: List<PlanAlimentario> = emptyList(),
-    val solicitudesPendientes: List<Vinculacion> = emptyList(),
-    val cargando: Boolean = true,
-    val error: String? = null
+    val miPerfil:              NutriologoPublico?    = null,
+    val pacientes:             List<PacienteResumen> = emptyList(),
+    val planesActivos:         List<PlanAlimentario> = emptyList(),
+    val solicitudesPendientes: List<Vinculacion>     = emptyList(),
+    val cargando:              Boolean               = true,
+    val error:                 String?               = null
 )
 
 class NutritionistDashboardViewModel : ViewModel() {
 
-    private val auth = FirebaseAuth.getInstance()
-    private val db = FirebaseFirestore.getInstance()
+    private val auth            = FirebaseAuth.getInstance()
+    private val db              = FirebaseFirestore.getInstance()
     private val vinculacionRepo = VinculacionRepository()
 
     private val _uiState = MutableStateFlow(NutritionistDashboardUiState())
@@ -76,7 +76,7 @@ class NutritionistDashboardViewModel : ViewModel() {
                 },
                 onFailure = {
                     _uiState.value = _uiState.value.copy(
-                        error = "No se pudo cargar el perfil",
+                        error    = "No se pudo cargar el perfil",
                         cargando = false
                     )
                 }
@@ -93,11 +93,11 @@ class NutritionistDashboardViewModel : ViewModel() {
                 } else {
                     com.google.firebase.firestore.Source.CACHE
                 }
-                val doc = db.collection("usuarios").document(uid).get(source).await()
-                val nombre = doc.getString("nombre") ?: return@launch
+                val doc          = db.collection("usuarios").document(uid).get(source).await()
+                val nombre       = doc.getString("nombre")       ?: return@launch
                 val especialidad = doc.getString("especialidad") ?: ""
-                val cedula = doc.getString("cedula") ?: ""
-                val email = doc.getString("email") ?: ""
+                val cedula       = doc.getString("cedula")       ?: ""
+                val email        = doc.getString("email")        ?: ""
 
                 vinculacionRepo.publicarPerfilNutriologo(
                     nombre, especialidad, cedula, email
@@ -105,8 +105,7 @@ class NutritionistDashboardViewModel : ViewModel() {
                     onSuccess = { _uiState.value = _uiState.value.copy(miPerfil = it) },
                     onFailure = { }
                 )
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) { }
         }
     }
 
@@ -117,12 +116,12 @@ class NutritionistDashboardViewModel : ViewModel() {
     private fun escucharVinculaciones() {
         vinculacionRepo.observarVinculacionesDelNutriologo()
             .onEach { vinculaciones ->
-                val activas = vinculaciones.filter { it.estado == EstadoVinculacion.ACTIVO }
+                val activas    = vinculaciones.filter { it.estado == EstadoVinculacion.ACTIVO }
                 val pendientes = vinculaciones.filter { it.estado == EstadoVinculacion.PENDIENTE }
 
                 _uiState.value = _uiState.value.copy(
                     solicitudesPendientes = pendientes,
-                    cargando = false
+                    cargando             = false
                 )
 
                 // Cancela listeners de hijos que ya no están en vinculaciones activas
@@ -134,7 +133,7 @@ class NutritionistDashboardViewModel : ViewModel() {
                 // Elimina del estado pacientes que ya no tienen vinculación activa
                 if (idsActivos.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
-                        pacientes = emptyList(),
+                        pacientes     = emptyList(),
                         planesActivos = emptyList()
                     )
                 }
@@ -159,16 +158,16 @@ class NutritionistDashboardViewModel : ViewModel() {
                         if (data == null) return@collect
 
                         val paciente = PacienteResumen(
-                            ownerUid = vinc.padreUid,
-                            vinculacionId = vinc.id,
-                            padreUid = vinc.padreUid,
-                            padreNombre = vinc.padreNombre,
-                            childId = vinc.childId,
-                            childNombre = data["name"] as? String ?: vinc.childNombre,
-                            birthDate = data["birthDate"] as? String ?: "",
-                            weightKg = data["weightKg"] as? String ?: "",
-                            heightCm = data["heightCm"] as? String ?: "",
-                            hasAllergies = data["hasAllergies"] as? Boolean ?: false,
+                            ownerUid            = vinc.padreUid,
+                            vinculacionId       = vinc.id,
+                            padreUid            = vinc.padreUid,
+                            padreNombre         = vinc.padreNombre,
+                            childId             = vinc.childId,
+                            childNombre         = data["name"] as? String ?: vinc.childNombre,
+                            birthDate           = data["birthDate"] as? String ?: "",
+                            weightKg            = data["weightKg"] as? String ?: "",
+                            heightCm            = data["heightCm"] as? String ?: "",
+                            hasAllergies        = data["hasAllergies"] as? Boolean ?: false,
                             ultimaActualizacion = formatearFecha(data["creadoEn"])
                         )
 
@@ -227,8 +226,7 @@ class NutritionistDashboardViewModel : ViewModel() {
                 planesActuales.addAll(planesDelHijo)
 
                 _uiState.value = _uiState.value.copy(planesActivos = planesActuales)
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) { }
         }
     }
 
@@ -272,18 +270,17 @@ class NutritionistDashboardViewModel : ViewModel() {
             is String -> {
                 FechaUtils.parsearFechaHora(creadoEnRaw)?.time ?: 0L
             }
-
             is com.google.firebase.Timestamp -> creadoEnRaw.toDate().time
             else -> 0L
         }
         if (timestamp == 0L) return "Sin datos"
-        val diffMs = System.currentTimeMillis() - timestamp
+        val diffMs   = System.currentTimeMillis() - timestamp
         val diffDias = diffMs / (1000 * 60 * 60 * 24)
         return when {
             diffDias == 0L -> "Hoy"
             diffDias == 1L -> "Ayer"
-            diffDias < 7L -> "Hace $diffDias días"
-            else -> "Hace ${diffDias / 7} semana(s)"
+            diffDias < 7L  -> "Hace $diffDias días"
+            else           -> "Hace ${diffDias / 7} semana(s)"
         }
     }
 }
