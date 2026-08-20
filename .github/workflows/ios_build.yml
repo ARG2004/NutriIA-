@@ -79,12 +79,6 @@ jobs:
       - name: 7. Build iOS Multiplatform Framework
         run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --stacktrace --no-daemon -Dorg.gradle.jvmargs="-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC" -DKONAN_ARCH=arm64
 
-      # ── NUEVO: genera shared/shared.podspec a partir del bloque cocoapods{}
-      # de build.gradle.kts. Necesario para que CocoaPods pueda resolver el
-      # módulo "shared" como un pod local en el paso siguiente.
-      - name: 7b. Generate CocoaPods podspec for shared module
-        run: ./gradlew :shared:podspec --stacktrace --no-daemon
-
       - name: 8. Generate and Validate iOS Project (No Signing)
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
@@ -94,38 +88,8 @@ jobs:
             echo "GROQ_API_KEY = ${GROQ_API_KEY:-}" > iosApp/Config.xcconfig
           fi
           xcodegen generate
-
-      # ── NUEVO: instala CocoaPods e integra GoogleWebRTC + el pod local
-      # "shared". Corre DESPUÉS de xcodegen (necesita que iosApp.xcodeproj ya
-      # exista para poder envolverlo en el .xcworkspace) y ANTES de cualquier
-      # xcodebuild (que a partir de aquí debe apuntar al .xcworkspace, no al
-      # .xcodeproj).
-      #
-      # ⚠️ ASUNCIONES que debes confirmar contra tu project.yml real:
-      #   - El target/scheme generado por xcodegen se llama "NutriIA"
-      #     (coincide con -scheme NutriIA que ya usabas).
-      #   - project.yml y el iosApp.xcodeproj resultante viven en la raíz del
-      #     repo (igual que en tus pasos 8 y 9 originales, sin working-directory).
-      #   - El módulo Gradle compartido está en la carpeta "shared" en la raíz.
-      # Si algo de esto no coincide, ajusta las rutas del Podfile aquí abajo.
-      - name: 8b. Install CocoaPods dependencies (GoogleWebRTC)
-        run: |
-          brew install cocoapods
-          cat > Podfile << 'EOF'
-          platform :ios, '14.0'
-          project 'iosApp.xcodeproj'
-
-          target 'NutriIA' do
-            use_frameworks!
-            pod 'shared', :path => 'shared'
-          end
-          EOF
-          pod install --repo-update
-
-      - name: 9. xcodebuild validation (workspace, no signing)
-        run: |
           xcodebuild \
-            -workspace iosApp.xcworkspace \
+            -project iosApp.xcodeproj \
             -scheme NutriIA \
             -configuration Debug \
             -sdk iphoneos \
@@ -133,7 +97,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             build
 
-      - name: 10. Package & Upload iOS IPA to TestFlight (If Configured)
+      - name: 9. Package & Upload iOS IPA to TestFlight (If Configured)
         env:
           APPSTORE_PRIVATE_KEY_BASE64: ${{ secrets.APPSTORE_PRIVATE_KEY }}
           KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
@@ -143,8 +107,14 @@ jobs:
         run: |
           if [ -z "$APPSTORE_PRIVATE_KEY_BASE64" ] || [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ]; then
             echo "AVISO: faltan APPSTORE_PRIVATE_KEY, APPSTORE_KEY_ID o APPSTORE_ISSUER_ID; se omitirá el envío a TestFlight."
-            echo "El paso 9 solo valida la compilación; para publicar el IPA configura esos secretos y los secretos de firma Apple."
+            echo "El paso 8 solo valida la compilación; para publicar el IPA configura esos secretos y los secretos de firma Apple."
           else
+            brew install xcodegen
+            if [ ! -f iosApp/Config.xcconfig ]; then
+              echo "GROQ_API_KEY = ${GROQ_API_KEY:-}" > iosApp/Config.xcconfig
+            fi
+            xcodegen generate
+
             # Garantizar que todas las cadenas de propósito de privacidad existan en Info.plist tras xcodegen
             /usr/libexec/PlistBuddy -c 'Set :NSSpeechRecognitionUsageDescription "NutrIA utiliza el reconocimiento de voz para facilitar la accesibilidad y dictado de información médica y nutricional."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSSpeechRecognitionUsageDescription string "NutrIA utiliza el reconocimiento de voz para facilitar la accesibilidad y dictado de información médica y nutricional."' iosApp/iosApp/Info.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c 'Set :NSMicrophoneUsageDescription "NutrIA utiliza el micrófono para las teleconsultas y la interacción por voz."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSMicrophoneUsageDescription string "NutrIA utiliza el micrófono para las teleconsultas y la interacción por voz."' iosApp/iosApp/Info.plist 2>/dev/null || true
@@ -167,11 +137,11 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "112")
+            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "113")
             MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.4.0")
             echo "Building iOS App with Marketing Version: $MARKETING_VER, Build: $BUILD_NUM"
             xcodebuild archive \
-              -workspace iosApp.xcworkspace \
+              -project iosApp.xcodeproj \
               -scheme NutriIA \
               -configuration Release \
               -archivePath $RUNNER_TEMP/NutriIA.xcarchive \
@@ -199,13 +169,13 @@ jobs:
               --verbose
           fi
 
-      - name: 11. Upload Android APK Artifact
+      - name: 9. Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: NutrIA-Android-APK
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      - name: 12. Upload iOS Framework & IPA Artifacts
+      - name: 10. Upload iOS Framework & IPA Artifacts
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
@@ -218,10 +188,11 @@ jobs:
             shared/build/bin/
           if-no-files-found: ignore
 
-      - name: 13. Upload iOS App dSYMs (Crash Symbolication)
+      - name: 11. Upload iOS App dSYMs (Crash Symbolication)
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
           name: NutriIA-iOS-dSYMs
           path: ${{ runner.temp }}/NutriIA.xcarchive/dSYMs/
           if-no-files-found: warn
+
