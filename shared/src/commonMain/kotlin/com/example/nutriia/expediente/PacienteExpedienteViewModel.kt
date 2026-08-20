@@ -359,7 +359,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to "nota_nutriologo",
-                    "creadoEn"    to com.example.nutriia.firebase.firestore.Timestamp.now()
+                    "creadoEn"    to com.example.nutriia.shared.Timestamp.now()
                 )
                 
                 val task = db.collection("usuarios").document(ownerUid)
@@ -406,7 +406,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to tipo,
-                    "creadoEn"    to com.example.nutriia.firebase.firestore.Timestamp.now()
+                    "creadoEn"    to com.example.nutriia.shared.Timestamp.now()
                 )
                 
                 val task = db.collection("usuarios").document(_ownerUid)
@@ -475,7 +475,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"    to currentUser.uid,
                     "autorNombre" to (currentUser.displayName ?: "Nutriólogo"),
                     "tipo"        to "receta_nutriologo",
-                    "creadoEn"    to com.example.nutriia.firebase.firestore.Timestamp.now()
+                    "creadoEn"    to com.example.nutriia.shared.Timestamp.now()
                 )
                 
                 val task1 = db.collection("usuarios").document(_ownerUid)
@@ -497,7 +497,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                     "autorUid"     to currentUser.uid,
                     "autorNombre"  to (currentUser.displayName ?: "Nutriólogo"),
                     "edadMeses"    to _ui.value.edadMeses,
-                    "creadoEn"     to com.example.nutriia.firebase.firestore.Timestamp.now()
+                    "creadoEn"     to com.example.nutriia.shared.Timestamp.now()
                 )
                 
                 val task2 = db.collection("usuarios").document(_ownerUid)

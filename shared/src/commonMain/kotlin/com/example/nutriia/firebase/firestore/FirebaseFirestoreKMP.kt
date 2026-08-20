@@ -5,6 +5,7 @@ import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import com.example.nutriia.shared.Timestamp
 
 suspend fun <T> T.await(): T = this
 
@@ -201,10 +202,17 @@ class DocumentSnapshot(
     }
 
     fun getTimestamp(field: String): Timestamp? = try {
-        val t = runCatching { delegate?.get<Timestamp?>(field) }.getOrNull()
-        t ?: (rawData[field] as? Timestamp) ?: Timestamp.now()
+        val gitliveT = runCatching { delegate?.get<dev.gitlive.firebase.firestore.Timestamp?>(field) }.getOrNull()
+        if (gitliveT != null) {
+            Timestamp(gitliveT.seconds, gitliveT.nanoseconds)
+        } else {
+            val raw = rawData[field]
+            if (raw is Timestamp) raw
+            else if (raw is dev.gitlive.firebase.firestore.Timestamp) Timestamp(raw.seconds, raw.nanoseconds)
+            else Timestamp.now()
+        }
     } catch (_: Throwable) {
-        (rawData[field] as? Timestamp) ?: Timestamp.now()
+        Timestamp.now()
     }
 
     val reference: DocumentReference get() = DocumentReference(delegate!!.reference, "docs/$id", id)
@@ -231,12 +239,4 @@ object FieldValue {
     fun serverTimestamp(): Any = serverTimestamp
 }
 
-class Timestamp(val seconds: Long = 0, val nanoseconds: Int = 0) {
-    val time: Long get() = seconds * 1000 + (nanoseconds / 1000000)
-    fun toMillis(): Long = time
-
-    companion object {
-        fun now(): Timestamp = Timestamp(com.example.nutriia.platform.currentTimeMillis() / 1000, 0)
-    }
-}
  

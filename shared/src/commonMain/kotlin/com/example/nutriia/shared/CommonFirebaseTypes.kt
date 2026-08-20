@@ -14,6 +14,7 @@ data class Timestamp(
     }
 
     fun toEpochMillis(): Long = seconds * 1000 + (nanoseconds / 1_000_000)
+    fun toMillis(): Long = toEpochMillis()
     fun toDate(): Timestamp = this
 
     override operator fun compareTo(other: Timestamp): Int {
