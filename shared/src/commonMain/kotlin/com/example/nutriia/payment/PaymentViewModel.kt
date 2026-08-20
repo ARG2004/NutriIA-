@@ -131,6 +131,9 @@ class PaymentViewModel : ViewModel() {
                 "&item_name=Teleconsulta+NutriIA" +
                 "&amount=$monto" +
                 "&currency_code=$MONEDA" +
-                "&custom=$pagoId"
+                "&custom=$pagoId" +
+                "&return=${DEEP_LINK_SUCCESS}" +
+                "&cancel_return=${DEEP_LINK_CANCEL}" +
+                "&rm=2" // Redirección vía POST para asegurar retorno
     }
 }

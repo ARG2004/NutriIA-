@@ -11,7 +11,10 @@ actual fun currentTimeMillis(): Long = (NSDate().timeIntervalSince1970 * 1000).t
 
 actual fun openUrl(url: String) {
     val nsUrl = NSURL.URLWithString(url) ?: return
-    UIApplication.sharedApplication.openURL(nsUrl)
+    platformLog("Platform", "Intentando abrir URL: $url")
+    UIApplication.sharedApplication.openURL(nsUrl, emptyMap<Any?, Any?>()) { success ->
+        platformLog("Platform", "Resultado de abrir URL: $success")
+    }
 }
 
 actual fun platformLog(tag: String, msg: String) {

@@ -33,7 +33,7 @@ class AlertaRepository {
     suspend fun guardar(alerta: Alerta): Result<Unit> {
         return try {
             auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
-            coleccion(alerta.childId).document(alerta.id).set(alerta.toMap())
+            coleccion(alerta.childId).document(alerta.id).set(alerta)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -53,7 +53,7 @@ class AlertaRepository {
     suspend fun toggleActiva(childId: String?, alertaId: String, activa: Boolean): Result<Unit> {
         return try {
             auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
-            coleccion(childId).document(alertaId).update(mapOf("activa" to activa))
+            coleccion(childId).document(alertaId).update("activa" to activa)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -74,12 +74,7 @@ class AlertaRepository {
                 .map { snapshot ->
                     Log.i("AlertaRepo", "Snapshot recibido con ${snapshot.documents.size} documentos")
                     snapshot.documents.mapNotNull { doc ->
-                        try {
-                            Alerta.fromMap(doc.data())
-                        } catch (e: Exception) {
-                            Log.e("AlertaRepo", "Error parseando alerta ${doc.id}: ${e.message}")
-                            null
-                        }
+                        alertaDesdeDoc(doc)
                     }.sortedBy { it.hora }
                 }
                 .onStart { Log.i("AlertaRepo", "Flow de alertas iniciado") }
@@ -93,6 +88,48 @@ class AlertaRepository {
         }
     }
 
+    private fun alertaDesdeDoc(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): Alerta? {
+        return try {
+            val id = runCatching { doc.get<String?>("id") }.getOrNull() ?: doc.id
+            val titulo = runCatching { doc.get<String?>("titulo") }.getOrNull() ?: ""
+            if (titulo.isBlank()) return null
+
+            val cId = runCatching { doc.get<String?>("childId") }.getOrNull() ?: ""
+            val cName = runCatching { doc.get<String?>("childName") }.getOrNull() ?: ""
+            val desc = runCatching { doc.get<String?>("descripcion") }.getOrNull() ?: ""
+            val hr = runCatching { doc.get<String?>("hora") }.getOrNull() ?: "08:00"
+            val act = runCatching { doc.get<Boolean?>("activa") }.getOrNull() ?: true
+            val tStr = runCatching { doc.get<String?>("tipo") }.getOrNull() ?: TipoAlerta.TOMA_COMIDA.name
+            val t = runCatching { TipoAlerta.valueOf(tStr) }.getOrDefault(TipoAlerta.TOMA_COMIDA)
+            
+            val cEn = runCatching { doc.get<Long?>("creadaEn") }.getOrNull()
+                ?: runCatching { doc.get<Double?>("creadaEn")?.toLong() }.getOrNull()
+                ?: 0L
+
+            @Suppress("UNCHECKED_CAST")
+            val dRaw = runCatching { doc.get<List<String>?>("diasSemana") }.getOrNull() ?: emptyList()
+            val dSemana = dRaw.mapNotNull { n -> DiasSemana.entries.find { it.name == n } }
+            val fUnica = runCatching { doc.get<String?>("fechaUnica") }.getOrNull()
+
+            Alerta(
+                id = id,
+                childId = cId,
+                childName = cName,
+                tipo = t,
+                titulo = titulo,
+                descripcion = desc,
+                hora = hr,
+                diasSemana = dSemana,
+                fechaUnica = fUnica,
+                activa = act,
+                creadaEn = cEn
+            )
+        } catch (e: Exception) {
+            Log.e("AlertaRepo", "Error parseando doc ${doc.id}: ${e.message}")
+            null
+        }
+    }
+
     suspend fun obtenerTodasActivas(): List<Alerta> {
         val currentUid = auth.currentUser?.uid ?: return emptyList()
         return try {
@@ -103,11 +140,12 @@ class AlertaRepository {
                 .collection("perfilEmbarazo")
                 .document("unico")
                 .collection("alertas")
-                .where { "activa".equalTo(true) }
                 .get()
 
             for (doc in rootSnap.documents) {
-                runCatching { Alerta.fromMap(doc.data()) }.getOrNull()?.let { alertsList.add(it) }
+                if (doc.get<Boolean?>("activa") == true) {
+                    alertaDesdeDoc(doc)?.let { alertsList.add(it) }
+                }
             }
 
             val hijosSnap = db.collection("usuarios")
@@ -121,11 +159,12 @@ class AlertaRepository {
                     .collection("hijos")
                     .document(childDoc.id)
                     .collection("alertas")
-                    .where { "activa".equalTo(true) }
                     .get()
 
                 for (doc in childAlertsSnap.documents) {
-                    runCatching { Alerta.fromMap(doc.data()) }.getOrNull()?.let { alertsList.add(it) }
+                    if (doc.get<Boolean?>("activa") == true) {
+                        alertaDesdeDoc(doc)?.let { alertsList.add(it) }
+                    }
                 }
             }
 

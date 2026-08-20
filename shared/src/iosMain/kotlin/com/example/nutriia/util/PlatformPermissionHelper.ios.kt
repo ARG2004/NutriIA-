@@ -42,8 +42,9 @@ actual object PlatformPermissionHelper {
                 }
                 PermissionType.NOTIFICATIONS -> {
                     // En iOS el chequeo de notificaciones es asíncrono.
-                    // Para mantener la firma síncrona, devolvemos true y dejamos que requestPermission maneje el flujo.
-                    true
+                    // Al devolver false aquí, forzamos que el sistema llame a requestPermission(),
+                    // el cual es inteligente y no mostrará el diálogo si ya fue concedido.
+                    false
                 }
             }
         } catch (_: Throwable) {
