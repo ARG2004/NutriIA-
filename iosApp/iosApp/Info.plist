@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.4.0</string>
+	<string>2.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>115</string>
+	<string>116</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
@@ -80,6 +80,25 @@
 	<string>NutrIA utiliza Bluetooth para conectarse a dispositivos y básculas inteligentes.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>NutrIA utiliza Bluetooth para comunicarse con dispositivos cercanos de salud.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>NutrIA utiliza el calendario para agendar y recordarte tus citas médicas.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>NutrIA necesita acceso completo al calendario para insertar y gestionar tus planes de alimentación y citas médicas.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>NutrIA necesita permiso para añadir eventos de alimentación y citas médicas a tu calendario.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.arg.nutriia</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nutriia</string>
+			</array>
+		</dict>
+	</array>
 	<key>GROQ_API_KEY</key>
 	<string>$(GROQ_API_KEY)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

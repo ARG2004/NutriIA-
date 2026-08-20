@@ -18,6 +18,11 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .ignoresSafeArea(.all)
+                .onOpenURL { url in
+                    // Procesar Deep Links de PayPal (nutriia://pago-ok)
+                    NSLog("🔗 [iOSApp] Deep Link recibido: \(url.absoluteString)")
+                    DeepLinkManager.shared.onLinkReceived(url: url.absoluteString)
+                }
         }
     }
 }

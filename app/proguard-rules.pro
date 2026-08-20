@@ -36,3 +36,15 @@
 # Reglas de protección para la deserialización del clasificador de señas (LSM)
 -keep class com.example.nutriia.accesibilidad.SignLanguageClassifier { *; }
 -keepclassmembers class com.example.nutriia.accesibilidad.SignLanguageClassifier { *; }
+
+# WebRTC (Google SDK) - Protección de interfaces JNI y nativas
+-keep class org.webrtc.** { *; }
+-keep class com.google.mediapipe.** { *; }
+-dontwarn org.webrtc.**
+
+# Modelos IA y Teleconsulta - Evitar ofuscación de campos JSON/Firestore
+-keep @androidx.annotation.Keep class * { *; }
+-keepnames class com.example.nutriia.analisisIA.** { *; }
+-keepnames class com.example.nutriia.teleconsulta.** { *; }
+-keepclassmembers class com.example.nutriia.analisisIA.** { *; }
+-keepclassmembers class com.example.nutriia.teleconsulta.** { *; }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nutriia.firebase.auth.FirebaseAuth
 import com.example.nutriia.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -26,6 +27,8 @@ class GinecologoDashboardViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(SolicitudEmbarazoUiState())
     val uiState: StateFlow<SolicitudEmbarazoUiState> = _uiState
+
+    private var vinculacionesJob: Job? = null
 
     fun init() {
         cargarPerfilPublico()
@@ -72,7 +75,8 @@ class GinecologoDashboardViewModel : ViewModel() {
     }
 
     private fun escucharVinculaciones() {
-        ginecologoRepo.observarVinculacionesDelGinecologo()
+        vinculacionesJob?.cancel()
+        vinculacionesJob = ginecologoRepo.observarVinculacionesDelGinecologo()
             .onEach { vinculaciones ->
                 val activas    = vinculaciones.filter { it.estado == EstadoVinculacionEmbarazo.ACTIVO }
                 val pendientes = vinculaciones.filter { it.estado == EstadoVinculacionEmbarazo.PENDIENTE }

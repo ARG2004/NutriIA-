@@ -52,6 +52,7 @@ class NutritionistDashboardViewModel : ViewModel() {
 
     // Guarda un Job por cada childId para no duplicar listeners
     private val hijoJobs = mutableMapOf<String, Job>()
+    private var vinculacionesJob: Job? = null
 
     // ─────────────────────────────────────────────────────────────────────────
     // INIT
@@ -111,7 +112,8 @@ class NutritionistDashboardViewModel : ViewModel() {
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun escucharVinculaciones() {
-        vinculacionRepo.observarVinculacionesDelNutriologo()
+        vinculacionesJob?.cancel()
+        vinculacionesJob = vinculacionRepo.observarVinculacionesDelNutriologo()
             .onEach { vinculaciones ->
                 val activas = vinculaciones.filter { it.estado == EstadoVinculacion.ACTIVO }
                 val pendientes = vinculaciones.filter { it.estado == EstadoVinculacion.PENDIENTE }

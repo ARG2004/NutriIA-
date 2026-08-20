@@ -68,6 +68,10 @@ object PlayIntegrityManager {
      * Comprueba en tiempo de ejecución si el servicio de Play Integrity está respondiendo.
      * En desarrollo local (Debug/Emulador), registra la advertencia sin bloquear la experiencia de desarrollo.
      */
+    /**
+     * Comprueba en tiempo de ejecución si el servicio de Play Integrity está respondiendo.
+     * En desarrollo local (Debug/Emulador), registra la advertencia sin bloquear la experiencia de desarrollo.
+     */
     suspend fun verificarIntegridadInicial(context: Context): Boolean {
         val resultado = solicitarTokenIntegridad(context)
         return if (resultado.isSuccess) {

@@ -459,6 +459,16 @@ class TeleconsultaViewModel(application: Application) : AndroidViewModel(applica
         iceCandidatesPendientes.clear()
         observerJob?.cancel();      observerJob      = null
         iceCandidatesJob?.cancel(); iceCandidatesJob = null
+        
+        // Resetear estado de UI para evitar pantallas congeladas tras un crash/reinicio
+        _state.value = _state.value.copy(
+            llamadaActual    = null,
+            enLlamada        = false,
+            webRtcConectado  = false,
+            remoteVideoTrack = null,
+            duracionSegundos = 0
+        )
+
         CallEngineProvider.release()
         audioManager.mode             = AudioManager.MODE_NORMAL
         audioManager.isSpeakerphoneOn = false

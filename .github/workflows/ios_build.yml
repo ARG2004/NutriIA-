@@ -121,7 +121,18 @@ jobs:
             /usr/libexec/PlistBuddy -c 'Set :NSCameraUsageDescription "NutrIA utiliza la cámara para la teleconsulta y el análisis visual de alimentos."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSCameraUsageDescription string "NutrIA utiliza la cámara para la teleconsulta y el análisis visual de alimentos."' iosApp/iosApp/Info.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c 'Set :NSPhotoLibraryUsageDescription "NutrIA utiliza la galería para adjuntar fotos a tu expediente nutricional."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSPhotoLibraryUsageDescription string "NutrIA utiliza la galería para adjuntar fotos a tu expediente nutricional."' iosApp/iosApp/Info.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c 'Set :NSFaceIDUsageDescription "NutrIA utiliza Face ID para un inicio de sesión rápido y seguro."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSFaceIDUsageDescription string "NutrIA utiliza Face ID para un inicio de sesión rápido y seguro."' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Set :NSCalendarsUsageDescription "NutrIA utiliza el calendario para agendar y recordarte tus citas médicas."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSCalendarsUsageDescription string "NutrIA utiliza el calendario para agendar y recordarte tus citas médicas."' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Set :NSCalendarsFullAccessUsageDescription "NutrIA necesita acceso completo al calendario para insertar y gestionar tus planes de alimentación y citas médicas."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSCalendarsFullAccessUsageDescription string "NutrIA necesita acceso completo al calendario para insertar y gestionar tus planes de alimentación y citas médicas."' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Set :NSCalendarsWriteOnlyAccessUsageDescription "NutrIA necesita permiso para añadir eventos de alimentación y citas médicas a tu calendario."' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :NSCalendarsWriteOnlyAccessUsageDescription string "NutrIA necesita permiso para añadir eventos de alimentación y citas médicas a tu calendario."' iosApp/iosApp/Info.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c 'Set :ITSAppUsesNonExemptEncryption false' iosApp/iosApp/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c 'Add :ITSAppUsesNonExemptEncryption bool false' iosApp/iosApp/Info.plist 2>/dev/null || true
+
+            # Configuración de Deep Links (nutriia://)
+            /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes array' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes:0 dict' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes:0:CFBundleTypeRole string "Editor"' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes:0:CFBundleURLName string "com.arg.nutriia"' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' iosApp/iosApp/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string "nutriia"' iosApp/iosApp/Info.plist 2>/dev/null || true
 
             IDENTITY=$(security find-identity -v | grep -E "Apple Distribution|iPhone Distribution" | grep -o '"[^"]*"' | head -1 | tr -d '"')
             PP_FILE=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null | head -1)
@@ -137,8 +148,8 @@ jobs:
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
-            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "115")
-            MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.4.0")
+            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "116")
+            MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.4.1")
             echo "Building iOS App with Marketing Version: $MARKETING_VER, Build: $BUILD_NUM"
             xcodebuild archive \
               -project iosApp.xcodeproj \

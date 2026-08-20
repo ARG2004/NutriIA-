@@ -103,8 +103,10 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
+                "qwen/qwen3.6-27b",
                 "llama-3.2-11b-vision-preview",
-                "llama-3.2-90b-vision-preview"
+                "llama-3.2-90b-vision-preview",
+                "groq/compound"
             )
 
             var rawBody: String? = null
@@ -336,24 +338,46 @@ class AnalisisRepository {
                 - NO inflés ni deflés los valores: la precisión es crítica para niños
             """.trimIndent()
 
-            val requestBody = buildGroqRequest("openai/gpt-oss-120b", prompt, 250)
+            val textModels = listOf(
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "groq/compound",
+                "qwen/qwen3.6-27b"
+            )
 
-            val response = http.newCall(
-                Request.Builder()
-                    .url("https://api.groq.com/openai/v1/chat/completions")
-                    .addHeader("Authorization", "Bearer $apiKey")
-                    .addHeader("User-Agent", "NutriIA/1.0 (Android)")
-                    .post(requestBody.toRequestBody(jsonMediaType))
-                    .build()
-            ).execute()
+            var rawBody: String? = null
+            var lastError = ""
 
-            if (!response.isSuccessful) return Result.success(NutritionInfo())
+            for (modelName in textModels) {
+                try {
+                    val requestBody = buildGroqRequest(modelName, prompt, 250)
+                    val response = http.newCall(
+                        Request.Builder()
+                            .url("https://api.groq.com/openai/v1/chat/completions")
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .addHeader("User-Agent", "NutriIA/1.0 (Android)")
+                            .post(requestBody.toRequestBody(jsonMediaType))
+                            .build()
+                    ).execute()
 
-            val rawBody = response.body?.string() ?: return Result.success(NutritionInfo())
+                    if (response.isSuccessful) {
+                        rawBody = response.body?.string()
+                        if (!rawBody.isNullOrEmpty()) break
+                    } else {
+                        lastError = "HTTP ${response.code}: ${response.body?.string()}"
+                    }
+                } catch (e: Exception) {
+                    lastError = e.message ?: "Unknown error"
+                }
+            }
+
+            if (rawBody.isNullOrEmpty()) {
+                Log.w(TAG, "[LLM-NUTRITION] Fallaron todos los modelos: $lastError")
+                return Result.success(NutritionInfo())
+            }
+
             val content = extractGroqContent(rawBody)
-            val cleaned = content.trim()
-                .removePrefix("```json").removePrefix("```")
-                .removeSuffix("```").trim()
+            val cleaned = extractJsonSubstring(content)
 
             val result = gson.fromJson(cleaned, NutritionInfo::class.java)
             Log.d(TAG, "[LLM-NUTRITION] Estimado para $foodName: ${result.calories} kcal")
@@ -451,25 +475,46 @@ class AnalisisRepository {
                 - Devuelve SOLO el JSON, sin texto adicional ni <think>.
             """.trimIndent()
 
-            val requestBody = buildGroqRequest("openai/gpt-oss-120b", prompt, 700)
+            val textModels = listOf(
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "groq/compound",
+                "qwen/qwen3.6-27b"
+            )
+
+            var rawBody: String? = null
+            var lastErrorCode = 404
+            var lastErrorMsg = ""
 
             Log.d(TAG, "[LLM] Analizando ${food.foodName} para niño de $ageText...")
 
-            val response = http.newCall(
-                Request.Builder()
-                    .url("https://api.groq.com/openai/v1/chat/completions")
-                    .addHeader("Authorization", "Bearer $apiKey")
-                    .addHeader("User-Agent", "NutriIA/1.0 (Android)")
-                    .post(requestBody.toRequestBody(jsonMediaType))
-                    .build()
-            ).execute()
+            for (modelName in textModels) {
+                try {
+                    val requestBody = buildGroqRequest(modelName, prompt, 700)
+                    val response = http.newCall(
+                        Request.Builder()
+                            .url("https://api.groq.com/openai/v1/chat/completions")
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .addHeader("User-Agent", "NutriIA/1.0 (Android)")
+                            .post(requestBody.toRequestBody(jsonMediaType))
+                            .build()
+                    ).execute()
 
-            if (!response.isSuccessful) {
-                val errorBody = response.body?.string() ?: "(sin cuerpo)"
-                return Result.failure(Exception("Error Groq LLM: ${response.code} - $errorBody"))
+                    if (response.isSuccessful) {
+                        rawBody = response.body?.string()
+                        if (!rawBody.isNullOrEmpty()) break
+                    } else {
+                        lastErrorCode = response.code
+                        lastErrorMsg = response.body?.string() ?: ""
+                    }
+                } catch (e: Exception) {
+                    lastErrorMsg = e.message ?: "Error"
+                }
             }
 
-            val rawBody = response.body?.string() ?: ""
+            if (rawBody.isNullOrEmpty()) {
+                return Result.failure(Exception("Error Groq LLM: $lastErrorCode - $lastErrorMsg"))
+            }
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
 
@@ -561,25 +606,46 @@ class AnalisisRepository {
                 - Devuelve SOLO el JSON, sin texto adicional ni <think>.
             """.trimIndent()
 
-            val requestBody = buildGroqRequest("openai/gpt-oss-120b", prompt, 700)
+            val textModels = listOf(
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "groq/compound",
+                "qwen/qwen3.6-27b"
+            )
+
+            var rawBody: String? = null
+            var lastErrorCode = 404
+            var lastErrorMsg = ""
 
             Log.d(TAG, "[LLM] Analizando ${food.foodName} para embarazo ($semanasText)...")
 
-            val response = http.newCall(
-                Request.Builder()
-                    .url("https://api.groq.com/openai/v1/chat/completions")
-                    .addHeader("Authorization", "Bearer $apiKey")
-                    .addHeader("User-Agent", "NutriIA/1.0 (Android)")
-                    .post(requestBody.toRequestBody(jsonMediaType))
-                    .build()
-            ).execute()
+            for (modelName in textModels) {
+                try {
+                    val requestBody = buildGroqRequest(modelName, prompt, 700)
+                    val response = http.newCall(
+                        Request.Builder()
+                            .url("https://api.groq.com/openai/v1/chat/completions")
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .addHeader("User-Agent", "NutriIA/1.0 (Android)")
+                            .post(requestBody.toRequestBody(jsonMediaType))
+                            .build()
+                    ).execute()
 
-            if (!response.isSuccessful) {
-                val errorBody = response.body?.string() ?: "(sin cuerpo)"
-                return Result.failure(Exception("Error Groq LLM: ${response.code} - $errorBody"))
+                    if (response.isSuccessful) {
+                        rawBody = response.body?.string()
+                        if (!rawBody.isNullOrEmpty()) break
+                    } else {
+                        lastErrorCode = response.code
+                        lastErrorMsg = response.body?.string() ?: ""
+                    }
+                } catch (e: Exception) {
+                    lastErrorMsg = e.message ?: ""
+                }
             }
 
-            val rawBody = response.body?.string() ?: ""
+            if (rawBody.isNullOrEmpty()) {
+                return Result.failure(Exception("Error Groq LLM: $lastErrorCode - $lastErrorMsg"))
+            }
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
 
@@ -702,6 +768,11 @@ class AnalisisRepository {
 
     private fun extractJsonSubstring(input: String): String {
         var str = input.trim()
+        // Eliminar bloque <think> si existe
+        if (str.contains("<think>") && str.contains("</think>")) {
+            str = str.substringAfter("</think>").trim()
+        }
+        
         if (str.contains("```json")) {
             str = str.substringAfter("```json").substringBefore("```").trim()
         } else if (str.contains("```")) {

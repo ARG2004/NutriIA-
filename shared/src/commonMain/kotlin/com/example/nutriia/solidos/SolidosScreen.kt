@@ -1,6 +1,8 @@
 package com.example.nutriia.solidos
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.datetime.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -41,6 +43,8 @@ import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.shared.NutriSharedViewModel
+import com.example.nutriia.util.CalendarEvent
+import com.example.nutriia.util.PlatformCalendarManager
 import com.example.nutriia.resources.*
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.PerfilSaludNino
@@ -302,7 +306,8 @@ fun SolidosScreen(
     var aEliminar   by remember { mutableStateOf<AlimentoIntroducido?>(null) }
     var aReaccion   by remember { mutableStateOf<AlimentoIntroducido?>(null) }
     var visible     by remember { mutableStateOf(false) }
-    val snackbar    = remember { SnackbarHostState() }
+    val snackbar        = remember { SnackbarHostState() }
+    val scope           = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { visible = true }
     LaunchedEffect(uiState) {
@@ -331,8 +336,38 @@ fun SolidosScreen(
         }
     }
 
-    val onExportarPlan: () -> Unit = { }
-    val onExportarCalendario: () -> Unit = { }
+    val onExportarPlan: () -> Unit = {
+        val texto = exportarPlanComoTexto(planSemanal, childName, ageMonths)
+        com.example.nutriia.platform.openUrl("copy:$texto")
+        scope.launch { snackbar.showSnackbar("Plan generado ✓") }
+    }
+    val onExportarCalendario: () -> Unit = {
+        val events = mutableListOf<CalendarEvent>()
+        val tz = TimeZone.currentSystemDefault()
+        val hoy = Clock.System.now().toLocalDateTime(tz)
+
+        planSemanal.forEachIndexed { index, dia ->
+            val fechaDia = hoy.date.plus(index, DateTimeUnit.DAY).atTime(8, 0).toInstant(tz)
+            
+            val descripcion = "Desayuno: ${dia.desayuno}\nAlmuerzo: ${dia.almuerzo}\nMerienda: ${dia.merienda}\nCena: ${dia.cena}"
+
+            events.add(CalendarEvent(
+                title = "Alimentación $childName - ${dia.diaSemana}",
+                description = descripcion,
+                startDate = fechaDia.toEpochMilliseconds(),
+                endDate = fechaDia.toEpochMilliseconds() + 3600000, // 1 hora
+                allDay = true
+            ))
+        }
+
+        PlatformCalendarManager.addEvents(events) { exito ->
+            if (exito) {
+                scope.launch { snackbar.showSnackbar("Plan exportado al calendario con éxito") }
+            } else {
+                scope.launch { snackbar.showSnackbar("No se pudo exportar al calendario. Revisa los permisos.") }
+            }
+        }
+    }
 
     Scaffold(
         containerColor = Sol.Bg,

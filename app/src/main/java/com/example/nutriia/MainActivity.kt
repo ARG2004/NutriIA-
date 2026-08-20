@@ -200,7 +200,9 @@ fun NutriIAContent() {
             } else if (event == Lifecycle.Event.ON_START) {
                 if (lastBackgroundTime != 0L) {
                     val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-                    if (user != null) {
+                    // OMITIR splash si estamos en medio de un flujo de pago/llamada
+                    val enFlujoLlamada = iniciarLlamadaTrasExito || teleconsultaVm.state.value.llamadaActual != null
+                    if (user != null && !enFlujoLlamada) {
                         showResumeSplash = true
                     }
                 }
@@ -213,10 +215,14 @@ fun NutriIAContent() {
         }
     }
 
-    LaunchedEffect(showResumeSplash) {
+    LaunchedEffect(showResumeSplash, iniciarLlamadaTrasExito) {
         if (showResumeSplash) {
-            delay(1500)
-            showResumeSplash = false
+            if (iniciarLlamadaTrasExito) {
+                showResumeSplash = false
+            } else {
+                delay(1500)
+                showResumeSplash = false
+            }
         }
     }
 
@@ -515,7 +521,6 @@ fun NutriIAContent() {
     }
 
     CompositionLocalProvider(LocalAccessibilityMode provides accessibilityMode) {
-        TeleconsultaHostOverlay(viewModel = teleconsultaVm)
         when (currentScreen) {
             Screen.ACCESIBILIDAD_INICIAL -> OnboardingQuizScreen(soloAccesibilidad = true, onQuizComplete = { }, onAccesibilidadCompletada = { accessibilityVm.marcarPrimeraVezCompletada(); currentScreen = Screen.REGISTER_TYPE })
             Screen.LOGIN -> NutriaLoginScreen(
@@ -902,6 +907,9 @@ fun NutriIAContent() {
         ) {
             SplashOverlay()
         }
+
+        // Overlay de llamada al final para máxima prioridad visual
+        TeleconsultaHostOverlay(viewModel = teleconsultaVm)
     }
 }
 

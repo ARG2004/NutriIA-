@@ -4,6 +4,7 @@ package com.example.nutriia.alerta
 
 import platform.Foundation.NSDateComponents
 import platform.UserNotifications.*
+import platform.Foundation.NSLog
 
 actual object PlatformAlertaScheduler {
 
@@ -36,7 +37,13 @@ actual object PlatformAlertaScheduler {
                 content = content,
                 trigger = trigger
             )
-            center.addNotificationRequest(request, null)
+            center.addNotificationRequest(request) { error ->
+                if (error != null) {
+                    NSLog("❌ [iOSAlertaScheduler] Error programando alerta única: ${error.localizedDescription}")
+                } else {
+                    NSLog("✅ [iOSAlertaScheduler] Alerta única programada: ${alerta.titulo}")
+                }
+            }
         } else {
             alerta.diasSemana.forEach { diaSemana ->
                 val weekdayNum = when (diaSemana) {
@@ -64,7 +71,13 @@ actual object PlatformAlertaScheduler {
                     content = content,
                     trigger = trigger
                 )
-                center.addNotificationRequest(request, null)
+                center.addNotificationRequest(request) { error ->
+                    if (error != null) {
+                        NSLog("❌ [iOSAlertaScheduler] Error programando alerta recurrente (${diaSemana.name}): ${error.localizedDescription}")
+                    } else {
+                        NSLog("✅ [iOSAlertaScheduler] Alerta recurrente programada: ${alerta.titulo} (${diaSemana.name})")
+                    }
+                }
             }
         }
     }

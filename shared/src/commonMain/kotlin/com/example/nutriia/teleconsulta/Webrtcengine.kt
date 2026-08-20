@@ -1,17 +1,9 @@
 package com.example.nutriia.teleconsulta
 
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 enum class EngineState {
-    IDLE,
-    INITIALIZING,
-    INITIALIZED,
-    CONNECTING,
-    CONNECTED,
-    DISCONNECTED,
-    FAILED
+    IDLE, INITIALIZING, INITIALIZED, CONNECTING, CONNECTED, DISCONNECTED, FAILED
 }
 
 class SessionDescription(
@@ -27,7 +19,8 @@ class IceCandidate(
     val sdp: String
 )
 
-class VideoTrack
+// Representa un track de video que la UI puede renderizar
+expect class VideoTrack
 
 interface WebRtcEngineCallback {
     fun onConnected()
@@ -38,32 +31,18 @@ interface WebRtcEngineCallback {
     fun onRemoteVideoTrackReady(track: VideoTrack) {}
 }
 
-class WebRtcEngine(
-    private val callback: WebRtcEngineCallback
-) {
-    private val _engineState = MutableStateFlow(EngineState.IDLE)
-    val engineState: StateFlow<EngineState> = _engineState.asStateFlow()
-
-    fun initialize() {
-        _engineState.value = EngineState.INITIALIZED
-    }
-
-    fun createPeerConnection(isOffer: Boolean, tipo: TipoLlamada) {}
-    fun createOffer() {}
-    fun setRemoteOffer(sdp: String) {}
-    fun setRemoteAnswer(sdp: String) {}
-    fun addRemoteIceCandidate(sdpMid: String, sdpMLineIndex: Int, sdp: String) {}
-    fun silenciar(silenciado: Boolean) {}
-    fun apagarCamara(apagada: Boolean) {}
-    fun cambiarCamara() {}
-    fun switchCamera() {}
-    fun toggleMute(muted: Boolean) {}
-    fun toggleVideo(enabled: Boolean) {}
-    fun toggleSpeakerphone(speaker: Boolean) {}
-
-    fun dispose() {
-        _engineState.value = EngineState.IDLE
-    }
+expect class WebRtcEngine(callback: WebRtcEngineCallback) {
+    val engineState: StateFlow<EngineState>
+    fun initialize()
+    fun createPeerConnection(isOffer: Boolean, tipo: TipoLlamada)
+    fun createOffer()
+    fun setRemoteOffer(sdp: String)
+    fun setRemoteAnswer(sdp: String)
+    fun addRemoteIceCandidate(sdpMid: String, sdpMLineIndex: Int, sdp: String)
+    fun silenciar(silenciado: Boolean)
+    fun apagarCamara(apagada: Boolean)
+    fun cambiarCamara()
+    fun dispose()
 }
 
 object CallEngineProvider {

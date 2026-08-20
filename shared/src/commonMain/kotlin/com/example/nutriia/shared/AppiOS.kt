@@ -67,6 +67,7 @@ import com.example.nutriia.util.PermissionType
 import com.example.nutriia.util.PlatformPermissionHelper
 import com.example.nutriia.vinculacion.VinculacionViewModel
 import com.example.nutriia.vinculacion.DirectorioNutriologosScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
@@ -223,54 +224,22 @@ fun AppiOS() {
 fun NutriIAiOSApp() {
     com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 1/11] Iniciando NutriIAiOSApp()...")
 
-    val loginViewModel: LoginViewModel = remember {
-        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 2/11] Instanciando LoginViewModel()...")
-        try {
-            LoginViewModel()
-        } catch (t: Throwable) {
-            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando LoginViewModel: ${t.message}", t)
-            throw t
+    com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 7/11] Configurando ViewModelStore y ViewModelStoreOwner...")
+    val viewModelStore = remember { androidx.lifecycle.ViewModelStore() }
+    val viewModelStoreOwner = remember {
+        object : androidx.lifecycle.ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
+            override val viewModelStore: androidx.lifecycle.ViewModelStore = viewModelStore
+            override val defaultViewModelProviderFactory: ViewModelProvider.Factory = IOSViewModelFactory
+            override val defaultViewModelCreationExtras: CreationExtras = CreationExtras.Empty
         }
     }
 
-    val sharedVm: NutriSharedViewModel = remember {
-        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 3/11] Instanciando NutriSharedViewModel()...")
-        try {
-            NutriSharedViewModel()
-        } catch (t: Throwable) {
-            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando NutriSharedViewModel: ${t.message}", t)
-            throw t
-        }
-    }
-
-    val teleconsultaVm: TeleconsultaViewModel = remember {
-        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 4/11] Instanciando TeleconsultaViewModel()...")
-        try {
-            TeleconsultaViewModel()
-        } catch (t: Throwable) {
-            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando TeleconsultaViewModel: ${t.message}", t)
-            throw t
-        }
-    }
-
-    val accessibilityVm: AccessibilityViewModel = remember {
-        com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 5/11] Instanciando AccessibilityViewModel()...")
-        try {
-            AccessibilityViewModel()
-        } catch (t: Throwable) {
-            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando AccessibilityViewModel: ${t.message}", t)
-            throw t
-        }
-    }
-
-    val cfgVm: ConfiguracionViewModel = remember {
-        try {
-            ConfiguracionViewModel()
-        } catch (t: Throwable) {
-            com.example.nutriia.platform.Log.e("AppiOS", "❌ Error instanciando ConfiguracionViewModel: ${t.message}", t)
-            throw t
-        }
-    }
+    val loginViewModel: LoginViewModel = viewModel(modelClass = LoginViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
+    val sharedVm: NutriSharedViewModel = viewModel(modelClass = NutriSharedViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
+    val teleconsultaVm: TeleconsultaViewModel = viewModel(modelClass = TeleconsultaViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
+    val accessibilityVm: AccessibilityViewModel = viewModel(modelClass = AccessibilityViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
+    val paymentVm: PaymentViewModel = viewModel(modelClass = PaymentViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
+    val cfgVm: ConfiguracionViewModel = viewModel(modelClass = ConfiguracionViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
 
     com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 6/11] Colectando StateFlows de Accesibilidad...")
     val estado by loginViewModel.estado.collectAsState()
@@ -515,6 +484,27 @@ fun NutriIAiOSApp() {
         }
     }
 
+    // Manejar Deep Links globales (PayPal, etc.)
+    LaunchedEffect(Unit) {
+        DeepLinkManager.links.collect { url ->
+            if (url.startsWith("nutriia://pago")) {
+                paymentVm.procesarDeepLink(url)
+            }
+        }
+    }
+
+    // Reactivar observación de llamadas al resumir la app en iOS
+    LaunchedEffect(showResumeSplash) {
+        if (!showResumeSplash && loginViewModel.uidUsuario.isNotBlank()) {
+            val rol = loginViewModel.rolUsuario
+            if (rol == "nutriologo" || rol == "ginecologo") {
+                teleconsultaVm.iniciarObservacionEntrantesNutriologo(loginViewModel.uidUsuario)
+            } else {
+                teleconsultaVm.iniciarObservacionEntrantes(loginViewModel.uidUsuario)
+            }
+        }
+    }
+
     // ─── Reacción a Login Exitoso con Activación Biométrica ───────────────
     LaunchedEffect(estado) {
         val s = estado
@@ -530,6 +520,9 @@ fun NutriIAiOSApp() {
             saltarAccesibilidadEnQuiz = true
             SessionManager.guardarSesion(loginViewModel.uidUsuario)
             SessionManager.guardarUltimoUid(loginViewModel.uidUsuario)
+
+            // Limpieza preventiva de modelos compartidos si es necesario
+            sharedVm.limpiarPerfil()
 
             delay(120)
 
@@ -565,16 +558,6 @@ fun NutriIAiOSApp() {
             }
             delay(1380)
             showLoginSplash = false
-        }
-    }
-
-    com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 7/11] Configurando ViewModelStore y ViewModelStoreOwner...")
-    val viewModelStore = remember { androidx.lifecycle.ViewModelStore() }
-    val viewModelStoreOwner = remember {
-        object : androidx.lifecycle.ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
-            override val viewModelStore: androidx.lifecycle.ViewModelStore = viewModelStore
-            override val defaultViewModelProviderFactory: ViewModelProvider.Factory = IOSViewModelFactory
-            override val defaultViewModelCreationExtras: CreationExtras = CreationExtras.Empty
         }
     }
 
@@ -690,7 +673,7 @@ fun NutriIAiOSApp() {
                         onLogout = {
                             accessibilityVm.silenciar()
                             loginViewModel.cerrarSesion()
-                            sharedVm.limpiarPerfil()
+                            viewModelStore.clear() // Mata todos los ViewModels y listeners
                             children = emptyList()
                             activeChildIndex = 0
                             saltarAccesibilidadEnQuiz = false
@@ -721,6 +704,7 @@ fun NutriIAiOSApp() {
                         onLogout = {
                             accessibilityVm.silenciar()
                             loginViewModel.cerrarSesion()
+                            viewModelStore.clear() // Mata todos los ViewModels y listeners
                             currentScreen = Screen.LOGIN
                         },
                         onPatientClick = { paciente ->
@@ -739,6 +723,7 @@ fun NutriIAiOSApp() {
                                 onLogout = {
                                     accessibilityVm.silenciar()
                                     loginViewModel.cerrarSesion()
+                                    viewModelStore.clear() // Mata todos los ViewModels y listeners
                                     perfilEmbarazo = null
                                     nombreMama = ""
                                     currentScreen = Screen.LOGIN
@@ -771,6 +756,7 @@ fun NutriIAiOSApp() {
                         onLogout = {
                             accessibilityVm.silenciar()
                             loginViewModel.cerrarSesion()
+                            viewModelStore.clear() // Mata todos los ViewModels y listeners
                             currentScreen = Screen.LOGIN
                         },
                         onPatientClick = { paciente ->
@@ -929,7 +915,7 @@ fun NutriIAiOSApp() {
                             teleconsultaVm.detenerObservacionEntrantes()
                             accessibilityVm.silenciar()
                             loginViewModel.cerrarSesion()
-                            sharedVm.limpiarPerfil()
+                            viewModelStore.clear() // Mata todos los ViewModels y listeners
                             children = emptyList()
                             activeChildIndex = 0
                             saltarAccesibilidadEnQuiz = false
@@ -1055,6 +1041,7 @@ fun NutriIAiOSApp() {
                         onPageChange = { index -> activeChildIndex = index },
                         onLogout = {
                             loginViewModel.cerrarSesion()
+                            viewModelStore.clear()
                             currentScreen = Screen.LOGIN
                         },
                         onConfiguracion = { currentScreen = Screen.CONFIGURACION },
@@ -1071,6 +1058,9 @@ fun NutriIAiOSApp() {
                         onAyuda = { currentScreen = Screen.AYUDA }
                     )
                 }
+
+                // Overlay de Teleconsulta para iOS
+                TeleconsultaHostOverlay(viewModel = teleconsultaVm)
 
                 // ─── Toast Flotante Multiplataforma ──────────────────────────
                 AnimatedVisibility(

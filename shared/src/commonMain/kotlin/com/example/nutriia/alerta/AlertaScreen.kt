@@ -41,6 +41,9 @@ import com.example.nutriia.accesibilidad.loc
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.util.PermissionHelper
+import com.example.nutriia.util.PermissionType
+import com.example.nutriia.util.rememberPermissionState
 import com.example.nutriia.resources.*
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -137,8 +140,16 @@ fun AlertasScreen(
 
     fun loc(es: String, en: String) = idiomaActual.loc(es, en)
 
+    val notificationPermission = rememberPermissionState(
+        type = PermissionType.NOTIFICATIONS,
+        onGranted = { /* Ya tiene permiso */ }
+    )
+
     LaunchedEffect(Unit) {
         viewModel.init(childId)
+
+        // Solicitar permisos de notificación al entrar
+        notificationPermission.requestPermission()
 
         if (esBlind) {
             val nombreParaA11y = childName ?: loc("tu embarazo", "your pregnancy")

@@ -58,8 +58,6 @@ fun WebRtcVideoView(
     modifier:   Modifier = Modifier,
     isMirror:   Boolean  = false
 ) {
-    val eglBase = remember { EglBase.create() }
-
     AndroidView(
         factory = { ctx ->
             SurfaceViewRenderer(ctx).apply {
@@ -67,7 +65,8 @@ fun WebRtcVideoView(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                init(eglBase.eglBaseContext, null)
+                // Usamos el contexto compartido globalmente para WebRTC
+                init(WebRtcEngine.eglContext, null)
                 setMirror(isMirror)
                 setEnableHardwareScaler(true)
             }
@@ -79,7 +78,6 @@ fun WebRtcVideoView(
         onRelease = { renderer ->
             videoTrack?.removeSink(renderer)
             renderer.release()
-            eglBase.release()
         },
         modifier = modifier
     )
@@ -293,8 +291,6 @@ fun TeleconsultaActiveScreen(
 // ─── Vista de video LOCAL (self view en pip) ──────────────────────────────────
 @Composable
 fun LocalVideoSinkView(modifier: Modifier = Modifier) {
-    val eglBase = remember { EglBase.create() }
-
     AndroidView(
         factory = { ctx ->
             SurfaceViewRenderer(ctx).apply {
@@ -302,7 +298,8 @@ fun LocalVideoSinkView(modifier: Modifier = Modifier) {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                init(eglBase.eglBaseContext, null)
+                // Usamos el contexto compartido globalmente para WebRTC
+                init(WebRtcEngine.eglContext, null)
                 setMirror(true) // Siempre espejo para vista propia
                 setEnableHardwareScaler(true)
             }
@@ -318,7 +315,6 @@ fun LocalVideoSinkView(modifier: Modifier = Modifier) {
                 CallEngineProvider.engine.localVideoSink = null
             }
             renderer.release()
-            eglBase.release()
         },
         modifier = modifier
     )

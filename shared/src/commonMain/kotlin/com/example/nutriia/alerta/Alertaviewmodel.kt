@@ -15,6 +15,7 @@ sealed class AlertaUiState {
 class AlertaViewModel : ViewModel() {
 
     private val repo = AlertaRepository()
+    private var observerJob: kotlinx.coroutines.Job? = null
 
     private val _alertas   = MutableStateFlow<List<Alerta>>(emptyList())
     val alertas: StateFlow<List<Alerta>> = _alertas.asStateFlow()
@@ -26,7 +27,8 @@ class AlertaViewModel : ViewModel() {
     val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
 
     fun init(childId: String?) {
-        viewModelScope.launch {
+        observerJob?.cancel()
+        observerJob = viewModelScope.launch {
             repo.observarPorHijo(childId)
                 .catch { e -> _uiState.value = AlertaUiState.Error(e.message ?: "Error") }
                 .collect { lista -> _alertas.value = lista }

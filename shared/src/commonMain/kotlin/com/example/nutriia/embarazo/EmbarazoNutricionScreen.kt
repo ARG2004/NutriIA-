@@ -3,6 +3,9 @@ package com.example.nutriia.embarazo
 import androidx.compose.animation.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.datetime.*
+import com.example.nutriia.util.CalendarEvent
+import com.example.nutriia.util.PlatformCalendarManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -92,6 +95,7 @@ fun EmbarazoNutricionScreen(
     }.collectAsState(initial = emptyList())
 
     val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
     var mostrarForm by remember { mutableStateOf(false) }
     var mostrarExportDialog by remember { mutableStateOf(false) }
     var mostrarAlimentoDisponibleForm by remember { mutableStateOf(false) }
@@ -151,6 +155,7 @@ fun EmbarazoNutricionScreen(
 
     Scaffold(
         containerColor = Emb.Fondo,
+        snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
@@ -239,21 +244,7 @@ fun EmbarazoNutricionScreen(
                         mostrarForm = true
                     },
                     onExport = {
-                        val sb = StringBuilder()
-                        sb.append("📅 PLAN NUTRICIONAL SEMANAL - NutriIA\n")
-                        sb.append("Trimestre: ${resumen.trimestreLabel}\n\n")
-                        planState.forEach { dia ->
-                            sb.append("--- ${dia.diaSemana.uppercase()} ---\n")
-                            sb.append("🌅 Desayuno: ${dia.comidas.desayuno}\n")
-                            sb.append("🍎 Colación 1: ${dia.comidas.colacion1}\n")
-                            sb.append("☀️ Comida: ${dia.comidas.comida}\n")
-                            sb.append("🥝 Colación 2: ${dia.comidas.colacion2}\n")
-                            sb.append("🌙 Cena: ${dia.comidas.cena}\n\n")
-                        }
-                        sb.append("¡Cuida tu alimentación y la de tu bebé! 💖")
-
-                        // Exportar plan
-                        val planTexto = sb.toString()
+                        mostrarExportDialog = true
                     },
                     onAddClick = {
                         tab = 1
@@ -267,6 +258,57 @@ fun EmbarazoNutricionScreen(
                     recetas = recetasFiltradas, alergenosPerfil = perfil.alergenosParsados
                 )
             }
+        }
+
+        if (mostrarExportDialog) {
+            val planTexto = buildString {
+                append("📅 PLAN NUTRICIONAL SEMANAL - NutriIA\n")
+                append("Trimestre: ${resumen.trimestreLabel}\n\n")
+                planState.forEach { dia ->
+                    append("--- ${dia.diaSemana.uppercase()} ---\n")
+                    append("🌅 Desayuno: ${dia.comidas.desayuno}\n")
+                    append("🍎 Colación 1: ${dia.comidas.colacion1}\n")
+                    append("☀️ Comida: ${dia.comidas.comida}\n")
+                    append("🥝 Colación 2: ${dia.comidas.colacion2}\n")
+                    append("🌙 Cena: ${dia.comidas.cena}\n\n")
+                }
+                append("¡Cuida tu alimentación y la de tu bebé! 💖")
+            }
+
+            ExportarCalendarioDialog(
+                onShare = {
+                    com.example.nutriia.platform.openUrl("copy:$planTexto")
+                    scope.launch { snackbar.showSnackbar("Plan copiado ✓") }
+                    mostrarExportDialog = false
+                },
+                onExportarCalendario = {
+                    val events = mutableListOf<CalendarEvent>()
+                    val tz = TimeZone.currentSystemDefault()
+                    val hoy = Clock.System.now().toLocalDateTime(tz)
+
+                    planState.forEachIndexed { index, dia ->
+                        val fechaDia = hoy.date.plus(index, DateTimeUnit.DAY).atTime(8, 0).toInstant(tz)
+                        val desc = "Desayuno: ${dia.comidas.desayuno}\nComida: ${dia.comidas.comida}\nCena: ${dia.comidas.cena}"
+                        
+                        events.add(CalendarEvent(
+                            title = "Nutrición Embarazo - ${dia.diaSemana}",
+                            description = desc,
+                            startDate = fechaDia.toEpochMilliseconds(),
+                            endDate = fechaDia.toEpochMilliseconds() + 3600000,
+                            allDay = true
+                        ))
+                    }
+
+                    PlatformCalendarManager.addEvents(events) { exito ->
+                        scope.launch {
+                            if (exito) snackbar.showSnackbar("Exportado al calendario ✓")
+                            else snackbar.showSnackbar("Error al exportar. Revisa permisos.")
+                        }
+                        mostrarExportDialog = false
+                    }
+                },
+                onCerrar = { mostrarExportDialog = false }
+            )
         }
 
         if (mostrarForm) {

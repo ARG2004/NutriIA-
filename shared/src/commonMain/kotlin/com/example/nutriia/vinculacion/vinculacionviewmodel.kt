@@ -13,8 +13,9 @@ class VinculacionViewModel : ViewModel() {
 
     private val repo = VinculacionRepository()
 
-    // ── Job del observer del padre (cancelable para forzar refresh) ────────────
+    // ── Jobs de los observers (cancelables para evitar duplicados) ─────────────
     private var padreObserverJob: Job? = null
+    private var nutriologoObserverJob: Job? = null
 
     // ── Estado compartido ──────────────────────────────────────────────────────
     private val _vinculaciones = MutableStateFlow<List<Vinculacion>>(emptyList())
@@ -52,7 +53,8 @@ class VinculacionViewModel : ViewModel() {
     // ═════════════════════════════════════════════════════════════════════════
 
     fun initComoNutriologo() {
-        repo.observarVinculacionesDelNutriologo()
+        nutriologoObserverJob?.cancel()
+        nutriologoObserverJob = repo.observarVinculacionesDelNutriologo()
             .onEach { _vinculaciones.value = it }
             .launchIn(viewModelScope)
         cargarMiPerfilPublico()

@@ -2,6 +2,7 @@ package com.example.nutriia.ginecologo
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -11,6 +12,10 @@ import kotlinx.coroutines.launch
 class GinecologoViewModel : ViewModel() {
 
     private val repo = GinecologoRepository()
+
+    private var mamaVinculacionJob: Job? = null
+    private var mamaCitasJob: Job? = null
+    private var gineVinculacionesJob: Job? = null
 
     // ── Estado compartido ──────────────────────────────────────────────────────
     private val _vinculacionActual = MutableStateFlow<VinculacionEmbarazo?>(null)
@@ -50,17 +55,20 @@ class GinecologoViewModel : ViewModel() {
     // ═════════════════════════════════════════════════════════════════════════
 
     fun initComoMama() {
-        repo.observarVinculacionDeLaMama()
+        mamaVinculacionJob?.cancel()
+        mamaVinculacionJob = repo.observarVinculacionDeLaMama()
             .onEach { _vinculacionActual.value = it }
             .launchIn(viewModelScope)
 
-        repo.observarCitasDeLaMama()
+        mamaCitasJob?.cancel()
+        mamaCitasJob = repo.observarCitasDeLaMama()
             .onEach { _citasDeLaMama.value = it }
             .launchIn(viewModelScope)
     }
 
     fun initComoGinecologo() {
-        repo.observarVinculacionesDelGinecologo()
+        gineVinculacionesJob?.cancel()
+        gineVinculacionesJob = repo.observarVinculacionesDelGinecologo()
             .onEach { _vinculacionesGinecologo.value = it }
             .launchIn(viewModelScope)
         cargarMiPerfilPublico()

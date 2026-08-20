@@ -272,188 +272,170 @@ fun CampoTextoAccesible(
                     Triple(InputModoCiego.BRAILLE,  "Braille",  Icons.Rounded.GridOn)
                 )
                 AccessibilityMode.MUTE -> listOf(
-                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
+                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard),
+                    Triple(InputModoCiego.SENAS,    "Señas",    Icons.Rounded.BackHand)
                 )
                 else -> emptyList()
             }
         }
 
         if (a11yMode == AccessibilityMode.MUTE) {
-            if (esCampoFecha || esCampoHora) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (esCampoFecha) mostrarDatePicker = true
-                            else if (esCampoHora) mostrarTimePicker = true
-                        },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = (if (activo) colorPrimario else Color.LightGray).copy(0.05f)
-                    ),
-                    border = BorderStroke(1.5.dp, (if (activo) colorPrimario else Color.LightGray).copy(0.4f))
+            if (activo && opcionesDisponibles.size > 1) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (esCampoFecha) Icons.Rounded.CalendarToday else Icons.Rounded.AccessTime,
-                            contentDescription = null,
-                            tint = if (activo) colorPrimario else Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = etiqueta,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (activo) colorPrimario else Color.Gray
-                            )
-                            Text(
-                                text = valor.ifEmpty { "Presiona aquí para elegir..." },
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.Black
-                            )
-                        }
-                    }
-                }
-                
-                if (activo && onNext != null) {
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = {
-                            vibrateSuccess(haptic)
-                            onNext.invoke()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth().height(44.dp)
-                    ) {
-                        Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    }
-                }
-            } else {
-                if (activo && opcionesDisponibles.size > 1) {
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        opcionesDisponibles.forEach { (modo, label, icon) ->
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (modoEntrada == modo) colorPrimario.copy(0.14f) else Color(0xFFF5F5F5))
-                                    .border(
-                                        1.5.dp,
-                                        if (modoEntrada == modo) colorPrimario else Color.LightGray.copy(0.4f),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable {
-                                        vibrateTap(haptic)
-                                        modoEntrada = modo
-                                    }
-                                    .padding(vertical = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(icon, null, tint = if (modoEntrada == modo) colorPrimario else Color.Gray, modifier = Modifier.size(20.dp))
-                                Spacer(Modifier.height(4.dp))
-                                Text(label, fontSize = 11.sp, fontWeight = if (modoEntrada == modo) FontWeight.Bold else FontWeight.Normal, color = if (modoEntrada == modo) colorPrimario else Color.Gray)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
-
-                OutlinedTextField(
-                    value           = valor,
-                    onValueChange   = onValorChange,
-                    label           = { Text(etiqueta) },
-                    placeholder     = { Text(placeholder) },
-                    modifier        = Modifier
-                        .fillMaxWidth()
-                        .clickable { if (!activo) onFocus?.invoke() },
-                    readOnly        = !activo,
-                    enabled         = true,
-                    singleLine      = !esCampoFecha && !esCampoHora,
-                    trailingIcon    = if (activo && onNext != null && valor.isNotBlank()) {
-                        {
-                            IconButton(
-                                onClick = {
-                                    vibrateSuccess(haptic)
-                                    onNext.invoke()
+                    opcionesDisponibles.forEach { (modo, label, icon) ->
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (modoEntrada == modo) colorPrimario.copy(0.14f) else Color(0xFFF5F5F5))
+                                .border(
+                                    1.5.dp,
+                                    if (modoEntrada == modo) colorPrimario else Color.LightGray.copy(0.4f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    vibrateTap(haptic)
+                                    modoEntrada = modo
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ArrowForward,
-                                    contentDescription = "Siguiente campo",
-                                    tint = colorPrimario
+                                .padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(icon, null, tint = if (modoEntrada == modo) colorPrimario else Color.Gray, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.height(4.dp))
+                            Text(label, fontSize = 11.sp, fontWeight = if (modoEntrada == modo) FontWeight.Bold else FontWeight.Normal, color = if (modoEntrada == modo) colorPrimario else Color.Gray)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            if (modoEntrada == InputModoCiego.TECLADO) {
+                if (esCampoFecha || esCampoHora) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (esCampoFecha) mostrarDatePicker = true
+                                else if (esCampoHora) mostrarTimePicker = true
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = (if (activo) colorPrimario else Color.LightGray).copy(0.05f)
+                        ),
+                        border = BorderStroke(1.5.dp, (if (activo) colorPrimario else Color.LightGray).copy(0.4f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (esCampoFecha) Icons.Rounded.CalendarToday else Icons.Rounded.AccessTime,
+                                contentDescription = null,
+                                tint = if (activo) colorPrimario else Color.Gray,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = etiqueta,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (activo) colorPrimario else Color.Gray
+                                )
+                                Text(
+                                    text = valor.ifEmpty { "Presiona aquí para elegir..." },
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Black
                                 )
                             }
                         }
-                    } else null,
-                    shape           = RoundedCornerShape(16.dp),
-                    keyboardOptions = keyboardOptions.copy(
-                        imeAction = if (onNext != null) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onNext = {
-                            vibrateSuccess(haptic)
-                            onNext?.invoke()
-                        },
-                        onDone = {
-                            vibrateSuccess(haptic)
-                            onNext?.invoke()
-                        }
-                    ),
-                    colors          = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor     = Color.Black,
-                        unfocusedTextColor   = Color.Black,
-                        focusedBorderColor   = colorPrimario,
-                        unfocusedBorderColor = Color.LightGray
-                    )
-                )
-
-                if (activo) {
-                    if (modoEntrada == InputModoCiego.SENAS) {
-                        Spacer(Modifier.height(12.dp))
-                        val soloNum = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number || 
-                                      keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
-                                      keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone
-                        SignLanguageCameraView(
-                            textoActual   = valor,
-                            onTextoChange = onValorChange,
-                            colorPrimario = colorPrimario,
-                            soloNumeros   = soloNum,
-                            esCampoFecha  = false,
-                            onCompletado  = onNext
-                        )
                     }
-
-                    if (onNext != null) {
-                        Spacer(Modifier.height(16.dp))
-                        Button(
-                            onClick = {
+                } else {
+                    OutlinedTextField(
+                        value           = valor,
+                        onValueChange   = onValorChange,
+                        label           = { Text(etiqueta) },
+                        placeholder     = { Text(placeholder) },
+                        modifier        = Modifier
+                            .fillMaxWidth()
+                            .clickable { if (!activo) onFocus?.invoke() },
+                        readOnly        = !activo,
+                        enabled         = true,
+                        singleLine      = true,
+                        trailingIcon    = if (activo && onNext != null && valor.isNotBlank()) {
+                            {
+                                IconButton(
+                                    onClick = {
+                                        vibrateSuccess(haptic)
+                                        onNext.invoke()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowForward,
+                                        contentDescription = "Siguiente campo",
+                                        tint = colorPrimario
+                                    )
+                                }
+                            }
+                        } else null,
+                        shape           = RoundedCornerShape(16.dp),
+                        keyboardOptions = keyboardOptions.copy(
+                            imeAction = if (onNext != null) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onNext = {
                                 vibrateSuccess(haptic)
-                                onNext.invoke()
+                                onNext?.invoke()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth().height(44.dp)
-                    ) {
-                        Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    }
+                            onDone = {
+                                vibrateSuccess(haptic)
+                                onNext?.invoke()
+                            }
+                        ),
+                        colors          = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor     = Color.Black,
+                            unfocusedTextColor   = Color.Black,
+                            focusedBorderColor   = colorPrimario,
+                            unfocusedBorderColor = Color.LightGray
+                        )
+                    )
+                }
+            } else if (modoEntrada == InputModoCiego.SENAS && activo) {
+                val soloNum = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number || 
+                              keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
+                              keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone ||
+                              esCampoFecha
+                SignLanguageCameraView(
+                    textoActual   = valor,
+                    onTextoChange = onValorChange,
+                    colorPrimario = colorPrimario,
+                    soloNumeros   = soloNum,
+                    esCampoFecha  = esCampoFecha,
+                    onCompletado  = onNext
+                )
+            }
+
+            if (activo && onNext != null) {
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        vibrateSuccess(haptic)
+                        onNext.invoke()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                ) {
+                    Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
-        }
-    } else {
+        } else {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

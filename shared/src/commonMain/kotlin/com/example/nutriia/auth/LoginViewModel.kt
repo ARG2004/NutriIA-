@@ -68,8 +68,7 @@ class LoginViewModel : ViewModel() {
     // ── Verificar sesión activa ───────────────────────────────────────────────
     fun verificarSesion(onResultado: (rol: String?, hijos: List<ChildProfile>) -> Unit) {
         viewModelScope.launch {
-            val usuarioFirebase = repositorio.obtenerUsuarioActual()
-            val uid = usuarioFirebase?.uid ?: SessionManager.obtenerUid()
+            val uid = SessionManager.obtenerUid()
             if (uid == null) {
                 onResultado(null, emptyList())
                 return@launch
@@ -78,8 +77,8 @@ class LoginViewModel : ViewModel() {
             val hijos = if (rol == "padre")
                 repositorio.cargarHijos(uid)
             else emptyList()
+            val usuarioFirebase = repositorio.obtenerUsuarioActual()
             val emailFirebase = usuarioFirebase?.email ?: ""
-            SessionManager.guardarSesion(uid)
             cargarDatosSesion(uid, rol, emailFirebase)
             _estado.value = LoginUiState.Exito(rol = rol, hijos = hijos)
             onResultado(rol, hijos)

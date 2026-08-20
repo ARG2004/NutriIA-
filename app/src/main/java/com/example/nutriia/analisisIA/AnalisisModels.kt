@@ -1,5 +1,6 @@
 package com.example.nutriia.analisisIA
 
+import androidx.annotation.Keep
 import com.google.firebase.Timestamp
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -7,6 +8,7 @@ import com.google.firebase.Timestamp
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ─── 1. Resultado de detección de alimento (OpenRouter Vision) ───────────────
+@Keep
 data class FoodDetectionResult(
     val foodName    : String  = "",
     val ingredients : List<String> = emptyList(),
@@ -15,6 +17,7 @@ data class FoodDetectionResult(
 )
 
 // ─── 2. Información nutricional (Spoonacular) ────────────────────────────────
+@Keep
 data class NutritionInfo(
     val calories      : Double = 0.0,
     val protein       : Double = 0.0,
@@ -26,6 +29,7 @@ data class NutritionInfo(
 )
 
 // ─── 3. Análisis pediátrico (OpenRouter LLM) ─────────────────────────────────
+@Keep
 data class PediatricAnalysis(
     val recommended       : Boolean       = false,
     val recommendedPortion: String        = "",
@@ -35,6 +39,7 @@ data class PediatricAnalysis(
 )
 
 // ─── 4. Resultado completo guardado en Firebase ──────────────────────────────
+@Keep
 data class AnalisisCompleto(
     val id            : String           = "",
     val childId       : String           = "",

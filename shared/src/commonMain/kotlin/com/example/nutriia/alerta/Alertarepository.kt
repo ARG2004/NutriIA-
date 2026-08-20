@@ -6,6 +6,9 @@ import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.catch
+import com.example.nutriia.platform.Log
 
 class AlertaRepository {
 
@@ -58,14 +61,34 @@ class AlertaRepository {
     }
 
     fun observarPorHijo(childId: String?): Flow<List<Alerta>> {
-        val uid = auth.currentUser?.uid ?: return flowOf(emptyList())
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            Log.e("AlertaRepo", "No se puede observar: Usuario no autenticado")
+            return flowOf(emptyList())
+        }
+        
+        Log.i("AlertaRepo", "Iniciando observación para hijo: $childId (uid: $uid)")
+        
         return try {
-            coleccion(childId).snapshots.map { snapshot ->
-                snapshot.documents.mapNotNull { doc ->
-                    runCatching { Alerta.fromMap(doc.data()) }.getOrNull()
-                }.sortedBy { it.hora }
-            }
+            coleccion(childId).snapshots
+                .map { snapshot ->
+                    Log.i("AlertaRepo", "Snapshot recibido con ${snapshot.documents.size} documentos")
+                    snapshot.documents.mapNotNull { doc ->
+                        try {
+                            Alerta.fromMap(doc.data())
+                        } catch (e: Exception) {
+                            Log.e("AlertaRepo", "Error parseando alerta ${doc.id}: ${e.message}")
+                            null
+                        }
+                    }.sortedBy { it.hora }
+                }
+                .onStart { Log.i("AlertaRepo", "Flow de alertas iniciado") }
+                .catch { e -> 
+                    Log.e("AlertaRepo", "Error en snapshots de alertas: ${e.message}")
+                    emit(emptyList())
+                }
         } catch (e: Exception) {
+            Log.e("AlertaRepo", "Error fatal iniciando observación: ${e.message}")
             flowOf(emptyList())
         }
     }

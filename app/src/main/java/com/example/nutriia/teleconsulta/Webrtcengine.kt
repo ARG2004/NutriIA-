@@ -40,6 +40,12 @@ class WebRtcEngine(
     companion object {
         private const val TAG = "WebRtcEngine"
 
+        // Singleton para el contexto OpenGL compartido
+        private val sharedEglBase by lazy { EglBase.create() }
+        val eglContext: EglBase.Context get() = sharedEglBase.eglBaseContext
+
+        private var isFactoryInitialized = false
+
         // Servidores STUN/TURN públicos — para producción añade TURN propios
         private val ICE_SERVERS = listOf(
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
@@ -84,10 +90,14 @@ class WebRtcEngine(
         if (_engineState.value != EngineState.IDLE) return
 
         // Inicializar WebRTC global (una sola vez por proceso)
-        val initOptions = PeerConnectionFactory.InitializationOptions.builder(context)
-            .setEnableInternalTracer(false)
-            .createInitializationOptions()
-        PeerConnectionFactory.initialize(initOptions)
+        if (!isFactoryInitialized) {
+            val initOptions = PeerConnectionFactory.InitializationOptions.builder(context)
+                .setEnableInternalTracer(false)
+                .createInitializationOptions()
+            PeerConnectionFactory.initialize(initOptions)
+            isFactoryInitialized = true
+            Log.d(TAG, "WebRTC Factory inicializada globalmente")
+        }
 
         // Audio device module con gestión de modo (altavoz/auricular)
         val esEmulador = android.os.Build.FINGERPRINT.startsWith("generic")
@@ -111,9 +121,9 @@ class WebRtcEngine(
         peerConnectionFactory = PeerConnectionFactory.builder()
             .setOptions(options)
             .setAudioDeviceModule(audioDeviceModule)
-            .setVideoDecoderFactory(DefaultVideoDecoderFactory(EglBase.create().eglBaseContext))
+            .setVideoDecoderFactory(DefaultVideoDecoderFactory(eglContext))
             .setVideoEncoderFactory(
-                DefaultVideoEncoderFactory(EglBase.create().eglBaseContext, true, true)
+                DefaultVideoEncoderFactory(eglContext, true, true)
             )
             .createPeerConnectionFactory()
 
@@ -170,8 +180,7 @@ class WebRtcEngine(
 
         // Video solo si es videollamada
         if (tipo == TipoLlamada.VIDEO) {
-            val eglBase = EglBase.create()
-            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.eglBaseContext)
+            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglContext)
             videoCapturer = createVideoCapturer()?.also { capturer ->
                 localVideoSource = factory.createVideoSource(capturer.isScreencast)
                 capturer.initialize(surfaceTextureHelper, context, localVideoSource!!.capturerObserver)

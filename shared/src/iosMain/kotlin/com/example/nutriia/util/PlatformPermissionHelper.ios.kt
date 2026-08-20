@@ -40,6 +40,11 @@ actual object PlatformPermissionHelper {
                 PermissionType.NEAR_DEVICES -> {
                     CBCentralManager.authorization == CBManagerAuthorizationAllowedAlways
                 }
+                PermissionType.NOTIFICATIONS -> {
+                    // En iOS el chequeo de notificaciones es asíncrono.
+                    // Para mantener la firma síncrona, devolvemos true y dejamos que requestPermission maneje el flujo.
+                    true
+                }
             }
         } catch (_: Throwable) {
             true
@@ -71,6 +76,15 @@ actual object PlatformPermissionHelper {
                 PermissionType.NEAR_DEVICES -> {
                     dispatch_async(dispatch_get_main_queue()) {
                         onResult(true)
+                    }
+                }
+                PermissionType.NOTIFICATIONS -> {
+                    val center = UNUserNotificationCenter.currentNotificationCenter()
+                    val options = UNAuthorizationOptionAlert or UNAuthorizationOptionSound or UNAuthorizationOptionBadge
+                    center.requestAuthorizationWithOptions(options) { granted, _ ->
+                        dispatch_async(dispatch_get_main_queue()) {
+                            onResult(granted)
+                        }
                     }
                 }
             }

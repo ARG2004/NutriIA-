@@ -25,7 +25,6 @@ object SessionManager {
 
     fun obtenerUid(context: Any? = null): String? {
         return PlatformPreferences.getString("user_uid")
-            ?: PlatformPreferences.getString("ultimo_uid_biometrico")
     }
 
     fun marcarBiometricoActivo(context: Any? = null, activo: Boolean = true) {
