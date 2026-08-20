@@ -60,7 +60,7 @@ data class Alerta(
     val diasSemana:  List<DiasSemana> = DiasSemana.entries.toList(),
     val fechaUnica:  String?          = null,                 // "DD/MM/YYYY"
     val activa:      Boolean          = true,
-    val creadaEn:    Long             = currentTimeMillis()
+    val creadoEn:    Long             = currentTimeMillis()
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"          to id,
@@ -73,9 +73,9 @@ data class Alerta(
         "diasSemana"  to diasSemana.map { it.name },
         "fechaUnica"  to fechaUnica,
         "activa"      to activa,
-        "creadaEn"    to creadaEn,
-        "fechaCreacion" to FechaUtils.formatearFecha(creadaEn),
-        "horaCreacion"  to FechaUtils.formatearHora(creadaEn)
+        "creadoEn"    to creadoEn,
+        "fechaCreacion" to FechaUtils.formatearFecha(creadoEn),
+        "horaCreacion"  to FechaUtils.formatearHora(creadoEn)
     )
 
     companion object {
@@ -93,7 +93,7 @@ data class Alerta(
                 diasSemana  = diasRaw.mapNotNull { n -> DiasSemana.entries.find { it.name == n } },
                 fechaUnica  = map["fechaUnica"]  as? String,
                 activa      = map["activa"]      as? Boolean ?: true,
-                creadaEn    = (map["creadaEn"] as? Number)?.toLong() ?: currentTimeMillis()
+                creadoEn    = (map["creadoEn"] as? Number)?.toLong() ?: currentTimeMillis()
             )
         }
     }
