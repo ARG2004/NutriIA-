@@ -833,7 +833,7 @@ private fun AlertaDialog(
                     diasSemana  = if (esUnica) emptyList() else diasSel,
                     fechaUnica  = if (esUnica && fechaUnica.length == 10) fechaUnica else null,
                     activa      = alertaEdit?.activa   ?: true,
-                    creadaEn    = alertaEdit?.creadaEn ?: com.example.nutriia.platform.currentTimeMillis()
+                    creadoEn    = alertaEdit?.creadoEn ?: com.example.nutriia.platform.currentTimeMillis()
                 ))
             } catch (e: Exception) {
                 com.example.nutriia.platform.Log.e("AlertaScreen", "Error al guardar alerta", e)

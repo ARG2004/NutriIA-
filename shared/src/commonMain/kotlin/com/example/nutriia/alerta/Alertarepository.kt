@@ -102,7 +102,9 @@ class AlertaRepository {
             val tStr = runCatching { doc.get<String?>("tipo") }.getOrNull() ?: TipoAlerta.TOMA_COMIDA.name
             val t = runCatching { TipoAlerta.valueOf(tStr) }.getOrDefault(TipoAlerta.TOMA_COMIDA)
             
-            val cEn = runCatching { doc.get<Long?>("creadaEn") }.getOrNull()
+            val cEn = runCatching { doc.get<Long?>("creadoEn") }.getOrNull()
+                ?: runCatching { doc.get<Double?>("creadoEn")?.toLong() }.getOrNull()
+                ?: runCatching { doc.get<Long?>("creadaEn") }.getOrNull()
                 ?: runCatching { doc.get<Double?>("creadaEn")?.toLong() }.getOrNull()
                 ?: 0L
 
@@ -122,7 +124,7 @@ class AlertaRepository {
                 diasSemana = dSemana,
                 fechaUnica = fUnica,
                 activa = act,
-                creadaEn = cEn
+                creadoEn = cEn
             )
         } catch (e: Exception) {
             Log.e("AlertaRepo", "Error parseando doc ${doc.id}: ${e.message}")
