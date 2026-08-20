@@ -357,7 +357,9 @@ fun ConfiguracionScreen(
                                 CfgDividerLine()
                                 PermissionSettingRow(PermissionType.PHONE)
                                 CfgDividerLine()
-                                PermissionSettingRow(PermissionType.NEAR_DEVICES, isLast = true)
+                                PermissionSettingRow(PermissionType.NEAR_DEVICES)
+                                CfgDividerLine()
+                                PermissionSettingRow(PermissionType.NOTIFICATIONS, isLast = true)
                             }
                         }
                     }
@@ -1413,6 +1415,7 @@ private fun PermissionSettingRow(type: PermissionType, isLast: Boolean = false) 
         PermissionType.MICROPHONE -> Icons.Rounded.Mic
         PermissionType.PHONE -> Icons.Rounded.Phone
         PermissionType.NEAR_DEVICES -> Icons.Rounded.Bluetooth
+        PermissionType.NOTIFICATIONS -> Icons.Rounded.Notifications
     }
 
     val (iconBg, iconTint) = when (type) {
@@ -1420,6 +1423,7 @@ private fun PermissionSettingRow(type: PermissionType, isLast: Boolean = false) 
         PermissionType.MICROPHONE -> Color(0xFFEDE7F6) to Color(0xFF5E35B1)
         PermissionType.PHONE -> Color(0xFFFFF3E0) to Color(0xFFEF6C00)
         PermissionType.NEAR_DEVICES -> Color(0xFFE1F5FE) to Color(0xFF0277BD)
+        PermissionType.NOTIFICATIONS -> Color(0xFFE8EAF6) to Color(0xFF3949AB)
     }
 
     CfgRow(

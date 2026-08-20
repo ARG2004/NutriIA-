@@ -43,6 +43,13 @@ object PermissionHelper {
                     )
                 }
             }
+            PermissionType.NOTIFICATIONS -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    listOf(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    emptyList()
+                }
+            }
         }
     }
 
@@ -71,6 +78,10 @@ enum class PermissionType(val displayName: String, val description: String) {
     NEAR_DEVICES(
         "Dispositivos cercanos",
         "Esta función requiere permisos para buscar y conectarse a dispositivos Bluetooth cercanos."
+    ),
+    NOTIFICATIONS(
+        "Notificaciones",
+        "Esta función requiere permiso para enviarte recordatorios de comidas, vacunas y citas médicas importantes."
     )
 }
 
