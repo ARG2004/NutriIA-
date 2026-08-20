@@ -1,6 +1,6 @@
 package com.example.nutriia.dashboard
 
-// import android.os.Build
+import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -26,10 +26,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.teleconsulta.TeleconsultaButtons
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 import com.example.nutriia.teleconsulta.TipoLlamada
+import io.github.alexzhirkevich.qrose.options.*
+import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 
 // ─── Colores Dashboard ──────────────────────────────────────────────────────
 private val NutriGreen = Color(0xFF689F38)
@@ -57,7 +60,7 @@ fun NutritionistDashboardScreen(
     onNewPlan: () -> Unit = {},
     onViewAllPatients: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { viewModel.init() }
@@ -228,6 +231,13 @@ private fun TopBarCircleButton(icon: ImageVector, isLogout: Boolean = false, onC
 
 @Composable
 private fun NutritionistProfileCard(nombre: String, especialidad: String, codigo: String) {
+    val qrPainter = rememberQrCodePainter(data = "nutriia://vincular/$codigo") {
+        shapes {
+            ball = QrBallShape.circle()
+            darkPixel = QrPixelShape.roundCorners(0.5f)
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
         shape = RoundedCornerShape(35.dp),
@@ -269,12 +279,7 @@ private fun NutritionistProfileCard(nombre: String, especialidad: String, codigo
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Rounded.QrCode2,
-                    contentDescription = "QR Vincular",
-                    tint = NutriDarkGreen,
-                    modifier = Modifier.size(72.dp)
-                )
+                Image(painter = qrPainter, contentDescription = "QR Vincular", modifier = Modifier.fillMaxSize())
             }
         }
     }
@@ -300,10 +305,10 @@ private fun PatientCard(
                 val p = patient.birthDate.split("-").map { it.toInt() }
                 Triple(p[0], p[1], p[2])
             }
-            val currentYear = 2026
-            val currentMonth = 8
-            val diffYears = currentYear - anio
-            val diffMonths = currentMonth - mes
+            val calNac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
+            val calHoy = java.util.Calendar.getInstance()
+            val diffYears = calHoy.get(java.util.Calendar.YEAR) - calNac.get(java.util.Calendar.YEAR)
+            val diffMonths = calHoy.get(java.util.Calendar.MONTH) - calNac.get(java.util.Calendar.MONTH)
             val meses = diffYears * 12 + diffMonths
             when {
                 meses < 6 -> EtStageInfo("Lactancia", Color(0xFF64B5F6))
