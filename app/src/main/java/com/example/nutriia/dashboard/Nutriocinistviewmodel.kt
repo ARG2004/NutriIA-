@@ -7,8 +7,8 @@ import com.example.nutriia.vinculacion.NutriologoPublico
 import com.example.nutriia.vinculacion.PlanAlimentario
 import com.example.nutriia.vinculacion.Vinculacion
 import com.example.nutriia.vinculacion.VinculacionRepository
-import com.example.nutriia.firebase.auth.FirebaseAuth
-import com.example.nutriia.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.example.nutriia.utils.FechaUtils
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import com.example.nutriia.firebase.firestore.await
+import kotlinx.coroutines.tasks.await
 
 data class PacienteResumen(
     val ownerUid: String = "",
@@ -88,12 +88,16 @@ class NutritionistDashboardViewModel : ViewModel() {
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
             try {
-                val snap = db.collection("usuarios").document(uid).get().await()
-                val doc = snap as? com.example.nutriia.firebase.firestore.DocumentSnapshot
-                val nombre = doc?.getString("nombre") ?: return@launch
-                val especialidad = doc?.getString("especialidad") ?: ""
-                val cedula = doc?.getString("cedula") ?: ""
-                val email = doc?.getString("email") ?: ""
+                val source = if (com.example.nutriia.offline.OfflineManager.hayConexion()) {
+                    com.google.firebase.firestore.Source.DEFAULT
+                } else {
+                    com.google.firebase.firestore.Source.CACHE
+                }
+                val doc = db.collection("usuarios").document(uid).get(source).await()
+                val nombre = doc.getString("nombre") ?: return@launch
+                val especialidad = doc.getString("especialidad") ?: ""
+                val cedula = doc.getString("cedula") ?: ""
+                val email = doc.getString("email") ?: ""
 
                 vinculacionRepo.publicarPerfilNutriologo(
                     nombre, especialidad, cedula, email
@@ -149,74 +153,36 @@ class NutritionistDashboardViewModel : ViewModel() {
             // Evita duplicar el listener si ya existe para este hijo
             if (hijoJobs.containsKey(vinc.childId)) return@forEach
 
-            // ── Siembra inmediata con los datos de la vinculación ─────────────
-            // Así el paciente aparece en la lista aunque el listener del hijo
-            // (más abajo) falle por permisos o tarde en resolver. Antes, el
-            // paciente SOLO se agregaba dentro del collect{} del hijo, así que
-            // un permission-denied silencioso dejaba al hijo invisible para
-            // siempre pese a tener vinculación ACTIVO.
-            run {
-                val listaActual = _uiState.value.pacientes.toMutableList()
-                if (listaActual.none { it.childId == vinc.childId }) {
-                    listaActual.add(
-                        PacienteResumen(
+            val job = viewModelScope.launch {
+                vinculacionRepo.observarHijo(vinc.padreUid, vinc.childId)
+                    .collect { data ->
+                        if (data == null) return@collect
+
+                        val paciente = PacienteResumen(
                             ownerUid = vinc.padreUid,
                             vinculacionId = vinc.id,
                             padreUid = vinc.padreUid,
                             padreNombre = vinc.padreNombre,
                             childId = vinc.childId,
-                            childNombre = vinc.childNombre,
-                            ultimaActualizacion = formatearFecha(vinc.actualizadoEn)
+                            childNombre = data["name"] as? String ?: vinc.childNombre,
+                            birthDate = data["birthDate"] as? String ?: "",
+                            weightKg = data["weightKg"] as? String ?: "",
+                            heightCm = data["heightCm"] as? String ?: "",
+                            hasAllergies = data["hasAllergies"] as? Boolean ?: false,
+                            ultimaActualizacion = formatearFecha(data["creadoEn"])
                         )
-                    )
-                    _uiState.value = _uiState.value.copy(pacientes = listaActual)
-                }
-            }
 
-            val job = viewModelScope.launch {
-                try {
-                    vinculacionRepo.observarHijo(vinc.padreUid, vinc.childId)
-                        .collect { data ->
-                            if (data == null) return@collect
+                        // Actualiza solo este paciente en la lista existente
+                        val listaActual = _uiState.value.pacientes.toMutableList()
+                        val idx = listaActual.indexOfFirst { it.childId == vinc.childId }
+                        if (idx >= 0) listaActual[idx] = paciente
+                        else listaActual.add(paciente)
 
-                            val paciente = PacienteResumen(
-                                ownerUid = vinc.padreUid,
-                                vinculacionId = vinc.id,
-                                padreUid = vinc.padreUid,
-                                padreNombre = vinc.padreNombre,
-                                childId = vinc.childId,
-                                childNombre = data["name"] as? String ?: vinc.childNombre,
-                                birthDate = data["birthDate"] as? String ?: "",
-                                weightKg = data["weightKg"] as? String ?: "",
-                                heightCm = data["heightCm"] as? String ?: "",
-                                hasAllergies = data["hasAllergies"] as? Boolean ?: false,
-                                ultimaActualizacion = formatearFecha(data["creadoEn"])
-                            )
+                        _uiState.value = _uiState.value.copy(pacientes = listaActual)
 
-                            // Actualiza solo este paciente en la lista existente
-                            val listaActual = _uiState.value.pacientes.toMutableList()
-                            val idx = listaActual.indexOfFirst { it.childId == vinc.childId }
-                            if (idx >= 0) listaActual[idx] = paciente
-                            else listaActual.add(paciente)
-
-                            _uiState.value = _uiState.value.copy(pacientes = listaActual)
-
-                            // Carga planes activos del hijo (lectura única, no necesita ser RT)
-                            cargarPlanesDelHijo(vinc.padreUid, vinc.childId)
-                        }
-                } catch (e: Exception) {
-                    // El listener del hijo falló (p.ej. permission-denied si las
-                    // reglas de Firestore no dejan al nutriólogo leer
-                    // usuarios/{padreUid}/hijos/{childId} directamente). El
-                    // paciente sembrado arriba se queda visible con los datos
-                    // básicos de la vinculación; solo faltan peso/talla/etc.
-                    com.example.nutriia.platform.Log.e(
-                        "NutritionistDashboardVM",
-                        "No se pudo escuchar al hijo ${vinc.childId} de ${vinc.padreUid}: ${e.message}"
-                    )
-                    // Igual intenta traer los planes con una lectura única
-                    cargarPlanesDelHijo(vinc.padreUid, vinc.childId)
-                }
+                        // Carga planes activos del hijo (lectura única, no necesita ser RT)
+                        cargarPlanesDelHijo(vinc.padreUid, vinc.childId)
+                    }
             }
             hijoJobs[vinc.childId] = job
         }
@@ -229,6 +195,12 @@ class NutritionistDashboardViewModel : ViewModel() {
     private fun cargarPlanesDelHijo(padreUid: String, childId: String) {
         viewModelScope.launch {
             try {
+                val source = if (com.example.nutriia.offline.OfflineManager.hayConexion()) {
+                    com.google.firebase.firestore.Source.DEFAULT
+                } else {
+                    com.google.firebase.firestore.Source.CACHE
+                }
+
                 val query = db.collection("usuarios")
                     .document(padreUid)
                     .collection("hijos")
@@ -236,9 +208,9 @@ class NutritionistDashboardViewModel : ViewModel() {
                     .collection("planes_alimentarios")
 
                 val planesSnap = if (com.example.nutriia.offline.OfflineManager.hayConexion()) {
-                    query.whereEqualTo("activo", true).get().await()
+                    query.whereEqualTo("activo", true).get(source).await()
                 } else {
-                    query.get().await()
+                    query.get(source).await()
                 }
 
                 val planesDelHijo = planesSnap.documents.mapNotNull { planDoc ->
@@ -297,11 +269,15 @@ class NutritionistDashboardViewModel : ViewModel() {
     private fun formatearFecha(creadoEnRaw: Any?): String {
         val timestamp = when (creadoEnRaw) {
             is Number -> creadoEnRaw.toLong()
-            is String -> FechaUtils.parsearFechaHora(creadoEnRaw)
+            is String -> {
+                FechaUtils.parsearFechaHora(creadoEnRaw)?.time ?: 0L
+            }
+
+            is com.google.firebase.Timestamp -> creadoEnRaw.toDate().time
             else -> 0L
         }
         if (timestamp == 0L) return "Sin datos"
-        val diffMs = com.example.nutriia.platform.currentTimeMillis() - timestamp
+        val diffMs = System.currentTimeMillis() - timestamp
         val diffDias = diffMs / (1000 * 60 * 60 * 24)
         return when {
             diffDias == 0L -> "Hoy"
