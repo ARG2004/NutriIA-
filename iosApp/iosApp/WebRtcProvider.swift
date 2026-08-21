@@ -15,8 +15,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     private var localVideoTrack: RTCVideoTrack?
     private var remoteVideoTrack: RTCVideoTrack?
 
-    private let localView = RTCEAGLVideoView()
-    private let remoteView = RTCEAGLVideoView()
+    private let localView = RTCMTLVideoView(frame: .zero)
+    private let remoteView = RTCMTLVideoView(frame: .zero)
 
     private var isVideoCall = true
 
@@ -27,8 +27,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
         self.factory = RTCPeerConnectionFactory(encoderFactory: videoEncoderFactory, decoderFactory: videoDecoderFactory)
 
-        localView.contentMode = .scaleAspectFill
-        remoteView.contentMode = .scaleAspectFill
+        localView.videoContentMode = .scaleAspectFill
+        remoteView.videoContentMode = .scaleAspectFill
 
         setupAudioSession()
     }

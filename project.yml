@@ -11,7 +11,7 @@ packages:
     exactVersion: 10.29.0
   WebRTC:
     url: https://github.com/stasel/WebRTC.git
-    branch: latest # La rama oficial según el README para evitar fallos de resolución
+    exactVersion: 1.1.0 # Versión estable con soporte Metal
 
 targets:
   NutriIA:
@@ -37,7 +37,7 @@ targets:
         CFBundleName: NutriIA
         CFBundlePackageType: APPL
         CFBundleShortVersionString: '2.4.1'
-        CFBundleVersion: '134'
+        CFBundleVersion: '135'
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: com.arg.nutriia
@@ -78,7 +78,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
-        CURRENT_PROJECT_VERSION: '134'
+        CURRENT_PROJECT_VERSION: '135'
         MARKETING_VERSION: '2.4.1'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
@@ -87,7 +87,9 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseCore
       - package: WebRTC
         product: WebRTC
       - framework: shared/build/bin/iosArm64/releaseFramework/Shared.framework
-        embed: false
+        embed: true
