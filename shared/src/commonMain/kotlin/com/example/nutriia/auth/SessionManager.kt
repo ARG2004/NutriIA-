@@ -71,5 +71,21 @@ object SessionManager {
         PlatformPreferences.remove("huella_confirmada")
         PlatformPreferences.remove("activacion_huella_mostrada")
         PlatformPreferences.remove("ultima_pantalla")
+        PlatformPreferences.remove("pago_uid")
+        PlatformPreferences.remove("pago_nombre")
+        PlatformPreferences.remove("pago_id_exitoso")
+        PlatformPreferences.remove("pago_tipo")
     }
+
+    fun guardarEstadoPago(uid: String, nombre: String, idExitoso: String, tipo: String?) {
+        PlatformPreferences.putString("pago_uid", uid)
+        PlatformPreferences.putString("pago_nombre", nombre)
+        PlatformPreferences.putString("pago_id_exitoso", idExitoso)
+        tipo?.let { PlatformPreferences.putString("pago_tipo", it) }
+    }
+
+    fun obtenerPagoUid(): String? = PlatformPreferences.getString("pago_uid")
+    fun obtenerPagoNombre(): String? = PlatformPreferences.getString("pago_nombre")
+    fun obtenerPagoIdExitoso(): String? = PlatformPreferences.getString("pago_id_exitoso")
+    fun obtenerPagoTipo(): String? = PlatformPreferences.getString("pago_tipo")
 }

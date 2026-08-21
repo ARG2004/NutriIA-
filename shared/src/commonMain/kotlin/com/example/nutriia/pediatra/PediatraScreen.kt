@@ -272,8 +272,10 @@ fun PediatraScreen(
         }
     }
 
-    LaunchedEffect(iniciarLlamadaAlEntrar) {
+    LaunchedEffect(iniciarLlamadaAlEntrar, pagoIdExitoso) {
+        Log.i("PediatraScreen", "LaunchedEffect: iniciarLlamadaAlEntrar=$iniciarLlamadaAlEntrar, pagoNutriologoUid=$pagoNutriologoUid, pagoIdExitoso=$pagoIdExitoso")
         if (iniciarLlamadaAlEntrar != null && pagoNutriologoUid.isNotBlank() && pagoIdExitoso.isNotBlank()) {
+            Log.i("PediatraScreen", "🚀 Iniciando llamada automática tras pago")
             teleconsultaViewModel.iniciarLlamadaComoPadre(
                 padreUid         = padreUid,
                 padreNombre      = padreNombreCompleto,

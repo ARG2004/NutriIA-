@@ -56,6 +56,9 @@ targets:
         NSCalendarsFullAccessUsageDescription: "NutrIA necesita acceso completo al calendario para insertar y gestionar tus planes de alimentación y citas médicas."
         NSCalendarsWriteOnlyAccessUsageDescription: "NutrIA necesita permiso para añadir eventos de alimentación y citas médicas a tu calendario."
         GROQ_API_KEY: "$(GROQ_API_KEY)"
+    capabilities:
+      - com.apple.developer.usernotifications
+      - com.apple.developer.aps-environment
     settings:
       configFiles:
         Debug: iosApp/Config.xcconfig

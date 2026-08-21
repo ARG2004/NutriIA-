@@ -272,10 +272,24 @@ fun NutriIAiOSApp() {
     var nombreMama by remember { mutableStateOf("") }
     var semanasEmbarazo by remember { mutableIntStateOf(1) }
     var pacienteSeleccionado by remember { mutableStateOf<PacienteResumen?>(null) }
-    var pagoNutriologoUid by remember { mutableStateOf("") }
-    var pagoNutriologoNombre by remember { mutableStateOf("") }
-    var pagoIdExitoso by remember { mutableStateOf("") }
+    var pagoNutriologoUid by remember { mutableStateOf(com.example.nutriia.auth.SessionManager.obtenerPagoUid() ?: "") }
+    var pagoNutriologoNombre by remember { mutableStateOf(com.example.nutriia.auth.SessionManager.obtenerPagoNombre() ?: "") }
+    var pagoIdExitoso by remember { mutableStateOf(com.example.nutriia.auth.SessionManager.obtenerPagoIdExitoso() ?: "") }
     var pagoPantallaRetorno by remember { mutableStateOf(Screen.PEDIATRA_DASHBOARD) }
+    var pagoTipoLlamada by remember { mutableStateOf<TipoLlamada?>(
+        com.example.nutriia.auth.SessionManager.obtenerPagoTipo()?.let { runCatching { TipoLlamada.valueOf(it) }.getOrNull() }
+    ) }
+
+    // Sincronizar estados de pago con persistencia local para sobrevivir a reinicios (Safari)
+    LaunchedEffect(pagoNutriologoUid, pagoNutriologoNombre, pagoIdExitoso, pagoTipoLlamada) {
+        com.example.nutriia.platform.Log.i("AppiOS", "Persistiendo estado de pago: uid=$pagoNutriologoUid, exitoso=$pagoIdExitoso")
+        com.example.nutriia.auth.SessionManager.guardarEstadoPago(
+            uid = pagoNutriologoUid,
+            nombre = pagoNutriologoNombre,
+            idExitoso = pagoIdExitoso,
+            tipo = pagoTipoLlamada?.name
+        )
+    }
 
     val scope = rememberCoroutineScope()
 
@@ -423,6 +437,8 @@ fun NutriIAiOSApp() {
 
     LaunchedEffect(Unit) {
         com.example.nutriia.platform.RemoteConfigManager.fetchConfigs()
+        // Solicitar permisos de notificación globales en iOS al arrancar
+        PlatformPermissionHelper.requestPermission(PermissionType.NOTIFICATIONS) { }
     }
 
     // ─── Control de Sesión Inicial y Primera Vez (Accesibilidad) ───────────
@@ -809,10 +825,10 @@ fun NutriIAiOSApp() {
                     Screen.RECORDATORIOS -> {
                         val rol = loginViewModel.rolUsuario
                         if (rol == "mama_primeriza") {
-                            AlertasScreen(childId = null, childName = "Mi Embarazo", a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
+                            AlertasScreen(childId = null, childName = "Mi Embarazo", uid = loginViewModel.uidUsuario, a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA })
                         } else {
                             activeChild?.let { child ->
-                                AlertasScreen(childId = child.id, childName = child.name, a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                                AlertasScreen(childId = child.id, childName = child.name, uid = loginViewModel.uidUsuario, a11yVm = accessibilityVm, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
                             } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
                         }
                     }
@@ -824,12 +840,18 @@ fun NutriIAiOSApp() {
                             childId = child.id,
                             childNombre = child.name,
                             a11yVm = accessibilityVm,
+                            iniciarLlamadaAlEntrar = pagoTipoLlamada,
                             pagoNutriologoUid = pagoNutriologoUid,
                             pagoNutriologoNombre = pagoNutriologoNombre,
                             pagoIdExitoso = pagoIdExitoso,
-                            onAbrirPago = { nutriologoUid, nutriologoNombre, _ ->
+                            onLlamadaIniciada = {
+                                pagoIdExitoso = ""
+                                pagoTipoLlamada = null
+                            },
+                            onAbrirPago = { nutriologoUid, nutriologoNombre, tipo ->
                                 pagoNutriologoUid = nutriologoUid
                                 pagoNutriologoNombre = nutriologoNombre
+                                pagoTipoLlamada = tipo
                                 pagoPantallaRetorno = Screen.PEDIATRA_DASHBOARD
                                 currentScreen = Screen.PAGO_TELECONSULTA
                             },
@@ -846,9 +868,10 @@ fun NutriIAiOSApp() {
                         teleconsultaViewModel = teleconsultaVm,
                         mamaUid = loginViewModel.uidUsuario,
                         mamaNombre = loginViewModel.nombreUsuario,
-                        onAbrirPago = { gineUid, gineNombre, _ ->
+                        onAbrirPago = { gineUid, gineNombre, tipo ->
                             pagoNutriologoUid = gineUid
                             pagoNutriologoNombre = gineNombre
+                            pagoTipoLlamada = tipo
                             pagoPantallaRetorno = Screen.CITAS_EMBARAZO
                             currentScreen = Screen.PAGO_TELECONSULTA
                         },

@@ -26,10 +26,10 @@ class AlertaViewModel : ViewModel() {
     private val _cargando  = MutableStateFlow(false)
     val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
 
-    fun init(childId: String?) {
+    fun init(childId: String?, uid: String? = null) {
         observerJob?.cancel()
         observerJob = viewModelScope.launch {
-            repo.observarPorHijo(childId)
+            repo.observarPorHijo(childId, uid)
                 .catch { e -> _uiState.value = AlertaUiState.Error(e.message ?: "Error") }
                 .collect { lista -> _alertas.value = lista }
         }

@@ -125,6 +125,7 @@ fun AlertasScreen(
     childId:        String?,
     childName:      String?,
     onNavigateBack: () -> Unit,
+    uid:            String? = null,
     a11yVm:         AccessibilityViewModel = viewModel(),
     viewModel:      AlertaViewModel = viewModel()
 ) {
@@ -142,13 +143,15 @@ fun AlertasScreen(
 
     val notificationPermission = rememberPermissionState(
         type = PermissionType.NOTIFICATIONS,
-        onGranted = { /* Ya tiene permiso */ }
+        onGranted = { 
+            com.example.nutriia.platform.Log.i("Alertas", "Permisos de notificación concedidos")
+        }
     )
 
     LaunchedEffect(Unit) {
-        viewModel.init(childId)
+        viewModel.init(childId, uid)
 
-        // Solicitar permisos de notificación al entrar
+        // Solicitar permisos de notificación de forma agresiva en iOS al entrar
         notificationPermission.requestPermission()
 
         if (esBlind) {

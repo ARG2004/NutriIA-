@@ -15,16 +15,16 @@ class AlertaRepository {
     private val db get() = Firebase.firestore
     private val auth get() = Firebase.auth
 
-    private fun coleccion(childId: String?) =
+    private fun coleccion(childId: String?, uid: String? = null) =
         if (!childId.isNullOrEmpty()) {
             db.collection("usuarios")
-                .document(auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
+                .document(uid ?: auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
                 .collection("hijos")
                 .document(childId)
                 .collection("alertas")
         } else {
             db.collection("usuarios")
-                .document(auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
+                .document(uid ?: auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado"))
                 .collection("perfilEmbarazo")
                 .document("unico")
                 .collection("alertas")
@@ -60,17 +60,17 @@ class AlertaRepository {
         }
     }
 
-    fun observarPorHijo(childId: String?): Flow<List<Alerta>> {
-        val uid = auth.currentUser?.uid
-        if (uid == null) {
+    fun observarPorHijo(childId: String?, uid: String? = null): Flow<List<Alerta>> {
+        val currentUid = uid ?: auth.currentUser?.uid
+        if (currentUid == null) {
             Log.e("AlertaRepo", "No se puede observar: Usuario no autenticado")
             return flowOf(emptyList())
         }
         
-        Log.i("AlertaRepo", "Iniciando observación para hijo: $childId (uid: $uid)")
+        Log.i("AlertaRepo", "Iniciando observación para hijo: $childId (uid: $currentUid)")
         
         return try {
-            coleccion(childId).snapshots
+            coleccion(childId, currentUid).snapshots
                 .map { snapshot ->
                     Log.i("AlertaRepo", "Snapshot recibido con ${snapshot.documents.size} documentos")
                     snapshot.documents.mapNotNull { doc ->

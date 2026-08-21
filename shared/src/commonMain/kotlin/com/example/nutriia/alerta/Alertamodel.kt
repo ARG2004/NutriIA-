@@ -93,7 +93,9 @@ data class Alerta(
                 diasSemana  = diasRaw.mapNotNull { n -> DiasSemana.entries.find { it.name == n } },
                 fechaUnica  = map["fechaUnica"]  as? String,
                 activa      = map["activa"]      as? Boolean ?: true,
-                creadoEn    = (map["creadoEn"] as? Number)?.toLong() ?: currentTimeMillis()
+                creadoEn    = (map["creadoEn"] as? Number)?.toLong() 
+                    ?: (map["creadaEn"] as? Number)?.toLong() 
+                    ?: currentTimeMillis()
             )
         }
     }
