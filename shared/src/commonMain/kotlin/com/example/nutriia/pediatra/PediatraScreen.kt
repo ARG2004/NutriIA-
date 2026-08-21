@@ -40,6 +40,10 @@ import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.accesibilidad.InputModoCiego
+import com.example.nutriia.accesibilidad.NutriTTS
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
@@ -373,15 +377,30 @@ fun PediatraScreen(
             }
             
             if (mostrarEscannerQR) {
-                item {
-                    QrScannerDialog(
-                        onDismiss = { mostrarEscannerQR = false },
-                        onCodeScanned = { code ->
-                            textoCodigo = code
-                            mostrarEscannerQR = false
-                            vinculacionViewModel.buscarPorCodigo(code)
-                        }
-                    )
+                if (esBlind) {
+                    item {
+                        EspecialistaBlindDialog(
+                            onDismiss = { mostrarEscannerQR = false },
+                            onCodeScanned = { code ->
+                                textoCodigo = code
+                                mostrarEscannerQR = false
+                                vinculacionViewModel.buscarPorCodigo(code)
+                            },
+                            ttsManager = a11yVm.ttsManager,
+                            idioma = idiomaActual
+                        )
+                    }
+                } else {
+                    item {
+                        QrScannerDialog(
+                            onDismiss = { mostrarEscannerQR = false },
+                            onCodeScanned = { code ->
+                                textoCodigo = code
+                                mostrarEscannerQR = false
+                                vinculacionViewModel.buscarPorCodigo(code)
+                            }
+                        )
+                    }
                 }
             }
 
@@ -1230,6 +1249,124 @@ private fun SheetInfoRow(
         Column {
             Text(label, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
             Text(value, fontSize = 14.sp, color = PDarkGreen, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODO PARA PERSONAS CIEGAS (BLIND MODE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun EspecialistaBlindDialog(
+    onDismiss:     () -> Unit,
+    onCodeScanned: (String) -> Unit,
+    ttsManager:    NutriTTS? = null,
+    idioma:        IdiomaVoz = IdiomaVoz.ESPANOL_MX
+) {
+    var manualCode by remember { mutableStateOf("") }
+    
+    fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
+
+    LaunchedEffect(Unit) {
+        ttsManager?.hablarYEsperar(loc(
+            "Modo para personas ciegas activado. Vinculación de especialista. " +
+            "Di el código de tu nutriólogo o pediatra, o di cancelar para volver.",
+            "Blind mode activated. Specialist linking. " +
+            "Say your nutritionist or pediatrician's code, or say cancel to go back."
+        ), 1000L)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF181A20)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.PersonAdd, null, tint = PGreen, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = loc("Vincular especialista", "Link specialist"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PGreen
+                    )
+                }
+
+                Spacer(Modifier.height(48.dp))
+
+                Box(
+                    modifier = Modifier.size(120.dp).background(PGreen.copy(0.1f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.QrCodeScanner, null, tint = PGreen, modifier = Modifier.size(56.dp))
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                CampoTextoAccesible(
+                    valor = manualCode,
+                    onValorChange = { manualCode = it.uppercase() },
+                    etiqueta = loc("Código del especialista", "Specialist code"),
+                    descripcionVoz = loc("Dime el código de vinculación. Por ejemplo: NUTRI, guion, ABCD, guion, uno dos tres.", "Tell me the linking code. For example: NUTRI, dash, ABCD, dash, one two three."),
+                    ttsManager = ttsManager,
+                    idioma = idioma,
+                    colorPrimario = PGreen,
+                    onNext = {
+                        if (manualCode.isNotBlank()) {
+                            ttsManager?.hablar(loc("Procesando código $manualCode", "Processing code $manualCode"))
+                            onCodeScanned(manualCode)
+                        }
+                    },
+                    onCommandParsed = { cmd ->
+                        if (cmd.contains("vincular") || cmd.contains("link") || cmd.contains("enviar")) {
+                             if (manualCode.isNotBlank()) onCodeScanned(manualCode)
+                             true
+                        } else false
+                    }
+                )
+
+                Spacer(Modifier.height(60.dp))
+
+                // Footer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    ) {
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Button(
+                        onClick = { onCodeScanned(manualCode) },
+                        enabled = manualCode.isNotBlank(),
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, PGreen.copy(0.3f))
+                    ) {
+                        Text(loc("Vincular", "Link"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PGreen)
+                    }
+                }
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.nutriia.accesibilidad
 
+import androidx.compose.animation.core.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -589,6 +591,37 @@ fun CampoTextoAccesible(
                         modifier         = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                        val scale by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = if (voiceEstado == VoiceInputState.LISTENING) 1.25f else 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "scale"
+                        )
+                        val alpha by infiniteTransition.animateFloat(
+                            initialValue = 0.7f,
+                            targetValue = if (voiceEstado == VoiceInputState.LISTENING) 0.3f else 0f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "alpha"
+                        )
+
+                        // Anillo de pulso exterior
+                        if (voiceEstado == VoiceInputState.LISTENING) {
+                            Box(
+                                modifier = Modifier
+                                    .size(130.dp)
+                                    .scale(scale)
+                                    .clip(CircleShape)
+                                    .background(colorPrimario.copy(alpha = alpha))
+                            )
+                        }
+
                         Box(
                             modifier = Modifier
                                 .size(110.dp)

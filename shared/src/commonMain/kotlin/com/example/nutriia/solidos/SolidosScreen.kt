@@ -46,6 +46,11 @@ import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.util.CalendarEvent
 import com.example.nutriia.util.PlatformCalendarManager
 import com.example.nutriia.resources.*
+import com.example.nutriia.accesibilidad.InputModoCiego
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.PerfilSaludNino
 import com.example.nutriia.sueldo.RecetaMexicana
@@ -519,18 +524,35 @@ fun SolidosScreen(
     }
 
     // ── Diálogo agregar — pasa esBlind, ttsManager e idioma ──────────────────
-    if (showAgregar) AgregarAlimentoDialog(
-        esAccesible = esAccesible,
-        esBlind     = esBlind,
-        ttsManager  = ttsManager,
-        idioma     = idiomaActual,
-        onDismiss  = {
-            if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-            showAgregar = false
+    if (showAgregar) {
+        if (esBlind) {
+            SolidoBlindDialog(
+                childId = childId,
+                ttsManager = ttsManager,
+                idioma = idiomaActual,
+                onDismiss = {
+                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                    showAgregar = false
+                },
+                onSave = { alim ->
+                    viewModel.guardarAlimento(childId, alim)
+                    showAgregar = false
+                }
+            )
+        } else {
+            AgregarAlimentoDialog(
+                esAccesible = esAccesible,
+                esBlind     = false,
+                ttsManager  = ttsManager,
+                idioma     = idiomaActual,
+                onDismiss  = {
+                    showAgregar = false
+                }
+            ) { a ->
+                viewModel.guardarAlimento(childId, a)
+                showAgregar = false
+            }
         }
-    ) { a ->
-        viewModel.guardarAlimento(childId, a)
-        showAgregar = false
     }
 
     aEliminar?.let { a ->
@@ -1682,6 +1704,219 @@ private fun NotaOms() {
                             fontWeight      = FontWeight.Medium,
                             textDecoration  = TextDecoration.Underline
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODO PARA PERSONAS CIEGAS (BLIND MODE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun SolidoBlindDialog(
+    childId:    String,
+    ttsManager: NutriTTS? = null,
+    idioma:     IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onDismiss:  () -> Unit,
+    onSave:     (AlimentoIntroducido) -> Unit
+) {
+    var nombre   by remember { mutableStateOf("") }
+    var grupo    by remember { mutableStateOf(GrupoAlimento.VERDURAS) }
+    var fecha    by remember { mutableStateOf(FechaUtils.fechaActual()) }
+    var reaccion by remember { mutableStateOf(ReaccionAlimento.NINGUNA) }
+    var notas    by remember { mutableStateOf("") }
+    
+    var campoActivo by remember { mutableIntStateOf(0) } // 0: name, 1: date, 2: group, 3: reaction, 4: notes
+
+    fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
+
+    val guardarTodo = {
+        if (nombre.isNotBlank()) {
+            ttsManager?.hablar(loc("Guardando alimento.", "Saving food."))
+            onSave(AlimentoIntroducido(
+                id                = com.example.nutriia.platform.generateUUID(),
+                childId           = childId,
+                nombre            = nombre.trim(),
+                grupo             = grupo,
+                fechaIntroduccion = fecha,
+                reaccion          = reaccion,
+                notas             = notas.trim()
+            ))
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        ttsManager?.hablarYEsperar(loc(
+            "Modo para personas ciegas activado. Formulario de registro de nuevo alimento. " +
+            "El foco está en el campo de nombre del alimento.",
+            "Blind mode activated. New food registration form. " +
+            "Focus is on the food name field."
+        ), 1000L)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF181A20)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.AddCircle, null, tint = Sol.Orange, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = loc("Registrar alimento", "Register food"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Sol.Orange
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Campos Dinámicos
+                val currentEtiqueta = when(campoActivo) {
+                    0 -> loc("Nombre del alimento", "Food name")
+                    1 -> loc("Fecha de introducción", "Introduction date")
+                    2 -> loc("Grupo alimenticio", "Food group")
+                    3 -> loc("Reacción observada", "Observed reaction")
+                    4 -> loc("Notas adicionales (opcional)", "Additional notes (optional)")
+                    else -> ""
+                }
+                
+                val currentDescVoz = when(campoActivo) {
+                    0 -> loc("Di el nombre del alimento que el pequeño probó.", "Say the name of the food the little one tried.")
+                    1 -> loc("Di la fecha. Por ejemplo: veinte de agosto.", "Tell me the date. For example: August twentieth.")
+                    2 -> loc("Dime el grupo: frutas, verduras, cereales, proteínas, lácteos o legumbres.", "Tell me the group: fruits, vegetables, cereals, proteins, dairy or legumes.")
+                    3 -> loc("Dime la reacción: ninguna, aceptado, rechazo, leve o alergia.", "Tell me the reaction: none, accepted, rejected, mild or allergy.")
+                    4 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                    else -> ""
+                }
+
+                if (campoActivo == 2) {
+                    // Selector de grupo especial para modo ciego
+                    Column {
+                        Text(currentEtiqueta, color = Color.White, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(12.dp))
+                        FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 3) {
+                            GrupoAlimento.entries.forEach { g ->
+                                val isSelected = grupo == g
+                                Box(
+                                    modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) Color(g.colorHex) else Color(0xFF262A34))
+                                        .border(1.dp, Color(g.colorHex), RoundedCornerShape(12.dp))
+                                        .clickable { 
+                                            grupo = g
+                                            ttsManager?.hablar(loc("Seleccionado: ${g.label}", "Selected: ${g.label}"))
+                                            campoActivo = 3
+                                        }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(g.label, fontSize = 12.sp, color = if (isSelected) Color.White else Color(g.colorHex), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                } else if (campoActivo == 3) {
+                    // Selector de reacción especial
+                    Column {
+                        Text(currentEtiqueta, color = Color.White, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(12.dp))
+                        FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 3) {
+                            ReaccionAlimento.entries.forEach { r ->
+                                val isSelected = reaccion == r
+                                Box(
+                                    modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) Sol.Orange else Color(0xFF262A34))
+                                        .border(1.dp, Sol.Orange, RoundedCornerShape(12.dp))
+                                        .clickable { 
+                                            reaccion = r
+                                            ttsManager?.hablar(loc("Seleccionado: ${r.label}", "Selected: ${r.label}"))
+                                            campoActivo = 4
+                                        }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(r.label, fontSize = 12.sp, color = if (isSelected) Color.White else Sol.Orange, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    CampoTextoAccesible(
+                        valor = when(campoActivo) {
+                            0 -> nombre
+                            1 -> fecha
+                            4 -> notas
+                            else -> ""
+                        },
+                        onValorChange = { v ->
+                            when(campoActivo) {
+                                0 -> nombre = v
+                                1 -> fecha = v
+                                4 -> notas = v
+                            }
+                        },
+                        etiqueta = currentEtiqueta,
+                        descripcionVoz = currentDescVoz,
+                        ttsManager = ttsManager,
+                        idioma = idioma,
+                        colorPrimario = Sol.Orange,
+                        esCampoFecha = campoActivo == 1,
+                        onNext = {
+                            if (campoActivo == 4) {
+                                guardarTodo()
+                            } else {
+                                campoActivo++
+                            }
+                        },
+                        onCommandParsed = { cmd ->
+                            if (cmd.contains("guardar") || cmd.contains("save")) {
+                                guardarTodo()
+                                true
+                            } else false
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(40.dp))
+
+                // Footer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    ) {
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Button(
+                        onClick = { guardarTodo() },
+                        enabled = nombre.isNotBlank(),
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Sol.Orange.copy(0.3f))
+                    ) {
+                        Text(loc("Guardar", "Save"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Sol.Orange)
                     }
                 }
             }

@@ -35,6 +35,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
@@ -42,6 +45,10 @@ import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.loc
 import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.InputModoCiego
+import com.example.nutriia.accesibilidad.VoiceInputManager
+import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.accesibilidad.BrailleKeyboard
 import com.example.nutriia.utils.FechaUtils
 
 private val LactPink      = Color(0xFFEC9BBF)
@@ -296,25 +303,35 @@ fun LactanciaScreen(
     }
 
     // ── Diálogos con animación de escala ─────────────────────────────────────
-    AnimatedVisibility(
-        visible = showAddDialog,
-        enter   = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), 0.88f) + fadeIn(tween(220)),
-        exit    = scaleOut(tween(180), 0.92f) + fadeOut(tween(180))
-    ) {
-        AddFeedingDialog(
-            esAccesible = esAccesible,
-            esBlind     = esBlind,
-            ttsManager = ttsManager,
-            idioma     = idiomaActual,
-            onDismiss = {
-                if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                showAddDialog = false
-            },
-            onSave    = { log ->
-                viewModel.saveFeeding(childId, log)
-                showAddDialog = false
-            }
-        )
+    if (showAddDialog) {
+        if (esBlind) {
+            AddFeedingBlindDialog(
+                ttsManager = ttsManager,
+                idioma = idiomaActual,
+                onDismiss = {
+                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                    showAddDialog = false
+                },
+                onSave = { log ->
+                    viewModel.saveFeeding(childId, log)
+                    showAddDialog = false
+                }
+            )
+        } else {
+            AddFeedingDialog(
+                esAccesible = esAccesible,
+                esBlind = false,
+                ttsManager = ttsManager,
+                idioma = idiomaActual,
+                onDismiss = {
+                    showAddDialog = false
+                },
+                onSave = { log ->
+                    viewModel.saveFeeding(childId, log)
+                    showAddDialog = false
+                }
+            )
+        }
     }
 
     if (showTipsSheet) {
@@ -1185,3 +1202,211 @@ private fun LactOmsLinkRow(label: String, url: String) {
         )
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODO PARA PERSONAS CIEGAS (BLIND MODE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun AddFeedingBlindDialog(
+    ttsManager: NutriTTS? = null,
+    idioma:     IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onDismiss:  () -> Unit,
+    onSave:     (FeedingLog) -> Unit
+) {
+    var selectedSide by remember { mutableStateOf(BreastSide.LEFT) }
+    var duration     by remember { mutableStateOf("") }
+    var formulaMl    by remember { mutableStateOf("") }
+    var notes        by remember { mutableStateOf("") }
+    var timeInput    by remember { mutableStateOf("") }
+    
+    var campoActivo  by remember { mutableIntStateOf(0) } // 0: side, 1: time, 2: duration, 3: formula, 4: notes
+
+    val today = FechaUtils.hoyIso()
+
+    fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
+
+    val guardarTodo = {
+        val finalTime = if (timeInput.isNotBlank()) timeInput else FechaUtils.horaActualIso()
+        ttsManager?.hablar(loc("Guardando toma.", "Saving feeding."))
+        onSave(FeedingLog(
+            date = today, 
+            startTime = finalTime, 
+            durationMinutes = if (selectedSide == BreastSide.FORMULA) 0 else (duration.toIntOrNull() ?: 0),
+            side = selectedSide.name, 
+            formulaMl = formulaMl.toIntOrNull() ?: 0, 
+            notes = notes
+        ))
+    }
+
+    // Guía inicial por voz
+    LaunchedEffect(Unit) {
+        ttsManager?.hablarYEsperar(loc(
+            "Modo para personas ciegas activado. Formulario de registro de toma. " +
+            "Primero, selecciona el tipo de toma. Las opciones son: izquierdo, derecho, ambos pechos o fórmula.",
+            "Blind mode activated. Feeding registration form. " +
+            "First, select the feeding type. Options are: left, right, both breasts, or formula."
+        ), 1000L)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF181A20) // Fondo oscuro tipo Android
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Add, null, tint = LactPink, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = loc("Registrar toma", "Register feeding"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = LactPink
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Selector de Tipo de Toma
+                Text(
+                    text = loc("Tipo de toma", "Feeding type"),
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    BreastSide.entries.forEach { side ->
+                        val isSelected = selectedSide == side
+                        val sideIcon = when (side) {
+                            BreastSide.LEFT    -> Icons.AutoMirrored.Rounded.ArrowBack
+                            BreastSide.RIGHT   -> Icons.AutoMirrored.Rounded.ArrowForward
+                            BreastSide.BOTH    -> Icons.Rounded.SwapHoriz
+                            BreastSide.FORMULA -> Icons.Rounded.LocalDrink
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(64.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isSelected) LactPink else Color(0xFF262A34))
+                                .border(1.dp, if (isSelected) LactPink else Color.Gray.copy(0.3f), RoundedCornerShape(14.dp))
+                                .clickable {
+                                    selectedSide = side
+                                    ttsManager?.hablar(loc("Seleccionado: ${side.label}", "Selected: ${side.label}"))
+                                    if (campoActivo == 0) campoActivo = 1
+                                }
+                                .semantics { contentDescription = "Tipo ${side.label}. ${if(isSelected) "Seleccionado" else "Toca para seleccionar"}" },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(sideIcon, null, tint = if (isSelected) Color.White else LactPink, modifier = Modifier.size(20.dp))
+                                Text(side.label.split(" ").last(), fontSize = 10.sp, color = if (isSelected) Color.White else LactPink, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // Campo Dinámico con Voz / Teclado / Braille
+                val currentEtiqueta = when(campoActivo) {
+                    1 -> loc("Hora de inicio (HH:mm)", "Start time (HH:mm)")
+                    2 -> if (selectedSide == BreastSide.FORMULA) loc("Cantidad (ml)", "Amount (ml)") else loc("Duración (minutos)", "Duration (minutes)")
+                    3 -> loc("Notas (opcional)", "Notes (optional)")
+                    else -> loc("Selecciona tipo", "Select type")
+                }
+                
+                val currentDescVoz = when(campoActivo) {
+                    1 -> loc("Di la hora de inicio, por ejemplo: ocho y media.", "Say the start time, for example: eight thirty.")
+                    2 -> if (selectedSide == BreastSide.FORMULA) loc("Di la cantidad en mililitros.", "Say the amount in milliliters.") 
+                         else loc("Di la duración en minutos.", "Say the duration in minutes.")
+                    3 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                    else -> ""
+                }
+
+                if (campoActivo > 0) {
+                    CampoTextoAccesible(
+                        valor = when(campoActivo) {
+                            1 -> timeInput
+                            2 -> if (selectedSide == BreastSide.FORMULA) formulaMl else duration
+                            3 -> notes
+                            else -> ""
+                        },
+                        onValorChange = { v ->
+                            when(campoActivo) {
+                                1 -> timeInput = v
+                                2 -> if (selectedSide == BreastSide.FORMULA) formulaMl = v else duration = v
+                                3 -> notes = v
+                            }
+                        },
+                        etiqueta = currentEtiqueta,
+                        descripcionVoz = currentDescVoz,
+                        ttsManager = ttsManager,
+                        idioma = idioma,
+                        colorPrimario = LactPink,
+                        esCampoHora = campoActivo == 1,
+                        keyboardOptions = KeyboardOptions(keyboardType = if (campoActivo == 1 || campoActivo == 2) KeyboardType.Number else KeyboardType.Text),
+                        onNext = {
+                            if (campoActivo == 3) {
+                                guardarTodo()
+                            } else {
+                                campoActivo++
+                            }
+                        },
+                        onCommandParsed = { cmd ->
+                            if (cmd.contains("guardar") || cmd.contains("save")) {
+                                guardarTodo()
+                                true
+                            } else false
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(40.dp))
+
+                // Footer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    ) {
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Button(
+                        onClick = { guardarTodo() },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, LactPink.copy(0.3f))
+                    ) {
+                        Text(loc("Guardar toma", "Save feeding"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = LactPink)
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -42,6 +42,9 @@ import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.InputModoCiego
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.nutriia.resources.*
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -253,22 +256,33 @@ fun CrecimientoScreen(
         }
     }
 
-    AnimatedVisibility(
-        visible = showDialog,
-        enter   = scaleIn(spring(Spring.DampingRatioMediumBouncy), 0.9f) + fadeIn(tween(220)),
-        exit    = scaleOut(tween(180), 0.94f) + fadeOut(tween(180))
-    ) {
-        DialogoMedicion(
-            esAccesible = esAccesible,
-            esBlind     = esBlind,
-            ttsManager  = ttsManager,
-            idioma     = idiomaActual,
-            onDismiss = { 
-                if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                showDialog = false 
-            },
-            onSave    = { m -> viewModel.guardarMedicion(childId, m); showDialog = false }
-        )
+    if (showDialog) {
+        if (esBlind) {
+            CrecimientoBlindDialog(
+                childId = childId,
+                ttsManager = ttsManager,
+                idioma = idiomaActual,
+                onDismiss = {
+                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                    showDialog = false
+                },
+                onSave = { med ->
+                    viewModel.guardarMedicion(childId, med)
+                    showDialog = false
+                }
+            )
+        } else {
+            DialogoMedicion(
+                esAccesible = esAccesible,
+                esBlind = false,
+                ttsManager = ttsManager,
+                idioma = idiomaActual,
+                onDismiss = { 
+                    showDialog = false 
+                },
+                onSave = { m -> viewModel.guardarMedicion(childId, m); showDialog = false }
+            )
+        }
     }
 
     eliminar?.let { m ->
@@ -1492,3 +1506,172 @@ private fun LinkRow(
 // ═══════════════════════════════════════════════════════════════════════════
 
 private fun calcMeses(fecha: String): Int = com.example.nutriia.shared.calcularEdadMeses(fecha)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODO PARA PERSONAS CIEGAS (BLIND MODE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun CrecimientoBlindDialog(
+    childId:    String,
+    ttsManager: NutriTTS? = null,
+    idioma:     IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onDismiss:  () -> Unit,
+    onSave:     (MedicionCrecimiento) -> Unit
+) {
+    var fecha by remember { mutableStateOf(com.example.nutriia.utils.FechaUtils.hoyIso()) }
+    var peso  by remember { mutableStateOf("") }
+    var talla by remember { mutableStateOf("") }
+    var circC by remember { mutableStateOf("") }
+    var notas by remember { mutableStateOf("") }
+    
+    var campoActivo by remember { mutableIntStateOf(0) } // 0: fecha, 1: peso, 2: talla, 3: circC, 4: notas
+
+    fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
+
+    val guardarTodo = {
+        if (peso.isNotBlank() && talla.isNotBlank()) {
+            ttsManager?.hablar(loc("Guardando medición.", "Saving measurement."))
+            onSave(MedicionCrecimiento(
+                id        = com.example.nutriia.platform.generateUUID(),
+                childId   = childId,
+                fecha     = fecha,
+                pesoKg    = peso.replace(",", ".").toDoubleOrNull()  ?: 0.0,
+                tallaCm   = talla.replace(",", ".").toDoubleOrNull() ?: 0.0,
+                circCefCm = circC.replace(",", ".").toDoubleOrNull() ?: 0.0,
+                notas     = notas
+            ))
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        ttsManager?.hablarYEsperar(loc(
+            "Modo para personas ciegas activado. Formulario de nueva medición de crecimiento. " +
+            "El foco está en el campo de fecha.",
+            "Blind mode activated. New growth measurement form. " +
+            "Focus is on the date field."
+        ), 1000L)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF181A20)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, tint = C_Green, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = loc("Nueva medición", "New measurement"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = C_Green
+                    )
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // Campos Dinámicos
+                val currentEtiqueta = when(campoActivo) {
+                    0 -> loc("Fecha de la medición", "Measurement date")
+                    1 -> loc("Peso (kilogramos)", "Weight (kilograms)")
+                    2 -> loc("Talla (centímetros)", "Height (centimeters)")
+                    3 -> loc("Perímetro cefálico (opcional)", "Head circumference (optional)")
+                    4 -> loc("Notas adicionales (opcional)", "Additional notes (optional)")
+                    else -> ""
+                }
+                
+                val currentDescVoz = when(campoActivo) {
+                    0 -> loc("Dime la fecha de hoy o la fecha en que se tomó la medida.", "Tell me today's date or the date the measure was taken.")
+                    1 -> loc("Dime el peso del pequeño en kilogramos.", "Tell me the little one's weight in kilograms.")
+                    2 -> loc("Dime la talla o estatura en centímetros.", "Tell me the height or stature in centimeters.")
+                    3 -> loc("Campo opcional. Di el perímetro cefálico en centímetros, o di siguiente para omitir.", "Optional field. Say the head circumference in centimeters, or say next to skip.")
+                    4 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                    else -> ""
+                }
+
+                CampoTextoAccesible(
+                    valor = when(campoActivo) {
+                        0 -> fecha
+                        1 -> peso
+                        2 -> talla
+                        3 -> circC
+                        4 -> notas
+                        else -> ""
+                    },
+                    onValorChange = { v ->
+                        when(campoActivo) {
+                            0 -> fecha = v
+                            1 -> peso = v
+                            2 -> talla = v
+                            3 -> circC = v
+                            4 -> notas = v
+                        }
+                    },
+                    etiqueta = currentEtiqueta,
+                    descripcionVoz = currentDescVoz,
+                    ttsManager = ttsManager,
+                    idioma = idioma,
+                    colorPrimario = C_Green,
+                    esCampoFecha = campoActivo == 0,
+                    keyboardOptions = KeyboardOptions(keyboardType = if (campoActivo in 1..3) KeyboardType.Decimal else KeyboardType.Text),
+                    onNext = {
+                        if (campoActivo == 4) {
+                            guardarTodo()
+                        } else {
+                            campoActivo++
+                        }
+                    },
+                    onCommandParsed = { cmd ->
+                        if (cmd.contains("guardar") || cmd.contains("save")) {
+                            guardarTodo()
+                            true
+                        } else false
+                    }
+                )
+
+                Spacer(Modifier.height(40.dp))
+
+                // Footer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    ) {
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Button(
+                        onClick = { guardarTodo() },
+                        enabled = peso.isNotBlank() && talla.isNotBlank(),
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, C_Green.copy(0.3f))
+                    ) {
+                        Text(loc("Guardar", "Save"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = C_Green)
+                    }
+                }
+            }
+        }
+    }
+}
+

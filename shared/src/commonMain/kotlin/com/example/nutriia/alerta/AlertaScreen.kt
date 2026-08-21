@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
@@ -39,6 +41,7 @@ import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.loc
 import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.InputModoCiego
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
 import com.example.nutriia.util.PermissionHelper
@@ -148,7 +151,7 @@ fun AlertasScreen(
         }
     )
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(childId, uid) {
         viewModel.init(childId, uid)
 
         // Solicitar permisos de notificación de forma agresiva en iOS al entrar
@@ -418,21 +421,39 @@ fun AlertasScreen(
 
     // Diálogo crear/editar
     if (showDialog) {
-        AlertaDialog(
-            childId     = childId,
-            childName   = childName,
-            alertaEdit  = alertaAEditar,
-            tipoInicial = tabSeleccionada,
-            esBlind     = esBlind,
-            esMute      = esMute,
-            ttsManager  = ttsManager,
-            idioma      = idiomaActual,
-            onDismiss   = { 
-                if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                showDialog = false; alertaAEditar = null 
-            },
-            onSave      = { nueva -> viewModel.guardar(nueva); showDialog = false; alertaAEditar = null }
-        )
+        if (esBlind) {
+            AlertaBlindDialog(
+                childId = childId,
+                childName = childName,
+                alertaEdit = alertaAEditar,
+                tipoInicial = tabSeleccionada,
+                ttsManager = ttsManager,
+                idioma = idiomaActual,
+                onDismiss = {
+                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                    showDialog = false; alertaAEditar = null
+                },
+                onSave = { nueva ->
+                    viewModel.guardar(nueva)
+                    showDialog = false; alertaAEditar = null
+                }
+            )
+        } else {
+            AlertaDialog(
+                childId     = childId,
+                childName   = childName,
+                alertaEdit  = alertaAEditar,
+                tipoInicial = tabSeleccionada,
+                esBlind     = false,
+                esMute      = esMute,
+                ttsManager  = ttsManager,
+                idioma      = idiomaActual,
+                onDismiss   = { 
+                    showDialog = false; alertaAEditar = null 
+                },
+                onSave      = { nueva -> viewModel.guardar(nueva); showDialog = false; alertaAEditar = null }
+            )
+        }
     }
 
     // Confirmar eliminación
@@ -1216,3 +1237,283 @@ private fun formatHora12h(hora24: String): String {
     val h12 = when { hh == 0 -> 12; hh > 12 -> hh - 12; else -> hh }
     return "$h12:${mm.toString().padStart(2, '0')} ${if (hh < 12) "AM" else "PM"}"
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODO PARA PERSONAS CIEGAS (BLIND MODE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun AlertaBlindDialog(
+    childId:     String?,
+    childName:   String?,
+    alertaEdit:  Alerta?,
+    tipoInicial: TipoAlerta?,
+    ttsManager:  NutriTTS? = null,
+    idioma:      IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onDismiss:   () -> Unit,
+    onSave:      (Alerta) -> Unit
+) {
+    val esEdicion = alertaEdit != null
+    
+    var titulo      by remember { mutableStateOf(alertaEdit?.titulo      ?: "") }
+    var descripcion by remember { mutableStateOf(alertaEdit?.descripcion ?: "") }
+    var tipo        by remember { mutableStateOf(alertaEdit?.tipo ?: tipoInicial ?: TipoAlerta.TOMA_COMIDA) }
+    var hora        by remember { mutableStateOf(alertaEdit?.hora ?: "") }
+    var diasSel     by remember { mutableStateOf(alertaEdit?.diasSemana  ?: DiasSemana.entries.toList()) }
+    var fechaUnica  by remember { mutableStateOf(alertaEdit?.fechaUnica  ?: "") }
+    var esUnica     by remember { mutableStateOf(alertaEdit?.fechaUnica  != null) }
+    
+    var campoActivo by remember { mutableIntStateOf(0) } // 0: category, 1: title, 2: time, 3: specific date toggle, 4: date/days, 5: notes
+
+    fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
+
+    val guardarTodo = {
+        if (titulo.isNotBlank()) {
+            val horaSegura = if (hora.isNotBlank() && hora.contains(":")) hora else "08:00"
+            ttsManager?.hablar(loc("Guardando alerta.", "Saving alert."))
+            onSave(Alerta(
+                id          = alertaEdit?.id       ?: com.example.nutriia.platform.generateUUID(),
+                childId     = childId ?: "",
+                childName   = childName ?: "Mi Embarazo",
+                tipo        = tipo,
+                titulo      = titulo.trim(),
+                descripcion = descripcion.trim(),
+                hora        = horaSegura,
+                diasSemana  = if (esUnica) emptyList() else diasSel,
+                fechaUnica  = if (esUnica && fechaUnica.length == 10) fechaUnica else null,
+                activa      = alertaEdit?.activa   ?: true,
+                creadoEn    = alertaEdit?.creadoEn ?: com.example.nutriia.platform.currentTimeMillis()
+            ))
+        }
+    }
+
+    // Guía inicial por voz
+    LaunchedEffect(Unit) {
+        ttsManager?.hablarYEsperar(loc(
+            "Modo para personas ciegas activado. Formulario de ${if(esEdicion) "edición" else "creación"} de alerta. " +
+            "Primero, selecciona la categoría. Las opciones son: toma o comida, vacuna, cita médica o medición.",
+            "Blind mode activated. Alert ${if(esEdicion) "editing" else "creation"} form. " +
+            "First, select the category. Options are: feeding or meal, vaccine, medical appointment, or measurement."
+        ), 1000L)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF181A20)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (esEdicion) Icons.Rounded.Edit else Icons.Rounded.NotificationAdd,
+                        null, tint = tipo.color, modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (esEdicion) loc("Editar alerta", "Edit alert") else loc("Nueva alerta", "New alert"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = tipo.color
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Selector de Categoría
+                Text(
+                    text = loc("Categoría", "Category"),
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TipoAlerta.entries.forEach { t ->
+                        val isSelected = tipo == t
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(64.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isSelected) t.color else Color(0xFF262A34))
+                                .border(1.dp, if (isSelected) t.color else Color.Gray.copy(0.3f), RoundedCornerShape(14.dp))
+                                .clickable {
+                                    tipo = t
+                                    ttsManager?.hablar(loc("Seleccionado: ${t.label}", "Selected: ${t.label}"))
+                                    if (campoActivo == 0) campoActivo = 1
+                                }
+                                .semantics { contentDescription = "Categoría ${t.label}. ${if(isSelected) "Seleccionada" else "Toca para seleccionar"}" },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(t.icon, null, tint = if (isSelected) Color.White else t.color, modifier = Modifier.size(20.dp))
+                                Text(t.label.split(" ").first(), fontSize = 9.sp, color = if (isSelected) Color.White else t.color, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // Campos Dinámicos
+                if (campoActivo > 0) {
+                    val currentEtiqueta = when(campoActivo) {
+                        1 -> loc("Título de la alerta", "Alert title")
+                        2 -> loc("Hora (HH:mm)", "Time (HH:mm)")
+                        3 -> loc("¿Es fecha específica?", "Is specific date?")
+                        4 -> if (esUnica) loc("Fecha (DD/MM/AAAA)", "Date (DD/MM/YYYY)") else loc("Días de repetición", "Repeat days")
+                        5 -> loc("Nota opcional", "Optional note")
+                        else -> ""
+                    }
+                    
+                    val currentDescVoz = when(campoActivo) {
+                        1 -> loc("Di el nombre de este recordatorio.", "Say the name of this reminder.")
+                        2 -> loc("Dime la hora, por ejemplo: ocho y media.", "Tell me the time, for example: eight thirty.")
+                        3 -> loc("Di 'sí' para fecha única, o 'no' para repetir días.", "Say 'yes' for a specific date, or 'no' to repeat days.")
+                        4 -> if (esUnica) loc("Dime la fecha.", "Tell me the date.") else loc("Dime los días, por ejemplo: lunes y jueves.", "Tell me the days, for example: Monday and Thursday.")
+                        5 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                        else -> ""
+                    }
+
+                    if (campoActivo == 3) {
+                        // Selector especial para el toggle de fecha
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(currentEtiqueta, color = Color.White, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(16.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                                Button(
+                                    onClick = { esUnica = true; campoActivo = 4; ttsManager?.hablar(loc("Fecha específica activada", "Specific date activated")) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = if(esUnica) tipo.color else Color(0xFF262A34)),
+                                    modifier = Modifier.weight(1f).height(60.dp)
+                                ) { Text("SÍ (Fecha)") }
+                                Button(
+                                    onClick = { esUnica = false; campoActivo = 4; ttsManager?.hablar(loc("Repetición activada", "Repeat days activated")) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = if(!esUnica) tipo.color else Color(0xFF262A34)),
+                                    modifier = Modifier.weight(1f).height(60.dp)
+                                ) { Text("NO (Días)") }
+                            }
+                        }
+                    } else if (campoActivo == 4 && !esUnica) {
+                        // Selector de días para modo ciego
+                        Column {
+                            Text(currentEtiqueta, color = Color.White, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                DiasSemana.entries.forEach { dia ->
+                                    val sel = diasSel.contains(dia)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(if (sel) tipo.color else Color(0xFF262A34))
+                                            .border(1.dp, if (sel) Color.White else Color.Gray, CircleShape)
+                                            .clickable { 
+                                                diasSel = if (sel) diasSel - dia else diasSel + dia
+                                                ttsManager?.hablar(loc("${if(sel) "Quitado" else "Agregado"} ${dia.label}", "${if(sel) "Removed" else "Added"} ${dia.label}"))
+                                            }
+                                            .semantics { contentDescription = "${dia.label}. ${if(sel) "Seleccionado" else "No seleccionado"}" },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(dia.short, color = if(sel) Color.White else Color.Gray, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            Button(
+                                onClick = { campoActivo = 5; ttsManager?.hablar(loc("Días guardados", "Days saved")) },
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                            ) {
+                                Text(loc("Confirmar días", "Confirm days"), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        CampoTextoAccesible(
+                            valor = when(campoActivo) {
+                                1 -> titulo
+                                2 -> hora
+                                4 -> fechaUnica
+                                5 -> descripcion
+                                else -> ""
+                            },
+                            onValorChange = { v ->
+                                when(campoActivo) {
+                                    1 -> titulo = v
+                                    2 -> hora = v
+                                    4 -> fechaUnica = v
+                                    5 -> descripcion = v
+                                }
+                            },
+                            etiqueta = currentEtiqueta,
+                            descripcionVoz = currentDescVoz,
+                            ttsManager = ttsManager,
+                            idioma = idioma,
+                            colorPrimario = tipo.color,
+                            esCampoHora = campoActivo == 2,
+                            esCampoFecha = campoActivo == 4,
+                            onNext = {
+                                if (campoActivo == 5) {
+                                    guardarTodo()
+                                } else {
+                                    campoActivo++
+                                }
+                            },
+                            onCommandParsed = { cmd ->
+                                if (cmd.contains("guardar") || cmd.contains("save")) {
+                                    guardarTodo()
+                                    true
+                                } else false
+                            }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(40.dp))
+
+                // Footer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    ) {
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Button(
+                        onClick = { guardarTodo() },
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, tipo.color.copy(0.3f))
+                    ) {
+                        Text(loc("Guardar", "Save"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = tipo.color)
+                    }
+                }
+            }
+        }
+    }
+}
+

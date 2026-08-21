@@ -42,6 +42,11 @@ import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.resources.*
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
+import com.example.nutriia.accesibilidad.InputModoCiego
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TOKENS DE DISEÑO
@@ -352,22 +357,38 @@ fun NutrientesScreen(
         }
 
         if (mostrarForm) {
-            AgregarRegistroDialog(
-                childId   = childId,
-                fecha     = fecha,
-                mesesEdad = mesesEdad,
-                nivel     = nivel,
-                region    = region,
-                esAccesible = esAccesible,
-                esBlind     = esBlind,
-                ttsManager = ttsManager,
-                idioma    = idiomaActual,
-                onGuardar = { reg -> vm.guardar(reg); mostrarForm = false },
-                onCerrar  = { 
-                    if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                    mostrarForm = false 
-                }
-            )
+            if (esBlind) {
+                NutrienteBlindDialog(
+                    childId = childId,
+                    fecha = fecha,
+                    ttsManager = ttsManager,
+                    idioma = idiomaActual,
+                    onDismiss = {
+                        a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                        mostrarForm = false
+                    },
+                    onSave = { reg ->
+                        vm.guardar(reg)
+                        mostrarForm = false
+                    }
+                )
+            } else {
+                AgregarRegistroDialog(
+                    childId   = childId,
+                    fecha     = fecha,
+                    mesesEdad = mesesEdad,
+                    nivel     = nivel,
+                    region    = region,
+                    esAccesible = esAccesible,
+                    esBlind     = false,
+                    ttsManager = ttsManager,
+                    idioma    = idiomaActual,
+                    onGuardar = { reg -> vm.guardar(reg); mostrarForm = false },
+                    onCerrar  = { 
+                        mostrarForm = false 
+                    }
+                )
+            }
         }
     }
 }
@@ -909,3 +930,202 @@ private fun CampoNutri(
     singleLine    = true,
     colors        = colors
 )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODO PARA PERSONAS CIEGAS (BLIND MODE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun NutrienteBlindDialog(
+    childId:    String,
+    fecha:      String,
+    ttsManager: NutriTTS? = null,
+    idioma:     IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onDismiss:  () -> Unit,
+    onSave:     (RegistroNutrientes) -> Unit
+) {
+    var alimento by remember { mutableStateOf("") }
+    var comida   by remember { mutableStateOf("Desayuno") }
+    var kcal     by remember { mutableStateOf("") }
+    var notas    by remember { mutableStateOf("") }
+    
+    var campoActivo by remember { mutableIntStateOf(0) } // 0: meal type, 1: food name, 2: calories, 3: notes
+
+    fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
+
+    val guardarTodo = {
+        if (alimento.isNotBlank()) {
+            ttsManager?.hablar(loc("Guardando alimento.", "Saving food."))
+            onSave(RegistroNutrientes(
+                id       = com.example.nutriia.platform.generateUUID(),
+                childId  = childId,
+                fecha    = fecha,
+                comida   = comida,
+                alimento = alimento.trim(),
+                macros   = Macronutrientes(calorias = kcal.replace(",",".").toDoubleOrNull() ?: 0.0),
+                notas    = notas.trim()
+            ))
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        ttsManager?.hablarYEsperar(loc(
+            "Modo para personas ciegas activado. Formulario de registro de alimento. " +
+            "Primero, selecciona el tiempo de comida. Las opciones son: desayuno, almuerzo, merienda, colación o cena.",
+            "Blind mode activated. Food registration form. " +
+            "First, select the meal time. Options are: breakfast, lunch, snack, or dinner."
+        ), 1000L)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color(0xFF181A20)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Fastfood, null, tint = Sol.Purple, modifier = Modifier.size(28.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = loc("Registrar alimento", "Register food"),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Sol.Purple
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Selector de Tiempo de Comida
+                Text(
+                    text = loc("Tiempo de comida", "Meal time"),
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(12.dp))
+                val comidas = listOf("Desayuno", "Almuerzo", "Merienda", "Colación", "Cena")
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    maxItemsInEachRow = 3
+                ) {
+                    comidas.forEach { c ->
+                        val isSelected = comida == c
+                        Box(
+                            modifier = Modifier
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) Sol.Purple else Color(0xFF262A34))
+                                .border(1.dp, if (isSelected) Sol.Purple else Color.Gray.copy(0.3f), RoundedCornerShape(12.dp))
+                                .clickable {
+                                    comida = c
+                                    ttsManager?.hablar(loc("Seleccionado: $c", "Selected: $c"))
+                                    if (campoActivo == 0) campoActivo = 1
+                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(c, fontSize = 12.sp, color = if (isSelected) Color.White else Sol.Purple, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // Campos Dinámicos
+                if (campoActivo > 0) {
+                    val currentEtiqueta = when(campoActivo) {
+                        1 -> loc("Nombre del alimento", "Food name")
+                        2 -> loc("Calorías aproximadas", "Approximate calories")
+                        3 -> loc("Notas adicionales (opcional)", "Additional notes (optional)")
+                        else -> ""
+                    }
+                    
+                    val currentDescVoz = when(campoActivo) {
+                        1 -> loc("Di el nombre del alimento que consumió el pequeño.", "Say the name of the food the little one consumed.")
+                        2 -> loc("Dime las calorías, o di no lo sé para continuar.", "Tell me the calories, or say I don't know to continue.")
+                        3 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                        else -> ""
+                    }
+
+                    CampoTextoAccesible(
+                        valor = when(campoActivo) {
+                            1 -> alimento
+                            2 -> kcal
+                            3 -> notas
+                            else -> ""
+                        },
+                        onValorChange = { v ->
+                            when(campoActivo) {
+                                1 -> alimento = v
+                                2 -> kcal = v
+                                3 -> notas = v
+                            }
+                        },
+                        etiqueta = currentEtiqueta,
+                        descripcionVoz = currentDescVoz,
+                        ttsManager = ttsManager,
+                        idioma = idioma,
+                        colorPrimario = Sol.Purple,
+                        keyboardOptions = KeyboardOptions(keyboardType = if (campoActivo == 2) KeyboardType.Number else KeyboardType.Text),
+                        onNext = {
+                            if (campoActivo == 3) {
+                                guardarTodo()
+                            } else {
+                                campoActivo++
+                            }
+                        },
+                        onCommandParsed = { cmd ->
+                            if (cmd.contains("guardar") || cmd.contains("save")) {
+                                guardarTodo()
+                                true
+                            } else false
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(40.dp))
+
+                // Footer
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                    ) {
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    Button(
+                        onClick = { guardarTodo() },
+                        enabled = alimento.isNotBlank(),
+                        modifier = Modifier.weight(1f).height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Sol.Purple.copy(0.3f))
+                    ) {
+                        Text(loc("Guardar", "Save"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Sol.Purple)
+                    }
+                }
+            }
+        }
+    }
+}
+

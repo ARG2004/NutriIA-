@@ -287,6 +287,20 @@ fun NutriChatScreen(
                                 )
                                 inputText = ""
                             }
+                        },
+                        onCommandParsed = { cmd ->
+                            if (cmd.contains("enviar") || cmd.contains("send") || cmd.contains("preguntar") || cmd.contains("ask")) {
+                                if (inputText.isNotBlank()) {
+                                    viewModel.sendMessage(
+                                        query = inputText,
+                                        childName = childName,
+                                        perfilEmbarazo = perfilEmbarazo,
+                                        isEmbarazo = esModoEmbarazo
+                                    )
+                                    inputText = ""
+                                }
+                                true
+                            } else false
                         }
                     )
                 } else {
