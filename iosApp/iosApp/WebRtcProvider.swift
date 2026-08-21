@@ -37,8 +37,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let audioSession = RTCAudioSession.sharedInstance()
         audioSession.lockForConfiguration()
         do {
-            try audioSession.setCategory(AVAudioSession.Category.playAndRecord.rawValue, with: [.defaultToSpeaker, .allowBluetooth])
-            try audioSession.setMode(AVAudioSession.Mode.videoChat.rawValue)
+            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetooth])
             try audioSession.setActive(true)
             NSLog("✅ [WebRtcProvider] Audio Session configurada")
         } catch {
