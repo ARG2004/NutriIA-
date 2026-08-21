@@ -95,6 +95,34 @@ actual class WebRtcEngine actual constructor(
         IOSCallBridge.provider?.dispose()
         _engineState.value = EngineState.IDLE
     }
+
+    // Bridging methods para que Swift llame de vuelta
+    fun onConnected() {
+        _engineState.value = EngineState.CONNECTED
+        callback.onConnected()
+    }
+
+    fun onDisconnected() {
+        _engineState.value = EngineState.DISCONNECTED
+        callback.onDisconnected()
+    }
+
+    fun onError(message: String) {
+        _engineState.value = EngineState.FAILED
+        callback.onError(message)
+    }
+
+    fun onLocalSdpReady(sdp: SessionDescription) {
+        callback.onLocalSdpReady(sdp)
+    }
+
+    fun onLocalIceCandidateReady(candidate: IceCandidate) {
+        callback.onLocalIceCandidateReady(candidate)
+    }
+
+    fun onRemoteVideoTrackReady(track: VideoTrack) {
+        callback.onRemoteVideoTrackReady(track)
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)

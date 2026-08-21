@@ -139,16 +139,16 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         }
     }
 
-    func setMuted(muted: KotlinBoolean) {
+    func setMuted(muted: Bool) {
         peerConnection?.senders.forEach { sender in
             if sender.track?.kind == "audio" {
-                sender.track?.isEnabled = !muted.boolValue
+                sender.track?.isEnabled = !muted
             }
         }
     }
 
-    func setCameraEnabled(enabled: KotlinBoolean) {
-        localVideoTrack?.isEnabled = enabled.boolValue
+    func setCameraEnabled(enabled: Bool) {
+        localVideoTrack?.isEnabled = enabled
     }
 
     func switchCamera() {
