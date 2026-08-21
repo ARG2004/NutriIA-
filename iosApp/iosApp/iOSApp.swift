@@ -6,6 +6,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         FirebaseApp.configure()
+
+        // Inyectar el motor real de WebRTC en el bridge de Kotlin
+        IOSCallBridge.shared.provider = WebRtcProvider()
+
         return true
     }
 }

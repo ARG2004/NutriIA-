@@ -4,6 +4,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import platform.Foundation.NSLog
+import platform.UIKit.UIView
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.UIKitView
+import kotlinx.cinterop.ExperimentalForeignApi
 
 // En iOS, el track de video real lo maneja Swift. 
 // Aquí solo necesitamos un objeto para pasarlo entre la lógica de Kotlin y la UI de Compose.
@@ -23,6 +28,8 @@ interface IOSWebRtcProvider {
     fun setMuted(muted: Boolean)
     fun setCameraEnabled(enabled: Boolean)
     fun switchCamera()
+    fun getLocalVideoView(): UIView?
+    fun getRemoteVideoView(): UIView?
     fun dispose()
 }
 
@@ -87,5 +94,33 @@ actual class WebRtcEngine actual constructor(
     actual fun dispose() {
         IOSCallBridge.provider?.dispose()
         _engineState.value = EngineState.IDLE
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun WebRtcVideoView(
+    videoTrack: VideoTrack?,
+    modifier:   Modifier,
+    isMirror:   Boolean
+) {
+    val remoteView = IOSCallBridge.provider?.getRemoteVideoView()
+    if (remoteView != null) {
+        UIKitView(
+            factory = { remoteView },
+            modifier = modifier
+        )
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun LocalVideoSinkView(modifier: Modifier) {
+    val localView = IOSCallBridge.provider?.getLocalVideoView()
+    if (localView != null) {
+        UIKitView(
+            factory = { localView },
+            modifier = modifier
+        )
     }
 }

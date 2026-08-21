@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
 import com.example.nutriia.platform.Log
 
 class AlertaRepository {
@@ -60,31 +61,35 @@ class AlertaRepository {
         }
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     fun observarPorHijo(childId: String?, uid: String? = null): Flow<List<Alerta>> {
-        val currentUid = uid ?: auth.currentUser?.uid
-        if (currentUid == null) {
-            Log.e("AlertaRepo", "No se puede observar: Usuario no autenticado")
-            return flowOf(emptyList())
-        }
-        
-        Log.i("AlertaRepo", "Iniciando observación para hijo: $childId (uid: $currentUid)")
-        
-        return try {
-            coleccion(childId, currentUid).snapshots
-                .map { snapshot ->
-                    Log.i("AlertaRepo", "Snapshot recibido con ${snapshot.documents.size} documentos")
-                    snapshot.documents.mapNotNull { doc ->
-                        alertaDesdeDoc(doc)
-                    }.sortedBy { it.hora }
-                }
-                .onStart { Log.i("AlertaRepo", "Flow de alertas iniciado") }
-                .catch { e -> 
-                    Log.e("AlertaRepo", "Error en snapshots de alertas: ${e.message}")
-                    emit(emptyList())
-                }
-        } catch (e: Exception) {
-            Log.e("AlertaRepo", "Error fatal iniciando observación: ${e.message}")
-            flowOf(emptyList())
+        return auth.authStateChanged.flatMapLatest { user ->
+            val currentUid = uid?.takeIf { it.isNotBlank() } ?: user?.uid
+            
+            if (currentUid == null) {
+                Log.e("AlertaRepo", "No se puede observar: Usuario no autenticado")
+                return@flatMapLatest flowOf(emptyList())
+            }
+            
+            Log.i("AlertaRepo", "Iniciando observación para hijo: $childId (uid: $currentUid)")
+            
+            try {
+                coleccion(childId, currentUid).snapshots
+                    .map { snapshot ->
+                        Log.i("AlertaRepo", "Snapshot recibido con ${snapshot.documents.size} documentos")
+                        snapshot.documents.mapNotNull { doc ->
+                            alertaDesdeDoc(doc)
+                        }.sortedBy { it.hora }
+                    }
+                    .onStart { Log.i("AlertaRepo", "Flow de alertas iniciado") }
+                    .catch { e -> 
+                        Log.e("AlertaRepo", "Error en snapshots de alertas: ${e.message}")
+                        emit(emptyList())
+                    }
+            } catch (e: Exception) {
+                Log.e("AlertaRepo", "Error fatal iniciando observación: ${e.message}")
+                flowOf(emptyList())
+            }
         }
     }
 

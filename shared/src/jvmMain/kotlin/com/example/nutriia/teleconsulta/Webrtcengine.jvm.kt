@@ -3,6 +3,11 @@ package com.example.nutriia.teleconsulta
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 
 actual class VideoTrack
 
@@ -27,4 +32,18 @@ actual class WebRtcEngine actual constructor(
     actual fun dispose() {
         _engineState.value = EngineState.IDLE
     }
+}
+
+@Composable
+actual fun WebRtcVideoView(
+    videoTrack: VideoTrack?,
+    modifier:   Modifier,
+    isMirror:   Boolean
+) {
+    Box(modifier.background(Color.Black))
+}
+
+@Composable
+actual fun LocalVideoSinkView(modifier: Modifier) {
+    Box(modifier.background(Color.DarkGray))
 }

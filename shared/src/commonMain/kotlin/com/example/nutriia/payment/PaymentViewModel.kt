@@ -134,6 +134,6 @@ class PaymentViewModel : ViewModel() {
                 "&custom=$pagoId" +
                 "&return=${DEEP_LINK_SUCCESS}" +
                 "&cancel_return=${DEEP_LINK_CANCEL}" +
-                "&rm=2" // Redirección vía POST para asegurar retorno
+                "&rm=1" // Redirección vía GET para asegurar compatibilidad con custom schemes en iOS
     }
 }

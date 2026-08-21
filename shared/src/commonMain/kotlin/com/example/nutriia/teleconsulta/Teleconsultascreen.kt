@@ -44,23 +44,14 @@ private val CallSurface2  = Color(0xFF172032)
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-fun WebRtcVideoView(
+expect fun WebRtcVideoView(
     videoTrack: VideoTrack?,
     modifier:   Modifier = Modifier,
     isMirror:   Boolean  = false
-) {
-    Box(
-        modifier = modifier.background(CallSurface2),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Videocam,
-            contentDescription = "Video",
-            tint = CallGreen,
-            modifier = Modifier.size(48.dp)
-        )
-    }
-}
+)
+
+@Composable
+expect fun LocalVideoSinkView(modifier: Modifier = Modifier)
 
 // ═════════════════════════════════════════════════════════════════════════════
 // HOST OVERLAY — punto de entrada único, colócalo en tu Scaffold/Screen raíz
@@ -236,20 +227,7 @@ fun TeleconsultaActiveScreen(
 }
 
 // ─── Vista de video LOCAL (self view en pip) ──────────────────────────────────
-@Composable
-fun LocalVideoSinkView(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.background(CallSurface2),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Person,
-            contentDescription = "Video Local",
-            tint = CallBlue,
-            modifier = Modifier.size(32.dp)
-        )
-    }
-}
+// Removida implementación común, ahora es expect/actual
 
 // ─── Fondo animado ────────────────────────────────────────────────────────────
 @Composable
