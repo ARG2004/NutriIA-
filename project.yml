@@ -11,7 +11,7 @@ packages:
     exactVersion: 10.29.0
   WebRTC:
     url: https://github.com/stasel/WebRTC
-    version: 125.6422.06
+    exactVersion: "125.6422.06"
 
 targets:
   NutriIA:
@@ -37,7 +37,7 @@ targets:
         CFBundleName: NutriIA
         CFBundlePackageType: APPL
         CFBundleShortVersionString: '2.4.1'
-        CFBundleVersion: '128'
+        CFBundleVersion: '129'
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: com.arg.nutriia
@@ -78,7 +78,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
-        CURRENT_PROJECT_VERSION: '128'
+        CURRENT_PROJECT_VERSION: '129'
         MARKETING_VERSION: '2.4.1'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
