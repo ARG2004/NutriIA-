@@ -29,19 +29,30 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
         localView.videoContentMode = .scaleAspectFill
         remoteView.videoContentMode = .scaleAspectFill
-
-        setupAudioSession()
     }
 
     private func setupAudioSession() {
         let audioSession = RTCAudioSession.sharedInstance()
         audioSession.lockForConfiguration()
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetooth])
+            // Usar .playAndRecord con .allowBluetooth y .defaultToSpeaker para que se escuche bien en iPhone
+            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
             try audioSession.setActive(true)
-            NSLog("✅ [WebRtcProvider] Audio Session configurada")
+            NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA para la llamada")
         } catch {
-            NSLog("❌ [WebRtcProvider] Error configurando Audio Session: \(error)")
+            NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error)")
+        }
+        audioSession.unlockForConfiguration()
+    }
+
+    private func deactivateAudioSession() {
+        let audioSession = RTCAudioSession.sharedInstance()
+        audioSession.lockForConfiguration()
+        do {
+            try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            NSLog("ℹ️ [WebRtcProvider] Audio Session desactivada")
+        } catch {
+            NSLog("❌ [WebRtcProvider] Error desactivando Audio Session: \(error)")
         }
         audioSession.unlockForConfiguration()
     }
@@ -53,12 +64,16 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func createPeerConnection(isOffer: Bool, isVideo: Bool) {
         self.isVideoCall = isVideo
         let config = RTCConfiguration()
+        // Servidores STUN/TURN (STUN de Google es básico, pero para producción se necesitaría TURN)
         config.iceServers = [RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"])]
+        config.sdpSemantics = .unifiedPlan
+        config.continualGatheringPolicy = .gatherContinually
 
         let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
         self.peerConnection = factory.peerConnection(with: config, constraints: constraints, delegate: self)
 
         setupMediaTracks()
+        setupAudioSession() // Activar audio al crear la conexión
     }
 
     private func setupMediaTracks() {
@@ -97,7 +112,11 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let constraints = RTCMediaConstraints(mandatoryConstraints: ["OfferToReceiveAudio": "true", "OfferToReceiveVideo": isVideoCall ? "true" : "false"], optionalConstraints: nil)
         peerConnection?.offer(for: constraints) { [weak self] (sdp, error) in
             guard let sdp = sdp else { return }
-            self?.peerConnection?.setLocalDescription(sdp) { _ in
+            self?.peerConnection?.setLocalDescription(sdp) { error in
+                if let error = error {
+                    NSLog("❌ [WebRtcProvider] Error setLocalDescription (Offer): \(error.localizedDescription)")
+                    return
+                }
                 // Notificar a Kotlin
                 CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.offer, description: sdp.sdp))
             }
@@ -107,9 +126,11 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func setRemoteOffer(sdp: String) {
         let remoteSdp = RTCSessionDescription(type: .offer, sdp: sdp)
         peerConnection?.setRemoteDescription(remoteSdp) { [weak self] error in
-            if error == nil {
-                self?.createAnswer()
+            if let error = error {
+                NSLog("❌ [WebRtcProvider] Error setRemoteDescription (Offer): \(error.localizedDescription)")
+                return
             }
+            self?.createAnswer()
         }
     }
 
@@ -117,7 +138,11 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let constraints = RTCMediaConstraints(mandatoryConstraints: ["OfferToReceiveAudio": "true", "OfferToReceiveVideo": isVideoCall ? "true" : "false"], optionalConstraints: nil)
         peerConnection?.answer(for: constraints) { [weak self] (sdp, error) in
             guard let sdp = sdp else { return }
-            self?.peerConnection?.setLocalDescription(sdp) { _ in
+            self?.peerConnection?.setLocalDescription(sdp) { error in
+                if let error = error {
+                    NSLog("❌ [WebRtcProvider] Error setLocalDescription (Answer): \(error.localizedDescription)")
+                    return
+                }
                 CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.answer, description: sdp.sdp))
             }
         }
@@ -125,7 +150,11 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     func setRemoteAnswer(sdp: String) {
         let remoteSdp = RTCSessionDescription(type: .answer, sdp: sdp)
-        peerConnection?.setRemoteDescription(remoteSdp) { _ in }
+        peerConnection?.setRemoteDescription(remoteSdp) { error in
+            if let error = error {
+                NSLog("❌ [WebRtcProvider] Error setRemoteDescription (Answer): \(error.localizedDescription)")
+            }
+        }
     }
 
     func addRemoteIceCandidate(sdpMid: String, sdpMLineIndex: Int32, sdp: String) {
@@ -152,7 +181,6 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     func switchCamera() {
         guard let capturer = videoCapturer as? RTCCameraVideoCapturer else { return }
-        // Lógica simple de rotación
         let currentPos = (capturer.captureSession.inputs.first as? AVCaptureDeviceInput)?.device.position
         let nextPos: AVCaptureDevice.Position = (currentPos == .front) ? .back : .front
 
@@ -171,6 +199,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         remoteVideoTrack = nil
         (videoCapturer as? RTCCameraVideoCapturer)?.stopCapture()
         videoCapturer = nil
+        deactivateAudioSession()
     }
 }
 
@@ -190,13 +219,15 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
     func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
         NSLog("❄️ [WebRtcProvider] ICE Connection state: \(newState.rawValue)")
-        if newState == .connected {
+        if newState == .connected || newState == .completed {
             CallEngineProvider.shared.getEngine()?.onConnected()
-        } else if newState == .disconnected {
+        } else if newState == .disconnected || newState == .failed {
             CallEngineProvider.shared.getEngine()?.onDisconnected()
         }
     }
-    func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {}
+    func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {
+        NSLog("🧊 [WebRtcProvider] ICE Gathering state: \(newState.rawValue)")
+    }
     func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
         CallEngineProvider.shared.getEngine()?.onLocalIceCandidateReady(candidate: IceCandidate(sdpMid: candidate.sdpMid ?? "", sdpMLineIndex: candidate.sdpMLineIndex, sdp: candidate.sdp))
     }

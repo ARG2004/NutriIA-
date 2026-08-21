@@ -1525,7 +1525,7 @@ fun CrecimientoBlindDialog(
     var circC by remember { mutableStateOf("") }
     var notas by remember { mutableStateOf("") }
     
-    var campoActivo by remember { mutableIntStateOf(0) } // 0: fecha, 1: peso, 2: talla, 3: circC, 4: notas
+    var campoActivo by remember { mutableIntStateOf(0) }
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
@@ -1541,31 +1541,37 @@ fun CrecimientoBlindDialog(
                 circCefCm = circC.replace(",", ".").toDoubleOrNull() ?: 0.0,
                 notas     = notas
             ))
+        } else {
+            val falta = if (peso.isBlank()) loc("peso", "weight") else loc("talla", "height")
+            ttsManager?.hablar(loc("Falta completar el campo $falta para poder guardar.", "You need to complete the $falta field before saving."))
         }
     }
 
     LaunchedEffect(Unit) {
         ttsManager?.hablarYEsperar(loc(
-            "Modo para personas ciegas activado. Formulario de nueva medición de crecimiento. " +
-            "El foco está en el campo de fecha.",
-            "Blind mode activated. New growth measurement form. " +
-            "Focus is on the date field."
-        ), 1000L)
+            "Formulario de nueva medición de crecimiento. Iniciando en el campo de fecha.",
+            "New growth measurement form. Starting at the date field."
+        ), 800L)
     }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF181A20)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight()
+                .padding(vertical = 20.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header
@@ -1573,34 +1579,47 @@ fun CrecimientoBlindDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, tint = C_Green, modifier = Modifier.size(28.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = loc("Nueva medición", "New measurement"),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = C_Green
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = C_Green.copy(0.1f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, tint = C_Green, modifier = Modifier.padding(8.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = loc("Nueva medición", "New measurement"),
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = C_Text
+                        )
+                        Text(
+                            text = loc("Peso y talla son obligatorios", "Weight and height are mandatory"),
+                            fontSize = 12.sp,
+                            color = C_TextSub
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(24.dp))
 
                 // Campos Dinámicos
                 val currentEtiqueta = when(campoActivo) {
-                    0 -> loc("Fecha de la medición", "Measurement date")
-                    1 -> loc("Peso (kilogramos)", "Weight (kilograms)")
-                    2 -> loc("Talla (centímetros)", "Height (centimeters)")
-                    3 -> loc("Perímetro cefálico (opcional)", "Head circumference (optional)")
-                    4 -> loc("Notas adicionales (opcional)", "Additional notes (optional)")
+                    0 -> loc("Fecha (DD/MM/AAAA)", "Date (DD/MM/AAAA)")
+                    1 -> loc("Peso (kg)", "Weight (kg)")
+                    2 -> loc("Talla (cm)", "Height (cm)")
+                    3 -> loc("Perímetro cefálico (cm) - opcional", "Head circumference (cm) - optional")
+                    4 -> loc("Notas adicionales - opcional", "Additional notes - optional")
                     else -> ""
                 }
                 
                 val currentDescVoz = when(campoActivo) {
-                    0 -> loc("Dime la fecha de hoy o la fecha en que se tomó la medida.", "Tell me today's date or the date the measure was taken.")
-                    1 -> loc("Dime el peso del pequeño en kilogramos.", "Tell me the little one's weight in kilograms.")
-                    2 -> loc("Dime la talla o estatura en centímetros.", "Tell me the height or stature in centimeters.")
-                    3 -> loc("Campo opcional. Di el perímetro cefálico en centímetros, o di siguiente para omitir.", "Optional field. Say the head circumference in centimeters, or say next to skip.")
-                    4 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                    0 -> loc("Di la fecha de la medición.", "Say the measurement date.")
+                    1 -> loc("Dime el peso en kilogramos.", "Tell me the weight in kilograms.")
+                    2 -> loc("Dime la talla en centímetros.", "Tell me the height in centimeters.")
+                    3 -> loc("Di el perímetro cefálico en centímetros, o di siguiente para omitir.", "Say the head circumference in centimeters, or say next to skip.")
+                    4 -> loc("Dicta una nota, o di guardar para finalizar.", "Say a note, or say save to finish.")
                     else -> ""
                 }
 
@@ -1637,14 +1656,16 @@ fun CrecimientoBlindDialog(
                         }
                     },
                     onCommandParsed = { cmd ->
-                        if (cmd.contains("guardar") || cmd.contains("save")) {
+                        val command = cmd.lowercase().trim()
+                        if (command == "guardar" || command == "finalizar" || command == "listo" || 
+                            command == "save" || command == "finish" || command == "done") {
                             guardarTodo()
                             true
                         } else false
                     }
                 )
 
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(32.dp))
 
                 // Footer
                 Row(
@@ -1653,21 +1674,20 @@ fun CrecimientoBlindDialog(
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                        modifier = Modifier.weight(1f).height(50.dp)
                     ) {
-                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = C_TextSub)
                     }
                     
                     Button(
                         onClick = { guardarTodo() },
                         enabled = peso.isNotBlank() && talla.isNotBlank(),
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = C_Green.copy(0.05f)),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, C_Green.copy(0.3f))
+                        border = BorderStroke(1.dp, C_Green.copy(0.2f))
                     ) {
-                        Text(loc("Guardar", "Save"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = C_Green)
+                        Text(loc("Guardar medición", "Save measurement"), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = C_Green)
                     }
                 }
             }

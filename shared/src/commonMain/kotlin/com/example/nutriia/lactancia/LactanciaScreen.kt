@@ -1242,26 +1242,29 @@ fun AddFeedingBlindDialog(
     // Guía inicial por voz
     LaunchedEffect(Unit) {
         ttsManager?.hablarYEsperar(loc(
-            "Modo para personas ciegas activado. Formulario de registro de toma. " +
-            "Primero, selecciona el tipo de toma. Las opciones son: izquierdo, derecho, ambos pechos o fórmula.",
-            "Blind mode activated. Feeding registration form. " +
-            "First, select the feeding type. Options are: left, right, both breasts, or formula."
-        ), 1000L)
+            "Formulario de registro de toma. Primero, selecciona el tipo de toma.",
+            "Feeding registration form. First, select the feeding type."
+        ), 800L)
     }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF181A20) // Fondo oscuro tipo Android
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight()
+                .padding(vertical = 20.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header
@@ -1269,13 +1272,19 @@ fun AddFeedingBlindDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.Add, null, tint = LactPink, modifier = Modifier.size(28.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = LactPink.copy(0.1f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Rounded.Add, null, tint = LactPink, modifier = Modifier.padding(8.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
                     Text(
                         text = loc("Registrar toma", "Register feeding"),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = LactPink
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = LactPinkDark
                     )
                 }
 
@@ -1285,6 +1294,7 @@ fun AddFeedingBlindDialog(
                 Text(
                     text = loc("Tipo de toma", "Feeding type"),
                     fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
                     color = Color.Gray,
                     modifier = Modifier.align(Alignment.Start)
                 )
@@ -1306,8 +1316,8 @@ fun AddFeedingBlindDialog(
                                 .weight(1f)
                                 .height(64.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(if (isSelected) LactPink else Color(0xFF262A34))
-                                .border(1.dp, if (isSelected) LactPink else Color.Gray.copy(0.3f), RoundedCornerShape(14.dp))
+                                .background(if (isSelected) LactPink else Color(0xFFF8F9FA))
+                                .border(2.dp, if (isSelected) LactPink else Color.Transparent, RoundedCornerShape(14.dp))
                                 .clickable {
                                     selectedSide = side
                                     ttsManager?.hablar(loc("Seleccionado: ${side.label}", "Selected: ${side.label}"))
@@ -1324,21 +1334,23 @@ fun AddFeedingBlindDialog(
                     }
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(28.dp))
 
                 // Campo Dinámico con Voz / Teclado / Braille
                 val currentEtiqueta = when(campoActivo) {
+                    0 -> loc("Tipo de toma", "Feeding type")
                     1 -> loc("Hora de inicio (HH:mm)", "Start time (HH:mm)")
                     2 -> if (selectedSide == BreastSide.FORMULA) loc("Cantidad (ml)", "Amount (ml)") else loc("Duración (minutos)", "Duration (minutes)")
-                    3 -> loc("Notas (opcional)", "Notes (optional)")
-                    else -> loc("Selecciona tipo", "Select type")
+                    3 -> loc("Notas adicionales - opcional", "Additional notes - optional")
+                    else -> ""
                 }
                 
                 val currentDescVoz = when(campoActivo) {
-                    1 -> loc("Di la hora de inicio, por ejemplo: ocho y media.", "Say the start time, for example: eight thirty.")
-                    2 -> if (selectedSide == BreastSide.FORMULA) loc("Di la cantidad en mililitros.", "Say the amount in milliliters.") 
-                         else loc("Di la duración en minutos.", "Say the duration in minutes.")
-                    3 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                    0 -> loc("Selecciona el tipo de toma primero.", "Select the feeding type first.")
+                    1 -> loc("Dime la hora de inicio, por ejemplo: ocho y media.", "Say the start time, for example: eight thirty.")
+                    2 -> if (selectedSide == BreastSide.FORMULA) loc("Dime la cantidad en mililitros.", "Say the amount in milliliters.") 
+                         else loc("Dime la duración en minutos.", "Say the duration in minutes.")
+                    3 -> loc("Dicta una nota, o di guardar para finalizar.", "Say a note, or say save to finish.")
                     else -> ""
                 }
 
@@ -1372,7 +1384,9 @@ fun AddFeedingBlindDialog(
                             }
                         },
                         onCommandParsed = { cmd ->
-                            if (cmd.contains("guardar") || cmd.contains("save")) {
+                            val command = cmd.lowercase().trim()
+                            if (command == "guardar" || command == "finalizar" || command == "listo" || 
+                                command == "save" || command == "finish" || command == "done") {
                                 guardarTodo()
                                 true
                             } else false
@@ -1380,7 +1394,7 @@ fun AddFeedingBlindDialog(
                     )
                 }
 
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(32.dp))
 
                 // Footer
                 Row(
@@ -1389,20 +1403,19 @@ fun AddFeedingBlindDialog(
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                        modifier = Modifier.weight(1f).height(50.dp)
                     ) {
-                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                     }
                     
                     Button(
                         onClick = { guardarTodo() },
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = LactPink.copy(0.05f)),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, LactPink.copy(0.3f))
+                        border = BorderStroke(1.dp, LactPink.copy(0.2f))
                     ) {
-                        Text(loc("Guardar toma", "Save feeding"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = LactPink)
+                        Text(loc("Guardar", "Save"), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LactPink)
                     }
                 }
             }

@@ -77,10 +77,13 @@ fun CampoTextoAccesible(
     }
 
     // ── AUTO-INICIO DE VOZ ────────────────────────────────────────────────────
-    LaunchedEffect(modoEntrada, voiceManagerListo, activo, a11yMode) {
+    LaunchedEffect(modoEntrada, voiceManagerListo, activo, a11yMode, etiqueta, descripcionVoz) {
         if (!activo || a11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
         if (modoEntrada != InputModoCiego.VOZ) return@LaunchedEffect
         if (!voiceManagerListo) return@LaunchedEffect
+
+        // Pequeño delay para no pisar el anuncio del cambio de pantalla si lo hay
+        delay(300L)
 
         val instruccionCompleta = if (idioma == IdiomaVoz.INGLES) {
             "$descripcionVoz. If you prefer, say: change to keyboard, or: change to braille keyboard."
@@ -88,17 +91,17 @@ fun CampoTextoAccesible(
             "$descripcionVoz. Si prefieres, di: cambiar a teclado, o: cambiar a teclado braille."
         }
         if (ttsManager != null) {
-            ttsManager.hablarYEsperar(instruccionCompleta, margenMs = 1200L)
+            ttsManager.hablarYEsperar(instruccionCompleta, margenMs = 1000L)
         } else {
             val palabras = instruccionCompleta.split(" ").size
-            delay((palabras * 100L) + 1200L)
+            delay((palabras * 100L) + 1000L)
         }
 
         if (tienePermiso && voiceEstado == VoiceInputState.IDLE) {
             if (ttsManager != null) {
-                ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 600L)
+                ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 500L)
             } else {
-                delay(1200L)
+                delay(1000L)
             }
             iniciarEscuchaConReintento(
                 voiceManager  = voiceManager,
@@ -372,8 +375,8 @@ fun CampoTextoAccesible(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(colorPrimario.copy(0.08f))
-                    .border(1.5.dp, colorPrimario.copy(0.3f), RoundedCornerShape(16.dp))
+                    .background(Color.White)
+                    .border(1.5.dp, colorPrimario.copy(0.4f), RoundedCornerShape(16.dp))
                     .clickable {
                         vibrateTap(haptic)
                         onFocus?.invoke()
@@ -410,25 +413,30 @@ fun CampoTextoAccesible(
                             "Campo activo: $etiqueta. Valor actual: $valorParaHablar. Toca dos veces para escuchar las instrucciones completas. Si prefieres, di: cambiar a teclado, o: cambiar a teclado braille."
                         }
                     }
-                    .padding(12.dp)
             ) {
-                Column {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Rounded.Info,
-                            contentDescription = null,
-                            tint = colorPrimario,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = colorPrimario.copy(0.1f),
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Info,
+                                contentDescription = null,
+                                tint = colorPrimario,
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = etiqueta,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = colorPrimario
                         )
                     }
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(8.dp))
                     val valorParaMostrar = if (esCampoFecha && valor.isNotEmpty()) {
                         if (valor.matches(Regex("""\d{4}-\d{2}-\d{2}"""))) {
                             val p = valor.split("-")
@@ -442,8 +450,8 @@ fun CampoTextoAccesible(
                         } else {
                             if (idioma == IdiomaVoz.INGLES) "Value: $valorParaMostrar" else "Valor: $valorParaMostrar"
                         },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = Color.Black
                     )
                 }
@@ -452,19 +460,20 @@ fun CampoTextoAccesible(
 
             if (activo && opcionesDisponibles.size > 1) {
                 Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier              = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     opcionesDisponibles.forEach { (modo, label, icon) ->
+                        val seleccionado = modoEntrada == modo
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (modoEntrada == modo) colorPrimario.copy(0.14f) else Color(0xFFF5F5F5))
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (seleccionado) Color.White else Color(0xFFF8F9FA))
                                 .border(
-                                    1.5.dp,
-                                    if (modoEntrada == modo) colorPrimario else Color.LightGray.copy(0.4f),
-                                    RoundedCornerShape(12.dp)
+                                    2.dp,
+                                    if (seleccionado) colorPrimario else Color.Transparent,
+                                    RoundedCornerShape(16.dp)
                                 )
                                 .clickable(onClickLabel = "Cambiar a modo $label") {
                                     vibrateTap(haptic)
@@ -479,17 +488,27 @@ fun CampoTextoAccesible(
                                         InputModoCiego.SENAS   -> ttsManager?.hablar("Cámara de señas activada. Haz gestos frente a la cámara frontal.")
                                     }
                                  }
-                                .semantics { contentDescription = "Modo $label. ${if (modoEntrada == modo) "Activo" else "Toca para activar"}" }
-                                .padding(vertical = 10.dp),
+                                .semantics { contentDescription = "Modo $label. ${if (seleccionado) "Activo" else "Toca para activar"}" }
+                                .padding(vertical = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(icon, null, tint = if (modoEntrada == modo) colorPrimario else Color.Gray, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.height(4.dp))
-                            Text(label, fontSize = 11.sp, fontWeight = if (modoEntrada == modo) FontWeight.Bold else FontWeight.Normal, color = if (modoEntrada == modo) colorPrimario else Color.Gray)
+                            Icon(
+                                icon, 
+                                null, 
+                                tint = if (seleccionado) colorPrimario else Color.Gray, 
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                label, 
+                                fontSize = 12.sp, 
+                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Medium, 
+                                color = if (seleccionado) colorPrimario else Color.Gray
+                            )
                         }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
             }
 
             AnimatedVisibility(visible = activo && modoEntrada == InputModoCiego.TECLADO) {

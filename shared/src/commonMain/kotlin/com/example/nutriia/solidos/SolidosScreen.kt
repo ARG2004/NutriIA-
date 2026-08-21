@@ -1729,7 +1729,7 @@ fun SolidoBlindDialog(
     var reaccion by remember { mutableStateOf(ReaccionAlimento.NINGUNA) }
     var notas    by remember { mutableStateOf("") }
     
-    var campoActivo by remember { mutableIntStateOf(0) } // 0: name, 1: date, 2: group, 3: reaction, 4: notes
+    var campoActivo by remember { mutableIntStateOf(0) }
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
@@ -1745,31 +1745,36 @@ fun SolidoBlindDialog(
                 reaccion          = reaccion,
                 notas             = notas.trim()
             ))
+        } else {
+            ttsManager?.hablar(loc("Falta el nombre del alimento para poder guardar.", "Food name is missing. Please provide it before saving."))
         }
     }
 
     LaunchedEffect(Unit) {
         ttsManager?.hablarYEsperar(loc(
-            "Modo para personas ciegas activado. Formulario de registro de nuevo alimento. " +
-            "El foco está en el campo de nombre del alimento.",
-            "Blind mode activated. New food registration form. " +
-            "Focus is on the food name field."
-        ), 1000L)
+            "Formulario de registro de nuevo alimento. El foco está en el nombre.",
+            "New food registration form. Focus is on the name."
+        ), 800L)
     }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF181A20)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight()
+                .padding(vertical = 20.dp),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header
@@ -1777,12 +1782,18 @@ fun SolidoBlindDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.AddCircle, null, tint = Sol.Orange, modifier = Modifier.size(28.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Sol.Orange.copy(0.1f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Rounded.AddCircle, null, tint = Sol.Orange, modifier = Modifier.padding(8.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
                     Text(
                         text = loc("Registrar alimento", "Register food"),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = Sol.Orange
                     )
                 }
@@ -1795,7 +1806,7 @@ fun SolidoBlindDialog(
                     1 -> loc("Fecha de introducción", "Introduction date")
                     2 -> loc("Grupo alimenticio", "Food group")
                     3 -> loc("Reacción observada", "Observed reaction")
-                    4 -> loc("Notas adicionales (opcional)", "Additional notes (optional)")
+                    4 -> loc("Notas adicionales - opcional", "Additional notes - optional")
                     else -> ""
                 }
                 
@@ -1804,54 +1815,52 @@ fun SolidoBlindDialog(
                     1 -> loc("Di la fecha. Por ejemplo: veinte de agosto.", "Tell me the date. For example: August twentieth.")
                     2 -> loc("Dime el grupo: frutas, verduras, cereales, proteínas, lácteos o legumbres.", "Tell me the group: fruits, vegetables, cereals, proteins, dairy or legumes.")
                     3 -> loc("Dime la reacción: ninguna, aceptado, rechazo, leve o alergia.", "Tell me the reaction: none, accepted, rejected, mild or allergy.")
-                    4 -> loc("Campo opcional. Di tu nota o di guardar para finalizar.", "Optional field. Say your note or say save to finish.")
+                    4 -> loc("Dicta una nota, o di guardar para finalizar.", "Say a note, or say save to finish.")
                     else -> ""
                 }
 
                 if (campoActivo == 2) {
-                    // Selector de grupo especial para modo ciego
-                    Column {
-                        Text(currentEtiqueta, color = Color.White, fontWeight = FontWeight.Bold)
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(currentEtiqueta, color = Sol.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Spacer(Modifier.height(12.dp))
                         FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 3) {
                             GrupoAlimento.entries.forEach { g ->
                                 val isSelected = grupo == g
                                 Box(
                                     modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) Color(g.colorHex) else Color(0xFF262A34))
-                                        .border(1.dp, Color(g.colorHex), RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) Color(g.colorHex) else Color(0xFFF8F9FA))
+                                        .border(2.dp, if (isSelected) Color(g.colorHex) else Color.Transparent, RoundedCornerShape(12.dp))
                                         .clickable { 
                                             grupo = g
                                             ttsManager?.hablar(loc("Seleccionado: ${g.label}", "Selected: ${g.label}"))
                                             campoActivo = 3
-                                        }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                        }.padding(horizontal = 14.dp, vertical = 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(g.label, fontSize = 12.sp, color = if (isSelected) Color.White else Color(g.colorHex), fontWeight = FontWeight.Bold)
+                                    Text(g.label, fontSize = 11.sp, color = if (isSelected) Color.White else Color(g.colorHex), fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
                 } else if (campoActivo == 3) {
-                    // Selector de reacción especial
-                    Column {
-                        Text(currentEtiqueta, color = Color.White, fontWeight = FontWeight.Bold)
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(currentEtiqueta, color = Sol.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Spacer(Modifier.height(12.dp))
                         FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 3) {
                             ReaccionAlimento.entries.forEach { r ->
                                 val isSelected = reaccion == r
                                 Box(
                                     modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) Sol.Orange else Color(0xFF262A34))
-                                        .border(1.dp, Sol.Orange, RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) Sol.Orange else Color(0xFFF8F9FA))
+                                        .border(2.dp, if (isSelected) Sol.Orange else Color.Transparent, RoundedCornerShape(12.dp))
                                         .clickable { 
                                             reaccion = r
                                             ttsManager?.hablar(loc("Seleccionado: ${r.label}", "Selected: ${r.label}"))
                                             campoActivo = 4
-                                        }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                        }.padding(horizontal = 14.dp, vertical = 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(r.label, fontSize = 12.sp, color = if (isSelected) Color.White else Sol.Orange, fontWeight = FontWeight.Bold)
+                                    Text(r.label, fontSize = 11.sp, color = if (isSelected) Color.White else Sol.Orange, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -1885,7 +1894,9 @@ fun SolidoBlindDialog(
                             }
                         },
                         onCommandParsed = { cmd ->
-                            if (cmd.contains("guardar") || cmd.contains("save")) {
+                            val command = cmd.lowercase().trim()
+                            if (command == "guardar" || command == "finalizar" || command == "listo" || 
+                                command == "save" || command == "finish" || command == "done") {
                                 guardarTodo()
                                 true
                             } else false
@@ -1893,7 +1904,7 @@ fun SolidoBlindDialog(
                     )
                 }
 
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(32.dp))
 
                 // Footer
                 Row(
@@ -1902,21 +1913,20 @@ fun SolidoBlindDialog(
                 ) {
                     TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                        modifier = Modifier.weight(1f).height(50.dp)
                     ) {
-                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(loc("Cancelar", "Cancel"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Sol.TextSecondary)
                     }
                     
                     Button(
                         onClick = { guardarTodo() },
                         enabled = nombre.isNotBlank(),
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262A34)),
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Sol.Orange.copy(0.05f)),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Sol.Orange.copy(0.3f))
+                        border = BorderStroke(1.dp, Sol.Orange.copy(0.2f))
                     ) {
-                        Text(loc("Guardar", "Save"), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Sol.Orange)
+                        Text(loc("Guardar", "Save"), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Sol.Orange)
                     }
                 }
             }
