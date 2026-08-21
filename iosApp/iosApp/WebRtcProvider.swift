@@ -35,10 +35,10 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let audioSession = RTCAudioSession.sharedInstance()
         audioSession.lockForConfiguration()
         do {
-            // Usar .playAndRecord con .allowBluetooth y .defaultToSpeaker para que se escuche bien en iPhone
-            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+            // Usar rawValue para asegurar compatibilidad si el enum no se mapea directo
+            try audioSession.setCategory(AVAudioSession.Category.playAndRecord.rawValue, mode: AVAudioSession.Mode.videoChat.rawValue, options: [.defaultToSpeaker, .allowBluetooth])
             try audioSession.setActive(true)
-            NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA para la llamada")
+            NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA")
         } catch {
             NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error)")
         }
@@ -49,7 +49,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let audioSession = RTCAudioSession.sharedInstance()
         audioSession.lockForConfiguration()
         do {
-            try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            // RTCAudioSession no tiene setActive(Bool, options:)
+            try audioSession.setActive(false)
             NSLog("ℹ️ [WebRtcProvider] Audio Session desactivada")
         } catch {
             NSLog("❌ [WebRtcProvider] Error desactivando Audio Session: \(error)")
@@ -64,16 +65,14 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func createPeerConnection(isOffer: Bool, isVideo: Bool) {
         self.isVideoCall = isVideo
         let config = RTCConfiguration()
-        // Servidores STUN/TURN (STUN de Google es básico, pero para producción se necesitaría TURN)
         config.iceServers = [RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"])]
         config.sdpSemantics = .unifiedPlan
-        config.continualGatheringPolicy = .gatherContinually
 
         let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
         self.peerConnection = factory.peerConnection(with: config, constraints: constraints, delegate: self)
 
         setupMediaTracks()
-        setupAudioSession() // Activar audio al crear la conexión
+        setupAudioSession()
     }
 
     private func setupMediaTracks() {
@@ -113,12 +112,10 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         peerConnection?.offer(for: constraints) { [weak self] (sdp, error) in
             guard let sdp = sdp else { return }
             self?.peerConnection?.setLocalDescription(sdp) { error in
-                if let error = error {
-                    NSLog("❌ [WebRtcProvider] Error setLocalDescription (Offer): \(error.localizedDescription)")
-                    return
+                if error == nil {
+                    // Notificar a Kotlin
+                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.offer, description: sdp.sdp))
                 }
-                // Notificar a Kotlin
-                CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.offer, description: sdp.sdp))
             }
         }
     }
@@ -126,11 +123,9 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func setRemoteOffer(sdp: String) {
         let remoteSdp = RTCSessionDescription(type: .offer, sdp: sdp)
         peerConnection?.setRemoteDescription(remoteSdp) { [weak self] error in
-            if let error = error {
-                NSLog("❌ [WebRtcProvider] Error setRemoteDescription (Offer): \(error.localizedDescription)")
-                return
+            if error == nil {
+                self?.createAnswer()
             }
-            self?.createAnswer()
         }
     }
 
@@ -139,27 +134,20 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         peerConnection?.answer(for: constraints) { [weak self] (sdp, error) in
             guard let sdp = sdp else { return }
             self?.peerConnection?.setLocalDescription(sdp) { error in
-                if let error = error {
-                    NSLog("❌ [WebRtcProvider] Error setLocalDescription (Answer): \(error.localizedDescription)")
-                    return
+                if error == nil {
+                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.answer, description: sdp.sdp))
                 }
-                CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.answer, description: sdp.sdp))
             }
         }
     }
 
     func setRemoteAnswer(sdp: String) {
         let remoteSdp = RTCSessionDescription(type: .answer, sdp: sdp)
-        peerConnection?.setRemoteDescription(remoteSdp) { error in
-            if let error = error {
-                NSLog("❌ [WebRtcProvider] Error setRemoteDescription (Answer): \(error.localizedDescription)")
-            }
-        }
+        peerConnection?.setRemoteDescription(remoteSdp) { _ in }
     }
 
     func addRemoteIceCandidate(sdpMid: String, sdpMLineIndex: Int32, sdp: String) {
         let candidate = RTCIceCandidate(sdp: sdp, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid)
-        NSLog("🧊 [WebRtcProvider] Añadiendo ICE candidate remoto")
         peerConnection?.add(candidate) { error in
             if let error = error {
                 NSLog("❌ [WebRtcProvider] Error añadiendo ICE: \(error.localizedDescription)")
@@ -205,7 +193,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
 extension WebRtcProvider: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {
-        NSLog("📶 [WebRtcProvider] Signaling state: \(stateChanged.rawValue)")
+        NSLog("📶 [WebRtcProvider] Signaling state: \(stateChanged)")
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didAdd stream: RTCMediaStream) {
         NSLog("📺 [WebRtcProvider] Stream añadido")
@@ -218,7 +206,7 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
     func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
-        NSLog("❄️ [WebRtcProvider] ICE Connection state: \(newState.rawValue)")
+        NSLog("❄️ [WebRtcProvider] ICE Connection state: \(newState)")
         if newState == .connected || newState == .completed {
             CallEngineProvider.shared.getEngine()?.onConnected()
         } else if newState == .disconnected || newState == .failed {
@@ -226,10 +214,12 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
         }
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {
-        NSLog("🧊 [WebRtcProvider] ICE Gathering state: \(newState.rawValue)")
+        NSLog("🧊 [WebRtcProvider] ICE Gathering state: \(newState)")
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
-        CallEngineProvider.shared.getEngine()?.onLocalIceCandidateReady(candidate: IceCandidate(sdpMid: candidate.sdpMid ?? "", sdpMLineIndex: candidate.sdpMLineIndex, sdp: candidate.sdp))
+        // Castear a Int para compatibilidad con el constructor de Kotlin en Swift
+        let mLineIndex = Int32(candidate.sdpMLineIndex)
+        CallEngineProvider.shared.getEngine()?.onLocalIceCandidateReady(candidate: IceCandidate(sdpMid: candidate.sdpMid ?? "", sdpMLineIndex: mLineIndex, sdp: candidate.sdp))
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {}
