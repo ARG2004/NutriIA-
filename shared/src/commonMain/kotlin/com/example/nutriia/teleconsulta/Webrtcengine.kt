@@ -7,11 +7,11 @@ enum class EngineState {
 }
 
 class SessionDescription(
-    val type: Type,
+    val type: SdpType,
     val description: String
-) {
-    enum class Type { OFFER, ANSWER, PRANSWER }
-}
+)
+
+enum class SdpType { OFFER, ANSWER, PRANSWER }
 
 class IceCandidate(
     val sdpMid: String,

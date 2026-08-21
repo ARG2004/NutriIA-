@@ -100,7 +100,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             guard let sdp = sdp else { return }
             self?.peerConnection?.setLocalDescription(sdp) { _ in
                 // Notificar a Kotlin
-                CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: .offer, description: sdp.sdp))
+                CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.offer, description: sdp.sdp))
             }
         }
     }
@@ -119,7 +119,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         peerConnection?.answer(for: constraints) { [weak self] (sdp, error) in
             guard let sdp = sdp else { return }
             self?.peerConnection?.setLocalDescription(sdp) { _ in
-                CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: .answer, description: sdp.sdp))
+                CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.answer, description: sdp.sdp))
             }
         }
     }
