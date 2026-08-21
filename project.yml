@@ -10,8 +10,8 @@ packages:
     url: https://github.com/firebase/firebase-ios-sdk
     exactVersion: 10.29.0
   WebRTC:
-    url: https://github.com/stasel/WebRTC
-    branch: master # Usamos rama para evitar el error de parsing de versión de Apple
+    url: https://github.com/stasel/WebRTC.git
+    branch: latest # La rama oficial según el README para evitar fallos de resolución
 
 targets:
   NutriIA:
