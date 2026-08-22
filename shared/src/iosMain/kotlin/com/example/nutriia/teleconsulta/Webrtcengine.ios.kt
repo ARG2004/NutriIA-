@@ -19,7 +19,7 @@ actual class VideoTrack actual constructor(val nativeTrack: Any?)
  * la funcionalidad real de WebRTC.
  */
 interface IOSWebRtcProvider {
-    fun initialize()
+    fun initializeEngine()
     fun createPeerConnection(isOffer: Boolean, isVideo: Boolean)
     fun createOffer()
     fun setRemoteOffer(sdp: String)
@@ -33,19 +33,33 @@ interface IOSWebRtcProvider {
     fun dispose()
 }
 
+interface IOSCallEventsListener {
+    fun onConnected()
+    fun onDisconnected()
+    fun onError(message: String)
+    fun onLocalSdpReady(sdp: SessionDescription)
+    fun onLocalIceCandidateReady(candidate: IceCandidate)
+    fun onRemoteVideoTrackReady(track: VideoTrack)
+}
+
 /**
  * Singleton que contiene la referencia al proveedor nativo de iOS.
  * Swift debe inyectarse aquí al arrancar la app.
  */
 object IOSCallBridge {
     var provider: IOSWebRtcProvider? = null
+    var listener: IOSCallEventsListener? = null
 }
 
 actual class WebRtcEngine actual constructor(
     private val callback: WebRtcEngineCallback
-) {
+) : IOSCallEventsListener {
     private val _engineState = MutableStateFlow(EngineState.IDLE)
     actual val engineState: StateFlow<EngineState> = _engineState.asStateFlow()
+
+    init {
+        IOSCallBridge.listener = this
+    }
 
     actual fun initialize() {
         if (IOSCallBridge.provider == null) {
@@ -54,7 +68,7 @@ actual class WebRtcEngine actual constructor(
             callback.onError("Proveedor nativo no configurado")
             return
         }
-        IOSCallBridge.provider?.initialize()
+        IOSCallBridge.provider?.initializeEngine()
         _engineState.value = EngineState.INITIALIZED
     }
 
@@ -92,35 +106,38 @@ actual class WebRtcEngine actual constructor(
     }
 
     actual fun dispose() {
+        if (IOSCallBridge.listener === this) {
+            IOSCallBridge.listener = null
+        }
         IOSCallBridge.provider?.dispose()
         _engineState.value = EngineState.IDLE
     }
 
     // Bridging methods para que Swift llame de vuelta
-    actual fun onConnected() {
+    actual override fun onConnected() {
         _engineState.value = EngineState.CONNECTED
         callback.onConnected()
     }
 
-    actual fun onDisconnected() {
+    actual override fun onDisconnected() {
         _engineState.value = EngineState.DISCONNECTED
         callback.onDisconnected()
     }
 
-    actual fun onError(message: String) {
+    actual override fun onError(message: String) {
         _engineState.value = EngineState.FAILED
         callback.onError(message)
     }
 
-    actual fun onLocalSdpReady(sdp: SessionDescription) {
+    actual override fun onLocalSdpReady(sdp: SessionDescription) {
         callback.onLocalSdpReady(sdp)
     }
 
-    actual fun onLocalIceCandidateReady(candidate: IceCandidate) {
+    actual override fun onLocalIceCandidateReady(candidate: IceCandidate) {
         callback.onLocalIceCandidateReady(candidate)
     }
 
-    actual fun onRemoteVideoTrackReady(track: VideoTrack) {
+    actual override fun onRemoteVideoTrackReady(track: VideoTrack) {
         callback.onRemoteVideoTrackReady(track)
     }
 }

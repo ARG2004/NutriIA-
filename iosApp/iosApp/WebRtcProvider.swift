@@ -60,7 +60,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         audioSession.unlockForConfiguration()
     }
 
-    func initialize() {
+    func initializeEngine() {
         NSLog("✅ [WebRtcProvider] Inicializado")
     }
 
@@ -117,7 +117,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
                 if error == nil {
                     // Mapeo KMP: SdpType.OFFER
                     let sdpDesc = SessionDescription(type: .offer, sdpDescription: sdp.sdp)
-                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: sdpDesc)
+                    IOSCallBridge.shared.listener?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }
         }
@@ -140,7 +140,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
                 if error == nil {
                     // Mapeo KMP: SdpType.ANSWER
                     let sdpDesc = SessionDescription(type: .answer, sdpDescription: sdp.sdp)
-                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: sdpDesc)
+                    IOSCallBridge.shared.listener?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }
         }
@@ -206,7 +206,7 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
             self.remoteVideoTrack = track
             track.add(remoteView)
             let videoTrack = VideoTrack(nativeTrack: track)
-            CallEngineProvider.shared.getEngine()?.onRemoteVideoTrackReady(track: videoTrack)
+            IOSCallBridge.shared.listener?.onRemoteVideoTrackReady(track: videoTrack)
         }
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
@@ -214,9 +214,9 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
         NSLog("❄️ [WebRtcProvider] ICE Connection state: %ld", Int(newState.rawValue))
         if newState == .connected || newState == .completed {
-            CallEngineProvider.shared.getEngine()?.onConnected()
+            IOSCallBridge.shared.listener?.onConnected()
         } else if newState == .disconnected || newState == .failed {
-            CallEngineProvider.shared.getEngine()?.onDisconnected()
+            IOSCallBridge.shared.listener?.onDisconnected()
         }
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {
@@ -227,7 +227,7 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
         let index = Int32(candidate.sdpMLineIndex)
         let sdp = candidate.sdp
         let ice = IceCandidate(sdpMid: mid, sdpMLineIndex: index, sdp: sdp)
-        CallEngineProvider.shared.getEngine()?.onLocalIceCandidateReady(candidate: ice)
+        IOSCallBridge.shared.listener?.onLocalIceCandidateReady(candidate: ice)
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {}
