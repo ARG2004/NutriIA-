@@ -22,7 +22,6 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     override init() {
         super.init()
-        RTCInitializeSSL()
         let videoEncoderFactory = RTCDefaultVideoEncoderFactory()
         let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
         self.factory = RTCPeerConnectionFactory(encoderFactory: videoEncoderFactory, decoderFactory: videoDecoderFactory)
@@ -32,32 +31,24 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     }
 
     private func setupAudioSession() {
-        let audioSession = RTCAudioSession.sharedInstance()
-        audioSession.lockForConfiguration()
+        let audioSession = AVAudioSession.sharedInstance()
         do {
-            let category = AVAudioSession.Category.playAndRecord.rawValue
-            let mode = AVAudioSession.Mode.videoChat.rawValue
-            let options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetooth]
-
-            try audioSession.setCategory(category, mode: mode, options: options)
+            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetooth])
             try audioSession.setActive(true)
             NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA")
         } catch {
             NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error.localizedDescription)")
         }
-        audioSession.unlockForConfiguration()
     }
 
     private func deactivateAudioSession() {
-        let audioSession = RTCAudioSession.sharedInstance()
-        audioSession.lockForConfiguration()
+        let audioSession = AVAudioSession.sharedInstance()
         do {
             try audioSession.setActive(false)
             NSLog("ℹ️ [WebRtcProvider] Audio Session desactivada")
         } catch {
             NSLog("❌ [WebRtcProvider] Error desactivando Audio Session: \(error.localizedDescription)")
         }
-        audioSession.unlockForConfiguration()
     }
 
     func initializeEngine() {
@@ -79,17 +70,15 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     private func setupMediaTracks() {
         // Audio
-        let audioTrack = factory.audioTrack(with: factory.audioSource(with: nil), trackId: "audio0")
+        let audioSource = factory.audioSource(with: nil)
+        let audioTrack = factory.audioTrack(with: audioSource, trackId: "audio0")
         peerConnection?.add(audioTrack, streamIds: ["stream0"])
 
         // Video
         if isVideoCall {
             let videoSource = factory.videoSource()
-            #if targetEnvironment(simulator)
-            self.videoCapturer = RTCFileVideoCapturer(delegate: videoSource)
-            #else
-            self.videoCapturer = RTCCameraVideoCapturer(delegate: videoSource)
-            #endif
+            let capturer = RTCCameraVideoCapturer(delegate: videoSource)
+            self.videoCapturer = capturer
 
             let videoTrack = factory.videoTrack(with: videoSource, trackId: "video0")
             self.localVideoTrack = videoTrack
