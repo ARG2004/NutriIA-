@@ -33,7 +33,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     private func setupAudioSession() {
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try audioSession.setActive(true)
             NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA")
         } catch {
@@ -84,7 +84,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             self.localVideoTrack = videoTrack
             peerConnection?.add(videoTrack, streamIds: ["stream0"])
 
-            videoTrack.addRenderer(localView)
+            videoTrack.add(localView)
             startCapture()
         }
     }
@@ -175,8 +175,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func getRemoteVideoView() -> UIView? { return remoteView }
 
     func dispose() {
-        localVideoTrack?.removeRenderer(localView)
-        remoteVideoTrack?.removeRenderer(remoteView)
+        localVideoTrack?.remove(localView)
+        remoteVideoTrack?.remove(remoteView)
         peerConnection?.close()
         peerConnection = nil
         localVideoTrack = nil
@@ -195,7 +195,7 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
         NSLog("📺 [WebRtcProvider] Stream añadido")
         if let track = stream.videoTracks.first {
             self.remoteVideoTrack = track
-            track.addRenderer(remoteView)
+            track.add(remoteView)
             let videoTrack = VideoTrack(nativeTrack: track)
             IOSCallBridge.shared.listener?.onRemoteVideoTrackReady(track: videoTrack)
         }
