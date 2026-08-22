@@ -128,8 +128,30 @@ fun TeleconsultaActiveScreen(
             .background(Brush.verticalGradient(listOf(CallBg, CallBg2, CallBg3)))
     ) {
 
-        // Fondo animado
-        AnimatedCallBackground(isVideo = isVideo)
+        // ── Video remoto de fondo (si es videollamada y está conectado) ────────
+        if (isVideo && state.webRtcConectado) {
+            WebRtcVideoView(
+                videoTrack = null,
+                modifier   = Modifier.fillMaxSize()
+            )
+            // Overlay oscuro sutil para legibilidad de botones y textos
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                CallBg.copy(alpha = 0.55f),
+                                Color.Transparent,
+                                CallBg.copy(alpha = 0.75f)
+                            )
+                        )
+                    )
+            )
+        } else {
+            // Fondo animado
+            AnimatedCallBackground(isVideo = isVideo)
+        }
 
         Column(
             modifier            = Modifier.fillMaxSize().systemBarsPadding(),
@@ -151,14 +173,22 @@ fun TeleconsultaActiveScreen(
                     )
                 }
                 EstadoLlamada.ACTIVA -> {
-                    ActiveCallSection(
-                        nombre        = llamada.padreNombre,
-                        childNombre   = llamada.childNombre,
-                        isVideo       = isVideo,
-                        camaraApagada = state.camaraApagada,
-                        segundos      = state.duracionSegundos,
-                        webRtcConect  = state.webRtcConectado
-                    )
+                    if (isVideo && state.webRtcConectado) {
+                        ActiveCallMinimalHeader(
+                            nombre      = llamada.padreNombre,
+                            childNombre = llamada.childNombre,
+                            segundos    = state.duracionSegundos
+                        )
+                    } else {
+                        ActiveCallSection(
+                            nombre        = llamada.padreNombre,
+                            childNombre   = llamada.childNombre,
+                            isVideo       = isVideo,
+                            camaraApagada = state.camaraApagada,
+                            segundos      = state.duracionSegundos,
+                            webRtcConect  = state.webRtcConectado
+                        )
+                    }
                 }
                 else -> {}
             }
