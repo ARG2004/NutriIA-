@@ -43,7 +43,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             try audioSession.setActive(true)
             NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA")
         } catch {
-            NSLog("❌ [WebRtcProvider] Error activando Audio Session: %@", error.localizedDescription)
+            NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error.localizedDescription)")
         }
         audioSession.unlockForConfiguration()
     }
@@ -95,7 +95,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             self.localVideoTrack = videoTrack
             peerConnection?.add(videoTrack, streamIds: ["stream0"])
 
-            videoTrack.add(localView)
+            videoTrack.addRenderer(localView)
             startCapture()
         }
     }
@@ -186,6 +186,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func getRemoteVideoView() -> UIView? { return remoteView }
 
     func dispose() {
+        localVideoTrack?.removeRenderer(localView)
+        remoteVideoTrack?.removeRenderer(remoteView)
         peerConnection?.close()
         peerConnection = nil
         localVideoTrack = nil
@@ -204,7 +206,7 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
         NSLog("📺 [WebRtcProvider] Stream añadido")
         if let track = stream.videoTracks.first {
             self.remoteVideoTrack = track
-            track.add(remoteView)
+            track.addRenderer(remoteView)
             let videoTrack = VideoTrack(nativeTrack: track)
             IOSCallBridge.shared.listener?.onRemoteVideoTrackReady(track: videoTrack)
         }
