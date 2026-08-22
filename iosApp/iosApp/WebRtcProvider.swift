@@ -35,12 +35,17 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let audioSession = RTCAudioSession.sharedInstance()
         audioSession.lockForConfiguration()
         do {
-            // Usar rawValue para asegurar compatibilidad si el enum no se mapea directo
-            try audioSession.setCategory(AVAudioSession.Category.playAndRecord.rawValue, mode: AVAudioSession.Mode.videoChat.rawValue, options: [.defaultToSpeaker, .allowBluetooth])
+            // Usar strings constantes de AVAudioSession para evitar problemas de tipado en el bridge
+            let category = AVAudioSession.Category.playAndRecord.rawValue
+            let mode = AVAudioSession.Mode.videoChat.rawValue
+            // RTCAudioSession.setCategory espera AVAudioSessionCategoryOptions (que es un UInt en ObjC, OptionSet en Swift)
+            let options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetooth]
+
+            try audioSession.setCategory(category, mode: mode, options: options)
             try audioSession.setActive(true)
             NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA")
         } catch {
-            NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error)")
+            NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error.localizedDescription)")
         }
         audioSession.unlockForConfiguration()
     }
@@ -49,11 +54,10 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let audioSession = RTCAudioSession.sharedInstance()
         audioSession.lockForConfiguration()
         do {
-            // RTCAudioSession no tiene setActive(Bool, options:)
             try audioSession.setActive(false)
             NSLog("ℹ️ [WebRtcProvider] Audio Session desactivada")
         } catch {
-            NSLog("❌ [WebRtcProvider] Error desactivando Audio Session: \(error)")
+            NSLog("❌ [WebRtcProvider] Error desactivando Audio Session: \(error.localizedDescription)")
         }
         audioSession.unlockForConfiguration()
     }
@@ -113,8 +117,9 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             guard let sdp = sdp else { return }
             self?.peerConnection?.setLocalDescription(sdp) { error in
                 if error == nil {
-                    // Notificar a Kotlin
-                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.offer, description: sdp.sdp))
+                    // Mapeo KMP: SdpType.OFFER -> .offer
+                    let sdpDesc = SessionDescription(type: .offer, description: sdp.sdp)
+                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }
         }
@@ -135,7 +140,9 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             guard let sdp = sdp else { return }
             self?.peerConnection?.setLocalDescription(sdp) { error in
                 if error == nil {
-                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: SessionDescription(type: SdpType.answer, description: sdp.sdp))
+                    // Mapeo KMP: SdpType.ANSWER -> .answer
+                    let sdpDesc = SessionDescription(type: .answer, description: sdp.sdp)
+                    CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }
         }
@@ -193,20 +200,21 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
 extension WebRtcProvider: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {
-        NSLog("📶 [WebRtcProvider] Signaling state: \(stateChanged)")
+        NSLog("📶 [WebRtcProvider] Signaling state: \(stateChanged.rawValue)")
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didAdd stream: RTCMediaStream) {
         NSLog("📺 [WebRtcProvider] Stream añadido")
         if let track = stream.videoTracks.first {
             self.remoteVideoTrack = track
             track.add(remoteView)
-            CallEngineProvider.shared.getEngine()?.onRemoteVideoTrackReady(track: VideoTrack(nativeTrack: track))
+            let videoTrack = VideoTrack(nativeTrack: track)
+            CallEngineProvider.shared.getEngine()?.onRemoteVideoTrackReady(track: videoTrack)
         }
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
     func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
-        NSLog("❄️ [WebRtcProvider] ICE Connection state: \(newState)")
+        NSLog("❄️ [WebRtcProvider] ICE Connection state: \(newState.rawValue)")
         if newState == .connected || newState == .completed {
             CallEngineProvider.shared.getEngine()?.onConnected()
         } else if newState == .disconnected || newState == .failed {
@@ -214,12 +222,14 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
         }
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {
-        NSLog("🧊 [WebRtcProvider] ICE Gathering state: \(newState)")
+        NSLog("🧊 [WebRtcProvider] ICE Gathering state: \(newState.rawValue)")
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
-        // Castear a Int para compatibilidad con el constructor de Kotlin en Swift
-        let mLineIndex = Int32(candidate.sdpMLineIndex)
-        CallEngineProvider.shared.getEngine()?.onLocalIceCandidateReady(candidate: IceCandidate(sdpMid: candidate.sdpMid ?? "", sdpMLineIndex: mLineIndex, sdp: candidate.sdp))
+        let mid = candidate.sdpMid ?? ""
+        let index = Int32(candidate.sdpMLineIndex)
+        let sdp = candidate.sdp
+        let ice = IceCandidate(sdpMid: mid, sdpMLineIndex: index, sdp: sdp)
+        CallEngineProvider.shared.getEngine()?.onLocalIceCandidateReady(candidate: ice)
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {}
