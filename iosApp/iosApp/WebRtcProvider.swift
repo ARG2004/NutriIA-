@@ -116,7 +116,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             self?.peerConnection?.setLocalDescription(sdp) { error in
                 if error == nil {
                     // Mapeo KMP: SdpType.OFFER
-                    let sdpDesc = SessionDescription(type: .offer, description: sdp.sdp)
+                    let sdpDesc = SessionDescription(type: .offer, sdpDescription: sdp.sdp)
                     CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }
@@ -139,7 +139,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             self?.peerConnection?.setLocalDescription(sdp) { error in
                 if error == nil {
                     // Mapeo KMP: SdpType.ANSWER
-                    let sdpDesc = SessionDescription(type: .answer, description: sdp.sdp)
+                    let sdpDesc = SessionDescription(type: .answer, sdpDescription: sdp.sdp)
                     CallEngineProvider.shared.getEngine()?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }

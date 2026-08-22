@@ -8,7 +8,7 @@ enum class EngineState {
 
 class SessionDescription(
     val type: SdpType,
-    val description: String
+    val sdpDescription: String
 )
 
 enum class SdpType { OFFER, ANSWER, PRANSWER }

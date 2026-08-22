@@ -53,9 +53,9 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
         val llamadaId = _state.value.llamadaActual?.id ?: return
         viewModelScope.launch {
             when (sdp.type) {
-                SdpType.OFFER -> repo.subirOfferSdp(llamadaId, sdp.description)
+                SdpType.OFFER -> repo.subirOfferSdp(llamadaId, sdp.sdpDescription)
                 SdpType.ANSWER -> {
-                    repo.subirAnswerSdp(llamadaId, sdp.description)
+                    repo.subirAnswerSdp(llamadaId, sdp.sdpDescription)
                     remoteSdpEstablecido = true
                     procesarIceCandidatesPendientes()
                 }
