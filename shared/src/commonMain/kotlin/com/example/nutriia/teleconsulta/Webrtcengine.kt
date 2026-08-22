@@ -9,7 +9,12 @@ enum class EngineState {
 class SessionDescription(
     val type: SdpType,
     val sdpDescription: String
-)
+) {
+    companion object {
+        fun ofOffer(sdp: String) = SessionDescription(SdpType.OFFER, sdp)
+        fun ofAnswer(sdp: String) = SessionDescription(SdpType.ANSWER, sdp)
+    }
+}
 
 enum class SdpType { OFFER, ANSWER, PRANSWER }
 
@@ -17,7 +22,11 @@ class IceCandidate(
     val sdpMid: String,
     val sdpMLineIndex: Int,
     val sdp: String
-)
+) {
+    companion object {
+        fun create(sdpMid: String, sdpMLineIndex: Int, sdp: String) = IceCandidate(sdpMid, sdpMLineIndex, sdp)
+    }
+}
 
 // Representa un track de video que la UI puede renderizar
 expect class VideoTrack(nativeTrack: Any? = null)

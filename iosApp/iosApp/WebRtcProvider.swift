@@ -105,7 +105,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             self?.peerConnection?.setLocalDescription(sdp) { error in
                 if error == nil {
                     // Mapeo KMP: SdpType.OFFER
-                    let sdpDesc = SessionDescription(type: .offer, sdpDescription: sdp.sdp)
+                    let sdpDesc = SessionDescription.companion.ofOffer(sdp: sdp.sdp)
                     IOSCallBridge.shared.listener?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }
@@ -128,7 +128,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             self?.peerConnection?.setLocalDescription(sdp) { error in
                 if error == nil {
                     // Mapeo KMP: SdpType.ANSWER
-                    let sdpDesc = SessionDescription(type: .answer, sdpDescription: sdp.sdp)
+                    let sdpDesc = SessionDescription.companion.ofAnswer(sdp: sdp.sdp)
                     IOSCallBridge.shared.listener?.onLocalSdpReady(sdp: sdpDesc)
                 }
             }
@@ -217,7 +217,7 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
         let mid = candidate.sdpMid ?? ""
         let index = Int32(candidate.sdpMLineIndex)
         let sdp = candidate.sdp
-        let ice = IceCandidate(sdpMid: mid, sdpMLineIndex: index, sdp: sdp)
+        let ice = IceCandidate.companion.create(sdpMid: mid, sdpMLineIndex: index, sdp: sdp)
         IOSCallBridge.shared.listener?.onLocalIceCandidateReady(candidate: ice)
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
