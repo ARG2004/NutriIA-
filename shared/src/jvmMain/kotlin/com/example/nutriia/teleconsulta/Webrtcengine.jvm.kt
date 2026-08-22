@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 
-actual class VideoTrack
+actual class VideoTrack actual constructor(val nativeTrack: Any?)
 
 actual class WebRtcEngine actual constructor(
     private val callback: WebRtcEngineCallback
@@ -32,6 +32,13 @@ actual class WebRtcEngine actual constructor(
     actual fun dispose() {
         _engineState.value = EngineState.IDLE
     }
+
+    actual fun onConnected() {}
+    actual fun onDisconnected() {}
+    actual fun onError(message: String) {}
+    actual fun onLocalSdpReady(sdp: SessionDescription) {}
+    actual fun onLocalIceCandidateReady(candidate: IceCandidate) {}
+    actual fun onRemoteVideoTrackReady(track: VideoTrack) {}
 }
 
 @Composable

@@ -12,7 +12,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 
 // En iOS, el track de video real lo maneja Swift. 
 // Aquí solo necesitamos un objeto para pasarlo entre la lógica de Kotlin y la UI de Compose.
-actual class VideoTrack(val nativeTrack: Any? = null)
+actual class VideoTrack actual constructor(val nativeTrack: Any?)
 
 /**
  * Bridge que la app nativa en Swift debe implementar para proveer
@@ -97,30 +97,30 @@ actual class WebRtcEngine actual constructor(
     }
 
     // Bridging methods para que Swift llame de vuelta
-    fun onConnected() {
+    actual fun onConnected() {
         _engineState.value = EngineState.CONNECTED
         callback.onConnected()
     }
 
-    fun onDisconnected() {
+    actual fun onDisconnected() {
         _engineState.value = EngineState.DISCONNECTED
         callback.onDisconnected()
     }
 
-    fun onError(message: String) {
+    actual fun onError(message: String) {
         _engineState.value = EngineState.FAILED
         callback.onError(message)
     }
 
-    fun onLocalSdpReady(sdp: SessionDescription) {
+    actual fun onLocalSdpReady(sdp: SessionDescription) {
         callback.onLocalSdpReady(sdp)
     }
 
-    fun onLocalIceCandidateReady(candidate: IceCandidate) {
+    actual fun onLocalIceCandidateReady(candidate: IceCandidate) {
         callback.onLocalIceCandidateReady(candidate)
     }
 
-    fun onRemoteVideoTrackReady(track: VideoTrack) {
+    actual fun onRemoteVideoTrackReady(track: VideoTrack) {
         callback.onRemoteVideoTrackReady(track)
     }
 }

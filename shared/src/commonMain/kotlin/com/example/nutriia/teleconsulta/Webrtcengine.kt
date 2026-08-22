@@ -20,7 +20,7 @@ class IceCandidate(
 )
 
 // Representa un track de video que la UI puede renderizar
-expect class VideoTrack
+expect class VideoTrack(nativeTrack: Any? = null)
 
 interface WebRtcEngineCallback {
     fun onConnected()
@@ -43,6 +43,13 @@ expect class WebRtcEngine(callback: WebRtcEngineCallback) {
     fun apagarCamara(apagada: Boolean)
     fun cambiarCamara()
     fun dispose()
+
+    fun onConnected()
+    fun onDisconnected()
+    fun onError(message: String)
+    fun onLocalSdpReady(sdp: SessionDescription)
+    fun onLocalIceCandidateReady(candidate: IceCandidate)
+    fun onRemoteVideoTrackReady(track: VideoTrack)
 }
 
 object CallEngineProvider {
