@@ -36,8 +36,8 @@ targets:
         CFBundleInfoDictionaryVersion: '6.0'
         CFBundleName: NutriIA
         CFBundlePackageType: APPL
-        CFBundleShortVersionString: '2.4.2'
-        CFBundleVersion: '158'
+        CFBundleShortVersionString: '2.4.3'
+        CFBundleVersion: '159'
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: com.arg.nutriia
@@ -79,8 +79,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: iosApp/iosApp/Info.plist
-        CURRENT_PROJECT_VERSION: '158'
-        MARKETING_VERSION: '2.4.2'
+        CURRENT_PROJECT_VERSION: '159'
+        MARKETING_VERSION: '2.4.3'
         FRAMEWORK_SEARCH_PATHS: '$(SRCROOT)/shared/build/bin/iosArm64/releaseFramework'
         LD_RUNPATH_SEARCH_PATHS: '@executable_path/Frameworks'
     dependencies:

@@ -24,8 +24,8 @@ android {
         applicationId             = "com.example.nutriia"
         minSdk                    = 26
         targetSdk                 = 36
-        versionCode               = 1
-        versionName               = "1.0"
+        versionCode               = 159
+        versionName               = "2.4.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val encodeKey = { key: String ->
