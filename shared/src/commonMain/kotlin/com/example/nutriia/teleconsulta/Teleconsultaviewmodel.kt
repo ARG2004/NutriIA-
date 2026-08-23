@@ -80,10 +80,17 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
 
     override fun onConnected() {
         if (_state.value.webRtcConectado) return
+        val currentCall = _state.value.llamadaActual
+        val updatedCall = if (currentCall != null && (currentCall.estado == EstadoLlamada.SONANDO || currentCall.estado == EstadoLlamada.INICIANDO)) {
+            currentCall.copy(estado = EstadoLlamada.ACTIVA)
+        } else {
+            currentCall
+        }
         _state.value = _state.value.copy(
             webRtcConectado  = true,
             enLlamada        = true,
-            duracionSegundos = 0
+            duracionSegundos = 0,
+            llamadaActual    = updatedCall
         )
         iniciarTimer()
         confirmarPagoTrasConexionEstable()

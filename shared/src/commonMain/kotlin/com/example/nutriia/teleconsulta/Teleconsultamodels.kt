@@ -34,11 +34,19 @@ data class IceCandidateData(
     )
 
     companion object {
-        fun fromMap(map: Map<String, Any?>): IceCandidateData = IceCandidateData(
-            sdpMid        = map["sdpMid"]        as? String ?: "",
-            sdpMLineIndex = (map["sdpMLineIndex"] as? Long)?.toInt() ?: 0,
-            sdp           = map["sdp"]           as? String ?: ""
-        )
+        fun fromMap(map: Map<String, Any?>): IceCandidateData {
+            val indexRaw = map["sdpMLineIndex"]
+            val index = when (indexRaw) {
+                is Number -> indexRaw.toInt()
+                is String -> indexRaw.toIntOrNull() ?: 0
+                else -> 0
+            }
+            return IceCandidateData(
+                sdpMid        = map["sdpMid"]?.toString() ?: "",
+                sdpMLineIndex = index,
+                sdp           = map["sdp"]?.toString() ?: ""
+            )
+        }
     }
 }
 
@@ -87,28 +95,40 @@ data class SolicitudLlamada(
     )
 
     companion object {
+        private fun parseLong(value: Any?): Long = when (value) {
+            is Number -> value.toLong()
+            is String -> value.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+
+        private fun parseInt(value: Any?): Int = when (value) {
+            is Number -> value.toInt()
+            is String -> value.toIntOrNull() ?: 0
+            else -> 0
+        }
+
         fun fromMap(id: String, map: Map<String, Any?>): SolicitudLlamada = SolicitudLlamada(
             id               = id,
-            emisorUid        = map["emisorUid"]        as? String ?: "",
-            receptorUid      = map["receptorUid"]      as? String ?: "",
-            nutriologoUid    = map["nutriologoUid"]    as? String ?: "",
-            nutriologoNombre = map["nutriologoNombre"] as? String ?: "",
-            padreUid         = map["padreUid"]         as? String ?: "",
-            padreNombre      = map["padreNombre"]      as? String ?: "",
-            childId          = map["childId"]          as? String ?: "",
-            childNombre      = map["childNombre"]      as? String ?: "",
+            emisorUid        = map["emisorUid"]?.toString() ?: "",
+            receptorUid      = map["receptorUid"]?.toString() ?: "",
+            nutriologoUid    = map["nutriologoUid"]?.toString() ?: "",
+            nutriologoNombre = map["nutriologoNombre"]?.toString() ?: "",
+            padreUid         = map["padreUid"]?.toString() ?: "",
+            padreNombre      = map["padreNombre"]?.toString() ?: "",
+            childId          = map["childId"]?.toString() ?: "",
+            childNombre      = map["childNombre"]?.toString() ?: "",
             tipo             = runCatching {
-                TipoLlamada.valueOf(map["tipo"] as? String ?: "")
+                TipoLlamada.valueOf(map["tipo"]?.toString() ?: "")
             }.getOrDefault(TipoLlamada.VIDEO),
             estado           = runCatching {
-                EstadoLlamada.valueOf(map["estado"] as? String ?: "")
+                EstadoLlamada.valueOf(map["estado"]?.toString() ?: "")
             }.getOrDefault(EstadoLlamada.INICIANDO),
-            offerSdp         = map["offerSdp"]         as? String,
-            answerSdp        = map["answerSdp"]        as? String,
-            creadoEn         = map["creadoEn"]         as? Long   ?: 0L,
-            aceptadoEn       = map["aceptadoEn"]       as? Long,
-            finalizadoEn     = map["finalizadoEn"]     as? Long,
-            duracionSegundos = (map["duracionSegundos"] as? Long)?.toInt() ?: 0
+            offerSdp         = map["offerSdp"]?.toString(),
+            answerSdp        = map["answerSdp"]?.toString(),
+            creadoEn         = parseLong(map["creadoEn"]),
+            aceptadoEn       = map["aceptadoEn"]?.let { parseLong(it) },
+            finalizadoEn     = map["finalizadoEn"]?.let { parseLong(it) },
+            duracionSegundos = parseInt(map["duracionSegundos"])
         )
     }
 }
