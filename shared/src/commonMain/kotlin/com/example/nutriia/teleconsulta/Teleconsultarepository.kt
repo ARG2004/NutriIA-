@@ -115,8 +115,7 @@ class TeleconsultaRepository {
         return try {
             col.document(llamadaId).snapshots.conflate().map { snapshot ->
                 if (snapshot.exists) {
-                    val data = snapshot.data<Map<String, Any?>>()
-                    SolicitudLlamada.fromMap(snapshot.id, data)
+                    snapshot.data<SolicitudLlamada>()
                 } else null
             }
         } catch (e: Exception) {
@@ -166,16 +165,7 @@ class TeleconsultaRepository {
         return try {
             col.document(llamadaId).collection("iceCandidatesOffer").snapshots.conflate().map { querySnapshot ->
                 querySnapshot.documents.map { doc ->
-                    val sdpMid = try { doc.get<String>("sdpMid") } catch (e: Exception) { "" }
-                    val sdpMLineIndexRaw = try { doc.get<Any>("sdpMLineIndex") } catch (e: Exception) { 0 }
-                    val sdp = try { doc.get<String>("sdp") } catch (e: Exception) { "" }
-                    
-                    val index = when (sdpMLineIndexRaw) {
-                        is Number -> sdpMLineIndexRaw.toInt()
-                        is String -> sdpMLineIndexRaw.toIntOrNull() ?: 0
-                        else -> 0
-                    }
-                    IceCandidateData(sdpMid, index, sdp)
+                    doc.data<IceCandidateData>()
                 }
             }
         } catch (e: Exception) {
@@ -187,16 +177,7 @@ class TeleconsultaRepository {
         return try {
             col.document(llamadaId).collection("iceCandidatesAnswer").snapshots.conflate().map { querySnapshot ->
                 querySnapshot.documents.map { doc ->
-                    val sdpMid = try { doc.get<String>("sdpMid") } catch (e: Exception) { "" }
-                    val sdpMLineIndexRaw = try { doc.get<Any>("sdpMLineIndex") } catch (e: Exception) { 0 }
-                    val sdp = try { doc.get<String>("sdp") } catch (e: Exception) { "" }
-                    
-                    val index = when (sdpMLineIndexRaw) {
-                        is Number -> sdpMLineIndexRaw.toInt()
-                        is String -> sdpMLineIndexRaw.toIntOrNull() ?: 0
-                        else -> 0
-                    }
-                    IceCandidateData(sdpMid, index, sdp)
+                    doc.data<IceCandidateData>()
                 }
             }
         } catch (e: Exception) {
@@ -241,7 +222,7 @@ class TeleconsultaRepository {
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
                     .snapshots.conflate().map { querySnapshot ->
                         querySnapshot.documents.firstOrNull()?.let { doc ->
-                            SolicitudLlamada.fromMap(doc.id, doc.data())
+                            doc.data<SolicitudLlamada>()
                         }
                     }
             } catch (e: Exception) {
@@ -258,7 +239,7 @@ class TeleconsultaRepository {
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
                     .snapshots.conflate().map { querySnapshot ->
                         querySnapshot.documents.firstOrNull()?.let { doc ->
-                            SolicitudLlamada.fromMap(doc.id, doc.data())
+                            doc.data<SolicitudLlamada>()
                         }
                     }
             } catch (e: Exception) {
@@ -274,7 +255,7 @@ class TeleconsultaRepository {
                 col.where { "nutriologoUid".equalTo(nutriologoUid) }
                     .snapshots.conflate().map { querySnapshot ->
                         querySnapshot.documents.map { doc ->
-                            SolicitudLlamada.fromMap(doc.id, doc.data())
+                            doc.data<SolicitudLlamada>()
                         }
                     }
             } catch (e: Exception) {

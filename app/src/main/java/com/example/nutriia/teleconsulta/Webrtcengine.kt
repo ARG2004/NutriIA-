@@ -96,6 +96,9 @@ class WebRtcEngine(
     var isSpeakerOn:   Boolean = true
         private set
 
+    // Tipo de llamada
+    private var isVideoCall: Boolean = true
+
     // ─── Inicialización ───────────────────────────────────────────────────────
 
     fun initialize() {
@@ -146,6 +149,7 @@ class WebRtcEngine(
     // ─── Crear PeerConnection ─────────────────────────────────────────────────
 
     fun createPeerConnection(isOffer: Boolean, tipo: TipoLlamada) {
+        isVideoCall = (tipo == TipoLlamada.VIDEO)
         val factory = peerConnectionFactory ?: run {
             callback.onError("Factory no inicializada")
             return
@@ -233,7 +237,7 @@ class WebRtcEngine(
         val pc = peerConnection ?: return
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", if (isVideoCall) "true" else "false"))
         }
         pc.createOffer(object : SdpObserverAdapter() {
             override fun onCreateSuccess(sdp: SessionDescription) {
@@ -272,7 +276,7 @@ class WebRtcEngine(
         val pc = peerConnection ?: return
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", if (isVideoCall) "true" else "false"))
         }
         pc.createAnswer(object : SdpObserverAdapter() {
             override fun onCreateSuccess(sdp: SessionDescription) {

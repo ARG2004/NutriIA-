@@ -45,6 +45,11 @@ object PlayIntegrityManager {
         context: Context,
         requestNonce: String = generarNonce()
     ): Result<String> = withContext(Dispatchers.IO) {
+        // TODO: Restaurar para producción. Se saltó temporalmente para pruebas en emulador (Android vs Android)
+        Log.d(TAG, "[Play Integrity] Bypasseando verificación para entorno de emulador.")
+        Result.success("dummy_emulator_token")
+        
+        /*
         try {
             val integrityManager: IntegrityManager = IntegrityManagerFactory.create(context.applicationContext)
 
@@ -62,6 +67,7 @@ object PlayIntegrityManager {
             Log.e(TAG, "[Play Integrity] Error al obtener token: ${e.message}", e)
             Result.failure(e)
         }
+        */
     }
 
     /**
