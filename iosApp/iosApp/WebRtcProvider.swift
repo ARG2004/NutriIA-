@@ -71,7 +71,11 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
             )
         ]
         config.sdpSemantics = .unifiedPlan
-
+        config.bundlePolicy = .maxBundle
+        config.rtcpMuxPolicy = .require
+        config.tcpCandidatePolicy = .enabled
+        config.candidateNetworkPolicy = .all
+        config.continualGatheringPolicy = .gatherContinually
         let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
         self.peerConnection = factory.peerConnection(with: config, constraints: constraints, delegate: self)
 
