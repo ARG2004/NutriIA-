@@ -5,6 +5,7 @@ import com.example.nutriia.platform.currentTimeMillis
 import com.example.nutriia.platform.generateUUID
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
+import dev.gitlive.firebase.firestore.Direction
 import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -218,11 +219,15 @@ class TeleconsultaRepository {
         return auth.authStateChanged.flatMapLatest { user ->
             if (user == null) flowOf(null)
             else try {
-                col.where { "receptorUid".equalTo(padreUid) }
+                col.where { "padreUid".equalTo(padreUid) }
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
+                    .orderBy("creadoEn", Direction.DESCENDING)
                     .snapshots.conflate().map { querySnapshot ->
-                        querySnapshot.documents.firstOrNull()?.let { doc ->
-                            doc.data<SolicitudLlamada>()
+                        val llamada = querySnapshot.documents.firstOrNull()?.data<SolicitudLlamada>()
+                        if (llamada != null && llamada.emisorUid == padreUid) {
+                            null
+                        } else {
+                            llamada
                         }
                     }
             } catch (e: Exception) {
@@ -235,11 +240,15 @@ class TeleconsultaRepository {
         return auth.authStateChanged.flatMapLatest { user ->
             if (user == null) flowOf(null)
             else try {
-                col.where { "receptorUid".equalTo(nutriologoUid) }
+                col.where { "nutriologoUid".equalTo(nutriologoUid) }
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
+                    .orderBy("creadoEn", Direction.DESCENDING)
                     .snapshots.conflate().map { querySnapshot ->
-                        querySnapshot.documents.firstOrNull()?.let { doc ->
-                            doc.data<SolicitudLlamada>()
+                        val llamada = querySnapshot.documents.firstOrNull()?.data<SolicitudLlamada>()
+                        if (llamada != null && llamada.emisorUid == nutriologoUid) {
+                            null
+                        } else {
+                            llamada
                         }
                     }
             } catch (e: Exception) {
