@@ -166,7 +166,16 @@ class TeleconsultaRepository {
         return try {
             col.document(llamadaId).collection("iceCandidatesOffer").snapshots.conflate().map { querySnapshot ->
                 querySnapshot.documents.map { doc ->
-                    IceCandidateData.fromMap(doc.data())
+                    val sdpMid = try { doc.get<String>("sdpMid") } catch (e: Exception) { "" }
+                    val sdpMLineIndexRaw = try { doc.get<Any>("sdpMLineIndex") } catch (e: Exception) { 0 }
+                    val sdp = try { doc.get<String>("sdp") } catch (e: Exception) { "" }
+                    
+                    val index = when (sdpMLineIndexRaw) {
+                        is Number -> sdpMLineIndexRaw.toInt()
+                        is String -> sdpMLineIndexRaw.toIntOrNull() ?: 0
+                        else -> 0
+                    }
+                    IceCandidateData(sdpMid, index, sdp)
                 }
             }
         } catch (e: Exception) {
@@ -178,7 +187,16 @@ class TeleconsultaRepository {
         return try {
             col.document(llamadaId).collection("iceCandidatesAnswer").snapshots.conflate().map { querySnapshot ->
                 querySnapshot.documents.map { doc ->
-                    IceCandidateData.fromMap(doc.data())
+                    val sdpMid = try { doc.get<String>("sdpMid") } catch (e: Exception) { "" }
+                    val sdpMLineIndexRaw = try { doc.get<Any>("sdpMLineIndex") } catch (e: Exception) { 0 }
+                    val sdp = try { doc.get<String>("sdp") } catch (e: Exception) { "" }
+                    
+                    val index = when (sdpMLineIndexRaw) {
+                        is Number -> sdpMLineIndexRaw.toInt()
+                        is String -> sdpMLineIndexRaw.toIntOrNull() ?: 0
+                        else -> 0
+                    }
+                    IceCandidateData(sdpMid, index, sdp)
                 }
             }
         } catch (e: Exception) {
