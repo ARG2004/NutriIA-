@@ -24,7 +24,8 @@ data class TeleconsultaUiState(
     val duracionSegundos: Int     = 0,
     val error:            String? = null,
     val cargando:         Boolean = false,
-    val webRtcConectado:  Boolean = false
+    val webRtcConectado:  Boolean = false,
+    val soyElNutriologo:  Boolean = false
 )
 
 class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
@@ -39,7 +40,7 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
     private var entrantesJob:     Job? = null
     private var iceCandidatesJob: Job? = null
 
-    private var esNutriologo: Boolean = false
+    private var esOfferer: Boolean = false
     private val iceCandidatesPendientes = mutableListOf<IceCandidateData>()
     private var remoteSdpEstablecido    = false
     private var pagoIdPendiente: String? = null
@@ -72,7 +73,7 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
             sdp           = candidate.sdp
         )
         viewModelScope.launch {
-            if (esNutriologo) repo.subirIceCandidateOffer(llamadaId, data)
+            if (esOfferer) repo.subirIceCandidateOffer(llamadaId, data)
             else              repo.subirIceCandidateAnswer(llamadaId, data)
         }
     }
@@ -112,8 +113,9 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
         tipo:             TipoLlamada = TipoLlamada.VIDEO
     ) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(cargando = true, error = null)
-            esNutriologo = true
+            _state.value = _state.value.copy(cargando = true, error = null, soyElNutriologo = true)
+            esOfferer = true
+
             remoteSdpEstablecido = false
             iceCandidatesPendientes.clear()
 
@@ -144,8 +146,9 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
         viewModelScope.launch {
             require(pagoId.isNotBlank()) { "pagoId no puede estar vacio" }
             pagoIdPendiente = pagoId
-            _state.value = _state.value.copy(cargando = true, error = null)
-            esNutriologo = true
+            _state.value = _state.value.copy(cargando = true, error = null, soyElNutriologo = false)
+            esOfferer = true
+
             remoteSdpEstablecido = false
             iceCandidatesPendientes.clear()
 
@@ -188,7 +191,7 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
                 return@launch
             }
 
-            esNutriologo = false
+            esOfferer = false
             remoteSdpEstablecido = false
             iceCandidatesPendientes.clear()
 
@@ -198,11 +201,15 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
             engine.createPeerConnection(isOffer = false, tipo = llamada.tipo)
 
             repo.responderLlamada(llamadaId, true)
+            val uid = repo.getCurrentUserId()
+            val soyNutri = uid != null && uid == llamada.nutriologoUid
 
             _state.value = _state.value.copy(
                 llamadaActual   = llamada.copy(estado = EstadoLlamada.ACTIVA),
-                llamadaEntrante = null
+                llamadaEntrante = null,
+                soyElNutriologo = soyNutri
             )
+
 
             suscribirCambiosLlamada(llamadaId)
             observarIceCandidatesOffer(llamadaId)
@@ -226,7 +233,7 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
 
                 when (llamada?.estado) {
                     EstadoLlamada.ACTIVA -> {
-                        if (!esNutriologo) {
+                        if (!esOfferer) {
                             val offerNuevo    = llamada.offerSdp
                             val offerAnterior = prev?.offerSdp
                             if (offerNuevo != null && offerAnterior == null && CallEngineProvider.isInitialized) {
@@ -250,7 +257,7 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
                     else -> {}
                 }
 
-                if (esNutriologo && llamada != null) {
+                if (esOfferer && llamada != null) {
                     val answerNuevo    = llamada.answerSdp
                     val answerAnterior = prev?.answerSdp
                     if (answerNuevo != null && answerAnterior == null && CallEngineProvider.isInitialized) {

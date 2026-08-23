@@ -17,7 +17,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>2.4.1</string>
 	<key>CFBundleVersion</key>
-	<string>152</string>
+	<string>153</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
@@ -103,5 +103,7 @@
 	<string>$(GROQ_API_KEY)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>NutrIA necesita acceso a la red local para mejorar la calidad de las teleconsultas en casa</string>
 </dict>
 </plist>

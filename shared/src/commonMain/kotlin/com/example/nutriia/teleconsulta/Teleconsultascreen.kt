@@ -165,24 +165,27 @@ fun TeleconsultaActiveScreen(
             Spacer(Modifier.height(36.dp))
 
             // Zona central según estado
+            val nombreRemoto = if (state.soyElNutriologo) llamada.padreNombre else llamada.nutriologoNombre
+            val subtituloRemoto = if (state.soyElNutriologo) "Paciente: ${llamada.childNombre}" else "Nutriólogo · Paciente: ${llamada.childNombre}"
+
             when (llamada.estado) {
                 EstadoLlamada.SONANDO, EstadoLlamada.INICIANDO -> {
                     ConnectingSection(
-                        nombre      = llamada.padreNombre,
-                        childNombre = llamada.childNombre
+                        nombre      = nombreRemoto,
+                        subtitulo   = subtituloRemoto
                     )
                 }
                 EstadoLlamada.ACTIVA -> {
                     if (isVideo && state.webRtcConectado) {
                         ActiveCallMinimalHeader(
-                            nombre      = llamada.padreNombre,
-                            childNombre = llamada.childNombre,
+                            nombre      = nombreRemoto,
+                            subtitulo   = subtituloRemoto,
                             segundos    = state.duracionSegundos
                         )
                     } else {
                         ActiveCallSection(
-                            nombre        = llamada.padreNombre,
-                            childNombre   = llamada.childNombre,
+                            nombre        = nombreRemoto,
+                            subtitulo     = subtituloRemoto,
                             isVideo       = isVideo,
                             camaraApagada = state.camaraApagada,
                             segundos      = state.duracionSegundos,
@@ -286,10 +289,10 @@ private fun AnimatedCallBackground(isVideo: Boolean) {
 
 // ─── Header mínimo cuando hay video de fondo ──────────────────────────────────
 @Composable
-private fun ActiveCallMinimalHeader(nombre: String, childNombre: String, segundos: Int) {
+private fun ActiveCallMinimalHeader(nombre: String, subtitulo: String, segundos: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(nombre, color = CallWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text("Paciente: $childNombre", color = CallWhite.copy(0.7f), fontSize = 12.sp)
+        Text(subtitulo, color = CallWhite.copy(0.7f), fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
         CallTimerDisplay(segundos = segundos)
     }
@@ -297,7 +300,7 @@ private fun ActiveCallMinimalHeader(nombre: String, childNombre: String, segundo
 
 // ─── Sección conectando ────────────────────────────────────────────────────────
 @Composable
-private fun ConnectingSection(nombre: String, childNombre: String) {
+private fun ConnectingSection(nombre: String, subtitulo: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         PulsatingAvatar(nombre = nombre, size = 110.dp, ringColor = CallGreen)
         Spacer(Modifier.height(28.dp))
@@ -307,7 +310,7 @@ private fun ConnectingSection(nombre: String, childNombre: String) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ChildCare, null, tint = CallGray, modifier = Modifier.size(12.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Paciente: $childNombre", color = CallGray, fontSize = 13.sp)
+            Text(subtitulo, color = CallGray, fontSize = 13.sp)
         }
         Spacer(Modifier.height(20.dp))
         PulsatingDots()
@@ -318,7 +321,7 @@ private fun ConnectingSection(nombre: String, childNombre: String) {
 @Composable
 private fun ActiveCallSection(
     nombre:       String,
-    childNombre:  String,
+    subtitulo:    String,
     isVideo:      Boolean,
     camaraApagada: Boolean,
     segundos:     Int,
@@ -344,7 +347,7 @@ private fun ActiveCallSection(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ChildCare, null, tint = CallGray, modifier = Modifier.size(12.dp))
             Spacer(Modifier.width(4.dp))
-            Text("Paciente: $childNombre", color = CallGray, fontSize = 12.sp)
+            Text(subtitulo, color = CallGray, fontSize = 12.sp)
         }
 
         Spacer(Modifier.height(8.dp))

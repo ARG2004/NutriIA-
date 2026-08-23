@@ -22,6 +22,8 @@ class TeleconsultaRepository {
     private val auth get() = Firebase.auth
     private val col get() = db.collection("teleconsultas")
 
+    fun getCurrentUserId(): String? = auth.currentUser?.uid
+
     suspend fun iniciarLlamada(
         padreUid:         String,
         padreNombre:      String,

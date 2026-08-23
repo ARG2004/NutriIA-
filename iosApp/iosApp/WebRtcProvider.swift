@@ -58,7 +58,18 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func createPeerConnection(isOffer: Bool, isVideo: Bool) {
         self.isVideoCall = isVideo
         let config = RTCConfiguration()
-        config.iceServers = [RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"])]
+        config.iceServers = [
+            RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"]),
+            RTCIceServer(
+                urlStrings: [
+                    "turn:openrelay.metered.ca:80",
+                    "turn:openrelay.metered.ca:443",
+                    "turn:openrelay.metered.ca:443?transport=tcp"
+                ],
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            )
+        ]
         config.sdpSemantics = .unifiedPlan
 
         let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
@@ -137,7 +148,13 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     func setRemoteAnswer(sdp: String) {
         let remoteSdp = RTCSessionDescription(type: .answer, sdp: sdp)
-        peerConnection?.setRemoteDescription(remoteSdp) { _ in }
+        peerConnection?.setRemoteDescription(remoteSdp) { error in
+            if let error = error {
+                NSLog("❌ [WebRtcProvider] Error setting remote answer: \(error.localizedDescription)")
+            } else {
+                NSLog("✅ [WebRtcProvider] Remote answer set successfully")
+            }
+        }
     }
 
     func addRemoteIceCandidate(sdpMid: String, sdpMLineIndex: Int32, sdp: String) {
@@ -204,10 +221,12 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
     func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
         NSLog("❄️ [WebRtcProvider] ICE Connection state: %ld", Int(newState.rawValue))
-        if newState == .connected || newState == .completed {
-            IOSCallBridge.shared.listener?.onConnected()
-        } else if newState == .disconnected || newState == .failed {
-            IOSCallBridge.shared.listener?.onDisconnected()
+        DispatchQueue.main.async {
+            if newState == .connected || newState == .completed {
+                IOSCallBridge.shared.listener?.onConnected()
+            } else if newState == .disconnected || newState == .failed {
+                IOSCallBridge.shared.listener?.onDisconnected()
+            }
         }
     }
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {
