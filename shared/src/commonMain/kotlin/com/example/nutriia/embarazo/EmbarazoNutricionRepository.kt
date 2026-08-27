@@ -50,7 +50,10 @@ class EmbarazoNutricionRepository {
         return try {
             col().where { "fecha".equalTo(fecha) }.snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    runCatching { RegistroNutrientes.fromMap(doc.data()) }.getOrNull()
+                    runCatching { 
+                        val r = doc.data<RegistroNutrientes>()
+                        if (r.id.isBlank()) r.copy(id = doc.id) else r
+                    }.getOrNull()
                 }
             }
         } catch (e: Exception) {
@@ -63,7 +66,10 @@ class EmbarazoNutricionRepository {
         return try {
             col().snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    runCatching { RegistroNutrientes.fromMap(doc.data()) }.getOrNull()
+                    runCatching { 
+                        val r = doc.data<RegistroNutrientes>()
+                        if (r.id.isBlank()) r.copy(id = doc.id) else r
+                    }.getOrNull()
                 }
             }
         } catch (e: Exception) {

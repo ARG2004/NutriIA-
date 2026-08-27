@@ -24,7 +24,7 @@ class PaymentViewModel : ViewModel() {
     val state: StateFlow<PaymentUiState> = _state.asStateFlow()
 
     companion object {
-        const val PRECIO_CENTAVOS = 13000
+        const val PRECIO_CENTAVOS = 25000
         const val MONEDA          = "MXN"
 
         const val DEEP_LINK_SUCCESS = "nutriia://pago-ok"

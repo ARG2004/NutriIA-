@@ -35,7 +35,7 @@ class GinecologoRepository {
             val docRef = colGinecologosPublicos.document(uid)
             val snap = docRef.get()
             val existingCode = if (snap.exists) {
-                snap.data<Map<String, Any?>>()["codigo"] as? String
+                snap.get<String?>("codigo")
             } else null
 
             val codigo = if (!existingCode.isNullOrBlank()) existingCode else generarCodigo(nombre)
@@ -63,7 +63,8 @@ class GinecologoRepository {
             val snap = colGinecologosPublicos.where { "codigo".equalTo(q) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
-                Result.success(GinecologoPublico.fromMap(doc.data(), doc.id))
+                val perfil = doc.data<GinecologoPublico>()
+                Result.success(if (perfil.uid.isBlank()) perfil.copy(uid = doc.id) else perfil)
             } else {
                 Result.success(null)
             }
@@ -80,7 +81,8 @@ class GinecologoRepository {
             val snap = colGinecologosPublicos.where { "email".equalTo(e) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
-                Result.success(GinecologoPublico.fromMap(doc.data(), doc.id))
+                val perfil = doc.data<GinecologoPublico>()
+                Result.success(if (perfil.uid.isBlank()) perfil.copy(uid = doc.id) else perfil)
             } else {
                 Result.success(null)
             }
@@ -93,7 +95,10 @@ class GinecologoRepository {
         return try {
             val snap = colGinecologosPublicos.get()
             val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
-                runCatching { GinecologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                runCatching { 
+                    val p = doc.data<GinecologoPublico>()
+                    if (p.uid.isBlank()) p.copy(uid = doc.id) else p 
+                }.getOrNull()
             }
             Result.success(lista)
         } catch (e: Exception) {
@@ -106,7 +111,10 @@ class GinecologoRepository {
         return try {
             val snap = colGinecologosPublicos.get()
             val todos = snap.documents.mapNotNull { doc ->
-                runCatching { GinecologoPublico.fromMap(doc.data(), doc.id) }.getOrNull()
+                runCatching { 
+                    val p = doc.data<GinecologoPublico>()
+                    if (p.uid.isBlank()) p.copy(uid = doc.id) else p
+                }.getOrNull()
             }
             if (q.isBlank()) return Result.success(todos)
             val filtrados = todos.filter {
@@ -181,7 +189,7 @@ class GinecologoRepository {
         return try {
             val docSnap = colVinculaciones.document(vinculacionId).get()
             if (!docSnap.exists) return Result.failure(Exception("Vinculación no encontrada"))
-            val vinc = VinculacionEmbarazo.fromMap(docSnap.id, docSnap.data())
+            val vinc = docSnap.data<VinculacionEmbarazo>().copy(id = docSnap.id)
 
             val citaId = generateUUID()
             val cita = CitaEmbarazo(
@@ -232,7 +240,7 @@ class GinecologoRepository {
         return try {
             colVinculaciones.where { "mamaUid".equalTo(mamaUid) }.snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    runCatching { VinculacionEmbarazo.fromMap(doc.id, doc.data()) }.getOrNull()
+                    runCatching { doc.data<VinculacionEmbarazo>().copy(id = doc.id) }.getOrNull()
                 }.firstOrNull { it.estado != EstadoVinculacionEmbarazo.REVOCADO }
             }
         } catch (e: Exception) {
@@ -245,7 +253,7 @@ class GinecologoRepository {
         return try {
             colVinculaciones.where { "mamaUid".equalTo(mamaUid) }.snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    val vinc = runCatching { VinculacionEmbarazo.fromMap(doc.id, doc.data()) }.getOrNull()
+                    val vinc = runCatching { doc.data<VinculacionEmbarazo>().copy(id = doc.id) }.getOrNull()
                     if (vinc != null && vinc.proximaCitaFecha.isNotBlank()) {
                         CitaEmbarazo(
                             id = vinc.id,
@@ -269,7 +277,7 @@ class GinecologoRepository {
         return try {
             colVinculaciones.where { "ginecologoUid".equalTo(gineUid) }.snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    runCatching { VinculacionEmbarazo.fromMap(doc.id, doc.data()) }.getOrNull()
+                    runCatching { doc.data<VinculacionEmbarazo>().copy(id = doc.id) }.getOrNull()
                 }
             }
         } catch (e: Exception) {
@@ -282,7 +290,8 @@ class GinecologoRepository {
         return try {
             val doc = colGinecologosPublicos.document(uid).get()
             if (doc.exists) {
-                Result.success(GinecologoPublico.fromMap(doc.data(), doc.id))
+                val perfil = doc.data<GinecologoPublico>()
+                Result.success(if (perfil.uid.isBlank()) perfil.copy(uid = doc.id) else perfil)
             } else {
                 Result.success(null)
             }

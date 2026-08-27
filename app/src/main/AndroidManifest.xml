@@ -60,6 +60,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="nutriia" android:host="pago-ok" />
+                <data android:scheme="nutriia" android:host="pago-ia-ok" />
             </intent-filter>
 
             <intent-filter>
@@ -67,6 +68,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="nutriia" android:host="pago-cancelado" />
+                <data android:scheme="nutriia" android:host="pago-ia-cancel" />
             </intent-filter>
         </activity>
 

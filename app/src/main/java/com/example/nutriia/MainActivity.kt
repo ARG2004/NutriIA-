@@ -70,6 +70,7 @@ import com.example.nutriia.ui.theme.ChildProfile
 import com.example.nutriia.ui.theme.NutriIATheme
 import com.example.nutriia.teleconsulta.*
 import com.example.nutriia.payment.*
+import com.example.nutriia.payment.AISubscriptionViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
@@ -146,8 +147,13 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.data?.let { uri ->
-            val paymentVm = ViewModelProvider(this)[PaymentViewModel::class.java]
+            val factory = ViewModelProvider.AndroidViewModelFactory(application)
+            val paymentVm = ViewModelProvider(this@MainActivity, factory).get(PaymentViewModel::class.java)
             paymentVm.procesarDeepLink(uri)
+
+            val loginVm = ViewModelProvider(this@MainActivity, factory).get(LoginViewModel::class.java)
+            val aiSubVm = ViewModelProvider(this@MainActivity, factory).get(AISubscriptionViewModel::class.java)
+            aiSubVm.procesarDeepLink(uri.toString(), loginVm.uidUsuario)
         }
     }
 }

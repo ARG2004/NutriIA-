@@ -25,7 +25,10 @@ private data class UsuarioSesion(
     val nombre:   String = "",
     val email:    String = "",
     val telefono: String = "",
-    val rol:      String = "padre"
+    val rol:      String = "padre",
+    val intentosIaDisponibles: Int = 3,
+    val suscripcionIaVigenteHasta: Long? = null,
+    val ultimoResetIa: Long = 0L
 )
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
@@ -42,6 +45,18 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     val emailUsuario:    String get() = _sesion.value.email
     val telefonoUsuario: String get() = _sesion.value.telefono
     val rolUsuario:      String get() = _sesion.value.rol
+    val intentosIaDisponibles: Int get() = _sesion.value.intentosIaDisponibles
+    val suscripcionIaVigenteHasta: Long? get() = _sesion.value.suscripcionIaVigenteHasta
+
+    fun decrementarIntentoIaLocal() {
+        val actual = _sesion.value.intentosIaDisponibles
+        if (actual > 0 && actual < 9999) {
+            _sesion.value = _sesion.value.copy(intentosIaDisponibles = actual - 1)
+            viewModelScope.launch {
+                repositorio.decrementarIntentoIa(uidUsuario)
+            }
+        }
+    }
 
     // ── Login ─────────────────────────────────────────────────────────────────
     fun login(email: String, contrasena: String) {
@@ -162,13 +177,34 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 .document(uid)
                 .get()
                 .await()
+            
+            var intentosIa = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3
+            val ultimoReset = doc.getLong("ultimoResetIa") ?: 0L
+            val suscripcionIaVigenteHasta = doc.getLong("suscripcionIaVigenteHasta")
+            
+            val hoyEnDias = (System.currentTimeMillis() + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
+            val ultimoResetEnDias = (ultimoReset + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
+            
+            var resetNeeded = false
+            if (hoyEnDias > ultimoResetEnDias) {
+                if (intentosIa < 9999) intentosIa = 3
+                resetNeeded = true
+            }
+
             _sesion.value = UsuarioSesion(
                 uid      = uid,
                 nombre   = doc.getString("nombre")   ?: "",
                 email    = doc.getString("email")    ?: fallbackEmail,
                 telefono = doc.getString("telefono") ?: "",
-                rol      = doc.getString("rol")      ?: rol
+                rol      = doc.getString("rol")      ?: rol,
+                intentosIaDisponibles = intentosIa,
+                suscripcionIaVigenteHasta = suscripcionIaVigenteHasta,
+                ultimoResetIa = if (resetNeeded) System.currentTimeMillis() else ultimoReset
             )
+            
+            if (resetNeeded) {
+                repositorio.resetearIntentosDiarios(uid, System.currentTimeMillis())
+            }
         } catch (e: Exception) {
             _sesion.value = _sesion.value.copy(uid = uid, rol = rol, email = fallbackEmail)
         }

@@ -186,9 +186,14 @@ class WebRtcEngine(
         // Audio siempre
         val audioConstraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation2", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googDAEchoCancellation", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression2", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googTypingNoiseDetection", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googAudioMirroring", "false"))
             
             mandatory.add(MediaConstraints.KeyValuePair("echoCancellation", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("noiseSuppression", "true"))

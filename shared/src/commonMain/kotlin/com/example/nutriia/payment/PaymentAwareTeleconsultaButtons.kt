@@ -107,7 +107,7 @@ fun PaymentAwareTeleconsultaButtons(
     }
 
     Text(
-        "$130.00 MXN · pago por sesión",
+        "$250.00 MXN · pago por sesión",
         fontSize = 10.sp,
         color    = Color.Gray,
         modifier = Modifier.padding(top = 4.dp)

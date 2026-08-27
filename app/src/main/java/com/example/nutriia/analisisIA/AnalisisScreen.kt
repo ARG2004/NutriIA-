@@ -158,6 +158,23 @@ fun AnalisisScreen(
 
         val targetNombre = if (esModoEmbarazo) "tu embarazo" else (child?.name ?: "tu bebé")
 
+        val loginVm: com.example.nutriia.auth.LoginViewModel = viewModel()
+        val aiSubVm: com.example.nutriia.payment.AISubscriptionViewModel = viewModel()
+        val intentos = loginVm.intentosIaDisponibles
+        val subHasta = loginVm.suscripcionIaVigenteHasta ?: 0L
+        val tieneSub = System.currentTimeMillis() < subHasta
+        var showPaywall by remember { mutableStateOf(false) }
+        val aiSubState by aiSubVm.state.collectAsState()
+
+        fun doCapture(launch: () -> Unit) {
+            if (tieneSub || intentos > 0) launch()
+            else showPaywall = true
+        }
+
+        fun onSuccessfulCapture() {
+            if (!tieneSub) loginVm.decrementarIntentoIaLocal()
+        }
+
         LaunchedEffect(uiState) {
             if (esBlind) {
                 when (val state = uiState) {
@@ -222,15 +239,20 @@ fun AnalisisScreen(
                         perfilEmbarazo = perfilEmbarazo,
                         isEmbarazo     = esModoEmbarazo,
                         onTomarFoto    = {
-                            if (tieneCamara) viewModel.abrirCamara()
-                            else permisoLauncher.launch(Manifest.permission.CAMERA)
+                            doCapture {
+                                if (tieneCamara) viewModel.abrirCamara()
+                                else permisoLauncher.launch(Manifest.permission.CAMERA)
+                            }
                         },
                         onVolver       = { viewModel.resetear(); onNavigateBack() }
                     )
                     is AnalisisUiState.Capturando -> PantallaCaptura(
                         lifecycleOwner  = lifecycleOwner,
                         onIniciarCamara = { sp -> viewModel.configurarCamara(context, lifecycleOwner, sp) },
-                        onCapturar      = { viewModel.tomarFotoYAnalizar(context, child, perfilEmbarazo, esModoEmbarazo) },
+                        onCapturar      = { 
+                            onSuccessfulCapture()
+                            viewModel.tomarFotoYAnalizar(context, child, perfilEmbarazo, esModoEmbarazo) 
+                        },
                         onCancelar      = { viewModel.cancelarCamara() }
                     )
                     is AnalisisUiState.Analizando -> PantallaAnalizando(
@@ -254,6 +276,44 @@ fun AnalisisScreen(
                         onReintentar = { viewModel.resetear() }
                     )
                 }
+            }
+
+            if (showPaywall) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showPaywall = false },
+                    title = {
+                        androidx.compose.material3.Text(
+                            text = "Límite Diario Alcanzado",
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Column {
+                            androidx.compose.material3.Text("Has agotado tus 3 intentos gratuitos de hoy para análisis con IA.")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            androidx.compose.material3.Text("Desbloquea análisis ilimitados por un mes por solo \$99 MXN.")
+                        }
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                showPaywall = false
+                                aiSubVm.iniciarPagoIA(context, loginVm.uidUsuario)
+                            },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                        ) {
+                            androidx.compose.material3.Text("Desbloquear IA - $99 MXN", color = Color.White)
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = { showPaywall = false }) {
+                            androidx.compose.material3.Text("Cancelar", color = Color.Gray)
+                        }
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = Color.White
+                )
             }
         }
     }

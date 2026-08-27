@@ -70,6 +70,27 @@ fun NutriChatScreen(
     var showGuideDialog by remember { mutableStateOf(false) }
     val esModoEmbarazo = isEmbarazo || perfilEmbarazo != null || childName.contains("Embarazo", ignoreCase = true)
 
+    val loginVm: com.example.nutriia.auth.LoginViewModel = viewModel()
+    val aiSubVm: com.example.nutriia.payment.AISubscriptionViewModel = viewModel()
+    val intentos = loginVm.intentosIaDisponibles
+    val subHasta = loginVm.suscripcionIaVigenteHasta ?: 0L
+    val tieneSub = System.currentTimeMillis() < subHasta
+    var showPaywall by remember { mutableStateOf(false) }
+
+    fun doSendChat(query: String) {
+        if (tieneSub || intentos > 0) {
+            if (!tieneSub) loginVm.decrementarIntentoIaLocal()
+            viewModel.sendMessage(
+                query = query,
+                childName = childName,
+                perfilEmbarazo = perfilEmbarazo,
+                isEmbarazo = esModoEmbarazo
+            )
+        } else {
+            showPaywall = true
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.addInitialGreeting(
             childName = childName,
@@ -239,12 +260,7 @@ fun NutriChatScreen(
                             if (esBlind) {
                                 a11yVm.hablar(loc("Enviando pregunta sugerida: $sug", "Sending suggested question: $sug"))
                             }
-                            viewModel.sendMessage(
-                                query = sug,
-                                childName = childName,
-                                perfilEmbarazo = perfilEmbarazo,
-                                isEmbarazo = esModoEmbarazo
-                            )
+                            doSendChat(sug)
                         },
                         label = { Text(sug, fontSize = 12.sp) },
                         colors = SuggestionChipDefaults.suggestionChipColors(
@@ -279,12 +295,7 @@ fun NutriChatScreen(
                         modifier = Modifier.weight(1f),
                         onNext = {
                             if (inputText.isNotBlank()) {
-                                viewModel.sendMessage(
-                                    query = inputText,
-                                    childName = childName,
-                                    perfilEmbarazo = perfilEmbarazo,
-                                    isEmbarazo = esModoEmbarazo
-                                )
+                                doSendChat(inputText)
                                 inputText = ""
                             }
                         }
@@ -311,12 +322,7 @@ fun NutriChatScreen(
                         keyboardActions = KeyboardActions(
                             onSend = {
                                 if (inputText.isNotBlank()) {
-                                    viewModel.sendMessage(
-                                        query = inputText,
-                                        childName = childName,
-                                        perfilEmbarazo = perfilEmbarazo,
-                                        isEmbarazo = esModoEmbarazo
-                                    )
+                                    doSendChat(inputText)
                                     inputText = ""
                                 }
                             }
@@ -329,12 +335,7 @@ fun NutriChatScreen(
                 FloatingActionButton(
                     onClick = {
                         if (inputText.isNotBlank()) {
-                            viewModel.sendMessage(
-                                query = inputText,
-                                childName = childName,
-                                perfilEmbarazo = perfilEmbarazo,
-                                isEmbarazo = esModoEmbarazo
-                            )
+                            doSendChat(inputText)
                             inputText = ""
                         }
                     },
@@ -346,6 +347,45 @@ fun NutriChatScreen(
                     Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Enviar")
                 }
             }
+        }
+
+        if (showPaywall) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showPaywall = false },
+                title = {
+                    androidx.compose.material3.Text(
+                        text = "Límite Diario Alcanzado",
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column {
+                        androidx.compose.material3.Text("Has agotado tus 3 intentos gratuitos de hoy para el NutriChat Inteligente.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        androidx.compose.material3.Text("Desbloquea chat ilimitado por un mes por solo \$99 MXN.")
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            showPaywall = false
+                            aiSubVm.iniciarPagoIA(context, loginVm.uidUsuario)
+                        },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        androidx.compose.material3.Text("Desbloquear IA - $99 MXN", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { showPaywall = false }) {
+                        androidx.compose.material3.Text("Cancelar", color = Color.Gray)
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                containerColor = Color.White
+            )
         }
     }
 

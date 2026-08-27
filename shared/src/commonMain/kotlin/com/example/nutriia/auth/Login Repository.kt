@@ -626,6 +626,46 @@ class RepositorioLogin {
         }
     }
 
+    suspend fun decrementarIntentoIa(uid: String, intentosRestantes: Int): Boolean {
+        return try {
+            val nuevoValor = if (intentosRestantes > 0) intentosRestantes - 1 else 0
+            db.collection("usuarios").document(uid).update(
+                mapOf("intentosIaDisponibles" to nuevoValor)
+            ).await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun resetearIntentosDiarios(uid: String, nuevoReset: Long): Boolean {
+        return try {
+            db.collection("usuarios").document(uid).update(
+                mapOf(
+                    "intentosIaDisponibles" to 3,
+                    "ultimoResetIa" to nuevoReset
+                )
+            ).await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun activarSuscripcionIa(uid: String): Boolean {
+        return try {
+            // +30 días en milisegundos
+            val treintaDiasMilis = 30L * 24 * 60 * 60 * 1000
+            val vigenteHasta = currentTimeMillis() + treintaDiasMilis
+            db.collection("usuarios").document(uid).update(
+                mapOf("suscripcionIaVigenteHasta" to vigenteHasta)
+            ).await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun traducirError(mensaje: String?): String {
         val msg = mensaje?.lowercase() ?: return "Correo o contraseña incorrectos"
         return when {

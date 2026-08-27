@@ -36,6 +36,10 @@ import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.loc
+import com.example.nutriia.auth.LoginViewModel
+import com.example.nutriia.payment.AISubscriptionViewModel
+import com.example.nutriia.platform.currentTimeMillis
+import com.example.nutriia.platform.openUrl
 
 import com.example.nutriia.embarazo.PerfilEmbarazo
 
@@ -69,6 +73,29 @@ fun NutriChatScreen(
 
     var showGuideDialog by remember { mutableStateOf(false) }
     val esModoEmbarazo = isEmbarazo || perfilEmbarazo != null || childName.contains("Embarazo", ignoreCase = true)
+
+    val loginVm: LoginViewModel = viewModel()
+    val aiSubVm: AISubscriptionViewModel = viewModel()
+    val intentos = loginVm.intentosIaDisponibles
+    val subHasta = loginVm.suscripcionIaVigenteHasta
+    val tieneSub = currentTimeMillis() < subHasta
+    var showPaywall by remember { mutableStateOf(false) }
+
+    val aiSubState by aiSubVm.state.collectAsState()
+
+    fun onSendAttempt(text: String) {
+        if (tieneSub || intentos > 0) {
+            viewModel.sendMessage(
+                query = text,
+                childName = childName,
+                perfilEmbarazo = perfilEmbarazo,
+                isEmbarazo = esModoEmbarazo
+            )
+            if (!tieneSub) loginVm.decrementarIntentoIaLocal()
+        } else {
+            showPaywall = true
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.addInitialGreeting(
@@ -279,24 +306,14 @@ fun NutriChatScreen(
                         modifier = Modifier.weight(1f),
                         onNext = {
                             if (inputText.isNotBlank()) {
-                                viewModel.sendMessage(
-                                    query = inputText,
-                                    childName = childName,
-                                    perfilEmbarazo = perfilEmbarazo,
-                                    isEmbarazo = esModoEmbarazo
-                                )
+                                onSendAttempt(inputText)
                                 inputText = ""
                             }
                         },
                         onCommandParsed = { cmd ->
                             if (cmd.contains("enviar") || cmd.contains("send") || cmd.contains("preguntar") || cmd.contains("ask")) {
                                 if (inputText.isNotBlank()) {
-                                    viewModel.sendMessage(
-                                        query = inputText,
-                                        childName = childName,
-                                        perfilEmbarazo = perfilEmbarazo,
-                                        isEmbarazo = esModoEmbarazo
-                                    )
+                                    onSendAttempt(inputText)
                                     inputText = ""
                                 }
                                 true
@@ -325,12 +342,7 @@ fun NutriChatScreen(
                         keyboardActions = KeyboardActions(
                             onSend = {
                                 if (inputText.isNotBlank()) {
-                                    viewModel.sendMessage(
-                                        query = inputText,
-                                        childName = childName,
-                                        perfilEmbarazo = perfilEmbarazo,
-                                        isEmbarazo = esModoEmbarazo
-                                    )
+                                    onSendAttempt(inputText)
                                     inputText = ""
                                 }
                             }
@@ -343,12 +355,7 @@ fun NutriChatScreen(
                 FloatingActionButton(
                     onClick = {
                         if (inputText.isNotBlank()) {
-                            viewModel.sendMessage(
-                                query = inputText,
-                                childName = childName,
-                                perfilEmbarazo = perfilEmbarazo,
-                                isEmbarazo = esModoEmbarazo
-                            )
+                            onSendAttempt(inputText)
                             inputText = ""
                         }
                     },
@@ -462,6 +469,58 @@ fun NutriChatScreen(
             },
             containerColor = Color.White,
             shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    if (showPaywall) {
+        AlertDialog(
+            onDismissRequest = { showPaywall = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.AutoAwesome, null, tint = NutriaGreen, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Desbloquea NutriBot IA", fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                }
+            },
+            text = {
+                Column {
+                    Text("Has agotado tus 3 usos gratuitos de Inteligencia Artificial.", fontSize = 14.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Por $99.00 MXN al mes, obtén acceso ilimitado a NutriBot y al Analizador Visual de Alimentos para todo tu embarazo o seguimiento infantil.",
+                        fontSize = 13.sp, color = Color.DarkGray)
+                    Spacer(Modifier.height(16.dp))
+                    if (aiSubState.cargando) {
+                        CircularProgressIndicator(color = NutriaGreen)
+                    } else if (aiSubState.pagoCompletado) {
+                        Text("¡Suscripción activada! Ya puedes usar la IA.", color = NutriaGreen, fontWeight = FontWeight.Bold)
+                        LaunchedEffect(Unit) {
+                            showPaywall = false
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (!aiSubState.pagoCompletado) {
+                    Button(
+                        onClick = {
+                            val uid = loginVm.uidUsuario
+                            if (uid.isNotBlank()) {
+                                aiSubVm.iniciarPago(uid)
+                                aiSubVm.abrirPayPalEnNavegador()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB700))
+                    ) {
+                        Text("Suscribirse por $99 MXN", color = Color(0xFF003087), fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPaywall = false }) {
+                    Text("Quizás después", color = Color.Gray)
+                }
+            },
+            containerColor = Color.White
         )
     }
 }

@@ -39,6 +39,9 @@ import com.example.nutriia.ui.theme.ChildProfile
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import com.example.nutriia.auth.LoginViewModel
+import com.example.nutriia.payment.AISubscriptionViewModel
+import com.example.nutriia.platform.currentTimeMillis
 
 @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
 private fun decodeBase64ToBitmap(base64: String): androidx.compose.ui.graphics.ImageBitmap? {
@@ -148,7 +151,24 @@ fun AnalisisScreen(
     val colors = if (esModoEmbarazo) PregnancyAnalisisColors else ChildAnalisisColors
 
     CompositionLocalProvider(LocalAnalisisColors provides colors) {
-                        val uiState by viewModel.uiState.collectAsState()
+        val uiState by viewModel.uiState.collectAsState()
+
+        val loginVm: LoginViewModel = viewModel()
+        val aiSubVm: AISubscriptionViewModel = viewModel()
+        val intentos = loginVm.intentosIaDisponibles
+        val subHasta = loginVm.suscripcionIaVigenteHasta
+        val tieneSub = currentTimeMillis() < subHasta
+        var showPaywall by remember { mutableStateOf(false) }
+        val aiSubState by aiSubVm.state.collectAsState()
+
+        fun doCapture(launch: () -> Unit) {
+            if (tieneSub || intentos > 0) launch()
+            else showPaywall = true
+        }
+
+        fun onSuccessfulCapture() {
+            if (!tieneSub) loginVm.decrementarIntentoIaLocal()
+        }
 
         val a11yMode = LocalAccessibilityMode.current
         val a11yVm: AccessibilityViewModel = viewModel()
@@ -210,26 +230,32 @@ fun AnalisisScreen(
                         perfilEmbarazo = perfilEmbarazo,
                         isEmbarazo     = esModoEmbarazo,
                         onTomarFoto    = {
-                            com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
-                                if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(
-                                        base64Image    = base64,
-                                        child          = child,
-                                        perfilEmbarazo = perfilEmbarazo,
-                                        isEmbarazo     = esModoEmbarazo
-                                    )
+                            doCapture {
+                                com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
+                                    if (base64.isNotBlank()) {
+                                        onSuccessfulCapture()
+                                        viewModel.analizarFoto(
+                                            base64Image    = base64,
+                                            child          = child,
+                                            perfilEmbarazo = perfilEmbarazo,
+                                            isEmbarazo     = esModoEmbarazo
+                                        )
+                                    }
                                 }
                             }
                         },
                         onSeleccionarGaleria = {
-                            com.example.nutriia.platform.PlatformImagePicker.launchGallery { base64 ->
-                                if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(
-                                        base64Image    = base64,
-                                        child          = child,
-                                        perfilEmbarazo = perfilEmbarazo,
-                                        isEmbarazo     = esModoEmbarazo
-                                    )
+                            doCapture {
+                                com.example.nutriia.platform.PlatformImagePicker.launchGallery { base64 ->
+                                    if (base64.isNotBlank()) {
+                                        onSuccessfulCapture()
+                                        viewModel.analizarFoto(
+                                            base64Image    = base64,
+                                            child          = child,
+                                            perfilEmbarazo = perfilEmbarazo,
+                                            isEmbarazo     = esModoEmbarazo
+                                        )
+                                    }
                                 }
                             }
                         },
@@ -237,28 +263,34 @@ fun AnalisisScreen(
                     )
                     is AnalisisUiState.Capturando -> PantallaCaptura(
                         onIniciarCamara = {
-                            com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
-                                if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(
-                                        base64Image    = base64,
-                                        child          = child,
-                                        perfilEmbarazo = perfilEmbarazo,
-                                        isEmbarazo     = esModoEmbarazo
-                                    )
-                                } else {
-                                    viewModel.cancelarCamara()
+                            doCapture {
+                                com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
+                                    if (base64.isNotBlank()) {
+                                        onSuccessfulCapture()
+                                        viewModel.analizarFoto(
+                                            base64Image    = base64,
+                                            child          = child,
+                                            perfilEmbarazo = perfilEmbarazo,
+                                            isEmbarazo     = esModoEmbarazo
+                                        )
+                                    } else {
+                                        viewModel.cancelarCamara()
+                                    }
                                 }
                             }
                         },
                         onCapturar      = {
-                            com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
-                                if (base64.isNotBlank()) {
-                                    viewModel.analizarFoto(
-                                        base64Image    = base64,
-                                        child          = child,
-                                        perfilEmbarazo = perfilEmbarazo,
-                                        isEmbarazo     = esModoEmbarazo
-                                    )
+                            doCapture {
+                                com.example.nutriia.platform.PlatformImagePicker.launchCamera { base64 ->
+                                    if (base64.isNotBlank()) {
+                                        onSuccessfulCapture()
+                                        viewModel.analizarFoto(
+                                            base64Image    = base64,
+                                            child          = child,
+                                            perfilEmbarazo = perfilEmbarazo,
+                                            isEmbarazo     = esModoEmbarazo
+                                        )
+                                    }
                                 }
                             }
                         },
@@ -287,6 +319,58 @@ fun AnalisisScreen(
                     )
                 }
             }
+        }
+
+        if (showPaywall) {
+            AlertDialog(
+                onDismissRequest = { showPaywall = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.AutoAwesome, null, tint = GreenPrimary, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Desbloquea Inteligencia Artificial", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    }
+                },
+                text = {
+                    Column {
+                        Text("Has agotado tus 3 usos gratuitos de Inteligencia Artificial.", fontSize = 14.sp)
+                        Spacer(Modifier.height(12.dp))
+                        Text("Por $99.00 MXN al mes, obtén acceso ilimitado a NutriBot y al Analizador Visual de Alimentos para todo tu embarazo o seguimiento infantil.",
+                            fontSize = 13.sp, color = Color.DarkGray)
+                        Spacer(Modifier.height(16.dp))
+                        if (aiSubState.cargando) {
+                            CircularProgressIndicator(color = GreenPrimary)
+                        } else if (aiSubState.pagoCompletado) {
+                            Text("¡Suscripción activada! Ya puedes usar la IA.", color = GreenPrimary, fontWeight = FontWeight.Bold)
+                            LaunchedEffect(Unit) {
+                                showPaywall = false
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    if (!aiSubState.pagoCompletado) {
+                        Button(
+                            onClick = {
+                                val uid = loginVm.uidUsuario
+                                if (uid.isNotBlank()) {
+                                    aiSubVm.iniciarPago(uid)
+                                    aiSubVm.abrirPayPalEnNavegador()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB700))
+                        ) {
+                            Text("Suscribirse por $99 MXN", color = Color(0xFF003087), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPaywall = false }) {
+                        Text("Quizás después", color = Color.Gray)
+                    }
+                },
+                containerColor = Color.White
+            )
         }
     }
 }

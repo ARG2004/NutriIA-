@@ -62,7 +62,8 @@ class AnalisisRepository {
                 - NUNCA inventes que un objeto es comida ni devuelvas "Alimento detectado" o "Alimento desconocido". Escribe el nombre REAL del objeto.
 
                 IMPORTANTE — Identificación de alimentos y errores comunes a evitar:
-                - HUEVO / HUEVOS: Identifica el huevo en todas sus presentaciones (huevo revuelto, huevo estrellado, huevo cocido). NUNCA confundas huevos revueltos con puré de papa, papas fritas ni queso derretido.
+                - ALIMENTOS ENTEROS Y CRUDOS: Las manzanas, naranjas, frutas enteras, verduras crudas y los huevos en cascarón SON COMIDA. NUNCA los clasifiques como "objeto_no_comestible". Su `foodType` debe ser "fruta", "verdura", "snack" o el que corresponda.
+                - HUEVO / HUEVOS: Identifica el huevo en todas sus presentaciones (en cascarón, huevo revuelto, huevo estrellado, huevo cocido). NUNCA confundas huevos revueltos con puré de papa, papas fritas ni queso derretido.
                 - La LECHUGA NO es col/repollo.
                 - La PIÑA en cubos NO es puré de papa.
 

@@ -22,7 +22,10 @@ private data class UsuarioSesion(
     val nombre:   String = "",
     val email:    String = "",
     val telefono: String = "",
-    val rol:      String = "padre"
+    val rol:      String = "padre",
+    val intentosIaDisponibles: Int = 3,
+    val suscripcionIaVigenteHasta: Long = 0L,
+    val ultimoResetIa: Long = 0L
 )
 
 class LoginViewModel : ViewModel() {
@@ -39,6 +42,20 @@ class LoginViewModel : ViewModel() {
     val emailUsuario:    String get() = _sesion.value.email
     val telefonoUsuario: String get() = _sesion.value.telefono
     val rolUsuario:      String get() = _sesion.value.rol
+    val intentosIaDisponibles: Int get() = _sesion.value.intentosIaDisponibles
+    val suscripcionIaVigenteHasta: Long get() = _sesion.value.suscripcionIaVigenteHasta
+    val ultimoResetIa: Long get() = _sesion.value.ultimoResetIa
+
+    fun decrementarIntentoIaLocal() {
+        val uid = _sesion.value.uid
+        val restantes = _sesion.value.intentosIaDisponibles
+        if (restantes > 0 && uid.isNotBlank()) {
+            _sesion.value = _sesion.value.copy(intentosIaDisponibles = restantes - 1)
+            viewModelScope.launch {
+                repositorio.decrementarIntentoIa(uid, restantes)
+            }
+        }
+    }
 
     // ── Login ─────────────────────────────────────────────────────────────────
     fun login(email: String, contrasena: String) {
@@ -154,12 +171,37 @@ class LoginViewModel : ViewModel() {
                 .document(uid)
                 .get()
                 .await()
+            val intentosEnDb = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3
+            val ultimoReset = doc.getLong("ultimoResetIa") ?: 0L
+            val currentTime = com.example.nutriia.platform.currentTimeMillis()
+            
+            var intentosFinales = intentosEnDb
+            var resetFinal = ultimoReset
+            val msEnUnDia = 24L * 60L * 60L * 1000L
+
+            val tz = kotlinx.datetime.TimeZone.currentSystemDefault()
+            val now = kotlinx.datetime.Clock.System.now()
+            val today = now.toLocalDateTime(tz).date
+            
+            val lastResetDate = if (ultimoReset > 0L) {
+                kotlinx.datetime.Instant.fromEpochMilliseconds(ultimoReset).toLocalDateTime(tz).date
+            } else null
+
+            if (lastResetDate == null || lastResetDate != today) {
+                intentosFinales = 3
+                resetFinal = now.toEpochMilliseconds()
+                repositorio.resetearIntentosDiarios(uid, resetFinal)
+            }
+
             _sesion.value = UsuarioSesion(
                 uid      = uid,
                 nombre   = doc.getString("nombre")   ?: "",
                 email    = doc.getString("email")    ?: fallbackEmail,
                 telefono = doc.getString("telefono") ?: "",
-                rol      = doc.getString("rol")      ?: rol
+                rol      = doc.getString("rol")      ?: rol,
+                intentosIaDisponibles = intentosFinales,
+                suscripcionIaVigenteHasta = doc.getLong("suscripcionIaVigenteHasta") ?: 0L,
+                ultimoResetIa = resetFinal
             )
         } catch (e: Exception) {
             _sesion.value = _sesion.value.copy(uid = uid, rol = rol, email = fallbackEmail)

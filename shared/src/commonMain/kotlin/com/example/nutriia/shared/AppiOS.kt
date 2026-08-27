@@ -98,6 +98,7 @@ object IOSViewModelFactory : ViewModelProvider.Factory {
             ConfiguracionViewModel::class -> ConfiguracionViewModel()
             ChatViewModel::class -> ChatViewModel()
             AnalisisViewModel::class -> AnalisisViewModel()
+            AISubscriptionViewModel::class -> AISubscriptionViewModel()
             RegisterViewModel::class -> RegisterViewModel()
             AlertaViewModel::class -> AlertaViewModel()
             else -> throw IllegalArgumentException("ViewModel no registrado para iOS: ${modelClass.simpleName}")
@@ -239,6 +240,7 @@ fun NutriIAiOSApp() {
     val teleconsultaVm: TeleconsultaViewModel = viewModel(modelClass = TeleconsultaViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
     val accessibilityVm: AccessibilityViewModel = viewModel(modelClass = AccessibilityViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
     val paymentVm: PaymentViewModel = viewModel(modelClass = PaymentViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
+    val aiSubVm: AISubscriptionViewModel = viewModel(modelClass = AISubscriptionViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
     val cfgVm: ConfiguracionViewModel = viewModel(modelClass = ConfiguracionViewModel::class, viewModelStoreOwner = viewModelStoreOwner)
 
     com.example.nutriia.platform.Log.i("AppiOS", "🟢 [PASO 6/11] Colectando StateFlows de Accesibilidad...")
@@ -503,7 +505,9 @@ fun NutriIAiOSApp() {
     // Manejar Deep Links globales (PayPal, etc.)
     LaunchedEffect(Unit) {
         DeepLinkManager.links.collect { url ->
-            if (url.startsWith("nutriia://pago")) {
+            if (url.startsWith("nutriia://pago-ia")) {
+                aiSubVm.procesarDeepLink(url, loginViewModel.uidUsuario)
+            } else if (url.startsWith("nutriia://pago")) {
                 paymentVm.procesarDeepLink(url)
             }
         }

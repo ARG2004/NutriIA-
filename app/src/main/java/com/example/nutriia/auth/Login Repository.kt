@@ -551,4 +551,38 @@ class RepositorioLogin(private val context: Context) {
             else -> "Correo o contraseña incorrectos"
         }
     }
+    suspend fun activarSuscripcionIa(uid: String): Boolean {
+        return try {
+            val unMesMillis = 30L * 24 * 60 * 60 * 1000
+            val fechaVencimiento = System.currentTimeMillis() + unMesMillis
+            db.collection("usuarios").document(uid).update(
+                "suscripcionIaVigenteHasta", fechaVencimiento,
+                "intentosIaDisponibles", 9999
+            ).await()
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    suspend fun decrementarIntentoIa(uid: String) {
+        try {
+            val doc = db.collection("usuarios").document(uid).get().await()
+            val intentos = doc.getLong("intentosIaDisponibles") ?: 0L
+            if (intentos > 0 && intentos < 9999L) {
+                db.collection("usuarios").document(uid).update(
+                    "intentosIaDisponibles", intentos - 1
+                ).await()
+            }
+        } catch (_: Exception) {}
+    }
+
+    suspend fun resetearIntentosDiarios(uid: String, nuevaFechaReset: Long) {
+        try {
+            db.collection("usuarios").document(uid).update(
+                "intentosIaDisponibles", 3,
+                "ultimoResetIa", nuevaFechaReset
+            ).await()
+        } catch (_: Exception) {}
+    }
 }
