@@ -124,11 +124,14 @@ class WebRtcEngine(
                 || (android.os.Build.BRAND.startsWith("generic") && android.os.Build.DEVICE.startsWith("generic"))
                 || "google_sdk" == android.os.Build.PRODUCT
 
+        val usarHardwareAec = !esEmulador && JavaAudioDeviceModule.isBuiltInAcousticEchoCancelerSupported()
+        val usarHardwareNs = !esEmulador && JavaAudioDeviceModule.isBuiltInNoiseSuppressorSupported()
+
         val audioDeviceModule = JavaAudioDeviceModule.builder(context)
             .setUseStereoInput(false)
             .setUseStereoOutput(false)
-            .setUseHardwareAcousticEchoCanceler(false)
-            .setUseHardwareNoiseSuppressor(false)
+            .setUseHardwareAcousticEchoCanceler(usarHardwareAec)
+            .setUseHardwareNoiseSuppressor(usarHardwareNs)
             .createAudioDeviceModule()
 
         // Factory de peer connections

@@ -71,7 +71,8 @@ class PaymentViewModel : ViewModel() {
 
     // ── Paso 3: procesar deep link cuando regrese ─────────────────────────────
     fun procesarDeepLink(uriStr: String) {
-        val pagoId = _state.value.pagoActual?.id
+        val match = Regex("pagoId=([^&]+)").find(uriStr)
+        val pagoId = match?.groupValues?.get(1) ?: _state.value.pagoActual?.id
 
         when {
             uriStr.startsWith(DEEP_LINK_SUCCESS) -> {
@@ -132,8 +133,8 @@ class PaymentViewModel : ViewModel() {
                 "&amount=$monto" +
                 "&currency_code=$MONEDA" +
                 "&custom=$pagoId" +
-                "&return=${DEEP_LINK_SUCCESS}" +
-                "&cancel_return=${DEEP_LINK_CANCEL}" +
+                "&return=${DEEP_LINK_SUCCESS}?pagoId=$pagoId" +
+                "&cancel_return=${DEEP_LINK_CANCEL}?pagoId=$pagoId" +
                 "&rm=1" // Redirección vía GET para asegurar compatibilidad con custom schemes en iOS
     }
 }

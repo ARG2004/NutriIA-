@@ -50,11 +50,23 @@ class LoginViewModel : ViewModel() {
 
     fun decrementarIntentoIaLocal() {
         val uid = _sesion.value.uid
-        val restantes = _sesion.value.intentosIaDisponibles
-        if (restantes > 0 && uid.isNotBlank()) {
-            _sesion.value = _sesion.value.copy(intentosIaDisponibles = restantes - 1)
+        if (uid.isBlank()) return
+
+        var actual = _sesion.value.intentosIaDisponibles
+        val subHasta = _sesion.value.suscripcionIaVigenteHasta
+        val isExpired = subHasta > 0L && kotlinx.datetime.Clock.System.now().toEpochMilliseconds() > subHasta
+
+        if (isExpired && actual >= 9999) {
+            actual = 3
             viewModelScope.launch {
-                repositorio.decrementarIntentoIa(uid, restantes)
+                repositorio.resetearIntentosDiarios(uid, kotlinx.datetime.Clock.System.now().toEpochMilliseconds())
+            }
+        }
+
+        if (actual > 0) {
+            _sesion.value = _sesion.value.copy(intentosIaDisponibles = actual - 1)
+            viewModelScope.launch {
+                repositorio.decrementarIntentoIa(uid, actual - 1)
             }
         }
     }

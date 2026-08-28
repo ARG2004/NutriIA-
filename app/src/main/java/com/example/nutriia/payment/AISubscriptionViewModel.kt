@@ -59,6 +59,9 @@ class AISubscriptionViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun procesarDeepLink(uriStr: String, uid: String) {
+        val uri = android.net.Uri.parse(uriStr)
+        if (uri.getQueryParameter("tipo") != "ia") return
+
         when {
             uriStr.startsWith(DEEP_LINK_SUCCESS) -> {
                 onPagoExitoso(uid)
@@ -105,8 +108,8 @@ class AISubscriptionViewModel(application: Application) : AndroidViewModel(appli
                 "&amount=$monto" +
                 "&currency_code=$MONEDA" +
                 "&custom=$transId" +
-                "&return=${DEEP_LINK_SUCCESS}" +
-                "&cancel_return=${DEEP_LINK_CANCEL}" +
+                "&return=${android.net.Uri.encode("$DEEP_LINK_SUCCESS?tipo=ia")}" +
+                "&cancel_return=${android.net.Uri.encode("$DEEP_LINK_CANCEL?tipo=ia")}" +
                 "&rm=1"
     }
 }

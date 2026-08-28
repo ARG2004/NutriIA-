@@ -31,24 +31,29 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     }
 
     private func setupAudioSession() {
-        let audioSession = AVAudioSession.sharedInstance()
+        let rtcAudioSession = RTCAudioSession.sharedInstance()
+        rtcAudioSession.lockForConfiguration()
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
-            try audioSession.setActive(true)
-            NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA")
+            try rtcAudioSession.setCategory(AVAudioSession.Category.playAndRecord.rawValue, with: [.defaultToSpeaker, .allowBluetoothHFP])
+            try rtcAudioSession.setMode(AVAudioSession.Mode.videoChat.rawValue)
+            try rtcAudioSession.setActive(true)
+            NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA (RTCAudioSession)")
         } catch {
             NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error.localizedDescription)")
         }
+        rtcAudioSession.unlockForConfiguration()
     }
 
     private func deactivateAudioSession() {
-        let audioSession = AVAudioSession.sharedInstance()
+        let rtcAudioSession = RTCAudioSession.sharedInstance()
+        rtcAudioSession.lockForConfiguration()
         do {
-            try audioSession.setActive(false)
-            NSLog("ℹ️ [WebRtcProvider] Audio Session desactivada")
+            try rtcAudioSession.setActive(false)
+            NSLog("ℹ️ [WebRtcProvider] Audio Session desactivada (RTCAudioSession)")
         } catch {
             NSLog("❌ [WebRtcProvider] Error desactivando Audio Session: \(error.localizedDescription)")
         }
+        rtcAudioSession.unlockForConfiguration()
     }
 
     func initializeEngine() {

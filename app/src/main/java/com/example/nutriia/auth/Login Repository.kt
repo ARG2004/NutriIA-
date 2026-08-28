@@ -565,15 +565,11 @@ class RepositorioLogin(private val context: Context) {
         }
     }
 
-    suspend fun decrementarIntentoIa(uid: String) {
+    suspend fun decrementarIntentoIa(uid: String, restantes: Int) {
         try {
-            val doc = db.collection("usuarios").document(uid).get().await()
-            val intentos = doc.getLong("intentosIaDisponibles") ?: 0L
-            if (intentos > 0 && intentos < 9999L) {
-                db.collection("usuarios").document(uid).update(
-                    "intentosIaDisponibles", intentos - 1
-                ).await()
-            }
+            db.collection("usuarios").document(uid).update(
+                "intentosIaDisponibles", restantes
+            ).await()
         } catch (_: Exception) {}
     }
 

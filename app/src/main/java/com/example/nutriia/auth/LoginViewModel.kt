@@ -50,11 +50,24 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     val suscripcionIaVigenteHasta: Long? get() = _sesion.value.suscripcionIaVigenteHasta
 
     fun decrementarIntentoIaLocal() {
-        val actual = _sesion.value.intentosIaDisponibles
-        if (actual > 0 && actual < 9999) {
+        val uid = uidUsuario
+        if (uid.isBlank()) return
+        
+        var actual = _sesion.value.intentosIaDisponibles
+        val subHasta = _sesion.value.suscripcionIaVigenteHasta ?: 0L
+        val isExpired = subHasta > 0 && System.currentTimeMillis() > subHasta
+
+        if (isExpired && actual >= 9999) {
+            actual = 3 // Expiró pero no se ha reseteado localmente
+            viewModelScope.launch {
+                repositorio.resetearIntentosDiarios(uid, System.currentTimeMillis())
+            }
+        }
+        
+        if (actual > 0) {
             _sesion.value = _sesion.value.copy(intentosIaDisponibles = actual - 1)
             viewModelScope.launch {
-                repositorio.decrementarIntentoIa(uidUsuario)
+                repositorio.decrementarIntentoIa(uid, actual - 1)
             }
         }
     }

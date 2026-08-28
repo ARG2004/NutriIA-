@@ -141,18 +141,26 @@ class MainActivity : FragmentActivity() {
                 NutriIAContent() 
             } 
         }
+
+        // Si la app fue matada por el SO mientras estaba en el navegador,
+        // el deep link llegará en el intent inicial.
+        procesarIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.data?.let { uri ->
-            val factory = ViewModelProvider.AndroidViewModelFactory(application)
-            val paymentVm = ViewModelProvider(this@MainActivity, factory).get(PaymentViewModel::class.java)
+        procesarIntent(intent)
+    }
+
+    private fun procesarIntent(intent: Intent?) {
+        intent?.data?.let { uri ->
+            val factory = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory(application)
+            val paymentVm = androidx.lifecycle.ViewModelProvider(this@MainActivity, factory).get(com.example.nutriia.payment.PaymentViewModel::class.java)
             paymentVm.procesarDeepLink(uri)
 
-            val loginVm = ViewModelProvider(this@MainActivity, factory).get(LoginViewModel::class.java)
-            val aiSubVm = ViewModelProvider(this@MainActivity, factory).get(AISubscriptionViewModel::class.java)
+            val loginVm = androidx.lifecycle.ViewModelProvider(this@MainActivity, factory).get(com.example.nutriia.auth.LoginViewModel::class.java)
+            val aiSubVm = androidx.lifecycle.ViewModelProvider(this@MainActivity, factory).get(com.example.nutriia.payment.AISubscriptionViewModel::class.java)
             aiSubVm.procesarDeepLink(uri.toString(), loginVm.uidUsuario)
         }
     }
