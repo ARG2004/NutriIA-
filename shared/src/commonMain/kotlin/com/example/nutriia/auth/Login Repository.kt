@@ -542,7 +542,6 @@ class RepositorioLogin {
             } else null
         } catch (e: Exception) { null }
     }
-    }
 
     suspend fun obtenerRol(uid: String): String {
         return try {
@@ -705,4 +704,5 @@ class RepositorioLogin {
         }
     }
 }
+
 

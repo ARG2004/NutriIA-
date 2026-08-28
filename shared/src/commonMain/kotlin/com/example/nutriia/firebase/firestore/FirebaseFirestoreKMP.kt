@@ -31,7 +31,7 @@ class FirebaseFirestore private constructor() {
 }
 
 class CollectionReference(
-    private val delegate: dev.gitlive.firebase.firestore.CollectionReference,
+    val delegate: dev.gitlive.firebase.firestore.CollectionReference,
     val path: String
 ) {
     fun document(id: String = "doc_${com.example.nutriia.platform.currentTimeMillis()}"): DocumentReference =
@@ -60,7 +60,7 @@ class CollectionReference(
 }
 
 class DocumentReference(
-    private val delegate: dev.gitlive.firebase.firestore.DocumentReference,
+    val delegate: dev.gitlive.firebase.firestore.DocumentReference,
     val path: String,
     val id: String
 ) {
@@ -132,7 +132,7 @@ class DocumentReference(
 
 class DocumentSnapshot(
     val id: String = "",
-    private val delegate: dev.gitlive.firebase.firestore.DocumentSnapshot? = null,
+    val delegate: dev.gitlive.firebase.firestore.DocumentSnapshot? = null,
     val rawData: Map<String, Any?> = emptyMap()
 ) {
     val exists: Boolean get() = delegate?.exists ?: rawData.isNotEmpty()
@@ -258,4 +258,5 @@ object FieldValue {
 }
 
  
+
 
