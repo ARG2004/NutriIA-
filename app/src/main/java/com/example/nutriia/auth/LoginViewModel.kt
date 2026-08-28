@@ -181,6 +181,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     // ── Cerrar sesión ─────────────────────────────────────────────────────────
     fun cerrarSesion() {
         viewModelScope.launch {
+            sesionListener?.remove()
+            sesionListener = null
             repositorio.cerrarSesion()
             _estado.value = LoginUiState.Idle
             _sesion.value = UsuarioSesion()
@@ -210,9 +212,18 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     return@addSnapshotListener
                 }
                 
-                var intentosIa = snapshot.getLong("intentosIaDisponibles")?.toInt() ?: 3
-                val ultimoReset = snapshot.getTimestamp("ultimoResetIa")?.toDate()?.time ?: snapshot.getLong("ultimoResetIa") ?: 0L
-                val suscripcionIaVigenteHasta = snapshot.getTimestamp("suscripcionIaVigenteHasta")?.toDate()?.time ?: snapshot.getLong("suscripcionIaVigenteHasta")
+                var intentosIa = 3
+                try { intentosIa = snapshot.getLong("intentosIaDisponibles")?.toInt() ?: 3 } catch (e: Exception) {}
+                
+                var ultimoReset = 0L
+                try { ultimoReset = snapshot.getTimestamp("ultimoResetIa")?.toDate()?.time ?: 0L } catch (e: Exception) {
+                    try { ultimoReset = snapshot.getLong("ultimoResetIa") ?: 0L } catch (e2: Exception) {}
+                }
+                
+                var suscripcionIaVigenteHasta: Long? = null
+                try { suscripcionIaVigenteHasta = snapshot.getTimestamp("suscripcionIaVigenteHasta")?.toDate()?.time } catch (e: Exception) {
+                    try { suscripcionIaVigenteHasta = snapshot.getLong("suscripcionIaVigenteHasta") } catch (e2: Exception) {}
+                }
                 
                 val hoyEnDias = (System.currentTimeMillis() + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
                 val ultimoResetEnDias = (ultimoReset + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)

@@ -34,8 +34,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let rtcAudioSession = RTCAudioSession.sharedInstance()
         rtcAudioSession.lockForConfiguration()
         do {
-            try rtcAudioSession.setCategory(AVAudioSession.Category.playAndRecord, with: [.defaultToSpeaker, .allowBluetoothHFP])
-            try rtcAudioSession.setMode(AVAudioSession.Mode.videoChat)
+            try rtcAudioSession.setCategory(AVAudioSession.Category.playAndRecord.rawValue, with: [.defaultToSpeaker, .allowBluetoothHFP])
+            try rtcAudioSession.setMode(AVAudioSession.Mode.videoChat.rawValue)
             try rtcAudioSession.setActive(true)
             NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA (RTCAudioSession)")
         } catch {
@@ -90,20 +90,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     private func setupMediaTracks() {
         // Audio
-        let audioConstraints = RTCMediaConstraints(
-            mandatoryConstraints: [
-                "googEchoCancellation": "true",
-                "googEchoCancellation2": "true",
-                "googDAEchoCancellation": "true",
-                "googNoiseSuppression": "true",
-                "googNoiseSuppression2": "true",
-                "googHighpassFilter": "true",
-                "googTypingNoiseDetection": "true",
-                "googAutoGainControl": "true",
-                "googAudioMirroring": "false"
-            ],
-            optionalConstraints: nil
-        )
+        let audioConstraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
         let audioSource = factory.audioSource(with: audioConstraints)
         let audioTrack = factory.audioTrack(with: audioSource, trackId: "audio0")
         peerConnection?.add(audioTrack, streamIds: ["stream0"])

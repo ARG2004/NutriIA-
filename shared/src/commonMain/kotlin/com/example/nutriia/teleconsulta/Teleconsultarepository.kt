@@ -116,7 +116,7 @@ class TeleconsultaRepository {
         return try {
             col.document(llamadaId).snapshots.conflate().map { snapshot ->
                 if (snapshot.exists) {
-                    snapshot.data<SolicitudLlamada>()
+                    try { snapshot.data<SolicitudLlamada>().copy(id = snapshot.id) } catch (e: Exception) { null }
                 } else null
             }
         } catch (e: Exception) {
@@ -165,8 +165,8 @@ class TeleconsultaRepository {
     fun observarIceCandidatesOffer(llamadaId: String): Flow<List<IceCandidateData>> {
         return try {
             col.document(llamadaId).collection("iceCandidatesOffer").snapshots.conflate().map { querySnapshot ->
-                querySnapshot.documents.map { doc ->
-                    doc.data<IceCandidateData>()
+                querySnapshot.documents.mapNotNull { doc ->
+                    try { doc.data<IceCandidateData>() } catch(e: Exception) { null }
                 }
             }
         } catch (e: Exception) {
@@ -177,8 +177,8 @@ class TeleconsultaRepository {
     fun observarIceCandidatesAnswer(llamadaId: String): Flow<List<IceCandidateData>> {
         return try {
             col.document(llamadaId).collection("iceCandidatesAnswer").snapshots.conflate().map { querySnapshot ->
-                querySnapshot.documents.map { doc ->
-                    doc.data<IceCandidateData>()
+                querySnapshot.documents.mapNotNull { doc ->
+                    try { doc.data<IceCandidateData>() } catch(e: Exception) { null }
                 }
             }
         } catch (e: Exception) {
@@ -223,7 +223,8 @@ class TeleconsultaRepository {
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
                     .orderBy("creadoEn", Direction.DESCENDING)
                     .snapshots.conflate().map { querySnapshot ->
-                        val llamada = querySnapshot.documents.firstOrNull()?.data<SolicitudLlamada>()
+                        val doc = querySnapshot.documents.firstOrNull()
+                        val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
                         if (llamada != null && llamada.emisorUid == padreUid) {
                             null
                         } else {
@@ -244,7 +245,8 @@ class TeleconsultaRepository {
                     .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
                     .orderBy("creadoEn", Direction.DESCENDING)
                     .snapshots.conflate().map { querySnapshot ->
-                        val llamada = querySnapshot.documents.firstOrNull()?.data<SolicitudLlamada>()
+                        val doc = querySnapshot.documents.firstOrNull()
+                        val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
                         if (llamada != null && llamada.emisorUid == nutriologoUid) {
                             null
                         } else {
@@ -263,8 +265,8 @@ class TeleconsultaRepository {
             else try {
                 col.where { "nutriologoUid".equalTo(nutriologoUid) }
                     .snapshots.conflate().map { querySnapshot ->
-                        querySnapshot.documents.map { doc ->
-                            doc.data<SolicitudLlamada>()
+                        querySnapshot.documents.mapNotNull { doc ->
+                            try { doc.data<SolicitudLlamada>().copy(id = doc.id) } catch (e: Exception) { null }
                         }
                     }
             } catch (e: Exception) {

@@ -194,10 +194,20 @@ class LoginViewModel : ViewModel() {
                 .document(uid)
                 .get()
                 .await()
-            val intentosEnDb = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3
-            val ultimoReset = doc.getTimestamp("ultimoResetIa")?.time ?: doc.getLong("ultimoResetIa") ?: 0L
+            var intentosEnDb = 3
+            try { intentosEnDb = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3 } catch (e: Exception) {}
+            
+            var ultimoReset = 0L
+            try { ultimoReset = doc.getTimestamp("ultimoResetIa")?.time ?: 0L } catch (e: Exception) {
+                try { ultimoReset = doc.getLong("ultimoResetIa") ?: 0L } catch (e2: Exception) {}
+            }
+            
             val currentTime = com.example.nutriia.platform.currentTimeMillis()
-            val suscripcionIaVigenteHasta = doc.getTimestamp("suscripcionIaVigenteHasta")?.time ?: doc.getLong("suscripcionIaVigenteHasta") ?: 0L
+            
+            var suscripcionIaVigenteHasta = 0L
+            try { suscripcionIaVigenteHasta = doc.getTimestamp("suscripcionIaVigenteHasta")?.time ?: 0L } catch (e: Exception) {
+                try { suscripcionIaVigenteHasta = doc.getLong("suscripcionIaVigenteHasta") ?: 0L } catch (e2: Exception) {}
+            }
             
             var intentosFinales = intentosEnDb
             var resetFinal = ultimoReset

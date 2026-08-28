@@ -187,21 +187,7 @@ class WebRtcEngine(
 
     private fun addLocalTracks(factory: PeerConnectionFactory, tipo: TipoLlamada) {
         // Audio siempre
-        val audioConstraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation2", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googDAEchoCancellation", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression2", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googTypingNoiseDetection", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("googAudioMirroring", "false"))
-            
-            mandatory.add(MediaConstraints.KeyValuePair("echoCancellation", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("noiseSuppression", "true"))
-            mandatory.add(MediaConstraints.KeyValuePair("autoGainControl",  "true"))
-        }
+        val audioConstraints = MediaConstraints()
         localAudioSource = factory.createAudioSource(audioConstraints)
         localAudioTrack  = factory.createAudioTrack("audio0", localAudioSource).also { track ->
             peerConnection?.addTrack(track, listOf("stream0"))
