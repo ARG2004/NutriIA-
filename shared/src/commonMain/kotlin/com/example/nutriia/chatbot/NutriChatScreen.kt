@@ -76,12 +76,20 @@ fun NutriChatScreen(
 
     val loginVm: LoginViewModel = viewModel()
     val aiSubVm: AISubscriptionViewModel = viewModel()
-    val intentos = loginVm.intentosIaDisponibles
-    val subHasta = loginVm.suscripcionIaVigenteHasta
+    val sesion by loginVm.sesionState.collectAsState()
+    val intentos = sesion.intentosIaDisponibles
+    val subHasta = sesion.suscripcionIaVigenteHasta
     val tieneSub = currentTimeMillis() < subHasta
     var showPaywall by remember { mutableStateOf(false) }
 
     val aiSubState by aiSubVm.state.collectAsState()
+
+    LaunchedEffect(aiSubState.pagoCompletado) {
+        if (aiSubState.pagoCompletado) {
+            loginVm.recargarSesion()
+            aiSubVm.reset()
+        }
+    }
 
     fun onSendAttempt(text: String) {
         if (tieneSub || intentos > 0) {
@@ -97,7 +105,12 @@ fun NutriChatScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(childName, esModoEmbarazo) {
+        val newContext = if (esModoEmbarazo) "embarazo" else childName
+        if (viewModel.currentContextId != newContext) {
+            viewModel.clearChat()
+            viewModel.currentContextId = newContext
+        }
         viewModel.addInitialGreeting(
             childName = childName,
             isEmbarazo = esModoEmbarazo,
@@ -365,6 +378,18 @@ fun NutriChatScreen(
                     modifier = Modifier.size(50.dp)
                 ) {
                     Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Enviar")
+                }
+            }
+        }
+        if (aiSubState.cargando) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = NutriaGreen)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.Text("Procesando pago...", color = Color.White)
                 }
             }
         }

@@ -155,11 +155,19 @@ fun AnalisisScreen(
 
         val loginVm: LoginViewModel = viewModel()
         val aiSubVm: AISubscriptionViewModel = viewModel()
-        val intentos = loginVm.intentosIaDisponibles
-        val subHasta = loginVm.suscripcionIaVigenteHasta
+        val sesion by loginVm.sesionState.collectAsState()
+        val intentos = sesion.intentosIaDisponibles
+        val subHasta = sesion.suscripcionIaVigenteHasta
         val tieneSub = currentTimeMillis() < subHasta
         var showPaywall by remember { mutableStateOf(false) }
         val aiSubState by aiSubVm.state.collectAsState()
+
+        LaunchedEffect(aiSubState.pagoCompletado) {
+            if (aiSubState.pagoCompletado) {
+                loginVm.recargarSesion()
+                aiSubVm.reset()
+            }
+        }
 
         fun doCapture(launch: () -> Unit) {
             if (tieneSub || intentos > 0) launch()

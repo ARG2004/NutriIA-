@@ -207,12 +207,18 @@ class DocumentSnapshot(
             Timestamp(gitliveT.seconds, gitliveT.nanoseconds)
         } else {
             val raw = rawData[field]
-            if (raw is Timestamp) raw
+            if (raw == null) null
+            else if (raw is Timestamp) raw
             else if (raw is dev.gitlive.firebase.firestore.Timestamp) Timestamp(raw.seconds, raw.nanoseconds)
-            else Timestamp.now()
+            else if (raw is Number) Timestamp(raw.toLong() / 1000, ((raw.toLong() % 1000) * 1000000).toInt())
+            else {
+                val longVal = runCatching { delegate?.get<Long?>(field) }.getOrNull()
+                if (longVal != null) Timestamp(longVal / 1000, ((longVal % 1000) * 1000000).toInt())
+                else null
+            }
         }
     } catch (_: Throwable) {
-        Timestamp.now()
+        null
     }
 
     val reference: DocumentReference get() = DocumentReference(delegate!!.reference, "docs/$id", id)

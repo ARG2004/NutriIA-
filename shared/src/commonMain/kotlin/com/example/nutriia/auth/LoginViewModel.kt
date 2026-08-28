@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.example.nutriia.firebase.firestore.await
+import kotlinx.datetime.toLocalDateTime
 
 sealed class LoginUiState {
     object Idle    : LoginUiState()
@@ -17,7 +18,7 @@ sealed class LoginUiState {
     data class Error(val mensaje: String) : LoginUiState()
 }
 
-private data class UsuarioSesion(
+data class UsuarioSesion(
     val uid:      String = "",
     val nombre:   String = "",
     val email:    String = "",
@@ -36,6 +37,7 @@ class LoginViewModel : ViewModel() {
     val estado: StateFlow<LoginUiState> = _estado
 
     private val _sesion = MutableStateFlow(UsuarioSesion())
+    val sesionState: StateFlow<UsuarioSesion> = _sesion
 
     val uidUsuario:      String get() = _sesion.value.uid
     val nombreUsuario:   String get() = _sesion.value.nombre
@@ -163,6 +165,15 @@ class LoginViewModel : ViewModel() {
 
     fun resetEstado() { _estado.value = LoginUiState.Idle }
 
+    fun recargarSesion() {
+        viewModelScope.launch {
+            val uid = _sesion.value.uid
+            if (uid.isNotEmpty()) {
+                cargarDatosSesion(uid, _sesion.value.rol, _sesion.value.email)
+            }
+        }
+    }
+
     // ── Helper privado ────────────────────────────────────────────────────────
     private suspend fun cargarDatosSesion(uid: String, rol: String, fallbackEmail: String) {
         try {
@@ -172,12 +183,21 @@ class LoginViewModel : ViewModel() {
                 .get()
                 .await()
             val intentosEnDb = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3
-            val ultimoReset = doc.getLong("ultimoResetIa") ?: 0L
+            val ultimoReset = doc.getTimestamp("ultimoResetIa")?.time ?: doc.getLong("ultimoResetIa") ?: 0L
             val currentTime = com.example.nutriia.platform.currentTimeMillis()
+            val suscripcionIaVigenteHasta = doc.getTimestamp("suscripcionIaVigenteHasta")?.time ?: doc.getLong("suscripcionIaVigenteHasta") ?: 0L
             
             var intentosFinales = intentosEnDb
             var resetFinal = ultimoReset
             val msEnUnDia = 24L * 60L * 60L * 1000L
+            
+            var necesitaGuardarEnBD = false
+
+            // 1. Validar si la suscripción expiró
+            if (intentosFinales >= 9999 && suscripcionIaVigenteHasta > 0 && currentTime > suscripcionIaVigenteHasta) {
+                intentosFinales = 3
+                necesitaGuardarEnBD = true
+            }
 
             val tz = kotlinx.datetime.TimeZone.currentSystemDefault()
             val now = kotlinx.datetime.Clock.System.now()
@@ -187,9 +207,14 @@ class LoginViewModel : ViewModel() {
                 kotlinx.datetime.Instant.fromEpochMilliseconds(ultimoReset).toLocalDateTime(tz).date
             } else null
 
+            // 2. Validar si es un nuevo día
             if (lastResetDate == null || lastResetDate != today) {
-                intentosFinales = 3
+                if (intentosFinales < 9999) intentosFinales = 3
                 resetFinal = now.toEpochMilliseconds()
+                necesitaGuardarEnBD = true
+            }
+
+            if (necesitaGuardarEnBD) {
                 repositorio.resetearIntentosDiarios(uid, resetFinal)
             }
 
@@ -200,7 +225,7 @@ class LoginViewModel : ViewModel() {
                 telefono = doc.getString("telefono") ?: "",
                 rol      = doc.getString("rol")      ?: rol,
                 intentosIaDisponibles = intentosFinales,
-                suscripcionIaVigenteHasta = doc.getLong("suscripcionIaVigenteHasta") ?: 0L,
+                suscripcionIaVigenteHasta = suscripcionIaVigenteHasta,
                 ultimoResetIa = resetFinal
             )
         } catch (e: Exception) {

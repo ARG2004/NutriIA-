@@ -20,7 +20,7 @@ sealed class LoginUiState {
     data class Error(val mensaje: String) : LoginUiState()
 }
 
-private data class UsuarioSesion(
+data class UsuarioSesion(
     val uid:      String = "",
     val nombre:   String = "",
     val email:    String = "",
@@ -39,6 +39,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     val estado: StateFlow<LoginUiState> = _estado
 
     private val _sesion = MutableStateFlow(UsuarioSesion())
+    val sesionState: StateFlow<UsuarioSesion> = _sesion
 
     val uidUsuario:      String get() = _sesion.value.uid
     val nombreUsuario:   String get() = _sesion.value.nombre
@@ -169,6 +170,15 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetEstado() { _estado.value = LoginUiState.Idle }
 
+    fun recargarSesion() {
+        viewModelScope.launch {
+            val uid = _sesion.value.uid
+            if (uid.isNotEmpty()) {
+                cargarDatosSesion(uid, _sesion.value.rol, _sesion.value.email)
+            }
+        }
+    }
+
     // ── Helper privado ────────────────────────────────────────────────────────
     private suspend fun cargarDatosSesion(uid: String, rol: String, fallbackEmail: String) {
         try {
@@ -179,13 +189,20 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 .await()
             
             var intentosIa = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3
-            val ultimoReset = doc.getLong("ultimoResetIa") ?: 0L
-            val suscripcionIaVigenteHasta = doc.getLong("suscripcionIaVigenteHasta")
+            val ultimoReset = doc.getTimestamp("ultimoResetIa")?.toDate()?.time ?: doc.getLong("ultimoResetIa") ?: 0L
+            val suscripcionIaVigenteHasta = doc.getTimestamp("suscripcionIaVigenteHasta")?.toDate()?.time ?: doc.getLong("suscripcionIaVigenteHasta")
             
             val hoyEnDias = (System.currentTimeMillis() + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
             val ultimoResetEnDias = (ultimoReset + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
             
             var resetNeeded = false
+            
+            val currentTime = System.currentTimeMillis()
+            if (intentosIa >= 9999 && suscripcionIaVigenteHasta != null && suscripcionIaVigenteHasta > 0 && currentTime > suscripcionIaVigenteHasta) {
+                intentosIa = 3
+                resetNeeded = true
+            }
+
             if (hoyEnDias > ultimoResetEnDias) {
                 if (intentosIa < 9999) intentosIa = 3
                 resetNeeded = true

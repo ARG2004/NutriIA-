@@ -72,10 +72,28 @@ fun NutriChatScreen(
 
     val loginVm: com.example.nutriia.auth.LoginViewModel = viewModel()
     val aiSubVm: com.example.nutriia.payment.AISubscriptionViewModel = viewModel()
-    val intentos = loginVm.intentosIaDisponibles
-    val subHasta = loginVm.suscripcionIaVigenteHasta ?: 0L
+    val sesion by loginVm.sesionState.collectAsState()
+    val intentos = sesion.intentosIaDisponibles
+    val subHasta = sesion.suscripcionIaVigenteHasta ?: 0L
     val tieneSub = System.currentTimeMillis() < subHasta
     var showPaywall by remember { mutableStateOf(false) }
+    val aiSubState by aiSubVm.state.collectAsState()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(aiSubState.pagoCompletado) {
+        if (aiSubState.pagoCompletado) {
+            android.widget.Toast.makeText(context, "¡Suscripción a IA activada con éxito!", android.widget.Toast.LENGTH_LONG).show()
+            loginVm.recargarSesion()
+            aiSubVm.reset()
+        }
+    }
+
+    LaunchedEffect(aiSubState.error) {
+        if (!aiSubState.error.isNullOrEmpty()) {
+            android.widget.Toast.makeText(context, aiSubState.error, android.widget.Toast.LENGTH_LONG).show()
+            aiSubVm.limpiarError()
+        }
+    }
 
     fun doSendChat(query: String) {
         if (tieneSub || intentos > 0) {
@@ -91,7 +109,13 @@ fun NutriChatScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(childName, esModoEmbarazo) {
+        val newContext = if (esModoEmbarazo) "embarazo" else childName
+        if (viewModel.currentContextId != newContext) {
+            viewModel.clearChat()
+            viewModel.currentContextId = newContext
+        }
+        
         viewModel.addInitialGreeting(
             childName = childName,
             isEmbarazo = esModoEmbarazo,
@@ -350,7 +374,7 @@ fun NutriChatScreen(
         }
 
         if (showPaywall) {
-            val context = androidx.compose.ui.platform.LocalContext.current
+            val ctx = androidx.compose.ui.platform.LocalContext.current
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = { showPaywall = false },
                 title = {
@@ -371,7 +395,7 @@ fun NutriChatScreen(
                     androidx.compose.material3.Button(
                         onClick = {
                             showPaywall = false
-                            aiSubVm.iniciarPagoIA(context, loginVm.uidUsuario)
+                            aiSubVm.iniciarPagoIA(ctx, loginVm.uidUsuario)
                         },
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                     ) {
@@ -386,6 +410,19 @@ fun NutriChatScreen(
                 shape = RoundedCornerShape(16.dp),
                 containerColor = Color.White
             )
+        }
+
+        if (aiSubState.cargando) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = NutriaGreen)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.Text("Procesando pago...", color = Color.White)
+                }
+            }
         }
     }
 

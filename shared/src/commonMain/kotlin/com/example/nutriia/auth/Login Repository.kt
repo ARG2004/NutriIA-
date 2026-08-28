@@ -643,7 +643,7 @@ class RepositorioLogin {
             db.collection("usuarios").document(uid).update(
                 mapOf(
                     "intentosIaDisponibles" to 3,
-                    "ultimoResetIa" to nuevoReset
+                    "ultimoResetIa" to com.example.nutriia.shared.Timestamp(nuevoReset / 1000, ((nuevoReset % 1000) * 1000000).toInt())
                 )
             ).await()
             true
@@ -658,7 +658,7 @@ class RepositorioLogin {
             val treintaDiasMilis = 30L * 24 * 60 * 60 * 1000
             val vigenteHasta = currentTimeMillis() + treintaDiasMilis
             db.collection("usuarios").document(uid).update(
-                mapOf("suscripcionIaVigenteHasta" to vigenteHasta)
+                mapOf("suscripcionIaVigenteHasta" to com.example.nutriia.shared.Timestamp(vigenteHasta / 1000, ((vigenteHasta % 1000) * 1000000).toInt()))
             ).await()
             true
         } catch (e: Exception) {

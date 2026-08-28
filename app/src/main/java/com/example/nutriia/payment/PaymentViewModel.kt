@@ -26,7 +26,7 @@ class PaymentViewModel : ViewModel() {
 
     companion object {
         // $150.00 MXN — ajusta según tu modelo de negocio
-        const val PRECIO_CENTAVOS = 13000
+        const val PRECIO_CENTAVOS = 25000
         const val MONEDA          = "MXN"
 
         // Deep links — deben coincidir exactamente con el AndroidManifest

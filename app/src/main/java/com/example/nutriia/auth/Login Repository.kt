@@ -556,7 +556,7 @@ class RepositorioLogin(private val context: Context) {
             val unMesMillis = 30L * 24 * 60 * 60 * 1000
             val fechaVencimiento = System.currentTimeMillis() + unMesMillis
             db.collection("usuarios").document(uid).update(
-                "suscripcionIaVigenteHasta", fechaVencimiento,
+                "suscripcionIaVigenteHasta", com.google.firebase.Timestamp(java.util.Date(fechaVencimiento)),
                 "intentosIaDisponibles", 9999
             ).await()
             true
@@ -581,7 +581,7 @@ class RepositorioLogin(private val context: Context) {
         try {
             db.collection("usuarios").document(uid).update(
                 "intentosIaDisponibles", 3,
-                "ultimoResetIa", nuevaFechaReset
+                "ultimoResetIa", com.google.firebase.Timestamp(java.util.Date(nuevaFechaReset))
             ).await()
         } catch (_: Exception) {}
     }

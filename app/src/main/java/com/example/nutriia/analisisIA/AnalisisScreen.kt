@@ -160,11 +160,26 @@ fun AnalisisScreen(
 
         val loginVm: com.example.nutriia.auth.LoginViewModel = viewModel()
         val aiSubVm: com.example.nutriia.payment.AISubscriptionViewModel = viewModel()
-        val intentos = loginVm.intentosIaDisponibles
-        val subHasta = loginVm.suscripcionIaVigenteHasta ?: 0L
+        val sesion by loginVm.sesionState.collectAsState()
+        val intentos = sesion.intentosIaDisponibles
+        val subHasta = sesion.suscripcionIaVigenteHasta ?: 0L
         val tieneSub = System.currentTimeMillis() < subHasta
         var showPaywall by remember { mutableStateOf(false) }
         val aiSubState by aiSubVm.state.collectAsState()
+        LaunchedEffect(aiSubState.pagoCompletado) {
+            if (aiSubState.pagoCompletado) {
+                android.widget.Toast.makeText(context, "¡Suscripción a IA activada con éxito!", android.widget.Toast.LENGTH_LONG).show()
+                loginVm.recargarSesion()
+                aiSubVm.reset()
+            }
+        }
+
+        LaunchedEffect(aiSubState.error) {
+            if (!aiSubState.error.isNullOrEmpty()) {
+                android.widget.Toast.makeText(context, aiSubState.error, android.widget.Toast.LENGTH_LONG).show()
+                aiSubVm.limpiarError()
+            }
+        }
 
         fun doCapture(launch: () -> Unit) {
             if (tieneSub || intentos > 0) launch()
@@ -314,6 +329,19 @@ fun AnalisisScreen(
                     shape = RoundedCornerShape(16.dp),
                     containerColor = Color.White
                 )
+            }
+
+            if (aiSubState.cargando) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = Color(0xFF4CAF50))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        androidx.compose.material3.Text("Procesando pago...", color = Color.White)
+                    }
+                }
             }
         }
     }

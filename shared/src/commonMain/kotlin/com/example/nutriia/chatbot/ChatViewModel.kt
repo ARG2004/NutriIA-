@@ -18,6 +18,12 @@ class ChatViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    var currentContextId: String = ""
+
+    fun clearChat() {
+        _messages.value = emptyList()
+    }
+
     fun sendMessage(
         query: String,
         childName: String,
