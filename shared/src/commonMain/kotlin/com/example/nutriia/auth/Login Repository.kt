@@ -524,8 +524,24 @@ class RepositorioLogin {
         return try {
             val snap = db.collection("usuarios").document(uid)
                 .collection("perfilEmbarazo").document("unico").get().await()
-            if (snap.exists()) PerfilEmbarazo.fromMap(snap.data ?: emptyMap()) else null
+            if (snap.exists()) {
+                snap.dataAs<PerfilEmbarazo>() ?: PerfilEmbarazo(
+                    semanas = snap.getLong("semanas")?.toInt() ?: 1,
+                    condiciones = snap.getAs<List<String>>("condiciones") ?: emptyList(),
+                    preferencias = snap.getAs<List<String>>("preferencias") ?: emptyList(),
+                    fechaUltimaMenstruacion = snap.getString("fechaUltimaMenstruacion") ?: "",
+                    nivelIngreso = com.example.nutriia.sueldo.NivelIngreso.fromIndex(snap.getLong("nivelIngreso")?.toInt() ?: 0),
+                    region = snap.getString("region")?.let { r -> com.example.nutriia.sueldo.RegionMexico.entries.firstOrNull { it.name == r } } ?: com.example.nutriia.sueldo.RegionMexico.CENTRO,
+                    allergiesDetail = snap.getString("allergiesDetail") ?: "",
+                    edad = snap.getLong("edad")?.toInt() ?: 0,
+                    tallaM = snap.getDouble("tallaM") ?: 0.0,
+                    pesoPregestacionalKg = snap.getDouble("pesoPregestacionalKg") ?: 0.0,
+                    esGemelar = snap.getBoolean("esGemelar") ?: false,
+                    otrasCondicionesTexto = snap.getString("otrasCondicionesTexto") ?: ""
+                )
+            } else null
         } catch (e: Exception) { null }
+    }
     }
 
     suspend fun obtenerRol(uid: String): String {
@@ -658,7 +674,7 @@ class RepositorioLogin {
             val treintaDiasMilis = 30L * 24 * 60 * 60 * 1000
             val vigenteHasta = currentTimeMillis() + treintaDiasMilis
             db.collection("usuarios").document(uid).update(
-                mapOf("suscripcionIaVigenteHasta" to com.example.nutriia.shared.Timestamp(vigenteHasta / 1000, ((vigenteHasta % 1000) * 1000000).toInt()))
+                mapOf("suscripcionIaVigenteHasta" to vigenteHasta)
             ).await()
             true
         } catch (e: Exception) {
@@ -689,3 +705,4 @@ class RepositorioLogin {
         }
     }
 }
+

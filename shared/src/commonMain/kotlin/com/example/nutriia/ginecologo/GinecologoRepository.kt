@@ -63,7 +63,7 @@ class GinecologoRepository {
             val snap = colGinecologosPublicos.where { "codigo".equalTo(q) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
-                val perfil = doc.data<GinecologoPublico>()
+                val perfil = parseGinecologo(doc)!!
                 Result.success(if (perfil.uid.isBlank()) perfil.copy(uid = doc.id) else perfil)
             } else {
                 Result.success(null)
@@ -81,7 +81,7 @@ class GinecologoRepository {
             val snap = colGinecologosPublicos.where { "email".equalTo(e) }.get()
             val doc = snap.documents.firstOrNull()
             if (doc != null && doc.exists) {
-                val perfil = doc.data<GinecologoPublico>()
+                val perfil = parseGinecologo(doc)!!
                 Result.success(if (perfil.uid.isBlank()) perfil.copy(uid = doc.id) else perfil)
             } else {
                 Result.success(null)
@@ -96,7 +96,7 @@ class GinecologoRepository {
             val snap = colGinecologosPublicos.get()
             val lista = snap.documents.take(limite.toInt()).mapNotNull { doc ->
                 runCatching { 
-                    val p = doc.data<GinecologoPublico>()
+                    val p = parseGinecologo(doc)!!
                     if (p.uid.isBlank()) p.copy(uid = doc.id) else p 
                 }.getOrNull()
             }
@@ -112,7 +112,7 @@ class GinecologoRepository {
             val snap = colGinecologosPublicos.get()
             val todos = snap.documents.mapNotNull { doc ->
                 runCatching { 
-                    val p = doc.data<GinecologoPublico>()
+                    val p = parseGinecologo(doc)!!
                     if (p.uid.isBlank()) p.copy(uid = doc.id) else p
                 }.getOrNull()
             }
@@ -189,7 +189,7 @@ class GinecologoRepository {
         return try {
             val docSnap = colVinculaciones.document(vinculacionId).get()
             if (!docSnap.exists) return Result.failure(Exception("Vinculación no encontrada"))
-            val vinc = docSnap.data<VinculacionEmbarazo>().copy(id = docSnap.id)
+            val vinc = parseVinculacion(docSnap)!!.copy(id = docSnap.id)
 
             val citaId = generateUUID()
             val cita = CitaEmbarazo(
@@ -240,7 +240,7 @@ class GinecologoRepository {
         return try {
             colVinculaciones.where { "mamaUid".equalTo(mamaUid) }.snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    runCatching { doc.data<VinculacionEmbarazo>().copy(id = doc.id) }.getOrNull()
+                    runCatching { parseVinculacion(doc)!!.copy(id = doc.id) }.getOrNull()
                 }.firstOrNull { it.estado != EstadoVinculacionEmbarazo.REVOCADO }
             }
         } catch (e: Exception) {
@@ -253,7 +253,7 @@ class GinecologoRepository {
         return try {
             colVinculaciones.where { "mamaUid".equalTo(mamaUid) }.snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    val vinc = runCatching { doc.data<VinculacionEmbarazo>().copy(id = doc.id) }.getOrNull()
+                    val vinc = runCatching { parseVinculacion(doc)!!.copy(id = doc.id) }.getOrNull()
                     if (vinc != null && vinc.proximaCitaFecha.isNotBlank()) {
                         CitaEmbarazo(
                             id = vinc.id,
@@ -277,7 +277,7 @@ class GinecologoRepository {
         return try {
             colVinculaciones.where { "ginecologoUid".equalTo(gineUid) }.snapshots.map { snap ->
                 snap.documents.mapNotNull { doc ->
-                    runCatching { doc.data<VinculacionEmbarazo>().copy(id = doc.id) }.getOrNull()
+                    runCatching { parseVinculacion(doc)!!.copy(id = doc.id) }.getOrNull()
                 }
             }
         } catch (e: Exception) {
@@ -290,7 +290,7 @@ class GinecologoRepository {
         return try {
             val doc = colGinecologosPublicos.document(uid).get()
             if (doc.exists) {
-                val perfil = doc.data<GinecologoPublico>()
+                val perfil = parseGinecologo(doc)!!
                 Result.success(if (perfil.uid.isBlank()) perfil.copy(uid = doc.id) else perfil)
             } else {
                 Result.success(null)
@@ -298,5 +298,40 @@ class GinecologoRepository {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+    private fun parseGinecologo(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): GinecologoPublico? {
+        return runCatching { doc.data<GinecologoPublico>() }.getOrElse {
+            runCatching {
+                GinecologoPublico(
+                    uid = runCatching { doc.get<String>("uid") }.getOrNull() ?: doc.id,
+                    nombre = runCatching { doc.get<String>("nombre") }.getOrNull() ?: "",
+                    especialidad = runCatching { doc.get<String>("especialidad") }.getOrNull() ?: "",
+                    cedula = runCatching { doc.get<String>("cedula") }.getOrNull() ?: "",
+                    codigo = runCatching { doc.get<String>("codigo") }.getOrNull() ?: "",
+                    email = runCatching { doc.get<String>("email") }.getOrNull() ?: ""
+                )
+            }.getOrNull()
+        }?.let { p -> if (p.uid.isBlank()) p.copy(uid = doc.id) else p }
+    }
+
+    private fun parseVinculacion(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): VinculacionEmbarazo? {
+        return runCatching { doc.data<VinculacionEmbarazo>() }.getOrElse {
+            runCatching {
+                VinculacionEmbarazo(
+                    id = doc.id,
+                    ginecologoUid = runCatching { doc.get<String>("ginecologoUid") }.getOrNull() ?: "",
+                    ginecologoNombre = runCatching { doc.get<String>("ginecologoNombre") }.getOrNull() ?: "",
+                    mamaUid = runCatching { doc.get<String>("mamaUid") }.getOrNull() ?: "",
+                    mamaNombre = runCatching { doc.get<String>("mamaNombre") }.getOrNull() ?: "",
+                    estado = runCatching { EstadoVinculacionEmbarazo.valueOf(doc.get<String>("estado")) }.getOrElse { EstadoVinculacionEmbarazo.PENDIENTE },
+                    creadoEn = runCatching { doc.get<Double>("creadoEn").toLong() }.getOrNull() ?: runCatching { doc.get<Long>("creadoEn") }.getOrNull(),
+                    actualizadoEn = runCatching { doc.get<Double>("actualizadoEn").toLong() }.getOrNull() ?: runCatching { doc.get<Long>("actualizadoEn") }.getOrNull(),
+                    proximaCitaFecha = runCatching { doc.get<String>("proximaCitaFecha") }.getOrNull() ?: "",
+                    proximaCitaHora = runCatching { doc.get<String>("proximaCitaHora") }.getOrNull() ?: "",
+                    proximaCitaMotivo = runCatching { doc.get<String>("proximaCitaMotivo") }.getOrNull() ?: "",
+                    proximaCitaTipo = runCatching { doc.get<String>("proximaCitaTipo") }.getOrNull() ?: ""
+                )
+            }.getOrNull()
+        }?.copy(id = doc.id)
     }
 }

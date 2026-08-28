@@ -95,7 +95,22 @@ class EmbarazoDashboardViewModel : ViewModel() {
                     trySend(null)
                     return@addSnapshotListener
                 }
-                val p = snap?.data?.let { PerfilEmbarazo.fromMap(it) }
+                val p = snap?.let {
+                    it.dataAs<PerfilEmbarazo>() ?: PerfilEmbarazo(
+                        semanas = it.getLong("semanas")?.toInt() ?: 1,
+                        condiciones = it.getAs<List<String>>("condiciones") ?: emptyList(),
+                        preferencias = it.getAs<List<String>>("preferencias") ?: emptyList(),
+                        fechaUltimaMenstruacion = it.getString("fechaUltimaMenstruacion") ?: "",
+                        nivelIngreso = com.example.nutriia.sueldo.NivelIngreso.fromIndex(it.getLong("nivelIngreso")?.toInt() ?: 0),
+                        region = it.getString("region")?.let { r -> com.example.nutriia.sueldo.RegionMexico.entries.firstOrNull { reg -> reg.name == r } } ?: com.example.nutriia.sueldo.RegionMexico.CENTRO,
+                        allergiesDetail = it.getString("allergiesDetail") ?: "",
+                        edad = it.getLong("edad")?.toInt() ?: 0,
+                        tallaM = it.getDouble("tallaM") ?: 0.0,
+                        pesoPregestacionalKg = it.getDouble("pesoPregestacionalKg") ?: 0.0,
+                        esGemelar = it.getBoolean("esGemelar") ?: false,
+                        otrasCondicionesTexto = it.getString("otrasCondicionesTexto") ?: ""
+                    )
+                }
                 trySend(p)
             }
         awaitClose { listener.remove() }
@@ -476,3 +491,4 @@ class EmbarazoDashboardViewModel : ViewModel() {
         }
     }
 }
+

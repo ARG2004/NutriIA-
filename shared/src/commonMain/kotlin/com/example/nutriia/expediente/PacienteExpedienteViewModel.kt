@@ -171,8 +171,8 @@ class PacienteExpedienteViewModel : ViewModel() {
                         ?.let { runCatching { RegionMexico.valueOf(it) }.getOrDefault(RegionMexico.PUEBLA) }
                         ?: RegionMexico.PUEBLA
 
-                    basePeso = doc.data["weightKg"]?.toString()?.toDoubleOrNull() ?: 0.0
-                    baseTalla = doc.data["heightCm"]?.toString()?.toDoubleOrNull() ?: 0.0
+                    basePeso = doc.getDouble("weightKg") ?: 0.0
+                    baseTalla = doc.getDouble("heightCm") ?: 0.0
                     hasAllergiesVal = doc.getBoolean("hasAllergies") ?: false
                 }
             } catch (e: Exception) {
@@ -661,3 +661,4 @@ class PacienteExpedienteViewModel : ViewModel() {
         } catch (_: Exception) { 0 }
     }
 }
+

@@ -145,12 +145,24 @@ class DocumentSnapshot(
     // cada documento y las listas quedaban vacías sin ningún error visible.
     // FIX: extraer los campos reales desde el delegate de gitlive usando su propio
     // decoder genérico (data<Map<String, Any?>>()), con fallback a rawData.
+    inline fun <reified T> dataAs(): T? = try {
+        delegate?.data<T>()
+    } catch (_: Throwable) {
+        null
+    }
+
     val data: Map<String, Any?>
         get() = try {
             delegate?.data<Map<String, Any?>>() ?: rawData
         } catch (_: Throwable) {
             rawData
         }
+
+    inline fun <reified T> getAs(field: String): T? = try {
+        delegate?.get<T>(field)
+    } catch (_: Throwable) {
+        rawData[field] as? T
+    }
 
     fun get(field: String): Any? = try {
         runCatching { delegate?.get<String?>(field) }.getOrNull()
@@ -246,3 +258,4 @@ object FieldValue {
 }
 
  
+

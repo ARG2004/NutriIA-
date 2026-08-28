@@ -22,6 +22,10 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     override init() {
         super.init()
+        let rtcAudioSession = RTCAudioSession.sharedInstance()
+        rtcAudioSession.useManualAudio = true
+        rtcAudioSession.isAudioEnabled = false
+
         let videoEncoderFactory = RTCDefaultVideoEncoderFactory()
         let videoDecoderFactory = RTCDefaultVideoDecoderFactory()
         self.factory = RTCPeerConnectionFactory(encoderFactory: videoEncoderFactory, decoderFactory: videoDecoderFactory)
@@ -34,9 +38,10 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let rtcAudioSession = RTCAudioSession.sharedInstance()
         rtcAudioSession.lockForConfiguration()
         do {
-            try rtcAudioSession.setCategory(AVAudioSession.Category.playAndRecord, with: [.defaultToSpeaker, .allowBluetoothHFP])
+            try rtcAudioSession.setCategory(AVAudioSession.Category.playAndRecord, with: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothHFP])
             try rtcAudioSession.setMode(AVAudioSession.Mode.videoChat)
             try rtcAudioSession.setActive(true)
+            rtcAudioSession.isAudioEnabled = true
             NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA (RTCAudioSession)")
         } catch {
             NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error.localizedDescription)")
@@ -48,6 +53,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let rtcAudioSession = RTCAudioSession.sharedInstance()
         rtcAudioSession.lockForConfiguration()
         do {
+            rtcAudioSession.isAudioEnabled = false
             try rtcAudioSession.setActive(false)
             NSLog("ℹ️ [WebRtcProvider] Audio Session desactivada (RTCAudioSession)")
         } catch {
@@ -84,8 +90,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
         self.peerConnection = factory.peerConnection(with: config, constraints: constraints, delegate: self)
 
-        setupMediaTracks()
         setupAudioSession()
+        setupMediaTracks()
     }
 
     private func setupMediaTracks() {
