@@ -34,6 +34,12 @@ data class UsuarioSesion(
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repositorio = RepositorioLogin(application)
+    private var sesionListener: com.google.firebase.firestore.ListenerRegistration? = null
+
+    override fun onCleared() {
+        super.onCleared()
+        sesionListener?.remove()
+    }
 
     private val _estado = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val estado: StateFlow<LoginUiState> = _estado
@@ -193,51 +199,54 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ── Helper privado ────────────────────────────────────────────────────────
-    private suspend fun cargarDatosSesion(uid: String, rol: String, fallbackEmail: String) {
-        try {
-            val doc = FirebaseFirestore.getInstance()
-                .collection("usuarios")
-                .document(uid)
-                .get()
-                .await()
-            
-            var intentosIa = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3
-            val ultimoReset = doc.getTimestamp("ultimoResetIa")?.toDate()?.time ?: doc.getLong("ultimoResetIa") ?: 0L
-            val suscripcionIaVigenteHasta = doc.getTimestamp("suscripcionIaVigenteHasta")?.toDate()?.time ?: doc.getLong("suscripcionIaVigenteHasta")
-            
-            val hoyEnDias = (System.currentTimeMillis() + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
-            val ultimoResetEnDias = (ultimoReset + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
-            
-            var resetNeeded = false
-            
-            val currentTime = System.currentTimeMillis()
-            if (intentosIa >= 9999 && suscripcionIaVigenteHasta != null && suscripcionIaVigenteHasta > 0 && currentTime > suscripcionIaVigenteHasta) {
-                intentosIa = 3
-                resetNeeded = true
-            }
+    private fun cargarDatosSesion(uid: String, rol: String, fallbackEmail: String) {
+        sesionListener?.remove()
+        sesionListener = FirebaseFirestore.getInstance()
+            .collection("usuarios")
+            .document(uid)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null || snapshot == null || !snapshot.exists()) {
+                    _sesion.value = _sesion.value.copy(uid = uid, rol = rol, email = fallbackEmail)
+                    return@addSnapshotListener
+                }
+                
+                var intentosIa = snapshot.getLong("intentosIaDisponibles")?.toInt() ?: 3
+                val ultimoReset = snapshot.getTimestamp("ultimoResetIa")?.toDate()?.time ?: snapshot.getLong("ultimoResetIa") ?: 0L
+                val suscripcionIaVigenteHasta = snapshot.getTimestamp("suscripcionIaVigenteHasta")?.toDate()?.time ?: snapshot.getLong("suscripcionIaVigenteHasta")
+                
+                val hoyEnDias = (System.currentTimeMillis() + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
+                val ultimoResetEnDias = (ultimoReset + java.util.TimeZone.getDefault().rawOffset) / (1000 * 60 * 60 * 24)
+                
+                var resetNeeded = false
+                
+                val currentTime = System.currentTimeMillis()
+                if (intentosIa >= 9999 && suscripcionIaVigenteHasta != null && suscripcionIaVigenteHasta > 0 && currentTime > suscripcionIaVigenteHasta) {
+                    intentosIa = 3
+                    resetNeeded = true
+                }
 
-            if (hoyEnDias > ultimoResetEnDias) {
-                if (intentosIa < 9999) intentosIa = 3
-                resetNeeded = true
-            }
+                if (hoyEnDias > ultimoResetEnDias) {
+                    if (intentosIa < 9999) intentosIa = 3
+                    resetNeeded = true
+                }
 
-            _sesion.value = UsuarioSesion(
-                uid      = uid,
-                nombre   = doc.getString("nombre")   ?: "",
-                email    = doc.getString("email")    ?: fallbackEmail,
-                telefono = doc.getString("telefono") ?: "",
-                rol      = doc.getString("rol")      ?: rol,
-                intentosIaDisponibles = intentosIa,
-                suscripcionIaVigenteHasta = suscripcionIaVigenteHasta,
-                ultimoResetIa = if (resetNeeded) System.currentTimeMillis() else ultimoReset
-            )
-            
-            if (resetNeeded) {
-                repositorio.resetearIntentosDiarios(uid, System.currentTimeMillis())
+                _sesion.value = UsuarioSesion(
+                    uid      = uid,
+                    nombre   = snapshot.getString("nombre")   ?: "",
+                    email    = snapshot.getString("email")    ?: fallbackEmail,
+                    telefono = snapshot.getString("telefono") ?: "",
+                    rol      = snapshot.getString("rol")      ?: rol,
+                    intentosIaDisponibles = intentosIa,
+                    suscripcionIaVigenteHasta = suscripcionIaVigenteHasta,
+                    ultimoResetIa = if (resetNeeded) System.currentTimeMillis() else ultimoReset
+                )
+                
+                if (resetNeeded) {
+                    viewModelScope.launch {
+                        repositorio.resetearIntentosDiarios(uid, System.currentTimeMillis())
+                    }
+                }
             }
-        } catch (e: Exception) {
-            _sesion.value = _sesion.value.copy(uid = uid, rol = rol, email = fallbackEmail)
-        }
     }
 
     fun hayHuellaDisponible(context: Context): Boolean {
