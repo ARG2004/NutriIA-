@@ -82,7 +82,7 @@ fun CampoTextoAccesible(
         if (modoEntrada != InputModoCiego.VOZ) return@LaunchedEffect
         if (!voiceManagerListo) return@LaunchedEffect
 
-        // Pequeño delay para no pisar el anuncio del cambio de pantalla si lo hay
+        voiceManager?.detener()
         delay(300L)
 
         val instruccionCompleta = if (idioma == IdiomaVoz.INGLES) {
@@ -91,19 +91,22 @@ fun CampoTextoAccesible(
             "$descripcionVoz. Si prefieres, di: cambiar a teclado, o: cambiar a teclado braille."
         }
         if (ttsManager != null) {
-            ttsManager.hablarYEsperar(instruccionCompleta, margenMs = 1000L)
+            ttsManager.hablarYEsperar(instruccionCompleta, margenMs = 1200L)
         } else {
             val palabras = instruccionCompleta.split(" ").size
-            delay((palabras * 100L) + 1000L)
+            delay((palabras * 100L) + 1200L)
         }
+
+        delay(400L) // Pausa de guardia para silenciar audio del altavoz
 
         if (tienePermiso) {
             voiceManager?.detener()
             if (ttsManager != null) {
-                ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 500L)
+                ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 600L)
             } else {
                 delay(600L)
             }
+            delay(350L) // Pausa de guardia adicional
             iniciarEscuchaConReintento(
                 voiceManager  = voiceManager,
                 idioma        = idioma,
@@ -996,7 +999,19 @@ fun iniciarEscuchaConReintento(
             val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
             onValorChange(resultado)
             if (isFinal && resultado.isNotBlank() && onNext != null) {
-                onNext.invoke()
+                val esValidoParaAvanzar = when {
+                    esCampoFecha -> resultado.matches(Regex("""\d{2}/\d{2}/\d{4}"""))
+                    esCampoHora  -> resultado.matches(Regex("""\d{2}:\d{2}"""))
+                    keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
+                    keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
+                    keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone -> resultado.toIntOrNull() != null
+                    keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> resultado.toDoubleOrNull() != null
+                    else -> resultado.isNotBlank()
+                }
+                if (esValidoParaAvanzar) {
+                    voiceManager?.detener()
+                    onNext.invoke()
+                }
             }
         }
     }

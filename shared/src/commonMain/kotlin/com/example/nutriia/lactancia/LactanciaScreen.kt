@@ -767,8 +767,7 @@ fun AddFeedingDialog(
     var formulaMl    by remember { mutableStateOf("") }
     var notes        by remember { mutableStateOf("") }
     var timeInput by remember {
-        val defaultVal = if (esBlind) "" else com.example.nutriia.utils.FechaUtils.horaActualIso()
-        mutableStateOf(defaultVal)
+        mutableStateOf(com.example.nutriia.utils.FechaUtils.horaActualIso())
     }
     val today = com.example.nutriia.utils.FechaUtils.hoyIso()
 
