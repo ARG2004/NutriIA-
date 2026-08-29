@@ -1215,10 +1215,6 @@ private fun AlertaDialog(
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
 /** "14:30" → "2:30 PM"  |  "08:05" → "8:05 AM" */
 private fun formatHora12h(hora24: String): String {
     val hh  = hora24.split(":").getOrElse(0) { "8" }.toIntOrNull()  ?: 8
@@ -1243,7 +1239,6 @@ fun AlertaBlindDialog(
     onSave:      (Alerta) -> Unit
 ) {
     val esEdicion = alertaEdit != null
-    
     var titulo      by remember { mutableStateOf(alertaEdit?.titulo      ?: "") }
     var descripcion by remember { mutableStateOf(alertaEdit?.descripcion ?: "") }
     var tipo        by remember { mutableStateOf(alertaEdit?.tipo ?: tipoInicial ?: TipoAlerta.TOMA_COMIDA) }
@@ -1251,8 +1246,7 @@ fun AlertaBlindDialog(
     var diasSel     by remember { mutableStateOf(alertaEdit?.diasSemana  ?: DiasSemana.entries.toList()) }
     var fechaUnica  by remember { mutableStateOf(alertaEdit?.fechaUnica  ?: "") }
     var esUnica     by remember { mutableStateOf(alertaEdit?.fechaUnica  != null) }
-    
-    var campoActivo by remember { mutableIntStateOf(0) } // 0: category, 1: title, 2: time, 3: specific date toggle, 4: date/days, 5: notes
+
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
@@ -1278,6 +1272,7 @@ fun AlertaBlindDialog(
             ))
         }
     }
+}
 
     // Guía inicial por voz
     LaunchedEffect(Unit) {
