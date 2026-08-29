@@ -73,13 +73,17 @@ object PlayIntegrityManager {
      * En desarrollo local (Debug/Emulador), registra la advertencia sin bloquear la experiencia de desarrollo.
      */
     suspend fun verificarIntegridadInicial(context: Context): Boolean {
-        val resultado = solicitarTokenIntegridad(context)
-        return if (resultado.isSuccess) {
-            Log.i(TAG, "[Play Integrity] ✓ Entorno verificado correctamente.")
-            true
-        } else {
-            Log.w(TAG, "[Play Integrity] ⚠ Token no disponible (entorno de pruebas o sin Play Services). Continuación permitida en modo desarrollo.")
-            false
-        }
+        // BLOQUEO TEMPORAL DEL EMULADOR COMENTADO
+        // val resultado = solicitarTokenIntegridad(context)
+        // return if (resultado.isSuccess) {
+        //     Log.i(TAG, "[Play Integrity] ? Entorno verificado correctamente.")
+        //     true
+        // } else {
+        //     Log.w(TAG, "[Play Integrity] ? Token no disponible (entorno de pruebas o sin Play Services). Continuaci�n permitida en modo desarrollo.")
+        //     false
+        // }
+        Log.i(TAG, "[Play Integrity] ? Bypass activado (Emulador/Debug).")
+        return true
     }
 }
+

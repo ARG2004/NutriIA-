@@ -124,8 +124,8 @@ class WebRtcEngine(
                 || (android.os.Build.BRAND.startsWith("generic") && android.os.Build.DEVICE.startsWith("generic"))
                 || "google_sdk" == android.os.Build.PRODUCT
 
-        val usarHardwareAec = !esEmulador && JavaAudioDeviceModule.isBuiltInAcousticEchoCancelerSupported()
-        val usarHardwareNs = !esEmulador && JavaAudioDeviceModule.isBuiltInNoiseSuppressorSupported()
+        val usarHardwareAec = false // Deshabilitado para forzar software AEC (mejor calidad)
+        val usarHardwareNs = false // Deshabilitado para forzar software NS
 
         val audioDeviceModule = JavaAudioDeviceModule.builder(context)
             .setUseStereoInput(false)
@@ -442,3 +442,4 @@ open class SdpObserverAdapter : SdpObserver {
     override fun onCreateFailure(error: String) {}
     override fun onSetFailure(error: String) {}
 }
+
