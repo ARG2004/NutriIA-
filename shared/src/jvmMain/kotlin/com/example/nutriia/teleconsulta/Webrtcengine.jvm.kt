@@ -29,6 +29,7 @@ actual class WebRtcEngine actual constructor(
     actual fun silenciar(silenciado: Boolean) {}
     actual fun apagarCamara(apagada: Boolean) {}
     actual fun cambiarCamara() {}
+    actual fun setSpeaker(speaker: Boolean) {}
     actual fun dispose() {
         _engineState.value = EngineState.IDLE
     }

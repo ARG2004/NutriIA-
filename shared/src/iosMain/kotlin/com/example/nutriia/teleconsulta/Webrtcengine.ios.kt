@@ -28,6 +28,7 @@ interface IOSWebRtcProvider {
     fun setMuted(muted: Boolean)
     fun setCameraEnabled(enabled: Boolean)
     fun switchCamera()
+    fun setSpeaker(speaker: Boolean)
     fun getLocalVideoView(): UIView?
     fun getRemoteVideoView(): UIView?
     fun dispose()
@@ -103,6 +104,10 @@ actual class WebRtcEngine actual constructor(
 
     actual fun cambiarCamara() {
         IOSCallBridge.provider?.switchCamera()
+    }
+
+    actual fun setSpeaker(speaker: Boolean) {
+        IOSCallBridge.provider?.setSpeaker(speaker)
     }
 
     actual fun dispose() {

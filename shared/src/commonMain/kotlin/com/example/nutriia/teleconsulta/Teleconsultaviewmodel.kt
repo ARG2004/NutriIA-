@@ -174,10 +174,12 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
     }
 
     private fun prepararOffer(llamada: SolicitudLlamada, tipo: TipoLlamada) {
+        val esVideo = (tipo == TipoLlamada.VIDEO)
         _state.value = _state.value.copy(
             llamadaActual = llamada,
             enLlamada     = false,
-            cargando      = false
+            cargando      = false,
+            altavozActivo = esVideo
         )
         val engine = CallEngineProvider.init(this@TeleconsultaViewModel)
         engine.createPeerConnection(isOffer = true, tipo = tipo)
@@ -211,10 +213,12 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
             val uid = repo.getCurrentUserId()
             val soyNutri = uid != null && uid == llamada.nutriologoUid
 
+            val esVideo = (llamada.tipo == TipoLlamada.VIDEO)
             _state.value = _state.value.copy(
                 llamadaActual   = llamada.copy(estado = EstadoLlamada.ACTIVA),
                 llamadaEntrante = null,
-                soyElNutriologo = soyNutri
+                soyElNutriologo = soyNutri,
+                altavozActivo   = esVideo
             )
 
 
@@ -353,6 +357,7 @@ class TeleconsultaViewModel : ViewModel(), WebRtcEngineCallback {
     fun toggleAltavoz() {
         val nuevo = !_state.value.altavozActivo
         _state.value = _state.value.copy(altavozActivo = nuevo)
+        if (CallEngineProvider.isInitialized) CallEngineProvider.getEngine()?.setSpeaker(nuevo)
     }
 
     fun cambiarCamara() {

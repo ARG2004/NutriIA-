@@ -51,6 +51,7 @@ expect class WebRtcEngine(callback: WebRtcEngineCallback) {
     fun silenciar(silenciado: Boolean)
     fun apagarCamara(apagada: Boolean)
     fun cambiarCamara()
+    fun setSpeaker(speaker: Boolean)
     fun dispose()
 
     fun onConnected()

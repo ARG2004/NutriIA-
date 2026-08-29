@@ -16,9 +16,11 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     private var remoteVideoTrack: RTCVideoTrack?
 
     private let localView = RTCMTLVideoView(frame: .zero)
-    private let remoteView = RTCMTLVideoView(frame: .zero)
+    private var remoteView = RTCMTLVideoView(frame: .zero)
 
     private var isVideoCall = true
+    private var hasRemoteDescription = false
+    private var pendingRemoteCandidates: [RTCIceCandidate] = []
 
     override init() {
         super.init()
@@ -38,11 +40,25 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let rtcAudioSession = RTCAudioSession.sharedInstance()
         rtcAudioSession.lockForConfiguration()
         do {
-            try rtcAudioSession.setCategory(AVAudioSession.Category.playAndRecord, with: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothHFP])
-            try rtcAudioSession.setMode(AVAudioSession.Mode.videoChat)
+            let options: AVAudioSession.CategoryOptions = isVideoCall
+                ? [.defaultToSpeaker, .allowBluetooth, .allowBluetoothHFP]
+                : [.allowBluetooth, .allowBluetoothHFP]
+            let mode: AVAudioSession.Mode = isVideoCall ? .videoChat : .voiceChat
+
+            try rtcAudioSession.setCategory(AVAudioSession.Category.playAndRecord, with: options)
+            try rtcAudioSession.setMode(mode)
             try rtcAudioSession.setActive(true)
+            
+            // El altavoz (loudspeaker) SOLO aplica para videollamadas.
+            // Para llamadas de voz regulares se usa el auricular estándar (earpiece) para proteger los oídos.
+            if isVideoCall {
+                try rtcAudioSession.overrideOutputAudioPort(.speaker)
+            } else {
+                try rtcAudioSession.overrideOutputAudioPort(.none)
+            }
+            
             rtcAudioSession.isAudioEnabled = true
-            NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA (RTCAudioSession)")
+            NSLog("✅ [WebRtcProvider] Audio Session ACTIVADA (RTCAudioSession), isVideoCall=\(isVideoCall)")
         } catch {
             NSLog("❌ [WebRtcProvider] Error activando Audio Session: \(error.localizedDescription)")
         }
@@ -143,6 +159,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         let remoteSdp = RTCSessionDescription(type: .offer, sdp: sdp)
         peerConnection?.setRemoteDescription(remoteSdp) { [weak self] error in
             if error == nil {
+                self?.hasRemoteDescription = true
+                self?.processPendingCandidates()
                 self?.createAnswer()
             }
         }
@@ -164,22 +182,39 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     func setRemoteAnswer(sdp: String) {
         let remoteSdp = RTCSessionDescription(type: .answer, sdp: sdp)
-        peerConnection?.setRemoteDescription(remoteSdp) { error in
+        peerConnection?.setRemoteDescription(remoteSdp) { [weak self] error in
             if let error = error {
                 NSLog("❌ [WebRtcProvider] Error setting remote answer: \(error.localizedDescription)")
             } else {
                 NSLog("✅ [WebRtcProvider] Remote answer set successfully")
+                self?.hasRemoteDescription = true
+                self?.processPendingCandidates()
             }
         }
     }
 
     func addRemoteIceCandidate(sdpMid: String, sdpMLineIndex: Int32, sdp: String) {
         let candidate = RTCIceCandidate(sdp: sdp, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid)
-        peerConnection?.add(candidate) { error in
-            if let error = error {
-                NSLog("❌ [WebRtcProvider] Error añadiendo ICE: \(error.localizedDescription)")
+        if hasRemoteDescription {
+            peerConnection?.add(candidate) { error in
+                if let error = error {
+                    NSLog("❌ [WebRtcProvider] Error añadiendo ICE: \(error.localizedDescription)")
+                }
+            }
+        } else {
+            pendingRemoteCandidates.append(candidate)
+        }
+    }
+
+    private func processPendingCandidates() {
+        for candidate in pendingRemoteCandidates {
+            peerConnection?.add(candidate) { error in
+                if let error = error {
+                    NSLog("❌ [WebRtcProvider] Error añadiendo ICE encolado: \(error.localizedDescription)")
+                }
             }
         }
+        pendingRemoteCandidates.removeAll()
     }
 
     func setMuted(muted: Bool) {
@@ -204,6 +239,22 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         capturer.startCapture(with: device, format: format, fps: 30)
     }
 
+    func setSpeaker(speaker: Bool) {
+        let rtcAudioSession = RTCAudioSession.sharedInstance()
+        rtcAudioSession.lockForConfiguration()
+        do {
+            if speaker {
+                try rtcAudioSession.overrideOutputAudioPort(.speaker)
+            } else {
+                try rtcAudioSession.overrideOutputAudioPort(.none)
+            }
+            NSLog("🔊 [WebRtcProvider] Altavoz cambiado en tiempo real: \(speaker)")
+        } catch {
+            NSLog("❌ [WebRtcProvider] Error cambiando altavoz: \(error.localizedDescription)")
+        }
+        rtcAudioSession.unlockForConfiguration()
+    }
+
     func getLocalVideoView() -> UIView? { return localView }
     func getRemoteVideoView() -> UIView? { return remoteView }
 
@@ -214,6 +265,8 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
         peerConnection = nil
         localVideoTrack = nil
         remoteVideoTrack = nil
+        hasRemoteDescription = false
+        pendingRemoteCandidates.removeAll()
         (videoCapturer as? RTCCameraVideoCapturer)?.stopCapture()
         videoCapturer = nil
         deactivateAudioSession()
