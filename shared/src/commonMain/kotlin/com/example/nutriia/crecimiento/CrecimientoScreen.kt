@@ -257,32 +257,20 @@ fun CrecimientoScreen(
     }
 
     if (showDialog) {
-        if (esBlind) {
-            CrecimientoBlindDialog(
-                childId = childId,
-                ttsManager = ttsManager,
-                idioma = idiomaActual,
-                onDismiss = {
-                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                    showDialog = false
-                },
-                onSave = { med ->
-                    viewModel.guardarMedicion(childId, med)
-                    showDialog = false
-                }
-            )
-        } else {
-            DialogoMedicion(
-                esAccesible = esAccesible,
-                esBlind = false,
-                ttsManager = ttsManager,
-                idioma = idiomaActual,
-                onDismiss = { 
-                    showDialog = false 
-                },
-                onSave = { m -> viewModel.guardarMedicion(childId, m); showDialog = false }
-            )
-        }
+        DialogoMedicion(
+            esAccesible = esAccesible,
+            esBlind = esBlind,
+            ttsManager = ttsManager,
+            idioma = idiomaActual,
+            onDismiss = { 
+                if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                showDialog = false 
+            },
+            onSave = { med ->
+                viewModel.guardarMedicion(childId, med)
+                showDialog = false
+            }
+        )
     }
 
     eliminar?.let { m ->
@@ -1041,19 +1029,23 @@ private fun DialogoMedicion(
 
 
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        if (peso.isNotBlank() && talla.isNotBlank()) {
-            if (esBlind) {
-                ttsManager?.hablar(loc("Guardar", "Save"))
+        if (!yaGuardando) {
+            if (peso.isNotBlank() && talla.isNotBlank()) {
+                yaGuardando = true
+                if (esBlind) {
+                    ttsManager?.hablar(loc("Guardar", "Save"))
+                }
+                onSave(MedicionCrecimiento(
+                    id        = com.example.nutriia.platform.generateUUID(),
+                    fecha     = fecha,
+                    pesoKg    = peso.replace(",", ".").toDoubleOrNull()  ?: 0.0,
+                    tallaCm   = talla.replace(",", ".").toDoubleOrNull() ?: 0.0,
+                    circCefCm = circC.replace(",", ".").toDoubleOrNull() ?: 0.0,
+                    notas     = notas
+                ))
             }
-            onSave(MedicionCrecimiento(
-                id        = com.example.nutriia.platform.generateUUID(),
-                fecha     = fecha,
-                pesoKg    = peso.replace(",", ".").toDoubleOrNull()  ?: 0.0,
-                tallaCm   = talla.replace(",", ".").toDoubleOrNull() ?: 0.0,
-                circCefCm = circC.replace(",", ".").toDoubleOrNull() ?: 0.0,
-                notas     = notas
-            ))
         }
     }
 
@@ -1529,21 +1521,25 @@ fun CrecimientoBlindDialog(
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        if (peso.isNotBlank() && talla.isNotBlank()) {
-            ttsManager?.hablar(loc("Guardando medición.", "Saving measurement."))
-            onSave(MedicionCrecimiento(
-                id        = com.example.nutriia.platform.generateUUID(),
-                childId   = childId,
-                fecha     = fecha,
-                pesoKg    = peso.replace(",", ".").toDoubleOrNull()  ?: 0.0,
-                tallaCm   = talla.replace(",", ".").toDoubleOrNull() ?: 0.0,
-                circCefCm = circC.replace(",", ".").toDoubleOrNull() ?: 0.0,
-                notas     = notas
-            ))
-        } else {
-            val falta = if (peso.isBlank()) loc("peso", "weight") else loc("talla", "height")
-            ttsManager?.hablar(loc("Falta completar el campo $falta para poder guardar.", "You need to complete the $falta field before saving."))
+        if (!yaGuardando) {
+            if (peso.isNotBlank() && talla.isNotBlank()) {
+                yaGuardando = true
+                ttsManager?.hablar(loc("Guardando medición.", "Saving measurement."))
+                onSave(MedicionCrecimiento(
+                    id        = com.example.nutriia.platform.generateUUID(),
+                    childId   = childId,
+                    fecha     = fecha,
+                    pesoKg    = peso.replace(",", ".").toDoubleOrNull()  ?: 0.0,
+                    tallaCm   = talla.replace(",", ".").toDoubleOrNull() ?: 0.0,
+                    circCefCm = circC.replace(",", ".").toDoubleOrNull() ?: 0.0,
+                    notas     = notas
+                ))
+            } else {
+                val falta = if (peso.isBlank()) loc("peso", "weight") else loc("talla", "height")
+                ttsManager?.hablar(loc("Falta completar el campo $falta para poder guardar.", "You need to complete the $falta field before saving."))
+            }
         }
     }
 

@@ -216,62 +216,57 @@ class TeleconsultaRepository {
     }
 
     fun observarLlamadasEntrantes(padreUid: String): Flow<SolicitudLlamada?> {
-        return auth.authStateChanged.flatMapLatest { user ->
-            if (user == null) flowOf(null)
-            else try {
-                col.where { "padreUid".equalTo(padreUid) }
-                    .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                    .orderBy("creadoEn", Direction.DESCENDING)
-                    .snapshots.conflate().map { querySnapshot ->
-                        val doc = querySnapshot.documents.firstOrNull()
-                        val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
-                        if (llamada != null && llamada.emisorUid == padreUid) {
-                            null
-                        } else {
-                            llamada
-                        }
+        if (padreUid.isBlank()) return flowOf(null)
+        return try {
+            col.where { "padreUid".equalTo(padreUid) }
+                .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
+                .orderBy("creadoEn", Direction.DESCENDING)
+                .snapshots.conflate().map { querySnapshot ->
+                    val doc = querySnapshot.documents.firstOrNull()
+                    val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
+                    if (llamada != null && llamada.emisorUid == padreUid) {
+                        null
+                    } else {
+                        llamada
                     }
-            } catch (e: Exception) {
-                flowOf(null)
-            }
+                }
+        } catch (e: Exception) {
+            flowOf(null)
         }
     }
 
     fun observarLlamadasEntrantesNutriologo(nutriologoUid: String): Flow<SolicitudLlamada?> {
-        return auth.authStateChanged.flatMapLatest { user ->
-            if (user == null) flowOf(null)
-            else try {
-                col.where { "nutriologoUid".equalTo(nutriologoUid) }
-                    .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                    .orderBy("creadoEn", Direction.DESCENDING)
-                    .snapshots.conflate().map { querySnapshot ->
-                        val doc = querySnapshot.documents.firstOrNull()
-                        val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
-                        if (llamada != null && llamada.emisorUid == nutriologoUid) {
-                            null
-                        } else {
-                            llamada
-                        }
+        if (nutriologoUid.isBlank()) return flowOf(null)
+        return try {
+            col.where { "nutriologoUid".equalTo(nutriologoUid) }
+                .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
+                .orderBy("creadoEn", Direction.DESCENDING)
+                .snapshots.conflate().map { querySnapshot ->
+                    val doc = querySnapshot.documents.firstOrNull()
+                    val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
+                    if (llamada != null && llamada.emisorUid == nutriologoUid) {
+                        null
+                    } else {
+                        llamada
                     }
-            } catch (e: Exception) {
-                flowOf(null)
-            }
+                }
+        } catch (e: Exception) {
+            flowOf(null)
         }
     }
 
     fun observarHistorial(nutriologoUid: String): Flow<List<SolicitudLlamada>> {
-        return auth.authStateChanged.flatMapLatest { user ->
-            if (user == null) flowOf(emptyList())
-            else try {
-                col.where { "nutriologoUid".equalTo(nutriologoUid) }
-                    .snapshots.conflate().map { querySnapshot ->
-                        querySnapshot.documents.mapNotNull { doc ->
-                            try { doc.data<SolicitudLlamada>().copy(id = doc.id) } catch (e: Exception) { null }
-                        }
+        if (nutriologoUid.isBlank()) return flowOf(emptyList())
+        return try {
+            col.where { "nutriologoUid".equalTo(nutriologoUid) }
+                .orderBy("creadoEn", Direction.DESCENDING)
+                .snapshots.conflate().map { querySnapshot ->
+                    querySnapshot.documents.mapNotNull { doc ->
+                        try { doc.data<SolicitudLlamada>().copy(id = doc.id) } catch (e: Exception) { null }
                     }
-            } catch (e: Exception) {
-                flowOf(emptyList())
-            }
+                }
+        } catch (e: Exception) {
+            flowOf(emptyList())
         }
     }
 }

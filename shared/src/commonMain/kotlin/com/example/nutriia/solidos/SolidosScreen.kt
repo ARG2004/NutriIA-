@@ -525,33 +525,18 @@ fun SolidosScreen(
 
     // ── Diálogo agregar — pasa esBlind, ttsManager e idioma ──────────────────
     if (showAgregar) {
-        if (esBlind) {
-            SolidoBlindDialog(
-                childId = childId,
-                ttsManager = ttsManager,
-                idioma = idiomaActual,
-                onDismiss = {
-                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                    showAgregar = false
-                },
-                onSave = { alim ->
-                    viewModel.guardarAlimento(childId, alim)
-                    showAgregar = false
-                }
-            )
-        } else {
-            AgregarAlimentoDialog(
-                esAccesible = esAccesible,
-                esBlind     = false,
-                ttsManager  = ttsManager,
-                idioma     = idiomaActual,
-                onDismiss  = {
-                    showAgregar = false
-                }
-            ) { a ->
-                viewModel.guardarAlimento(childId, a)
+        AgregarAlimentoDialog(
+            esAccesible = esAccesible,
+            esBlind     = esBlind,
+            ttsManager  = ttsManager,
+            idioma     = idiomaActual,
+            onDismiss  = {
+                if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
                 showAgregar = false
             }
+        ) { a ->
+            viewModel.guardarAlimento(childId, a)
+            showAgregar = false
         }
     }
 
@@ -1733,20 +1718,25 @@ fun SolidoBlindDialog(
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
+    var yaGuardando by remember { mutableStateOf(false) }
+
     val guardarTodo = {
-        if (nombre.isNotBlank()) {
-            ttsManager?.hablar(loc("Guardando alimento.", "Saving food."))
-            onSave(AlimentoIntroducido(
-                id                = com.example.nutriia.platform.generateUUID(),
-                childId           = childId,
-                nombre            = nombre.trim(),
-                grupo             = grupo,
-                fechaIntroduccion = fecha,
-                reaccion          = reaccion,
-                notas             = notas.trim()
-            ))
-        } else {
-            ttsManager?.hablar(loc("Falta el nombre del alimento para poder guardar.", "Food name is missing. Please provide it before saving."))
+        if (!yaGuardando) {
+            if (nombre.isNotBlank()) {
+                yaGuardando = true
+                ttsManager?.hablar(loc("Guardando alimento.", "Saving food."))
+                onSave(AlimentoIntroducido(
+                    id                = com.example.nutriia.platform.generateUUID(),
+                    childId           = childId,
+                    nombre            = nombre.trim(),
+                    grupo             = grupo,
+                    fechaIntroduccion = fecha,
+                    reaccion          = reaccion,
+                    notas             = notas.trim()
+                ))
+            } else {
+                ttsManager?.hablar(loc("Falta el nombre del alimento para poder guardar.", "Food name is missing. Please provide it before saving."))
+            }
         }
     }
 

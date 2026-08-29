@@ -497,7 +497,7 @@ fun NutriChatScreen(
         )
     }
 
-    if (showPaywall) {
+    if (showPaywall && !aiSubState.pagoCompletado) {
         AlertDialog(
             onDismissRequest = { showPaywall = false },
             title = {
@@ -516,28 +516,24 @@ fun NutriChatScreen(
                     Spacer(Modifier.height(16.dp))
                     if (aiSubState.cargando) {
                         CircularProgressIndicator(color = NutriaGreen)
-                    } else if (aiSubState.pagoCompletado) {
-                        Text("¡Suscripción activada! Ya puedes usar la IA.", color = NutriaGreen, fontWeight = FontWeight.Bold)
-                        LaunchedEffect(Unit) {
-                            showPaywall = false
-                        }
+                    } else if (aiSubState.error != null) {
+                        Text(aiSubState.error ?: "", color = Color(0xFFD32F2F), fontSize = 12.sp)
                     }
                 }
             },
             confirmButton = {
-                if (!aiSubState.pagoCompletado) {
-                    Button(
-                        onClick = {
-                            val uid = loginVm.uidUsuario
-                            if (uid.isNotBlank()) {
-                                aiSubVm.iniciarPago(uid)
-                                aiSubVm.abrirPayPalEnNavegador()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB700))
-                    ) {
-                        Text("Suscribirse por $99 MXN", color = Color(0xFF003087), fontWeight = FontWeight.Bold)
-                    }
+                Button(
+                    onClick = {
+                        val uid = loginVm.uidUsuario
+                        if (uid.isNotBlank()) {
+                            aiSubVm.iniciarPago(uid)
+                            aiSubVm.abrirPayPalEnNavegador()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB700)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Suscribirse por $99 MXN", color = Color(0xFF003087), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -545,7 +541,55 @@ fun NutriChatScreen(
                     Text("Quizás después", color = Color.Gray)
                 }
             },
-            containerColor = Color.White
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    if (aiSubState.pagoCompletado) {
+        AlertDialog(
+            onDismissRequest = {
+                showPaywall = false
+                aiSubVm.reset()
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.CheckCircle, null, tint = NutriaGreen, modifier = Modifier.size(26.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("¡Suscripción IA Activa!", fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        "Tu pago de $99.00 MXN se ha procesado con éxito.",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1E232A)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Ahora tienes acceso ilimitado a NutriBot y al Analizador Visual de Alimentos durante los próximos 30 días.",
+                        fontSize = 13.sp,
+                        color = Color.DarkGray
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPaywall = false
+                        loginVm.recargarSesion()
+                        aiSubVm.reset()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Comenzar a usar IA", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }

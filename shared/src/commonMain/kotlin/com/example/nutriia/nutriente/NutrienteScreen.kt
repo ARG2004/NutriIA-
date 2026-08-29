@@ -357,38 +357,24 @@ fun NutrientesScreen(
         }
 
         if (mostrarForm) {
-            if (esBlind) {
-                NutrienteBlindDialog(
-                    childId = childId,
-                    fecha = fecha,
-                    ttsManager = ttsManager,
-                    idioma = idiomaActual,
-                    onDismiss = {
-                        a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                        mostrarForm = false
-                    },
-                    onSave = { reg ->
-                        vm.guardar(reg)
-                        mostrarForm = false
-                    }
-                )
-            } else {
-                AgregarRegistroDialog(
-                    childId   = childId,
-                    fecha     = fecha,
-                    mesesEdad = mesesEdad,
-                    nivel     = nivel,
-                    region    = region,
-                    esAccesible = esAccesible,
-                    esBlind     = false,
-                    ttsManager = ttsManager,
-                    idioma    = idiomaActual,
-                    onGuardar = { reg -> vm.guardar(reg); mostrarForm = false },
-                    onCerrar  = { 
-                        mostrarForm = false 
-                    }
-                )
-            }
+            AgregarRegistroDialog(
+                childId   = childId,
+                fecha     = fecha,
+                mesesEdad = mesesEdad,
+                nivel     = nivel,
+                esAccesible = esAccesible,
+                esBlind     = esBlind,
+                ttsManager  = ttsManager,
+                idioma      = idiomaActual,
+                onCerrar    = {
+                    if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                    mostrarForm = false
+                },
+                onGuardar   = { reg ->
+                    vm.guardar(reg)
+                    mostrarForm = false
+                }
+            )
         }
     }
 }
@@ -777,32 +763,37 @@ private fun AgregarRegistroDialog(
         }
     }
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        if (alimento.isNotBlank()) {
-            if (esBlind) {
-                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
-            }
-            onGuardar(
-                RegistroNutrientes(
-                    childId  = childId,
-                    fecha    = fecha,
-                    comida   = comida,
-                    alimento = alimento,
-                    macros   = Macronutrientes(
-                        calorias      = calorias.toDoubleOrNull()  ?: 0.0,
-                        proteinas     = proteinas.toDoubleOrNull() ?: 0.0,
-                        grasas        = grasas.toDoubleOrNull()    ?: 0.0,
-                        carbohidratos = carbos.toDoubleOrNull()    ?: 0.0
-                    ),
-                    micros   = Micronutrientes(
-                        hierro    = hierro.toDoubleOrNull() ?: 0.0,
-                        calcio    = calcio.toDoubleOrNull() ?: 0.0,
-                        vitaminaA = vitA.toDoubleOrNull()   ?: 0.0,
-                        vitaminaC = vitC.toDoubleOrNull()   ?: 0.0,
-                        zinc      = zinc.toDoubleOrNull()   ?: 0.0
+        if (!yaGuardando) {
+            if (alimento.isNotBlank()) {
+                yaGuardando = true
+                if (esBlind) {
+                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
+                }
+                onGuardar(
+                    RegistroNutrientes(
+                        childId  = childId,
+                        fecha    = fecha,
+                        comida   = comida,
+                        alimento = alimento,
+                        macros   = Macronutrientes(
+                            calorias      = calorias.toDoubleOrNull()  ?: 0.0,
+                            proteinas     = proteinas.toDoubleOrNull() ?: 0.0,
+                            grasas        = grasas.toDoubleOrNull()    ?: 0.0,
+                            carbohidratos = carbos.toDoubleOrNull()    ?: 0.0
+                        ),
+                        micros   = Micronutrientes(
+                            hierro    = hierro.toDoubleOrNull() ?: 0.0,
+                            calcio    = calcio.toDoubleOrNull() ?: 0.0,
+                            vitaminaA = vitA.toDoubleOrNull()   ?: 0.0,
+                            vitaminaC = vitC.toDoubleOrNull()   ?: 0.0,
+                            zinc      = zinc.toDoubleOrNull()   ?: 0.0
+                        ),
+                        notas    = notas
                     )
                 )
-            )
+            }
         }
     }
 
@@ -953,18 +944,22 @@ fun NutrienteBlindDialog(
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        if (alimento.isNotBlank()) {
-            ttsManager?.hablar(loc("Guardando alimento.", "Saving food."))
-            onSave(RegistroNutrientes(
-                id       = com.example.nutriia.platform.generateUUID(),
-                childId  = childId,
-                fecha    = fecha,
-                comida   = comida,
-                alimento = alimento.trim(),
-                macros   = Macronutrientes(calorias = kcal.replace(",",".").toDoubleOrNull() ?: 0.0),
-                notas    = notas.trim()
-            ))
+        if (!yaGuardando) {
+            if (alimento.isNotBlank()) {
+                yaGuardando = true
+                ttsManager?.hablar(loc("Guardando alimento.", "Saving food."))
+                onSave(RegistroNutrientes(
+                    id       = com.example.nutriia.platform.generateUUID(),
+                    childId  = childId,
+                    fecha    = fecha,
+                    comida   = comida,
+                    alimento = alimento.trim(),
+                    macros   = Macronutrientes(calorias = kcal.replace(",",".").toDoubleOrNull() ?: 0.0),
+                    notas    = notas.trim()
+                ))
+            }
         }
     }
 

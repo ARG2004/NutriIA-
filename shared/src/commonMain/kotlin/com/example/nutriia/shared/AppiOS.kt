@@ -293,6 +293,31 @@ fun NutriIAiOSApp() {
         )
     }
 
+    val aiSubState by aiSubVm.state.collectAsState()
+
+    // ─── Manejo Global de Deep Links en iOS (PayPal / Suscripciones) ───────
+    LaunchedEffect(Unit) {
+        DeepLinkManager.links.collect { url ->
+            com.example.nutriia.platform.Log.i("AppiOS", "🔗 Deep Link recibido en iOS: $url")
+            val uid = loginViewModel.uidUsuario.ifBlank {
+                com.example.nutriia.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            }
+            if (url.startsWith("nutriia://pago-ia") || url.contains("pago-ia")) {
+                aiSubVm.procesarDeepLink(url, uid)
+            } else if (url.startsWith("nutriia://pago") || url.contains("pago-ok")) {
+                paymentVm.procesarDeepLink(url)
+            }
+        }
+    }
+
+    LaunchedEffect(aiSubState.pagoCompletado) {
+        if (aiSubState.pagoCompletado) {
+            toastMessage = "¡Suscripción IA Activada Exitosamente! 🎉"
+            loginViewModel.recargarSesion()
+            aiSubVm.reset()
+        }
+    }
+
     val scope = rememberCoroutineScope()
 
     // ─── Sincronizar Perfil de Hijo Activo con NutriSharedViewModel ──────

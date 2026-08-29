@@ -49,13 +49,11 @@ class AISubscriptionViewModel : ViewModel() {
     }
 
     fun procesarDeepLink(uriStr: String, uid: String) {
-        val match = Regex("tipo=([^&]+)").find(uriStr)
-        if (match?.groupValues?.get(1) != "ia") return
         when {
-            uriStr.startsWith(DEEP_LINK_SUCCESS) -> {
+            uriStr.startsWith(DEEP_LINK_SUCCESS) || uriStr.contains("pago-ia-ok") -> {
                 onPagoExitoso(uid)
             }
-            uriStr.startsWith(DEEP_LINK_CANCEL) -> {
+            uriStr.startsWith(DEEP_LINK_CANCEL) || uriStr.contains("pago-ia-cancel") -> {
                 onPagoCancelado()
             }
         }

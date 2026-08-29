@@ -304,34 +304,20 @@ fun LactanciaScreen(
 
     // ── Diálogos con animación de escala ─────────────────────────────────────
     if (showAddDialog) {
-        if (esBlind) {
-            AddFeedingBlindDialog(
-                ttsManager = ttsManager,
-                idioma = idiomaActual,
-                onDismiss = {
-                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                    showAddDialog = false
-                },
-                onSave = { log ->
-                    viewModel.saveFeeding(childId, log)
-                    showAddDialog = false
-                }
-            )
-        } else {
-            AddFeedingDialog(
-                esAccesible = esAccesible,
-                esBlind = false,
-                ttsManager = ttsManager,
-                idioma = idiomaActual,
-                onDismiss = {
-                    showAddDialog = false
-                },
-                onSave = { log ->
-                    viewModel.saveFeeding(childId, log)
-                    showAddDialog = false
-                }
-            )
-        }
+        AddFeedingDialog(
+            esAccesible = esAccesible,
+            esBlind = esBlind,
+            ttsManager = ttsManager,
+            idioma = idiomaActual,
+            onDismiss = {
+                if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                showAddDialog = false
+            },
+            onSave = { log ->
+                viewModel.saveFeeding(childId, log)
+                showAddDialog = false
+            }
+        )
     }
 
     if (showTipsSheet) {
@@ -788,13 +774,17 @@ fun AddFeedingDialog(
 
     fun loc(es: String, en: String) = idioma.loc(es, en)
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        val finalTime = if (timeInput.isNotBlank()) timeInput else com.example.nutriia.utils.FechaUtils.horaActualIso()
-        if (esBlind) {
-            ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
+        if (!yaGuardando) {
+            yaGuardando = true
+            val finalTime = if (timeInput.isNotBlank()) timeInput else com.example.nutriia.utils.FechaUtils.horaActualIso()
+            if (esBlind) {
+                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
+            }
+            onSave(FeedingLog(date = today, startTime = finalTime, durationMinutes = duration.toIntOrNull() ?: 0,
+                side = selectedSide.name, formulaMl = formulaMl.toIntOrNull() ?: 0, notes = notes))
         }
-        onSave(FeedingLog(date = today, startTime = finalTime, durationMinutes = duration.toIntOrNull() ?: 0,
-            side = selectedSide.name, formulaMl = formulaMl.toIntOrNull() ?: 0, notes = notes))
     }
 
     LaunchedEffect(Unit) {
@@ -1226,17 +1216,21 @@ fun AddFeedingBlindDialog(
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        val finalTime = if (timeInput.isNotBlank()) timeInput else FechaUtils.horaActualIso()
-        ttsManager?.hablar(loc("Guardando toma.", "Saving feeding."))
-        onSave(FeedingLog(
-            date = today, 
-            startTime = finalTime, 
-            durationMinutes = if (selectedSide == BreastSide.FORMULA) 0 else (duration.toIntOrNull() ?: 0),
-            side = selectedSide.name, 
-            formulaMl = formulaMl.toIntOrNull() ?: 0, 
-            notes = notes
-        ))
+        if (!yaGuardando) {
+            yaGuardando = true
+            val finalTime = if (timeInput.isNotBlank()) timeInput else FechaUtils.horaActualIso()
+            ttsManager?.hablar(loc("Guardando toma.", "Saving feeding."))
+            onSave(FeedingLog(
+                date = today, 
+                startTime = finalTime, 
+                durationMinutes = if (selectedSide == BreastSide.FORMULA) 0 else (duration.toIntOrNull() ?: 0),
+                side = selectedSide.name, 
+                formulaMl = formulaMl.toIntOrNull() ?: 0, 
+                notes = notes
+            ))
+        }
     }
 
     // Guía inicial por voz

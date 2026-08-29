@@ -377,30 +377,15 @@ fun PediatraScreen(
             }
             
             if (mostrarEscannerQR) {
-                if (esBlind) {
-                    item {
-                        EspecialistaBlindDialog(
-                            onDismiss = { mostrarEscannerQR = false },
-                            onCodeScanned = { code ->
-                                textoCodigo = code
-                                mostrarEscannerQR = false
-                                vinculacionViewModel.buscarPorCodigo(code)
-                            },
-                            ttsManager = a11yVm.ttsManager,
-                            idioma = idiomaActual
-                        )
-                    }
-                } else {
-                    item {
-                        QrScannerDialog(
-                            onDismiss = { mostrarEscannerQR = false },
-                            onCodeScanned = { code ->
-                                textoCodigo = code
-                                mostrarEscannerQR = false
-                                vinculacionViewModel.buscarPorCodigo(code)
-                            }
-                        )
-                    }
+                item {
+                    QrScannerDialog(
+                        onDismiss = { mostrarEscannerQR = false },
+                        onCodeScanned = { code ->
+                            textoCodigo = code
+                            mostrarEscannerQR = false
+                            vinculacionViewModel.buscarPorCodigo(code)
+                        }
+                    )
                 }
             }
 

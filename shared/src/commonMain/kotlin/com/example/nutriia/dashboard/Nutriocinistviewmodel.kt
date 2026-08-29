@@ -189,8 +189,8 @@ class NutritionistDashboardViewModel : ViewModel() {
                                 childId = vinc.childId,
                                 childNombre = data["name"] as? String ?: vinc.childNombre,
                                 birthDate = data["birthDate"] as? String ?: "",
-                                weightKg = data["weightKg"] as? String ?: "",
-                                heightCm = data["heightCm"] as? String ?: "",
+                                weightKg = (data["weightKg"] as? Number)?.toString() ?: (data["weightKg"] as? String) ?: "",
+                                heightCm = (data["heightCm"] as? Number)?.toString() ?: (data["heightCm"] as? String) ?: "",
                                 hasAllergies = data["hasAllergies"] as? Boolean ?: false,
                                 ultimaActualizacion = formatearFecha(data["creadoEn"])
                             )

@@ -421,39 +421,24 @@ fun AlertasScreen(
 
     // Diálogo crear/editar
     if (showDialog) {
-        if (esBlind) {
-            AlertaBlindDialog(
-                childId = childId,
-                childName = childName,
-                alertaEdit = alertaAEditar,
-                tipoInicial = tabSeleccionada,
-                ttsManager = ttsManager,
-                idioma = idiomaActual,
-                onDismiss = {
-                    a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
-                    showDialog = false; alertaAEditar = null
-                },
-                onSave = { nueva ->
-                    viewModel.guardar(nueva)
-                    showDialog = false; alertaAEditar = null
-                }
-            )
-        } else {
-            AlertaDialog(
-                childId     = childId,
-                childName   = childName,
-                alertaEdit  = alertaAEditar,
-                tipoInicial = tabSeleccionada,
-                esBlind     = false,
-                esMute      = esMute,
-                ttsManager  = ttsManager,
-                idioma      = idiomaActual,
-                onDismiss   = { 
-                    showDialog = false; alertaAEditar = null 
-                },
-                onSave      = { nueva -> viewModel.guardar(nueva); showDialog = false; alertaAEditar = null }
-            )
-        }
+        AlertaDialog(
+            childId     = childId,
+            childName   = childName,
+            alertaEdit  = alertaAEditar,
+            tipoInicial = tabSeleccionada,
+            esBlind     = esBlind,
+            esMute      = esMute,
+            ttsManager  = ttsManager,
+            idioma      = idiomaActual,
+            onDismiss   = { 
+                if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
+                showDialog = false; alertaAEditar = null 
+            },
+            onSave      = { nueva -> 
+                viewModel.guardar(nueva)
+                showDialog = false; alertaAEditar = null 
+            }
+        )
     }
 
     // Confirmar eliminación
@@ -839,20 +824,23 @@ private fun AlertaDialog(
         handled
     }
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        if (titulo.isNotBlank()) {
-            try {
-                if (esBlind) {
-                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
-                }
-                val horaSegura = if (hora.isNotBlank() && hora.contains(":")) hora else "08:00"
-                onSave(Alerta(
-                    id          = alertaEdit?.id       ?: com.example.nutriia.platform.generateUUID(),
-                    childId     = childId ?: "",
-                    childName   = childName ?: "Mi Embarazo",
-                    tipo        = tipo,
-                    titulo      = titulo.trim(),
-                    descripcion = descripcion.trim(),
+        if (!yaGuardando) {
+            if (titulo.isNotBlank()) {
+                yaGuardando = true
+                try {
+                    if (esBlind) {
+                        ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
+                    }
+                    val horaSegura = if (hora.isNotBlank() && hora.contains(":")) hora else "08:00"
+                    onSave(Alerta(
+                        id          = alertaEdit?.id       ?: com.example.nutriia.platform.generateUUID(),
+                        childId     = childId ?: "",
+                        childName   = childName ?: "Mi Embarazo",
+                        tipo        = tipo,
+                        titulo      = titulo.trim(),
+                        descripcion = descripcion.trim(),
                     hora        = horaSegura,
                     diasSemana  = if (esUnica) emptyList() else diasSel,
                     fechaUnica  = if (esUnica && fechaUnica.length == 10) fechaUnica else null,
@@ -1267,17 +1255,20 @@ fun AlertaBlindDialog(
 
     fun loc(es: String, en: String) = if (idioma == IdiomaVoz.INGLES) en else es
 
+    var yaGuardando by remember { mutableStateOf(false) }
     val guardarTodo = {
-        if (titulo.isNotBlank()) {
-            val horaSegura = if (hora.isNotBlank() && hora.contains(":")) hora else "08:00"
-            ttsManager?.hablar(loc("Guardando alerta.", "Saving alert."))
-            onSave(Alerta(
-                id          = alertaEdit?.id       ?: com.example.nutriia.platform.generateUUID(),
-                childId     = childId ?: "",
-                childName   = childName ?: "Mi Embarazo",
-                tipo        = tipo,
-                titulo      = titulo.trim(),
-                descripcion = descripcion.trim(),
+        if (!yaGuardando) {
+            if (titulo.isNotBlank()) {
+                yaGuardando = true
+                val horaSegura = if (hora.isNotBlank() && hora.contains(":")) hora else "08:00"
+                ttsManager?.hablar(loc("Guardando alerta.", "Saving alert."))
+                onSave(Alerta(
+                    id          = alertaEdit?.id       ?: com.example.nutriia.platform.generateUUID(),
+                    childId     = childId ?: "",
+                    childName   = childName ?: "Mi Embarazo",
+                    tipo        = tipo,
+                    titulo      = titulo.trim(),
+                    descripcion = descripcion.trim(),
                 hora        = horaSegura,
                 diasSemana  = if (esUnica) emptyList() else diasSel,
                 fechaUnica  = if (esUnica && fechaUnica.length == 10) fechaUnica else null,

@@ -16,9 +16,9 @@ class IosNutriTTS {
         try {
             val session = AVAudioSession.sharedInstance()
             session.setCategory(
-                category = AVAudioSessionCategoryPlayback,
+                category = AVAudioSessionCategoryPlayAndRecord,
                 mode = AVAudioSessionModeDefault,
-                options = AVAudioSessionCategoryOptionDuckOthers,
+                options = AVAudioSessionCategoryOptionDefaultToSpeaker or AVAudioSessionCategoryOptionAllowBluetooth or AVAudioSessionCategoryOptionDuckOthers,
                 error = null
             )
             session.setActive(true, error = null)

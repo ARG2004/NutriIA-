@@ -960,22 +960,8 @@ private fun iniciarEscuchaConReintento(
             return@escuchar
         }
 
-        if (onCommandParsed != null && onCommandParsed.invoke(command)) {
-            if (isFinal) {
-                iniciarEscuchaConReintento(
-                    voiceManager  = voiceManager,
-                    idioma        = idioma,
-                    modoAccesible = modoAccesible,
-                    esCampoFecha  = esCampoFecha,
-                    esCampoHora   = esCampoHora,
-                    keyboardOptions = keyboardOptions,
-                    ttsManager    = ttsManager,
-                    onValorChange = onValorChange,
-                    onNext        = onNext,
-                    onCommandParsed = onCommandParsed,
-                    onSwitchModo    = onSwitchModo
-                )
-            }
+        if (isFinal && onCommandParsed != null && onCommandParsed.invoke(command)) {
+            voiceManager?.detener()
             return@escuchar
         }
 

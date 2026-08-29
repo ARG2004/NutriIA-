@@ -46,7 +46,17 @@ class CollectionReference(
             .catch { emit(QuerySnapshot(emptyList())) }
 
     fun addSnapshotListener(listener: (QuerySnapshot?, Exception?) -> Unit): ListenerRegistration {
-        return ListenerRegistration()
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
+        val job = scope.launch {
+            try {
+                snapshots.collect { snap ->
+                    listener(snap, null)
+                }
+            } catch (e: Exception) {
+                listener(null, e)
+            }
+        }
+        return ListenerRegistration(job)
     }
 
     suspend fun get(vararg args: Any?): QuerySnapshot {
@@ -126,7 +136,17 @@ class DocumentReference(
             .catch { emit(DocumentSnapshot(id)) }
 
     fun addSnapshotListener(listener: (DocumentSnapshot?, Exception?) -> Unit): ListenerRegistration {
-        return ListenerRegistration()
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
+        val job = scope.launch {
+            try {
+                snapshots.collect { snap ->
+                    listener(snap, null)
+                }
+            } catch (e: Exception) {
+                listener(null, e)
+            }
+        }
+        return ListenerRegistration(job)
     }
 }
 
@@ -244,8 +264,10 @@ class QuerySnapshot(val documents: List<DocumentSnapshot> = emptyList()) {
     fun map(transform: (DocumentSnapshot) -> Any?): List<Any?> = documents.map(transform)
 }
 
-class ListenerRegistration {
-    fun remove() {}
+class ListenerRegistration(val job: kotlinx.coroutines.Job? = null) {
+    fun remove() {
+        job?.cancel()
+    }
 }
 
 enum class Direction { ASCENDING, DESCENDING }
