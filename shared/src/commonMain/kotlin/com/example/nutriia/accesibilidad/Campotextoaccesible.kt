@@ -97,11 +97,12 @@ fun CampoTextoAccesible(
             delay((palabras * 100L) + 1000L)
         }
 
-        if (tienePermiso && voiceEstado == VoiceInputState.IDLE) {
+        if (tienePermiso) {
+            voiceManager?.detener()
             if (ttsManager != null) {
                 ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 500L)
             } else {
-                delay(1000L)
+                delay(600L)
             }
             iniciarEscuchaConReintento(
                 voiceManager  = voiceManager,
@@ -745,6 +746,31 @@ fun CampoTextoAccesible(
                             Text("Borrar y repetir", color = Color.Gray, fontSize = 12.sp)
                         }
                     }
+
+                    if (activo && onNext != null) {
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                vibrateSuccess(haptic)
+                                voiceManager?.detener()
+                                onNext.invoke()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp)
+                                .semantics { contentDescription = "Confirmar y continuar. Toca aquí para avanzar o guardar." }
+                        ) {
+                            Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                if (etiqueta.contains("Notas", ignoreCase = true) || etiqueta.contains("opcional", ignoreCase = true)) "Guardar Registro" else "Confirmar y Continuar",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -962,7 +988,7 @@ private fun iniciarEscuchaConReintento(
             return@escuchar
         }
 
-        if (isFinal && onCommandParsed != null && onCommandParsed.invoke(command)) {
+        if (onCommandParsed != null && onCommandParsed.invoke(command)) {
             voiceManager?.detener()
             return@escuchar
         }
@@ -983,25 +1009,31 @@ private fun iniciarEscuchaConReintento(
                      command == "listo" || command == "ready"
         val isNext = command == "siguiente" || command == "continuar" || command == "next" || command == "continue" || command == "ok"
 
-        if (isNext || isSave || isSkip) {
-            if (isFinal) {
-                if (isSkip) {
-                    onValorChange("")
-                } else if (isSave) {
-                    // Si el comando fue únicamente 'guardar', 'listo', etc., no escribir 'guardar' en las notas
-                    val textoLimpio = command.replace("guardar", "").replace("save", "").replace("finalizar", "").replace("terminar", "").replace("listo", "").trim()
-                    if (textoLimpio.isNotBlank()) {
-                        val resultado = sanitizarResultadoVoz(textoLimpio, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
-                        onValorChange(resultado)
-                    }
-                }
-                if (onNext != null) {
-                    onNext.invoke()
-                } else {
-                    val resultado = if (isSkip) "" else sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
-                    onValorChange(resultado)
-                }
+        if (isSave) {
+            voiceManager?.detener()
+            val textoLimpio = command.replace("guardar", "").replace("save", "").replace("finalizar", "").replace("terminar", "").replace("listo", "").replace("alimento", "").replace("toma", "").replace("alerta", "").replace("medicion", "").replace("medición", "").trim()
+            if (textoLimpio.isNotBlank()) {
+                onValorChange(sanitizarResultadoVoz(textoLimpio, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma))
             }
+            onNext?.invoke()
+            return@escuchar
+        }
+
+        if (isSkip) {
+            if (isFinal) {
+                voiceManager?.detener()
+                onValorChange("")
+                onNext?.invoke()
+            }
+            return@escuchar
+        }
+
+        if (isNext) {
+            if (isFinal) {
+                voiceManager?.detener()
+                onNext?.invoke()
+            }
+            return@escuchar
         } else {
             // Solo actualizamos el valor si no parece un comando a medias
             val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
