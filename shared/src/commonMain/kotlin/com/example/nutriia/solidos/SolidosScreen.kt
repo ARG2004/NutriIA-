@@ -1449,10 +1449,11 @@ private fun AgregarAlimentoDialog(
                         CampoTextoAccesible(
                             valor          = grupoTexto,
                             onValorChange  = { spoken ->
+                                grupoTexto = spoken
                                 val clean = spoken.lowercase().trim()
                                 val matched: GrupoAlimento? = when {
-                                    clean.contains("frut") || clean.contains("manzana") || clean.contains("platano") || clean.contains("plátano") || clean.contains("pera") || clean.contains("banana") -> GrupoAlimento.FRUTAS
-                                    clean.contains("verdur") || clean.contains("vegetal") || clean.contains("zanahoria") || clean.contains("calabaza") || clean.contains("brocoli") || clean.contains("brócoli") -> GrupoAlimento.VERDURAS
+                                    clean.contains("frut") || clean.contains("manzana") || clean.contains("platano") || clean.contains("plátano") || clean.contains("pera") || clean.contains("banana") || clean.contains("fresa") || clean.contains("uva") -> GrupoAlimento.FRUTAS
+                                    clean.contains("verdur") || clean.contains("vegetal") || clean.contains("zanahoria") || clean.contains("calabaza") || clean.contains("brocoli") || clean.contains("brócoli") || clean.contains("espinaca") -> GrupoAlimento.VERDURAS
                                     clean.contains("cereal") || clean.contains("avena") || clean.contains("arroz") || clean.contains("trigo") || clean.contains("maiz") || clean.contains("maíz") || clean.contains("pan") -> GrupoAlimento.CEREALES
                                     clean.contains("prote") || clean.contains("carne") || clean.contains("pollo") || clean.contains("pescado") || clean.contains("huevo") || clean.contains("res") -> GrupoAlimento.PROTEINAS
                                     clean.contains("lact") || clean.contains("láct") || clean.contains("leche") || clean.contains("queso") || clean.contains("yogurt") || clean.contains("yogur") -> GrupoAlimento.LACTEOS
@@ -1511,6 +1512,7 @@ private fun AgregarAlimentoDialog(
                         CampoTextoAccesible(
                             valor          = reaccionTexto,
                             onValorChange  = { spoken ->
+                                reaccionTexto = spoken
                                 val clean = spoken.lowercase().trim()
                                 val matched: ReaccionAlimento? = when {
                                     clean.contains("ningun") || clean.contains("sin reacc") || clean.contains("ninguna") || clean.contains("no tuvo") || clean.contains("nada") || clean.contains("normal") || clean.contains("sin problema") -> ReaccionAlimento.NINGUNA

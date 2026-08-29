@@ -783,13 +783,17 @@ fun CampoTextoAccesible(
     }
 }
 
-// ─── Helpers de fecha — versión robusta para Google STT en español MX ─────────
-
 /**
  * Convierte texto de voz a formato DD/MM/AAAA.
  */
 private fun parsearFecha(texto: String): String {
     val t = texto.lowercase().trim()
+    if (t.contains("hoy") || t.contains("today") || t.contains("ahora")) {
+        return com.example.nutriia.utils.FechaUtils.fechaActual()
+    }
+    if (t.contains("ayer") || t.contains("yesterday")) {
+        return "ayer"
+    }
 
     val meses = mapOf(
         "enero"      to "01", "febrero"   to "02", "marzo"     to "03",
@@ -797,19 +801,6 @@ private fun parsearFecha(texto: String): String {
         "julio"      to "07", "agosto"    to "08", "septiembre" to "09",
         "setiembre"  to "09", "octubre"   to "10", "noviembre"  to "11",
         "diciembre"  to "12"
-    )
-
-    val numerosTexto = mapOf(
-        "uno" to 1, "dos" to 2, "tres" to 3, "cuatro" to 4, "cinco" to 5,
-        "seis" to 6, "siete" to 7, "ocho" to 8, "nueve" to 9, "diez" to 10,
-        "once" to 11, "doce" to 12, "trece" to 13, "catorce" to 14,
-        "quince" to 15, "dieciséis" to 16, "dieciseis" to 16,
-        "diecisiete" to 17, "dieciocho" to 18, "diecinueve" to 19,
-        "veinte" to 20, "veintiuno" to 21, "veintidós" to 22, "veintidos" to 22,
-        "veintitrés" to 23, "veintitres" to 23, "veinticuatro" to 24,
-        "veinticinco" to 25, "veintiséis" to 26, "veintiseis" to 26,
-        "veintisiete" to 27, "veintiocho" to 28, "veintinueve" to 29,
-        "treinta" to 30, "treinta y uno" to 31
     )
 
     fun parsearAnio(raw: String): String? {
@@ -820,59 +811,46 @@ private fun parsearFecha(texto: String): String {
         val patronDosMil = Regex("""dos mil\s*(.*)""")
         patronDosMil.find(r)?.let { m ->
             val sufijo = m.groupValues[1].trim()
-            when {
-                sufijo.isEmpty()        -> return "2000"
-                sufijo == "diez"        -> return "2010"
-                sufijo == "once"        -> return "2011"
-                sufijo == "doce"        -> return "2012"
-                sufijo == "trece"       -> return "2013"
-                sufijo == "catorce"     -> return "2014"
-                sufijo == "quince"      -> return "2015"
-                sufijo == "dieciséis"   -> return "2016"
-                sufijo == "dieciseis"   -> return "2016"
-                sufijo == "diecisiete"  -> return "2017"
-                sufijo == "dieciocho"   -> return "2018"
-                sufijo == "diecinueve"  -> return "2019"
-                sufijo == "veinte"      -> return "2020"
-                sufijo == "veintiuno"   -> return "2021"
-                sufijo == "veintidós"   -> return "2022"
-                sufijo == "veintidos"   -> return "2022"
-                sufijo == "veintitrés"  -> return "2023"
-                sufijo == "veintitres"  -> return "2023"
-                sufijo == "veinticuatro"-> return "2024"
-                sufijo == "veinticinco" -> return "2025"
-                sufijo == "veintiséis"  -> return "2026"
-                sufijo == "veintiseis"  -> return "2026"
-                sufijo == "veintisiete" -> return "2027"
-                sufijo == "veintiocho"  -> return "2028"
-                sufijo == "veintinueve" -> return "2029"
-                sufijo == "treinta"     -> return "2030"
-                else -> {
-                    val num = numerosTexto[sufijo]
-                    if (num != null) return "20${num.toString().padStart(2, '0')}"
-                }
-            }
+            val num = parsearNumeroEspanol(sufijo)
+            return "20${num.toString().padStart(2, '0')}"
         }
         return null
     }
 
+    // Match "15 de marzo de 2024" or "quince de marzo del dos mil veinticuatro"
     val patronTexto = Regex(
-        """(\d{1,2}|[a-záéíóúñ]+(?: y [a-záéíóúñ]+)?)\s+de\s+([a-záéíóúñ]+)\s+(?:de\s+|del\s+)?(\d{2,4}|dos mil\s+.+)"""
+        """(\d{1,2}|[a-záéíóúñ]+(?: y [a-záéíóúñ]+)?)\s+de\s+([a-záéíóúñ]+)\s+(?:de\s+|del\s+)?(\d{2,4}|dos mil\s*.+)"""
     )
     patronTexto.find(t)?.let { m ->
         val diaRaw  = m.groupValues[1].trim()
         val mesRaw  = m.groupValues[2].trim()
         val anioRaw = m.groupValues[3].trim()
 
-        val dia = (diaRaw.toIntOrNull() ?: numerosTexto[diaRaw])
-            ?.toString()?.padStart(2, '0') ?: return@let
-        val mes  = meses[mesRaw] ?: return@let
-        val anio = parsearAnio(anioRaw) ?: return@let
+        val dia = (diaRaw.toIntOrNull() ?: parsearNumeroEspanol(diaRaw))
+            .toString().padStart(2, '0')
+        val mes  = meses[mesRaw] ?: "01"
+        val anio = parsearAnio(anioRaw) ?: "2026"
 
         return corregirFormatoFecha("$dia/$mes/$anio")
     }
 
-    val patronNum = Regex("""(\d{1,2})[/\-\s](\d{1,2})[/\-\s](\d{2,4})""")
+    // Match "15 de marzo" or "quince de marzo" (without year -> use current year 2026)
+    val patronSinAnio = Regex(
+        """(\d{1,2}|[a-záéíóúñ]+(?: y [a-záéíóúñ]+)?)\s+de\s+([a-záéíóúñ]+)"""
+    )
+    patronSinAnio.find(t)?.let { m ->
+        val diaRaw = m.groupValues[1].trim()
+        val mesRaw = m.groupValues[2].trim()
+        val mes = meses[mesRaw]
+        if (mes != null) {
+            val dia = (diaRaw.toIntOrNull() ?: parsearNumeroEspanol(diaRaw))
+                .toString().padStart(2, '0')
+            val anioActual = com.example.nutriia.utils.FechaUtils.fechaActual().split("/").getOrNull(2) ?: "2026"
+            return corregirFormatoFecha("$dia/$mes/$anioActual")
+        }
+    }
+
+    val patronNum = Regex("""(\d{1,2})[/\-\s\.](\d{1,2})[/\-\s\.](\d{2,4})""")
     patronNum.find(t)?.let { m ->
         val dia  = m.groupValues[1].padStart(2, '0')
         val mes  = m.groupValues[2].padStart(2, '0')
@@ -880,7 +858,12 @@ private fun parsearFecha(texto: String): String {
         return corregirFormatoFecha("$dia/$mes/$anio")
     }
 
-    return corregirFormatoFecha(formatearFechaDigitos(texto))
+    val formateado = formatearFechaDigitos(texto)
+    if (formateado.matches(Regex("""\d{2}/\d{2}/\d{4}"""))) {
+        return corregirFormatoFecha(formateado)
+    }
+
+    return com.example.nutriia.utils.FechaUtils.fechaActual()
 }
 
 private fun corregirFormatoFecha(fecha: String): String {
@@ -918,14 +901,14 @@ private fun formatearFechaDigitos(input: String): String {
 }
 
 // ─── Helper: inicia escucha limpiando error previo ────────────────────────────
-private fun iniciarEscuchaConReintento(
+fun iniciarEscuchaConReintento(
     voiceManager:    VoiceInputManager?,
     idioma:          IdiomaVoz,
-    modoAccesible:   Boolean   = false,
+    modoAccesible:   Boolean,
     esCampoFecha:    Boolean,
     esCampoHora:     Boolean,
     keyboardOptions: KeyboardOptions,
-    ttsManager:      NutriTTS?,
+    ttsManager:      NutriTTS? = null,
     onValorChange:   (String) -> Unit,
     onNext:          (() -> Unit)? = null,
     onCommandParsed: ((String) -> Boolean)? = null,
@@ -1010,7 +993,6 @@ private fun iniciarEscuchaConReintento(
             }
             return@escuchar
         } else {
-            // Solo actualizamos el valor si no parece un comando a medias
             val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
             onValorChange(resultado)
             if (isFinal && resultado.isNotBlank() && onNext != null) {
@@ -1028,25 +1010,78 @@ private fun sanitizarResultadoVoz(
     ttsManager:      NutriTTS? = null,
     idioma:          IdiomaVoz = IdiomaVoz.ESPANOL_MX
 ): String {
-    var resultado = when {
-        esCampoFecha -> parsearFecha(texto)
-        esCampoHora  -> parsearHora(texto)
-        else         -> texto
+    val t = texto.trim()
+    if (t.isBlank()) return ""
+    
+    return when {
+        esCampoFecha -> parsearFecha(t)
+        esCampoHora  -> parsearHora(t)
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone -> parsearNumeroEntero(t)
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> parsearNumeroDecimal(t)
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Email ||
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Password -> t.replace(" ", "")
+        else -> t
     }
-    val esNumericoOClaveOCorreo = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
-                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone ||
-                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
-                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal ||
-                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Password ||
-                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Email
-    if (esNumericoOClaveOCorreo) {
-        resultado = resultado.replace(" ", "")
+}
+
+private fun parsearNumeroDecimal(texto: String): String {
+    val t = texto.lowercase().trim()
+        .replace("kilos", "").replace("kilo", "").replace("kg", "")
+        .replace("centímetros", "").replace("centimetros", "").replace("cm", "")
+        .replace("gramos", "").replace("gramo", "").replace("gr", "")
+        .replace("mililitros", "").replace("mililitro", "").replace("ml", "")
+        .replace("minutos", "").replace("minuto", "").replace("min", "")
+        .trim()
+    
+    val regexDecimal = Regex("""(\d+)[,\.](\d+)""")
+    regexDecimal.find(t)?.let { m ->
+        return "${m.groupValues[1]}.${m.groupValues[2]}"
     }
-    return resultado
+    
+    if (t.contains("punto") || t.contains("coma") || t.contains(" con ")) {
+        val partes = t.split(Regex("""\s+(?:punto|coma|con)\s+"""))
+        if (partes.size >= 2) {
+            val entero = partes[0].filter { it.isDigit() }.ifEmpty { parsearNumeroEspanol(partes[0]).toString() }
+            val dec = partes[1].filter { it.isDigit() }.ifEmpty { parsearNumeroEspanol(partes[1]).toString() }
+            return "$entero.$dec"
+        }
+    }
+    
+    val regexEntero = Regex("""\d+""")
+    regexEntero.find(t)?.let { m ->
+        return m.value
+    }
+    
+    val num = parsearNumeroEspanol(t)
+    if (num > 0 || t == "cero") return num.toString()
+    
+    return t
+}
+
+private fun parsearNumeroEntero(texto: String): String {
+    val t = texto.lowercase().trim()
+        .replace("kilos", "").replace("kilo", "").replace("kg", "")
+        .replace("centímetros", "").replace("centimetros", "").replace("cm", "")
+        .replace("minutos", "").replace("minuto", "").replace("min", "")
+        .replace("mililitros", "").replace("mililitro", "").replace("ml", "")
+        .trim()
+    
+    val digitos = t.filter { it.isDigit() }
+    if (digitos.isNotBlank()) return digitos
+    
+    val num = parsearNumeroEspanol(t)
+    if (num > 0 || t == "cero") return num.toString()
+    
+    return t
 }
 
 private fun parsearHora(texto: String): String {
     val t = texto.lowercase().trim()
+    if (t.contains("ahora") || t.contains("en este momento") || t.contains("now")) {
+        return com.example.nutriia.utils.FechaUtils.horaActualIso()
+    }
     val tNormalizado = t.replace(".", "").replace(" ", "")
     val esTarde = t.contains("tarde") || t.contains("noche") || tNormalizado.contains("pm")
     val esManana = t.contains("mañana") || t.contains("madrugada") || tNormalizado.contains("am")
@@ -1106,7 +1141,7 @@ private fun parsearHora(texto: String): String {
         return ajustarFormatoHora(h, 0, esTarde, esManana)
     }
 
-    return tLimpio
+    return com.example.nutriia.utils.FechaUtils.horaActualIso()
 }
 
 private fun parsearNumeroEspanol(texto: String): Int {
@@ -1116,33 +1151,31 @@ private fun parsearNumeroEspanol(texto: String): Int {
     if (t == "media" || t == "medio") return 30
     if (t == "cuarto" || t == "un cuarto") return 15
     
-    val unidades = mapOf(
-        "cero" to 0, "uno" to 1, "un" to 1, "dos" to 2, "tres" to 3, "cuatro" to 4, "cinco" to 5,
+    val palabrasMap = mapOf(
+        "cero" to 0, "uno" to 1, "un" to 1, "una" to 1, "dos" to 2, "tres" to 3, "cuatro" to 4, "cinco" to 5,
         "seis" to 6, "siete" to 7, "ocho" to 8, "nueve" to 9, "diez" to 10,
         "once" to 11, "doce" to 12, "trece" to 13, "catorce" to 14, "quince" to 15,
         "dieciséis" to 16, "dieciseis" to 16, "diecisiete" to 17, "dieciocho" to 18, "diecinueve" to 19,
         "veinte" to 20, "veintiuno" to 21, "veintidos" to 22, "veintidós" to 22,
         "veintitrés" to 23, "veintitres" to 23, "veinticuatro" to 24, "veinticinco" to 25,
-        "veintiséis" to 26, "veintiseis" to 26, "veintisiete" to 27, "veintiocho" to 28, "veintinueve" to 29
+        "veintiséis" to 26, "veintiseis" to 26, "veintisiete" to 27, "veintiocho" to 28, "veintinueve" to 29,
+        "treinta" to 30, "cuarenta" to 40, "cincuenta" to 50, "sesenta" to 60, "setenta" to 70,
+        "ochenta" to 80, "noventa" to 90, "cien" to 100, "ciento" to 100,
+        "doscientos" to 200, "trescientos" to 300, "cuatrocientos" to 400, "quinientos" to 500,
+        "seiscientos" to 600, "setecientos" to 700, "ochocientos" to 800, "novecientos" to 900
     )
     
-    val decenas = mapOf(
-        "diez" to 10, "veinte" to 20, "treinta" to 30, "cuarenta" to 40, "cincuenta" to 50
-    )
+    if (palabrasMap.containsKey(t)) return palabrasMap[t]!!
     
-    if (unidades.containsKey(t)) return unidades[t]!!
-    if (decenas.containsKey(t)) return decenas[t]!!
-    
-    val limpia = t.replace(" y ", " ")
-    val partes = limpia.split(Regex("\\s+"))
-    if (partes.size == 2) {
-        val dec = decenas[partes[0]]
-        val uni = unidades[partes[1]]
-        if (dec != null && uni != null) {
-            return dec + uni
+    var acumulado = 0
+    val tokens = t.replace(" y ", " ").split(Regex("\\s+"))
+    for (token in tokens) {
+        val v = palabrasMap[token]
+        if (v != null) {
+            acumulado += v
         }
     }
-    return 0
+    return acumulado
 }
 
 private fun ajustarFormatoHora(h: Int, min: Int, esTarde: Boolean, esManana: Boolean): String {
