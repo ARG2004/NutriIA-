@@ -24,7 +24,7 @@ enum class TipoLlamada { AUDIO, VIDEO }
 @Serializable
 data class IceCandidateData(
     val sdpMid:        String = "",
-    val sdpMLineIndex: Int = 0,
+    val sdpMLineIndex: Int    = 0,
     val sdp:           String = ""
 ) {
     fun toMap(): Map<String, Any> = mapOf(
@@ -35,9 +35,9 @@ data class IceCandidateData(
 
     companion object {
         fun fromMap(map: Map<String, Any?>): IceCandidateData {
-            val indexRaw = map["sdpMLineIndex"] ?: map["sdpMlineIndex"]
+            val indexRaw = map["sdpMLineIndex"]
             val index = when (indexRaw) {
-                is Number -> indexRaw.toLong().toInt()
+                is Number -> indexRaw.toInt()
                 is String -> indexRaw.toIntOrNull() ?: 0
                 else -> 0
             }
@@ -132,6 +132,3 @@ data class SolicitudLlamada(
         )
     }
 }
-
-
-

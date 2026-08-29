@@ -96,15 +96,7 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     private func setupMediaTracks() {
         // Audio
-        let audioConstraints = RTCMediaConstraints(
-            mandatoryConstraints: [
-                "googEchoCancellation": "true",
-                "googNoiseSuppression": "true",
-                "googHighpassFilter": "true",
-                "googAutoGainControl": "true"
-            ],
-            optionalConstraints: nil
-        )
+        let audioConstraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
         let audioSource = factory.audioSource(with: audioConstraints)
         let audioTrack = factory.audioTrack(with: audioSource, trackId: "audio0")
         peerConnection?.add(audioTrack, streamIds: ["stream0"])
@@ -266,4 +258,3 @@ extension WebRtcProvider: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
     func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {}
 }
-
