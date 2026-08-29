@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlin.time.TimeSource
 
 enum class InputModoCiego { TECLADO, VOZ, BRAILLE, SENAS }
 
@@ -922,7 +923,7 @@ fun iniciarEscuchaConReintento(
 
     // Marca de tiempo al abrir el micrófono.
     // Resultados que lleguen dentro de los primeros 1500ms son eco del altavoz, no la voz del usuario.
-    val micAbrioEn = System.currentTimeMillis()
+    val micAbrioEn = TimeSource.Monotonic.markNow()
     val guardaMs   = 1500L
 
     voiceManager?.escuchar(idioma, modoAccesible) { texto, isFinal ->
@@ -1006,7 +1007,7 @@ fun iniciarEscuchaConReintento(
         // ── Ventana anti-eco: ignorar resultados que lleguen muy rápido tras abrir el mic ──
         // Los primeros 1500ms tras abrir el micrófono son muy probablemente el eco del altavoz.
         // La voz humana real llega después de procesar y reaccionar a la instrucción.
-        val tiempoDesdeApertura = System.currentTimeMillis() - micAbrioEn
+        val tiempoDesdeApertura = micAbrioEn.elapsedNow().inWholeMilliseconds
         if (tiempoDesdeApertura < guardaMs) {
             // Eco del TTS: descartar silenciosamente sin actualizar el campo
             return@escuchar
