@@ -32,10 +32,9 @@ class PaymentRepository {
                 montoCentavos = montoCentavos,
                 moneda        = moneda,
                 paypalOrderId = paypalOrderId,
-                estado        = EstadoPago.PENDIENTE
+                estado        = EstadoPago.PENDIENTE,
+                creadaEn      = currentTimeMillis()
             )
-            // FIX iOS: .set(map) es poco confiable en Kotlin/Native.
-            // Usamos el objeto @Serializable directo.
             col.document(id).set(pago)
             Result.success(pago)
         } catch (e: Exception) {
@@ -49,7 +48,7 @@ class PaymentRepository {
                 mapOf(
                     "paypalOrderId" to paypalOrderId,
                     "estado"        to EstadoPago.COMPLETADO.name,
-                    "completadoEnMillis" to currentTimeMillis()
+                    "completadoEn"  to currentTimeMillis()
                 )
             )
             Result.success(Unit)
@@ -70,24 +69,27 @@ class PaymentRepository {
     suspend fun verificarPagoCompletado(pagoId: String): Result<Boolean> {
         return try {
             val doc = col.document(pagoId).get()
-            val pago = if (doc.exists) PagoTeleconsulta.fromMap(doc.id, doc.data()) else null
+            val pago = if (doc.exists) {
+                try { doc.data<PagoTeleconsulta>().copy(id = doc.id) } catch (e: Exception) { null }
+            } else null
             Result.success(pago?.estado == EstadoPago.COMPLETADO)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    suspend fun obtenerPagoVigente(padreUid: String, nutriologoUid: String): Result<PagoTeleconsulta?> {
-        val uid = padreUid.ifBlank { auth.currentUser?.uid ?: return Result.failure(Exception("No autenticado")) }
+    suspend fun obtenerPagoVigente(nutriologoUid: String, childId: String): Result<PagoTeleconsulta?> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(Exception("No autenticado"))
         return try {
             val query = col
                 .where { "padreUid".equalTo(uid) }
                 .where { "nutriologoUid".equalTo(nutriologoUid) }
+                .where { "childId".equalTo(childId) }
                 .where { "estado".equalTo(EstadoPago.COMPLETADO.name) }
                 .get()
 
             val pago = query.documents.mapNotNull { doc ->
-                runCatching { PagoTeleconsulta.fromMap(doc.id, doc.data()) }.getOrNull()
+                try { doc.data<PagoTeleconsulta>().copy(id = doc.id) } catch (e: Exception) { null }
             }.firstOrNull { it.llamadaId.isEmpty() }
 
             Result.success(pago)
