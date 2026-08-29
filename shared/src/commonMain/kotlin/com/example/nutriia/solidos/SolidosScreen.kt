@@ -1336,12 +1336,14 @@ private fun AgregarAlimentoDialog(
         }
     }
 
-
+    var showDatePicker by remember { mutableStateOf(false) }
+    var yaGuardando by remember { mutableStateOf(false) }
 
     val guardarTodo = {
-        if (nombre.isNotBlank()) {
+        if (!yaGuardando && nombre.isNotBlank()) {
+            yaGuardando = true
             if (esBlind) {
-                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
+                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Saving food." else "Guardando alimento.")
             }
             onSave(
                 AlimentoIntroducido(
@@ -1420,20 +1422,25 @@ private fun AgregarAlimentoDialog(
                                 onNext         = { campoActivo = 2 }
                             )
                         } else {
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            fecha, {}, Modifier.fillMaxWidth(),
-                            readOnly    = true,
-                            label       = { Text("Fecha") },
-                            leadingIcon = { Icon(Icons.Rounded.CalendarToday, null, tint = Sol.Orange) },
-                            shape       = RoundedCornerShape(14.dp),
-                            singleLine  = true,
-                            colors      = fc
-                        )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    fecha, {}, Modifier.fillMaxWidth(),
+                                    readOnly    = true,
+                                    label       = { Text("Fecha") },
+                                    leadingIcon = { Icon(Icons.Rounded.CalendarToday, null, tint = Sol.Orange) },
+                                    shape       = RoundedCornerShape(14.dp),
+                                    singleLine  = true,
+                                    colors      = fc
+                                )
+                                Box(
+                                    Modifier
+                                        .matchParentSize()
+                                        .clickable { showDatePicker = true }
+                                )
+                            }
+                        }
                     }
                 }
-            }
-        }
 
                 // ── GRUPO ALIMENTICIO ──────────────────
                 if (!esBlind || campoActivo >= 2) {
@@ -1443,18 +1450,22 @@ private fun AgregarAlimentoDialog(
                             valor          = grupoTexto,
                             onValorChange  = { spoken ->
                                 val clean = spoken.lowercase().trim()
-                                val matched = when {
-                                    clean.contains("verdura") -> GrupoAlimento.VERDURAS
-                                    clean.contains("fruta")   -> GrupoAlimento.FRUTAS
-                                    clean.contains("cereal")  -> GrupoAlimento.CEREALES
-                                    clean.contains("prote") || clean.contains("carne") || clean.contains("huevo") -> GrupoAlimento.PROTEINAS
-                                    clean.contains("lact") || clean.contains("leche") || clean.contains("queso")   -> GrupoAlimento.LACTEOS
-                                    clean.contains("legum") || clean.contains("frijol") || clean.contains("lenteja") -> GrupoAlimento.LEGUMBRES
-                                    else -> GrupoAlimento.OTROS
+                                val matched: GrupoAlimento? = when {
+                                    clean.contains("frut") || clean.contains("manzana") || clean.contains("platano") || clean.contains("plátano") || clean.contains("pera") || clean.contains("banana") -> GrupoAlimento.FRUTAS
+                                    clean.contains("verdur") || clean.contains("vegetal") || clean.contains("zanahoria") || clean.contains("calabaza") || clean.contains("brocoli") || clean.contains("brócoli") -> GrupoAlimento.VERDURAS
+                                    clean.contains("cereal") || clean.contains("avena") || clean.contains("arroz") || clean.contains("trigo") || clean.contains("maiz") || clean.contains("maíz") || clean.contains("pan") -> GrupoAlimento.CEREALES
+                                    clean.contains("prote") || clean.contains("carne") || clean.contains("pollo") || clean.contains("pescado") || clean.contains("huevo") || clean.contains("res") -> GrupoAlimento.PROTEINAS
+                                    clean.contains("lact") || clean.contains("láct") || clean.contains("leche") || clean.contains("queso") || clean.contains("yogurt") || clean.contains("yogur") -> GrupoAlimento.LACTEOS
+                                    clean.contains("legum") || clean.contains("frijol") || clean.contains("lenteja") || clean.contains("haba") || clean.contains("garbanzo") -> GrupoAlimento.LEGUMBRES
+                                    clean.contains("otro") || clean.contains("otra") || clean.contains("other") -> GrupoAlimento.OTROS
+                                    else -> null
                                 }
-                                grupo = matched
-                                grupoTexto = matched.label
-                                campoActivo = 3
+                                if (matched != null) {
+                                    grupo = matched
+                                    grupoTexto = matched.label
+                                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Selected: ${matched.label}" else "Seleccionado: ${matched.label}")
+                                    campoActivo = 3
+                                }
                             },
                             etiqueta       = "Grupo alimenticio",
                             descripcionVoz = "Dime el grupo alimenticio, por ejemplo: frutas, verduras, cereales, proteínas, lácteos, legumbres u otros.",
@@ -1501,17 +1512,20 @@ private fun AgregarAlimentoDialog(
                             valor          = reaccionTexto,
                             onValorChange  = { spoken ->
                                 val clean = spoken.lowercase().trim()
-                                val matched = when {
-                                    clean.contains("ning") || clean.contains("sin") || clean.contains("no tuvo") -> ReaccionAlimento.NINGUNA
-                                    clean.contains("leve") -> ReaccionAlimento.LEVE
-                                    clean.contains("aler") -> ReaccionAlimento.ALERGIA
-                                    clean.contains("rechaz") || clean.contains("no le gus") || clean.contains("escup") -> ReaccionAlimento.RECHAZO
-                                    clean.contains("acept") || clean.contains("bien") -> ReaccionAlimento.ACEPTADO
-                                    else -> ReaccionAlimento.NINGUNA
+                                val matched: ReaccionAlimento? = when {
+                                    clean.contains("ningun") || clean.contains("sin reacc") || clean.contains("ninguna") || clean.contains("no tuvo") || clean.contains("nada") || clean.contains("normal") || clean.contains("sin problema") -> ReaccionAlimento.NINGUNA
+                                    clean.contains("leve") || clean.contains("ligera") || clean.contains("un poco") -> ReaccionAlimento.LEVE
+                                    clean.contains("alergi") || clean.contains("ronchas") || clean.contains("alergia") || clean.contains("erupci") -> ReaccionAlimento.ALERGIA
+                                    clean.contains("rechaz") || clean.contains("no le gusto") || clean.contains("no le gustó") || clean.contains("escup") || clean.contains("asco") -> ReaccionAlimento.RECHAZO
+                                    clean.contains("acept") || clean.contains("bien") || clean.contains("le gusto") || clean.contains("le gustó") || clean.contains("comio bien") || clean.contains("comió bien") -> ReaccionAlimento.ACEPTADO
+                                    else -> null
                                 }
-                                reaccion = matched
-                                reaccionTexto = matched.label
-                                campoActivo = 4
+                                if (matched != null) {
+                                    reaccion = matched
+                                    reaccionTexto = matched.label
+                                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Selected: ${matched.label}" else "Seleccionado: ${matched.label}")
+                                    campoActivo = 4
+                                }
                             },
                             etiqueta       = "Reacción observada",
                             descripcionVoz = "Dime si tuvo alguna reacción: ninguna, leve, alergia, rechazo o aceptado.",
@@ -1548,14 +1562,27 @@ private fun AgregarAlimentoDialog(
                         if (esBlind) {
                             CampoTextoAccesible(
                                 valor          = notas,
-                                onValorChange  = { notas = it },
+                                onValorChange  = { spoken ->
+                                    val clean = spoken.lowercase().trim()
+                                    if (clean.contains("guardar") || clean.contains("save") || clean == "listo") {
+                                        guardarTodo()
+                                    } else {
+                                        notas = spoken
+                                    }
+                                },
                                 etiqueta       = "Notas (opcional)",
                                 descripcionVoz = if (idioma == IdiomaVoz.INGLES) "All required fields complete. This note field is optional. Say your note, or say save to save." else "Todos los datos requeridos completos. Este campo de notas es opcional. Puedes dictar tu nota, o decir guardar para finalizar y guardar el alimento.",
                                 ttsManager     = if (campoActivo == 4) ttsManager else null,
                                 idioma         = idioma,
                                 colorPrimario  = Sol.Orange,
                                 activo         = campoActivo == 4,
-                                onNext         = { guardarTodo() }
+                                onNext         = { guardarTodo() },
+                                onCommandParsed = { cmd ->
+                                    if (cmd.contains("guardar") || cmd.contains("save") || cmd.contains("finalizar") || cmd.contains("terminar") || cmd == "listo") {
+                                        guardarTodo()
+                                        true
+                                    } else false
+                                }
                             )
                         } else {
                             OutlinedTextField(

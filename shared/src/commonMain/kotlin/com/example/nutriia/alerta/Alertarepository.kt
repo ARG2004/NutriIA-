@@ -33,30 +33,35 @@ class AlertaRepository {
 
     suspend fun guardar(alerta: Alerta): Result<Unit> {
         return try {
-            auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
-            coleccion(alerta.childId).document(alerta.id).set(alerta)
+            val currentUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+            Log.i("AlertaRepo", "Guardando alerta ${alerta.id} para hijo ${alerta.childId} (uid: $currentUid)")
+            coleccion(alerta.childId, currentUid).document(alerta.id).set(alerta.toMap())
+            Log.i("AlertaRepo", "Alerta ${alerta.id} guardada exitosamente en Firestore")
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("AlertaRepo", "Error guardando alerta: ${e.message}")
             Result.failure(e)
         }
     }
 
     suspend fun eliminar(childId: String?, alertaId: String): Result<Unit> {
         return try {
-            auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
-            coleccion(childId).document(alertaId).delete()
+            val currentUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+            coleccion(childId, currentUid).document(alertaId).delete()
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("AlertaRepo", "Error eliminando alerta: ${e.message}")
             Result.failure(e)
         }
     }
 
     suspend fun toggleActiva(childId: String?, alertaId: String, activa: Boolean): Result<Unit> {
         return try {
-            auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
-            coleccion(childId).document(alertaId).update("activa" to activa)
+            val currentUid = auth.currentUser?.uid ?: return Result.failure(IllegalStateException("Usuario no autenticado"))
+            coleccion(childId, currentUid).document(alertaId).update("activa" to activa)
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("AlertaRepo", "Error en toggleActiva: ${e.message}")
             Result.failure(e)
         }
     }

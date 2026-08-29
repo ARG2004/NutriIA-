@@ -20,6 +20,7 @@ actual class PlatformVoiceInput actual constructor() {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
     private var recognitionTask: SFSpeechRecognitionTask? = null
     private var currentSilenceToken: Long = 0L
+    private var isListeningActive = false
 
     actual fun isAvailable(): Boolean {
         return try {
@@ -80,7 +81,7 @@ actual class PlatformVoiceInput actual constructor() {
             audioSession.setCategory(
                 category = AVAudioSessionCategoryPlayAndRecord,
                 mode = AVAudioSessionModeMeasurement,
-                options = AVAudioSessionCategoryOptionDefaultToSpeaker or AVAudioSessionCategoryOptionAllowBluetooth,
+                options = AVAudioSessionCategoryOptionDefaultToSpeaker or AVAudioSessionCategoryOptionAllowBluetooth or AVAudioSessionCategoryOptionDuckOthers,
                 error = null
             )
             audioSession.setActive(true, error = null)
@@ -110,15 +111,18 @@ actual class PlatformVoiceInput actual constructor() {
 
             engine.prepare()
             engine.startAndReturnError(null)
+            isListeningActive = true
 
             var lastTranscription = ""
 
-            recognitionTask = recognizer.recognitionTaskWithRequest(request) { result, error ->
+            recognitionTask = recognizer?.recognitionTaskWithRequest(request) { result, error ->
                 if (result != null) {
                     val text = result.bestTranscription.formattedString
                     lastTranscription = text
 
                     dispatch_async(dispatch_get_main_queue()) {
+                        if (!isListeningActive && !result.isFinal()) return@dispatch_async
+
                         onPartialResult(text)
 
                         if (result.isFinal()) {
@@ -126,11 +130,11 @@ actual class PlatformVoiceInput actual constructor() {
                             onFinalResult(text)
                             stopListening()
                         } else if (text.isNotBlank()) {
-                            // Detector de silencio para iOS: si no hay más voz por 1.3 segundos, finalizar
+                            // Detector de silencio para iOS: si no hay más voz por 1.5 segundos, finalizar
                             val thisToken = ++currentSilenceToken
-                            val delayNanoseconds = (1.3 * 1_000_000_000).toLong()
+                            val delayNanoseconds = (1.5 * 1_000_000_000).toLong()
                             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayNanoseconds), dispatch_get_main_queue()) {
-                                if (thisToken == currentSilenceToken && lastTranscription.isNotBlank()) {
+                                if (thisToken == currentSilenceToken && isListeningActive && lastTranscription.isNotBlank()) {
                                     val finalPhrase = lastTranscription
                                     stopListening()
                                     onFinalResult(finalPhrase)
@@ -140,9 +144,17 @@ actual class PlatformVoiceInput actual constructor() {
                     }
                 }
                 if (error != null) {
-                    dispatch_async(dispatch_get_main_queue()) {
-                        onError(error.localizedDescription ?: "Error en el reconocimiento")
-                        stopListening()
+                    val desc = error.localizedDescription ?: ""
+                    val isCancellation = desc.contains("cancel", ignoreCase = true) ||
+                                         error.code.toInt() == 216 ||
+                                         error.code.toInt() == 201 ||
+                                         desc.contains("216")
+
+                    if (!isCancellation && isListeningActive) {
+                        dispatch_async(dispatch_get_main_queue()) {
+                            onError(desc)
+                            stopListening()
+                        }
                     }
                 }
             }
@@ -154,8 +166,12 @@ actual class PlatformVoiceInput actual constructor() {
 
     actual fun stopListening() {
         try {
+            isListeningActive = false
             currentSilenceToken++
-            audioEngine?.stop()
+
+            if (audioEngine?.isRunning() == true) {
+                audioEngine?.stop()
+            }
             audioEngine?.inputNode?.removeTapOnBus(0u)
             audioEngine = null
 

@@ -461,19 +461,19 @@ fun CampoTextoAccesible(
             if (activo && opcionesDisponibles.size > 1) {
                 Row(
                     modifier              = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     opcionesDisponibles.forEach { (modo, label, icon) ->
                         val seleccionado = modoEntrada == modo
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(if (seleccionado) Color.White else Color(0xFFF8F9FA))
                                 .border(
                                     2.dp,
                                     if (seleccionado) colorPrimario else Color.Transparent,
-                                    RoundedCornerShape(16.dp)
+                                    RoundedCornerShape(14.dp)
                                 )
                                 .clickable(onClickLabel = "Cambiar a modo $label") {
                                     vibrateTap(haptic)
@@ -489,26 +489,26 @@ fun CampoTextoAccesible(
                                     }
                                  }
                                 .semantics { contentDescription = "Modo $label. ${if (seleccionado) "Activo" else "Toca para activar"}" }
-                                .padding(vertical = 12.dp),
+                                .padding(vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
                                 icon, 
                                 null, 
                                 tint = if (seleccionado) colorPrimario else Color.Gray, 
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(4.dp))
                             Text(
                                 label, 
-                                fontSize = 12.sp, 
+                                fontSize = 11.sp, 
                                 fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Medium, 
                                 color = if (seleccionado) colorPrimario else Color.Gray
                             )
                         }
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(10.dp))
             }
 
             AnimatedVisibility(visible = activo && modoEntrada == InputModoCiego.TECLADO) {
@@ -598,12 +598,12 @@ fun CampoTextoAccesible(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(colorPrimario.copy(0.08f))
                                 .border(1.dp, colorPrimario.copy(0.3f), RoundedCornerShape(12.dp))
-                                .padding(14.dp)
+                                .padding(12.dp)
                                 .semantics { contentDescription = "Texto reconocido: $valor" }
                         ) {
-                            Text(valor, fontSize = 16.sp, color = Color(0xFF1B5E20), fontWeight = FontWeight.Medium)
+                            Text(valor, fontSize = 15.sp, color = Color(0xFF1B5E20), fontWeight = FontWeight.Medium)
                         }
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(8.dp))
                     }
 
                     Box(
@@ -613,7 +613,7 @@ fun CampoTextoAccesible(
                         val infiniteTransition = rememberInfiniteTransition(label = "pulse")
                         val scale by infiniteTransition.animateFloat(
                             initialValue = 1f,
-                            targetValue = if (voiceEstado == VoiceInputState.LISTENING) 1.25f else 1f,
+                            targetValue = if (voiceEstado == VoiceInputState.LISTENING) 1.2f else 1f,
                             animationSpec = infiniteRepeatable(
                                 animation = tween(1000, easing = LinearEasing),
                                 repeatMode = RepeatMode.Reverse
@@ -634,7 +634,7 @@ fun CampoTextoAccesible(
                         if (voiceEstado == VoiceInputState.LISTENING) {
                             Box(
                                 modifier = Modifier
-                                    .size(130.dp)
+                                    .size(105.dp)
                                     .scale(scale)
                                     .clip(CircleShape)
                                     .background(colorPrimario.copy(alpha = alpha))
@@ -643,7 +643,7 @@ fun CampoTextoAccesible(
 
                         Box(
                             modifier = Modifier
-                                .size(110.dp)
+                                .size(86.dp)
                                 .clip(CircleShape)
                                 .background(
                                     when (voiceEstado) {
@@ -695,25 +695,25 @@ fun CampoTextoAccesible(
                                 },
                                 contentDescription = null,
                                 tint     = Color.White,
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(38.dp)
                             )
                         }
                     }
 
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = when (voiceEstado) {
                             VoiceInputState.LISTENING  -> "Escuchando... habla ahora"
                             VoiceInputState.PROCESSING -> "Procesando..."
                             else                       -> "Toca el microfono o espera unos segundos"
                         },
-                        fontSize  = 13.sp,
+                        fontSize  = 12.sp,
                         color     = Color.Gray,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
 
                     if (esCampoFecha) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
                         Surface(
                             color = colorPrimario.copy(0.06f),
                             shape = RoundedCornerShape(10.dp)
@@ -721,18 +721,20 @@ fun CampoTextoAccesible(
                             Text(
                                 "Di: \"quince de marzo de dos mil veintitrés\"",
                                 fontSize = 11.sp, color = Color.DarkGray,
-                                modifier = Modifier.padding(8.dp)
+                                modifier = Modifier.padding(6.dp)
                               )
                         }
                     }
 
-                    if (voiceManager?.errorMsg?.value?.isNotEmpty() == true) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(voiceManager!!.errorMsg.value, fontSize = 12.sp, color = Color(0xFFE53935))
+                    val rawError = voiceManager?.errorMsg?.value ?: ""
+                    val isHarmlessCancel = rawError.contains("cancel", ignoreCase = true) || rawError.contains("216")
+                    if (rawError.isNotEmpty() && !isHarmlessCancel) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(rawError, fontSize = 12.sp, color = Color(0xFFE53935))
                     }
 
                     if (valor.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(4.dp))
                         TextButton(
                             onClick = {
                                 onValorChange("")

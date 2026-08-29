@@ -1126,7 +1126,14 @@ private fun DialogoMedicion(
                     androidx.compose.animation.AnimatedVisibility(visible = !esBlind && esAccesible || campoActivo >= 4) {
                         CampoTextoAccesible(
                             valor          = notas,
-                            onValorChange  = { notas = it },
+                            onValorChange  = { spoken ->
+                                val clean = spoken.lowercase().trim()
+                                if (clean.contains("guardar") || clean.contains("save") || clean == "listo") {
+                                    guardarTodo()
+                                } else {
+                                    notas = spoken
+                                }
+                            },
                             etiqueta       = "Notas (opcional)",
                             descripcionVoz = loc("Todos los datos requeridos completos. Este campo de notas es opcional. Puedes dictar tu nota, o decir guardar para finalizar y guardar la medición.", "All required fields complete. This note field is optional. Say your note, or say save to save it."),
                             ttsManager     = ttsManager,
@@ -1134,7 +1141,13 @@ private fun DialogoMedicion(
                             colorPrimario  = C_Green,
                             activo         = campoActivo == 4,
                             onFocus        = { campoActivo = 4 },
-                            onNext         = { guardarTodo() }
+                            onNext         = { guardarTodo() },
+                            onCommandParsed = { cmd ->
+                                if (cmd.contains("guardar") || cmd.contains("save") || cmd.contains("finalizar") || cmd.contains("terminar") || cmd == "listo") {
+                                    guardarTodo()
+                                    true
+                                } else false
+                            }
                         )
                     }
                 } else {

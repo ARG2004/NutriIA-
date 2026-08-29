@@ -834,6 +834,7 @@ fun AddFeedingDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(28.dp),
+        containerColor = LactBg,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Add, null, tint = LactPink, modifier = Modifier.size(22.dp))
@@ -934,7 +935,14 @@ fun AddFeedingDialog(
                     androidx.compose.animation.AnimatedVisibility(visible = (selectedSide == BreastSide.FORMULA && campoActivo >= 3) || (selectedSide != BreastSide.FORMULA && campoActivo >= 2)) {
                         CampoTextoAccesible(
                             valor = notes,
-                            onValorChange = { notes = it },
+                            onValorChange = { spoken ->
+                                val clean = spoken.lowercase().trim()
+                                if (clean.contains("guardar") || clean.contains("save") || clean == "listo") {
+                                    guardarTodo()
+                                } else {
+                                    notes = spoken
+                                }
+                            },
                             etiqueta = "Notas (opcional)",
                             descripcionVoz = if (idioma == IdiomaVoz.INGLES) "All required fields complete. This note field is optional. Say your note, or say save to save." else "Todos los datos requeridos completos. Este campo de notas es opcional. Puedes dictar tu nota, o decir guardar para finalizar y guardar la toma.",
                             ttsManager = ttsManager,

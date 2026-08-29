@@ -39,9 +39,14 @@ class AlertaViewModel : ViewModel() {
         viewModelScope.launch {
             _cargando.value = true
             try {
-                repo.guardar(alerta)
-                AlertaScheduler.programar(alerta = alerta)
-                _uiState.value = AlertaUiState.Saved
+                val res = repo.guardar(alerta)
+                if (res.isSuccess) {
+                    AlertaScheduler.programar(alerta = alerta)
+                    _uiState.value = AlertaUiState.Saved
+                } else {
+                    val err = res.exceptionOrNull()?.message ?: "Error al guardar"
+                    _uiState.value = AlertaUiState.Error(err)
+                }
             } catch (e: Exception) {
                 _uiState.value = AlertaUiState.Error(e.message ?: "Error al guardar")
             } finally {
@@ -53,9 +58,14 @@ class AlertaViewModel : ViewModel() {
     fun eliminar(alerta: Alerta) {
         viewModelScope.launch {
             try {
-                repo.eliminar(alerta.childId, alerta.id)
-                AlertaScheduler.cancelar(alertaId = alerta.id)
-                _uiState.value = AlertaUiState.Deleted
+                val res = repo.eliminar(alerta.childId, alerta.id)
+                if (res.isSuccess) {
+                    AlertaScheduler.cancelar(alertaId = alerta.id)
+                    _uiState.value = AlertaUiState.Deleted
+                } else {
+                    val err = res.exceptionOrNull()?.message ?: "Error al eliminar"
+                    _uiState.value = AlertaUiState.Error(err)
+                }
             } catch (e: Exception) {
                 _uiState.value = AlertaUiState.Error(e.message ?: "Error al eliminar")
             }
@@ -66,8 +76,13 @@ class AlertaViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val nueva = alerta.copy(activa = !alerta.activa)
-                repo.toggleActiva(alerta.childId, alerta.id, nueva.activa)
-                AlertaScheduler.programar(alerta = nueva)
+                val res = repo.toggleActiva(alerta.childId, alerta.id, nueva.activa)
+                if (res.isSuccess) {
+                    AlertaScheduler.programar(alerta = nueva)
+                } else {
+                    val err = res.exceptionOrNull()?.message ?: "Error"
+                    _uiState.value = AlertaUiState.Error(err)
+                }
             } catch (e: Exception) {
                 _uiState.value = AlertaUiState.Error(e.message ?: "Error")
             }
