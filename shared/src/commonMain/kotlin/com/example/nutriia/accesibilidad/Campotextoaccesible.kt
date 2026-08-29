@@ -746,31 +746,6 @@ fun CampoTextoAccesible(
                             Text("Borrar y repetir", color = Color.Gray, fontSize = 12.sp)
                         }
                     }
-
-                    if (activo && onNext != null) {
-                        Spacer(Modifier.height(10.dp))
-                        Button(
-                            onClick = {
-                                vibrateSuccess(haptic)
-                                voiceManager?.detener()
-                                onNext.invoke()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(46.dp)
-                                .semantics { contentDescription = "Confirmar y continuar. Toca aquí para avanzar o guardar." }
-                        ) {
-                            Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                if (etiqueta.contains("Notas", ignoreCase = true) || etiqueta.contains("opcional", ignoreCase = true)) "Guardar Registro" else "Confirmar y Continuar",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
                 }
             }
 
@@ -1001,13 +976,13 @@ private fun iniciarEscuchaConReintento(
 
         if (pareceComando && !isFinal) return@escuchar
 
-        val isSkip = command.contains("no lo tengo") || command.contains("no tengo") || command == "no" || 
-                     command.contains("don't have it") || command.contains("dont have it") || command == "skip" || 
-                     command == "omitir" || command.contains("sin notas") || command == "ninguna" || command == "nada" || command == "ninguno"
-        val isSave = command.contains("guardar") || command.contains("save") || command.contains("finalizar") || 
-                     command.contains("terminar") || command.contains("enviar") || command.contains("send") || 
-                     command == "listo" || command == "ready"
-        val isNext = command == "siguiente" || command == "continuar" || command == "next" || command == "continue" || command == "ok"
+        val isSave = command == "guardar" || command == "save" || command == "guardar alimento" || 
+                     command == "guardar registro" || command == "guardar toma" || command == "guardar alerta" || 
+                     command == "guardar medición" || command == "guardar todo" || command.startsWith("guardar ")
+        val isSkip = command == "no lo tengo" || command == "no tengo" || command == "don't have it" || 
+                     command == "dont have it" || command == "skip" || command == "omitir" || 
+                     command == "sin notas" || command == "ninguna"
+        val isNext = command == "siguiente" || command == "continuar" || command == "next" || command == "continue"
 
         if (isSave) {
             voiceManager?.detener()
