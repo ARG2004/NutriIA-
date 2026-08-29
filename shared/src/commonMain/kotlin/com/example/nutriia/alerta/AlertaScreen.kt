@@ -852,6 +852,7 @@ private fun AlertaDialog(
             }
         }
     }
+}
 
     LaunchedEffect(campoActivo) {
         valorInicial = when (campoActivo) {

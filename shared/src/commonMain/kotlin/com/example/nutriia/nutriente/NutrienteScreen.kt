@@ -358,10 +358,11 @@ fun NutrientesScreen(
 
         if (mostrarForm) {
             AgregarRegistroDialog(
-                childId   = childId,
-                fecha     = fecha,
-                mesesEdad = mesesEdad,
-                nivel     = nivel,
+                childId     = childId,
+                fecha       = fecha,
+                mesesEdad   = mesesEdad,
+                nivel       = nivel,
+                region      = region,
                 esAccesible = esAccesible,
                 esBlind     = esBlind,
                 ttsManager  = ttsManager,
@@ -718,7 +719,7 @@ private fun AgregarRegistroDialog(
     fecha:     String,
     mesesEdad: Int,
     nivel:     NivelIngreso,
-    region:      RegionMexico,
+    region:    RegionMexico = RegionMexico.PUEBLA,
     esAccesible: Boolean   = false,
     esBlind:     Boolean   = false,
     ttsManager: NutriTTS? = null,
@@ -729,6 +730,7 @@ private fun AgregarRegistroDialog(
     val comidas      = listOf("Desayuno", "Media mañana", "Almuerzo", "Merienda", "Cena")
     var comida       by remember { mutableStateOf(comidas[0]) }
     var alimento     by remember { mutableStateOf("") }
+    var notas        by remember { mutableStateOf("") }
     var mostrarNutri by remember { mutableStateOf(false) }
     val solidosList  by remember(childId) {
         com.example.nutriia.solidos.SolidosRepository().observarAlimentos(childId)
