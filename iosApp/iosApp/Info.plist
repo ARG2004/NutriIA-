@@ -17,7 +17,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>2.4.4</string>
 	<key>CFBundleVersion</key>
-	<string>170</string>
+	<string>171</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
@@ -107,4 +107,5 @@
 	<string>NutrIA necesita acceso a la red local para mejorar la calidad de las teleconsultas en casa</string>
 </dict>
 </plist>
+
 
