@@ -141,7 +141,7 @@ jobs:
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
             security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
             
-            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "171")
+            BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' iosApp/iosApp/Info.plist 2>/dev/null || echo "172")
             MARKETING_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' iosApp/iosApp/Info.plist 2>/dev/null || echo "2.4.4")
             
             xcodebuild archive \
@@ -199,6 +199,7 @@ jobs:
           name: NutriIA-iOS-dSYMs
           path: ${{ runner.temp }}/NutriIA.xcarchive/dSYMs/
           if-no-files-found: warn
+
 
 
 
