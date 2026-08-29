@@ -1313,6 +1313,7 @@ private fun AgregarAlimentoDialog(
     onDismiss:   () -> Unit,
     onSave:      (AlimentoIntroducido) -> Unit
 ) {
+    val scope    = rememberCoroutineScope()
     var nombre   by remember { mutableStateOf("") }
     var grupo    by remember { mutableStateOf(GrupoAlimento.VERDURAS) }
     var fecha    by remember { mutableStateOf(FechaUtils.fechaActual()) }
@@ -1464,8 +1465,12 @@ private fun AgregarAlimentoDialog(
                                 if (matched != null) {
                                     grupo = matched
                                     grupoTexto = matched.label
-                                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Selected: ${matched.label}" else "Seleccionado: ${matched.label}")
-                                    campoActivo = 3
+                                    scope.launch {
+                                        if (ttsManager != null) {
+                                            ttsManager.hablarYEsperar(if (idioma == IdiomaVoz.INGLES) "Selected: ${matched.label}" else "Seleccionado: ${matched.label}", margenMs = 600L)
+                                        } else delay(1200L)
+                                        campoActivo = 3
+                                    }
                                 }
                             },
                             etiqueta       = "Grupo alimenticio",
@@ -1525,8 +1530,12 @@ private fun AgregarAlimentoDialog(
                                 if (matched != null) {
                                     reaccion = matched
                                     reaccionTexto = matched.label
-                                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Selected: ${matched.label}" else "Seleccionado: ${matched.label}")
-                                    campoActivo = 4
+                                    scope.launch {
+                                        if (ttsManager != null) {
+                                            ttsManager.hablarYEsperar(if (idioma == IdiomaVoz.INGLES) "Selected: ${matched.label}" else "Seleccionado: ${matched.label}", margenMs = 600L)
+                                        } else delay(1200L)
+                                        campoActivo = 4
+                                    }
                                 }
                             },
                             etiqueta       = "Reacción observada",
@@ -1535,6 +1544,7 @@ private fun AgregarAlimentoDialog(
                             idioma         = idioma,
                             colorPrimario  = Sol.Orange,
                             activo         = campoActivo == 3,
+                            onFocus        = { campoActivo = 3 },
                             onNext         = { campoActivo = 4 }
                         )
                     } else {
