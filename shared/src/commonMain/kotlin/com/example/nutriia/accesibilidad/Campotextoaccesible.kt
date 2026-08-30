@@ -28,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-import kotlin.time.TimeSource
 
 enum class InputModoCiego { TECLADO, VOZ, BRAILLE, SENAS }
 
@@ -921,11 +920,6 @@ fun iniciarEscuchaConReintento(
     voiceManager?.errorMsg?.value    = ""
     voiceManager?.errorCodigo?.value = -1
 
-    // Marca de tiempo al abrir el micrófono.
-    // Resultados que lleguen dentro de los primeros 1500ms son eco del altavoz, no la voz del usuario.
-    val micAbrioEn = TimeSource.Monotonic.markNow()
-    val guardaMs   = 1500L
-
     voiceManager?.escuchar(idioma, modoAccesible) { texto, isFinal ->
         val command = texto.lowercase().trim()
         
@@ -1004,20 +998,13 @@ fun iniciarEscuchaConReintento(
             return@escuchar
         }
 
-        // ── Ventana anti-eco: ignorar resultados que lleguen muy rápido tras abrir el mic ──
-        // Los primeros 1500ms tras abrir el micrófono son muy probablemente el eco del altavoz.
-        // La voz humana real llega después de procesar y reaccionar a la instrucción.
-        val tiempoDesdeApertura = micAbrioEn.elapsedNow().inWholeMilliseconds
-        if (tiempoDesdeApertura < guardaMs) {
-            // Eco del TTS: descartar silenciosamente sin actualizar el campo
-            return@escuchar
+        val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
+        if (resultado.isNotBlank()) {
+            onValorChange(resultado)
         }
 
-        val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
-        onValorChange(resultado)
-
         if (isFinal && resultado.isNotBlank() && onNext != null) {
-            // Validar formato correcto antes de avanzar (evita avanzar con resultados parciales)
+            // Validar formato correcto antes de avanzar
             val esValidoParaAvanzar = when {
                 esCampoFecha -> resultado.matches(Regex("""\d{2}/\d{2}/\d{4}"""))
                 esCampoHora  -> resultado.matches(Regex("""\d{2}:\d{2}"""))
@@ -1025,7 +1012,7 @@ fun iniciarEscuchaConReintento(
                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone -> resultado.toIntOrNull() != null
                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> resultado.toDoubleOrNull() != null
-                else -> resultado.isNotBlank()  // texto libre: avanza si hay algo
+                else -> resultado.isNotBlank()
             }
             if (esValidoParaAvanzar) {
                 voiceManager?.detener()

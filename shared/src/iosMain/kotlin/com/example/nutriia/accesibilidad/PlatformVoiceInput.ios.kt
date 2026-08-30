@@ -15,12 +15,45 @@ import platform.darwin.DISPATCH_TIME_NOW
 
 actual class PlatformVoiceInput actual constructor() {
 
-    private var audioEngine: AVAudioEngine? = null
-    private var speechRecognizer: SFSpeechRecognizer? = null
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
-    private var recognitionTask: SFSpeechRecognitionTask? = null
-    private var currentSilenceToken: Long = 0L
-    private var isListeningActive = false
+    companion object {
+        private var sharedAudioEngine: AVAudioEngine? = null
+        private var sharedSpeechRecognizer: SFSpeechRecognizer? = null
+        private var sharedRecognitionRequest: SFSpeechAudioBufferRecognitionRequest? = null
+        private var sharedRecognitionTask: SFSpeechRecognitionTask? = null
+        private var currentSilenceToken: Long = 0L
+        private var isListeningActive: Boolean = false
+
+        fun stopListeningGlobal() {
+            try {
+                isListeningActive = false
+                currentSilenceToken++
+
+                val engine = sharedAudioEngine
+                if (engine != null) {
+                    if (engine.isRunning()) {
+                        engine.stop()
+                    }
+                    try {
+                        engine.inputNode.removeTapOnBus(0u)
+                    } catch (_: Throwable) {}
+                    sharedAudioEngine = null
+                }
+
+                try {
+                    sharedRecognitionRequest?.endAudio()
+                } catch (_: Throwable) {}
+                sharedRecognitionRequest = null
+
+                try {
+                    sharedRecognitionTask?.cancel()
+                } catch (_: Throwable) {}
+                sharedRecognitionTask = null
+            } catch (t: Throwable) {
+                val msg = "⚠️ [PlatformVoiceInput] stopListeningGlobal error: ${t.message}"
+                NSLog("%s", msg)
+            }
+        }
+    }
 
     actual fun isAvailable(): Boolean {
         return try {
@@ -41,7 +74,7 @@ actual class PlatformVoiceInput actual constructor() {
         onError: (String) -> Unit
     ) {
         try {
-            stopListening()
+            stopListeningGlobal()
 
             // 1. Solicitar permisos de reconocimiento de voz y micrófono
             SFSpeechRecognizer.requestAuthorization { authStatus ->
@@ -66,7 +99,7 @@ actual class PlatformVoiceInput actual constructor() {
             }
         } catch (t: Throwable) {
             onError(t.message ?: "Error al solicitar permisos de voz")
-            stopListening()
+            stopListeningGlobal()
         }
     }
 
@@ -77,10 +110,12 @@ actual class PlatformVoiceInput actual constructor() {
         onError: (String) -> Unit
     ) {
         try {
+            stopListeningGlobal()
+
             val audioSession = AVAudioSession.sharedInstance()
             audioSession.setCategory(
                 category = AVAudioSessionCategoryPlayAndRecord,
-                mode = AVAudioSessionModeMeasurement,
+                mode = AVAudioSessionModeDefault,
                 options = AVAudioSessionCategoryOptionDefaultToSpeaker or AVAudioSessionCategoryOptionAllowBluetooth or AVAudioSessionCategoryOptionDuckOthers,
                 error = null
             )
@@ -90,22 +125,25 @@ actual class PlatformVoiceInput actual constructor() {
                 ?: SFSpeechRecognizer(locale = NSLocale(localeIdentifier = "es-MX"))
                 ?: SFSpeechRecognizer(locale = NSLocale(localeIdentifier = "es-ES"))
 
-            speechRecognizer = recognizer
+            sharedSpeechRecognizer = recognizer
 
             val request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = true
-            recognitionRequest = request
+            sharedRecognitionRequest = request
 
             val engine = AVAudioEngine()
-            audioEngine = engine
+            sharedAudioEngine = engine
 
             val inputNode = engine.inputNode
             val recordingFormat = inputNode.outputFormatForBus(0u)
 
-            inputNode.removeTapOnBus(0u)
+            try {
+                inputNode.removeTapOnBus(0u)
+            } catch (_: Throwable) {}
+
             inputNode.installTapOnBus(0u, bufferSize = 1024u, format = recordingFormat) { buffer, _ ->
                 if (buffer != null) {
-                    request.appendAudioPCMBuffer(buffer)
+                    sharedRecognitionRequest?.appendAudioPCMBuffer(buffer)
                 }
             }
 
@@ -115,7 +153,7 @@ actual class PlatformVoiceInput actual constructor() {
 
             var lastTranscription = ""
 
-            recognitionTask = recognizer?.recognitionTaskWithRequest(request) { result, error ->
+            sharedRecognitionTask = recognizer?.recognitionTaskWithRequest(request) { result, error ->
                 if (result != null) {
                     val text = result.bestTranscription.formattedString
                     lastTranscription = text
@@ -128,15 +166,15 @@ actual class PlatformVoiceInput actual constructor() {
                         if (result.isFinal()) {
                             currentSilenceToken++
                             onFinalResult(text)
-                            stopListening()
+                            stopListeningGlobal()
                         } else if (text.isNotBlank()) {
-                            // Detector de silencio para iOS: si no hay más voz por 1.5 segundos, finalizar
+                            // Detector de silencio para iOS: si no hay más voz por 1.2 segundos, finalizar
                             val thisToken = ++currentSilenceToken
-                            val delayNanoseconds = (1.5 * 1_000_000_000).toLong()
+                            val delayNanoseconds = (1.2 * 1_000_000_000).toLong()
                             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delayNanoseconds), dispatch_get_main_queue()) {
                                 if (thisToken == currentSilenceToken && isListeningActive && lastTranscription.isNotBlank()) {
                                     val finalPhrase = lastTranscription
-                                    stopListening()
+                                    stopListeningGlobal()
                                     onFinalResult(finalPhrase)
                                 }
                             }
@@ -145,49 +183,38 @@ actual class PlatformVoiceInput actual constructor() {
                 }
                 if (error != null) {
                     val desc = error.localizedDescription ?: ""
+                    val code = error.code.toLong()
+                    val domain = error.domain ?: ""
+
                     val isCancellation = desc.contains("cancel", ignoreCase = true) ||
-                                         error.code.toInt() == 216 ||
-                                         error.code.toInt() == 201 ||
-                                         desc.contains("216")
+                                         desc.contains("cancelad", ignoreCase = true) ||
+                                         desc.contains("canceló", ignoreCase = true) ||
+                                         code == 216L || code == 201L || code == 1110L ||
+                                         (domain.contains("kAFAssistantErrorDomain") && (code == 216L || code == 201L))
 
                     if (!isCancellation && isListeningActive) {
                         dispatch_async(dispatch_get_main_queue()) {
-                            onError(desc)
-                            stopListening()
+                            if (isListeningActive) {
+                                onError(desc)
+                                stopListeningGlobal()
+                            }
                         }
                     }
                 }
             }
         } catch (t: Throwable) {
+            val msg = "⚠️ [PlatformVoiceInput] iniciarReconocimiento error: ${t.message}"
+            NSLog("%s", msg)
             onError(t.message ?: "Error al inicializar micrófono")
-            stopListening()
+            stopListeningGlobal()
         }
     }
 
     actual fun stopListening() {
-        try {
-            isListeningActive = false
-            currentSilenceToken++
-
-            if (audioEngine?.isRunning() == true) {
-                audioEngine?.stop()
-            }
-            audioEngine?.inputNode?.removeTapOnBus(0u)
-            audioEngine = null
-
-            recognitionRequest?.endAudio()
-            recognitionRequest = null
-
-            recognitionTask?.cancel()
-            recognitionTask = null
-        } catch (t: Throwable) {
-            val msg = "⚠️ [PlatformVoiceInput] stopListening error: ${t.message}\n${t.stackTraceToString()}"
-            NSLog("%s", msg)
-            CrashStorage.saveCrash(msg)
-        }
+        stopListeningGlobal()
     }
 
     actual fun cancel() {
-        stopListening()
+        stopListeningGlobal()
     }
 }

@@ -1341,20 +1341,27 @@ private fun AgregarAlimentoDialog(
     var yaGuardando by remember { mutableStateOf(false) }
 
     val guardarTodo = {
-        if (!yaGuardando && nombre.isNotBlank()) {
-            yaGuardando = true
-            if (esBlind) {
-                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Saving food." else "Guardando alimento.")
-            }
-            onSave(
-                AlimentoIntroducido(
-                    nombre            = nombre.trim(),
-                    grupo             = grupo,
-                    fechaIntroduccion = fecha,
-                    reaccion          = reaccion,
-                    notas             = notas.trim()
+        if (!yaGuardando) {
+            if (nombre.isBlank()) {
+                if (esBlind) {
+                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Please dictate the food name first." else "Falta el nombre del alimento. Por favor díctalo primero.")
+                }
+                campoActivo = 0
+            } else {
+                yaGuardando = true
+                if (esBlind) {
+                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Saving food." else "Guardando alimento.")
+                }
+                onSave(
+                    AlimentoIntroducido(
+                        nombre            = nombre.trim(),
+                        grupo             = grupo,
+                        fechaIntroduccion = fecha,
+                        reaccion          = reaccion,
+                        notas             = notas.trim()
+                    )
                 )
-            )
+            }
         }
     }
 
