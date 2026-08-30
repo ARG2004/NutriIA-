@@ -312,9 +312,8 @@ fun NutriIAiOSApp() {
 
     LaunchedEffect(aiSubState.pagoCompletado) {
         if (aiSubState.pagoCompletado) {
-            toastMessage = "¡Suscripción IA Activada Exitosamente! 🎉"
+            toastMessage = "¡Suscripción IA Activada Exitosamente!"
             loginViewModel.recargarSesion()
-            aiSubVm.reset()
         }
     }
 
@@ -527,16 +526,6 @@ fun NutriIAiOSApp() {
         }
     }
 
-    // Manejar Deep Links globales (PayPal, etc.)
-    LaunchedEffect(Unit) {
-        DeepLinkManager.links.collect { url ->
-            if (url.startsWith("nutriia://pago-ia")) {
-                aiSubVm.procesarDeepLink(url, loginViewModel.uidUsuario)
-            } else if (url.startsWith("nutriia://pago")) {
-                paymentVm.procesarDeepLink(url)
-            }
-        }
-    }
 
     // Reactivar observación de llamadas al resumir la app en iOS
     LaunchedEffect(showResumeSplash) {

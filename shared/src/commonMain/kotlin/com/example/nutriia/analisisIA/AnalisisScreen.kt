@@ -158,14 +158,14 @@ fun AnalisisScreen(
         val sesion by loginVm.sesionState.collectAsState()
         val intentos = sesion.intentosIaDisponibles
         val subHasta = sesion.suscripcionIaVigenteHasta
-        val tieneSub = currentTimeMillis() < subHasta
+        val tieneSub = (subHasta > 0L && currentTimeMillis() < subHasta) || intentos >= 9999
         var showPaywall by remember { mutableStateOf(false) }
         val aiSubState by aiSubVm.state.collectAsState()
 
         LaunchedEffect(aiSubState.pagoCompletado) {
             if (aiSubState.pagoCompletado) {
+                showPaywall = false
                 loginVm.recargarSesion()
-                aiSubVm.reset()
             }
         }
 
@@ -356,7 +356,10 @@ fun AnalisisScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            val uid = loginVm.uidUsuario
+                            val uid = loginVm.uidUsuario.ifBlank {
+                                com.example.nutriia.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                                    ?: (com.example.nutriia.auth.SessionManager.obtenerUid() ?: "")
+                            }
                             if (uid.isNotBlank()) {
                                 aiSubVm.iniciarPago(uid)
                                 aiSubVm.abrirPayPalEnNavegador()

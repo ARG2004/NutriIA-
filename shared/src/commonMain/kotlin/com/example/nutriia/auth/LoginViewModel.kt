@@ -49,24 +49,22 @@ class LoginViewModel : ViewModel() {
     val ultimoResetIa: Long get() = _sesion.value.ultimoResetIa
 
     fun decrementarIntentoIaLocal() {
-        val uid = _sesion.value.uid
+        val uid = _sesion.value.uid.ifBlank {
+            repositorio.obtenerUsuarioActual()?.uid ?: ""
+        }
         if (uid.isBlank()) return
 
-        var actual = _sesion.value.intentosIaDisponibles
+        val actual = _sesion.value.intentosIaDisponibles
         val subHasta = _sesion.value.suscripcionIaVigenteHasta
-        val isExpired = subHasta > 0L && kotlinx.datetime.Clock.System.now().toEpochMilliseconds() > subHasta
-
-        if (isExpired && actual >= 9999) {
-            actual = 3
-            viewModelScope.launch {
-                repositorio.resetearIntentosDiarios(uid, kotlinx.datetime.Clock.System.now().toEpochMilliseconds())
-            }
-        }
+        val currentTime = com.example.nutriia.platform.currentTimeMillis()
+        val tieneSub = (subHasta > 0L && currentTime < subHasta) || actual >= 9999
+        if (tieneSub) return
 
         if (actual > 0) {
-            _sesion.value = _sesion.value.copy(intentosIaDisponibles = actual - 1)
+            val nuevoValor = actual - 1
+            _sesion.value = _sesion.value.copy(intentosIaDisponibles = nuevoValor)
             viewModelScope.launch {
-                repositorio.decrementarIntentoIa(uid, actual - 1)
+                repositorio.decrementarIntentoIa(uid, nuevoValor)
             }
         }
     }
@@ -166,8 +164,12 @@ class LoginViewModel : ViewModel() {
         }
     }
 
+    private var sesionListener: com.example.nutriia.firebase.firestore.ListenerRegistration? = null
+
     // ── Cerrar sesión ─────────────────────────────────────────────────────────
     fun cerrarSesion() {
+        sesionListener?.remove()
+        sesionListener = null
         viewModelScope.launch {
             repositorio.cerrarSesion()
             _estado.value = LoginUiState.Idle
@@ -178,81 +180,92 @@ class LoginViewModel : ViewModel() {
     fun resetEstado() { _estado.value = LoginUiState.Idle }
 
     fun recargarSesion() {
-        viewModelScope.launch {
-            val uid = _sesion.value.uid
-            if (uid.isNotEmpty()) {
-                cargarDatosSesion(uid, _sesion.value.rol, _sesion.value.email)
-            }
+        val uid = _sesion.value.uid.ifBlank { repositorio.obtenerUsuarioActual()?.uid ?: "" }
+        if (uid.isNotEmpty()) {
+            cargarDatosSesion(uid, _sesion.value.rol, _sesion.value.email)
         }
     }
 
     // ── Helper privado ────────────────────────────────────────────────────────
-    private suspend fun cargarDatosSesion(uid: String, rol: String, fallbackEmail: String) {
-        try {
-            val doc = FirebaseFirestore.getInstance()
-                .collection("usuarios")
-                .document(uid)
-                .get()
-                .await()
-            var intentosEnDb = 3
-            try { intentosEnDb = doc.getLong("intentosIaDisponibles")?.toInt() ?: 3 } catch (e: Exception) {}
-            
-            var ultimoReset = 0L
-            try { ultimoReset = doc.getTimestamp("ultimoResetIa")?.time ?: 0L } catch (e: Exception) {
-                try { ultimoReset = doc.getLong("ultimoResetIa") ?: 0L } catch (e2: Exception) {}
-            }
-            
-            val currentTime = com.example.nutriia.platform.currentTimeMillis()
-            
-            var suscripcionIaVigenteHasta = 0L
-            try { suscripcionIaVigenteHasta = doc.getTimestamp("suscripcionIaVigenteHasta")?.time ?: 0L } catch (e: Exception) {
-                try { suscripcionIaVigenteHasta = doc.getLong("suscripcionIaVigenteHasta") ?: 0L } catch (e2: Exception) {}
-            }
-            
-            var intentosFinales = intentosEnDb
-            var resetFinal = ultimoReset
-            val msEnUnDia = 24L * 60L * 60L * 1000L
-            
-            var necesitaGuardarEnBD = false
+    private fun cargarDatosSesion(uid: String, rol: String, fallbackEmail: String) {
+        sesionListener?.remove()
+        sesionListener = FirebaseFirestore.getInstance()
+            .collection("usuarios")
+            .document(uid)
+            .addSnapshotListener { doc, e ->
+                if (e != null || doc == null || !doc.exists) {
+                    _sesion.value = _sesion.value.copy(uid = uid, rol = rol, email = fallbackEmail)
+                    return@addSnapshotListener
+                }
 
-            // 1. Validar si la suscripción expiró
-            if (intentosFinales >= 9999 && suscripcionIaVigenteHasta > 0 && currentTime > suscripcionIaVigenteHasta) {
-                intentosFinales = 3
-                necesitaGuardarEnBD = true
+                val intentosEnDb = (doc.getLong("intentosIaDisponibles") ?: 3L).toInt()
+
+                var ultimoReset = doc.getTimestamp("ultimoResetIa")?.time ?: 0L
+                if (ultimoReset == 0L) {
+                    ultimoReset = doc.getLong("ultimoResetIa") ?: 0L
+                }
+                if (ultimoReset > 0L && ultimoReset < 100_000_000_000L) {
+                    ultimoReset *= 1000L
+                }
+
+                val currentTime = com.example.nutriia.platform.currentTimeMillis()
+
+                var suscripcionIaVigenteHasta = doc.getTimestamp("suscripcionIaVigenteHasta")?.time ?: 0L
+                if (suscripcionIaVigenteHasta == 0L) {
+                    suscripcionIaVigenteHasta = doc.getLong("suscripcionIaVigenteHasta") ?: 0L
+                }
+                if (suscripcionIaVigenteHasta > 0L && suscripcionIaVigenteHasta < 100_000_000_000L) {
+                    suscripcionIaVigenteHasta *= 1000L
+                }
+
+                val tieneSubActiva = (suscripcionIaVigenteHasta > 0L && currentTime < suscripcionIaVigenteHasta) || intentosEnDb >= 9999
+
+                var intentosFinales = intentosEnDb
+                var resetFinal = ultimoReset
+                var necesitaGuardarEnBD = false
+
+                // 1. Validar si la suscripción expiró
+                if (intentosEnDb >= 9999 && suscripcionIaVigenteHasta > 0L && currentTime > suscripcionIaVigenteHasta) {
+                    intentosFinales = 3
+                    necesitaGuardarEnBD = true
+                }
+
+                val tz = kotlinx.datetime.TimeZone.currentSystemDefault()
+                val now = kotlinx.datetime.Clock.System.now()
+                val today = now.toLocalDateTime(tz).date
+
+                val lastResetDate = if (ultimoReset > 0L) {
+                    try {
+                        kotlinx.datetime.Instant.fromEpochMilliseconds(ultimoReset).toLocalDateTime(tz).date
+                    } catch (_: Exception) { null }
+                } else null
+
+                // 2. Validar si es un nuevo día (solo para usuarios sin suscripción activa)
+                if (!tieneSubActiva) {
+                    if (lastResetDate == null || lastResetDate != today) {
+                        intentosFinales = 3
+                        resetFinal = now.toEpochMilliseconds()
+                        necesitaGuardarEnBD = true
+                    }
+                }
+
+                _sesion.value = UsuarioSesion(
+                    uid      = uid,
+                    nombre   = doc.getString("nombre")   ?: "",
+                    email    = doc.getString("email")    ?: fallbackEmail,
+                    telefono = doc.getString("telefono") ?: "",
+                    rol      = doc.getString("rol")      ?: rol,
+                    intentosIaDisponibles = intentosFinales,
+                    suscripcionIaVigenteHasta = suscripcionIaVigenteHasta,
+                    ultimoResetIa = resetFinal
+                )
+
+                if (necesitaGuardarEnBD) {
+                    viewModelScope.launch {
+                        repositorio.resetearIntentosDiarios(uid, resetFinal)
+                    }
+                }
             }
-
-            val tz = kotlinx.datetime.TimeZone.currentSystemDefault()
-            val now = kotlinx.datetime.Clock.System.now()
-            val today = now.toLocalDateTime(tz).date
-            
-            val lastResetDate = if (ultimoReset > 0L) {
-                kotlinx.datetime.Instant.fromEpochMilliseconds(ultimoReset).toLocalDateTime(tz).date
-            } else null
-
-            // 2. Validar si es un nuevo día
-            if (lastResetDate == null || lastResetDate != today) {
-                if (intentosFinales < 9999) intentosFinales = 3
-                resetFinal = now.toEpochMilliseconds()
-                necesitaGuardarEnBD = true
-            }
-
-            if (necesitaGuardarEnBD) {
-                repositorio.resetearIntentosDiarios(uid, resetFinal)
-            }
-
-            _sesion.value = UsuarioSesion(
-                uid      = uid,
-                nombre   = doc.getString("nombre")   ?: "",
-                email    = doc.getString("email")    ?: fallbackEmail,
-                telefono = doc.getString("telefono") ?: "",
-                rol      = doc.getString("rol")      ?: rol,
-                intentosIaDisponibles = intentosFinales,
-                suscripcionIaVigenteHasta = suscripcionIaVigenteHasta,
-                ultimoResetIa = resetFinal
-            )
-        } catch (e: Exception) {
-            _sesion.value = _sesion.value.copy(uid = uid, rol = rol, email = fallbackEmail)
-        }
     }
 
     fun hayHuellaDisponible(context: Any? = null): Boolean {

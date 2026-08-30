@@ -80,15 +80,15 @@ fun NutriChatScreen(
     val sesion by loginVm.sesionState.collectAsState()
     val intentos = sesion.intentosIaDisponibles
     val subHasta = sesion.suscripcionIaVigenteHasta
-    val tieneSub = currentTimeMillis() < subHasta
+    val tieneSub = (subHasta > 0L && currentTimeMillis() < subHasta) || intentos >= 9999
     var showPaywall by remember { mutableStateOf(false) }
 
     val aiSubState by aiSubVm.state.collectAsState()
 
     LaunchedEffect(aiSubState.pagoCompletado) {
         if (aiSubState.pagoCompletado) {
+            showPaywall = false
             loginVm.recargarSesion()
-            aiSubVm.reset()
         }
     }
 
@@ -166,6 +166,19 @@ fun NutriChatScreen(
                         Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = NutriaGreen)
                         Spacer(Modifier.width(8.dp))
                         Text(if (esModoEmbarazo) "NutriBot Embarazo" else "NutriBot", fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            color = if (tieneSub) Color(0xFFE8F5E9) else (if (intentos > 0) Color(0xFFFFF3E0) else Color(0xFFFFEBEE)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = if (tieneSub) "ILIMITADO" else "$intentos/3 hoy",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (tieneSub) Color(0xFF2E7D32) else (if (intentos > 0) Color(0xFFE65100) else Color(0xFFC62828)),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -525,7 +538,10 @@ fun NutriChatScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val uid = loginVm.uidUsuario
+                        val uid = loginVm.uidUsuario.ifBlank {
+                            com.example.nutriia.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                                ?: (com.example.nutriia.auth.SessionManager.obtenerUid() ?: "")
+                        }
                         if (uid.isNotBlank()) {
                             aiSubVm.iniciarPago(uid)
                             aiSubVm.abrirPayPalEnNavegador()

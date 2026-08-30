@@ -31,8 +31,12 @@ class AISubscriptionViewModel : ViewModel() {
         const val DEEP_LINK_CANCEL  = "nutriia://pago-ia-cancel"
     }
 
-    fun iniciarPago(uid: String) {
-        val transId = "ai_sub_${uid}_${currentTimeMillis()}"
+    fun iniciarPago(uid: String = "") {
+        val finalUid = uid.ifBlank {
+            com.example.nutriia.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                ?: (com.example.nutriia.auth.SessionManager.obtenerUid() ?: "")
+        }
+        val transId = "ai_sub_${finalUid}_${currentTimeMillis()}"
         _state.value = _state.value.copy(
             cargando = false,
             transactionId = transId,
@@ -48,10 +52,14 @@ class AISubscriptionViewModel : ViewModel() {
         openUrl(url)
     }
 
-    fun procesarDeepLink(uriStr: String, uid: String) {
+    fun procesarDeepLink(uriStr: String, uid: String = "") {
+        val finalUid = uid.ifBlank {
+            com.example.nutriia.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                ?: (com.example.nutriia.auth.SessionManager.obtenerUid() ?: "")
+        }
         when {
             uriStr.startsWith(DEEP_LINK_SUCCESS) || uriStr.contains("pago-ia-ok") -> {
-                onPagoExitoso(uid)
+                onPagoExitoso(finalUid)
             }
             uriStr.startsWith(DEEP_LINK_CANCEL) || uriStr.contains("pago-ia-cancel") -> {
                 onPagoCancelado()

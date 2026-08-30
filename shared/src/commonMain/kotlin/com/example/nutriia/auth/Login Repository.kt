@@ -577,6 +577,8 @@ class RepositorioLogin {
         }
     }
 
+
+
     fun cerrarSesionRapida() {
         // No hace nada con Auth ni Firestore por diseño para permitir re-login con huella
     }
@@ -643,9 +645,9 @@ class RepositorioLogin {
 
     suspend fun decrementarIntentoIa(uid: String, intentosRestantes: Int): Boolean {
         return try {
-            val nuevoValor = if (intentosRestantes > 0) intentosRestantes - 1 else 0
+            val valorFinal = if (intentosRestantes < 0) 0 else intentosRestantes
             db.collection("usuarios").document(uid).update(
-                mapOf("intentosIaDisponibles" to nuevoValor)
+                mapOf("intentosIaDisponibles" to valorFinal)
             ).await()
             true
         } catch (e: Exception) {
@@ -658,7 +660,7 @@ class RepositorioLogin {
             db.collection("usuarios").document(uid).update(
                 mapOf(
                     "intentosIaDisponibles" to 3,
-                    "ultimoResetIa" to com.example.nutriia.shared.Timestamp(nuevoReset / 1000, ((nuevoReset % 1000) * 1000000).toInt())
+                    "ultimoResetIa" to nuevoReset
                 )
             ).await()
             true
@@ -673,7 +675,10 @@ class RepositorioLogin {
             val treintaDiasMilis = 30L * 24 * 60 * 60 * 1000
             val vigenteHasta = currentTimeMillis() + treintaDiasMilis
             db.collection("usuarios").document(uid).update(
-                mapOf("suscripcionIaVigenteHasta" to vigenteHasta)
+                mapOf(
+                    "suscripcionIaVigenteHasta" to vigenteHasta,
+                    "intentosIaDisponibles" to 9999
+                )
             ).await()
             true
         } catch (e: Exception) {
@@ -704,5 +709,3 @@ class RepositorioLogin {
         }
     }
 }
-
-
