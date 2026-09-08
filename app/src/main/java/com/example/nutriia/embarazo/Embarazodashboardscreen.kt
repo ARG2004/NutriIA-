@@ -107,61 +107,74 @@ fun EmbarazoDashboardScreen(
     LaunchedEffect(isListening) {
         if (isListening && a11yMode == AccessibilityMode.BLIND) {
             val guia = loc(
-                "Te escucho. Puedes decir: Ginecólogo, Nutrición, Peso, Síntomas, Citas, NutriBot, Recordatorios, Ajustes, Ayuda o Salir. ¿Hacia qué módulo se va a dirigir?",
-                "I'm listening. You can say: Gynecologist, Nutrition, Weight, Symptoms, Appointments, NutriBot, Reminders, Settings, Help, or Logout. Which module would you like to open?"
+                "Te escucho. Puedes decir: Ginecólogo, Nutrición, Peso, Síntomas, Citas, NutriBot, Recordatorios, Ajustes o Salir. ¿A qué módulo deseas ir?",
+                "I'm listening. You can say: Gynecologist, Nutrition, Weight, Symptoms, Appointments, NutriBot, Reminders, Settings, or Logout. Which module would you like to open?"
             )
-            a11yVm.hablar(guia)
-            delay(9500)
+            if (ttsManager != null) {
+                ttsManager.hablarYEsperar(guia, margenMs = 500L)
+                ttsManager.silenciar()
+            } else {
+                a11yVm.hablar(guia)
+                delay(8000L)
+            }
+            delay(300L)
             voiceManager.escuchar(idiomaActual, true) { result, isFinal ->
                 if (!isFinal) return@escuchar
                 isListening = false
                 val cmd = result.lowercase(java.util.Locale.getDefault()).trim()
                 when {
-                    cmd.contains("ginec") || cmd.contains("gineco") || cmd.contains("medico") || cmd.contains("médico") -> {
+                    cmd.contains("ginec") || cmd.contains("gineco") || cmd.contains("medico") || cmd.contains("médico") || cmd.contains("doctor") || cmd.contains("doctora") -> {
                         a11yVm.hablar(loc("Abriendo vinculación con ginecólogo.", "Opening gynecologist pairing."))
                         onOpenVinculacionGinecologo()
                     }
-                    cmd.contains("nutricion") || cmd.contains("nutrición") || cmd.contains("alimentacion") || cmd.contains("alimentación") || cmd.contains("comida") -> {
+                    cmd.contains("nutricion") || cmd.contains("nutrición") || cmd.contains("alimentacion") || cmd.contains("alimentación") || cmd.contains("comida") || cmd.contains("dieta") || cmd.contains("receta") || cmd.contains("menu") || cmd.contains("menú") -> {
                         a11yVm.hablar(loc("Abriendo alimentación y plan de dieta.", "Opening nutrition and meal plan."))
                         onOpenNutricion()
                     }
-                    cmd.contains("peso") || cmd.contains("kilos") || cmd.contains("kg") || cmd.contains("ganancia") -> {
+                    cmd.contains("peso") || cmd.contains("kilos") || cmd.contains("kg") || cmd.contains("ganancia") || cmd.contains("pesar") -> {
                         a11yVm.hablar(loc("Abriendo control de peso.", "Opening weight control."))
                         showPesoSheet = true
+                        onOpenPeso()
                     }
-                    cmd.contains("sintoma") || cmd.contains("síntoma") || cmd.contains("reporte") -> {
+                    cmd.contains("sintoma") || cmd.contains("síntoma") || cmd.contains("sintomas") || cmd.contains("síntomas") || cmd.contains("reporte") || cmd.contains("malestar") || cmd.contains("nauseas") || cmd.contains("náuseas") -> {
                         a11yVm.hablar(loc("Abriendo registro de síntomas.", "Opening pregnancy symptoms log."))
                         showSintomasSheet = true
                         onOpenSintomas()
                     }
-                    cmd.contains("cita") || cmd.contains("agenda") || cmd.contains("calendario") -> {
+                    cmd.contains("cita") || cmd.contains("citas") || cmd.contains("agenda") || cmd.contains("calendario") || cmd.contains("consulta") || cmd.contains("consultas") -> {
                         a11yVm.hablar(loc("Abriendo citas médicas.", "Opening medical appointments."))
                         onOpenCitas()
                     }
-                    cmd.contains("nutribot") || cmd.contains("chat") || cmd.contains("pregunta") -> {
+                    cmd.contains("nutribot") || cmd.contains("chat") || cmd.contains("pregunta") || cmd.contains("preguntar") || cmd.contains("ia") || cmd.contains("asistente") -> {
                         a11yVm.hablar(loc("Abriendo chat con NutriBot.", "Opening chat with NutriBot."))
                         onOpenChatBot()
                     }
-                    cmd.contains("recordatorio") || cmd.contains("alarma") -> {
+                    cmd.contains("recordatorio") || cmd.contains("recordatorios") || cmd.contains("alarma") || cmd.contains("alarmas") || cmd.contains("aviso") -> {
                         a11yVm.hablar(loc("Abriendo recordatorios.", "Opening pregnancy reminders."))
                         onOpenRecordatorios()
                     }
-                    cmd.contains("ajustes") || cmd.contains("configuracion") || cmd.contains("configuración") -> {
+                    cmd.contains("análisis") || cmd.contains("analisis") || cmd.contains("diario") || cmd.contains("foto") -> {
+                        a11yVm.hablar(loc("Abriendo análisis inteligente.", "Opening smart analysis."))
+                        onOpenAnalisisIA()
+                    }
+                    cmd.contains("ajustes") || cmd.contains("configuracion") || cmd.contains("configuración") || cmd.contains("opciones") -> {
                         a11yVm.hablar(loc("Abriendo ajustes.", "Opening settings."))
                         onConfiguracion()
                     }
-                    cmd.contains("ayuda") -> {
+                    cmd.contains("ayuda") || cmd.contains("soporte") -> {
                         a11yVm.hablar(loc("Abriendo ayuda.", "Opening help."))
                         onConfiguracion()
                     }
-                    cmd.contains("salir") || cmd.contains("cerrar") -> {
+                    cmd.contains("salir") || cmd.contains("cerrar") || cmd.contains("logout") -> {
                         a11yVm.hablar(loc("Cerrando sesión.", "Logging out."))
                         onLogout()
                     }
-                    else -> a11yVm.hablar(loc(
-                        "No entendí el comando. Intenta decir ginecólogo, nutrición o citas.",
-                        "I didn't understand the command. Try saying gynecologist, nutrition, or appointments."
-                    ))
+                    else -> {
+                        a11yVm.hablar(loc(
+                            "No entendí el comando. Puedes decir: Ginecólogo, Nutrición, Peso, Síntomas, Citas o NutriBot.",
+                            "I didn't understand the command. You can say: Gynecologist, Nutrition, Weight, Symptoms, Appointments, or NutriBot."
+                        ))
+                    }
                 }
             }
         }
@@ -169,12 +182,7 @@ fun EmbarazoDashboardScreen(
 
     LaunchedEffect(Unit) {
         if (esBlind) {
-            a11yVm.hablar(
-                loc(
-                    "Bienvenida al panel de control de tu embarazo. Aquí puedes ver tu progreso de gestación, registrar peso, registrar síntomas y acceder a las recomendaciones.",
-                    "Welcome to your pregnancy dashboard. Here you can view your gestational progress, log weight, log symptoms, and access recommendations."
-                )
-            )
+            isListening = true
         }
     }
 

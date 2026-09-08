@@ -47,6 +47,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val _sesion = MutableStateFlow(UsuarioSesion())
     val sesionState: StateFlow<UsuarioSesion> = _sesion
 
+    private val _hijos = MutableStateFlow<List<ChildProfile>>(emptyList())
+    val hijos: StateFlow<List<ChildProfile>> = _hijos
+
+    private val _perfilEmbarazo = MutableStateFlow<PerfilEmbarazo?>(null)
+    val perfilEmbarazoState: StateFlow<PerfilEmbarazo?> = _perfilEmbarazo
+
     val uidUsuario:      String get() = _sesion.value.uid
     val nombreUsuario:   String get() = _sesion.value.nombre
     val emailUsuario:    String get() = _sesion.value.email
@@ -85,11 +91,12 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             val resultado = repositorio.login(email, contrasena)
             _estado.value = when (resultado) {
                 is ResultadoAuth.Exito -> {
-                    val hijos = if (resultado.rol == "padre")
+                    val listaHijos = if (resultado.rol == "padre")
                         repositorio.cargarHijos(resultado.uid)
                     else emptyList()
+                    _hijos.value = listaHijos
                     cargarDatosSesion(resultado.uid, resultado.rol, email)
-                    LoginUiState.Exito(rol = resultado.rol, hijos = hijos)
+                    LoginUiState.Exito(rol = resultado.rol, hijos = listaHijos)
                 }
                 is ResultadoAuth.Error -> LoginUiState.Error(resultado.mensaje)
             }
@@ -107,42 +114,60 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     fun verificarSesion(onResultado: (rol: String?, hijos: List<ChildProfile>) -> Unit) {
         viewModelScope.launch {
             if (SessionManager.obtenerUid(getApplication()) == null) {
+                _hijos.value = emptyList()
                 onResultado(null, emptyList())
                 return@launch
             }
             val sesion = repositorio.verificarSesionActiva()
             if (sesion == null) {
+                _hijos.value = emptyList()
                 onResultado(null, emptyList())
                 return@launch
             }
             val exito = sesion as? ResultadoAuth.Exito ?: run {
+                _hijos.value = emptyList()
                 onResultado(null, emptyList())
                 return@launch
             }
-            val hijos = if (exito.rol == "padre")
+            val listaHijos = if (exito.rol == "padre")
                 repositorio.cargarHijos(exito.uid)
             else emptyList()
+            _hijos.value = listaHijos
             val emailFirebase = repositorio.obtenerUsuarioActual()?.email ?: ""
             cargarDatosSesion(exito.uid, exito.rol, emailFirebase)
-            onResultado(exito.rol, hijos)
+            onResultado(exito.rol, listaHijos)
         }
     }
 
     // ── Guardar hijo ──────────────────────────────────────────────────────────
     fun guardarHijo(child: ChildProfile, onResult: (Boolean) -> Unit = {}) {
         val uid = repositorio.obtenerUsuarioActual()?.uid ?: run { onResult(false); return }
-        viewModelScope.launch { onResult(repositorio.guardarHijo(uid, child)) }
+        viewModelScope.launch { 
+            val exito = repositorio.guardarHijo(uid, child)
+            if (exito) {
+                val existentes = _hijos.value.filter { it.id != child.id }
+                _hijos.value = existentes + child
+                recargarHijos()
+            }
+            onResult(exito)
+        }
     }
 
     // ── Perfil Embarazo ───────────────────────────────────────────────────────
     fun guardarPerfilEmbarazo(perfil: PerfilEmbarazo, onResult: (Boolean) -> Unit = {}) {
         val uid = repositorio.obtenerUsuarioActual()?.uid ?: run { onResult(false); return }
-        viewModelScope.launch { onResult(repositorio.guardarPerfilEmbarazo(uid, perfil)) }
+        _perfilEmbarazo.value = perfil
+        viewModelScope.launch { 
+            val res = repositorio.guardarPerfilEmbarazo(uid, perfil)
+            onResult(res)
+        }
     }
 
     suspend fun cargarPerfilEmbarazo(): PerfilEmbarazo? {
         val uid = repositorio.obtenerUsuarioActual()?.uid ?: return null
-        return repositorio.cargarPerfilEmbarazo(uid)
+        val p = repositorio.cargarPerfilEmbarazo(uid)
+        _perfilEmbarazo.value = p
+        return p
     }
 
     // ── Recargar lista de hijos desde Firestore ───────────────────────────────
@@ -150,6 +175,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         val uid = repositorio.obtenerUsuarioActual()?.uid ?: return
         viewModelScope.launch {
             val hijosActualizados = repositorio.cargarHijos(uid)
+            _hijos.value = hijosActualizados
             val estadoActual = _estado.value
             if (estadoActual is LoginUiState.Exito) {
                 _estado.value = estadoActual.copy(hijos = hijosActualizados)
@@ -186,6 +212,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             repositorio.cerrarSesion()
             _estado.value = LoginUiState.Idle
             _sesion.value = UsuarioSesion()
+            _hijos.value = emptyList()
+            _perfilEmbarazo.value = null
         }
     }
 

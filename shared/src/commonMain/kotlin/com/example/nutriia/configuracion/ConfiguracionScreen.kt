@@ -1087,9 +1087,9 @@ private fun CfgToggleRow(
 @Composable
 private fun CfgA11yChip(modo: AccessibilityMode) {
     val (label, bg, fg) = when (modo) {
-        AccessibilityMode.NORMAL -> Triple("Normal",         Color(0xFFE8F5E9), CfgGreen)
-        AccessibilityMode.BLIND  -> Triple("Modo ciego",     Color(0xFFEDE7F6), Color(0xFF5E35B1))
-        AccessibilityMode.MUTE   -> Triple("Voz silenciada", Color(0xFFE0F2F1), Color(0xFF00695C))
+        AccessibilityMode.NORMAL -> Triple("Estándar",           Color(0xFFE8F5E9), CfgGreen)
+        AccessibilityMode.BLIND  -> Triple("Condición visual",    Color(0xFFEDE7F6), Color(0xFF5E35B1))
+        AccessibilityMode.MUTE   -> Triple("Condición auditiva",  Color(0xFFE0F2F1), Color(0xFF00695C))
     }
     Row(
         modifier = Modifier

@@ -31,16 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.R
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.utils.FechaUtils
-import com.example.nutriia.accesibilidad.NutriTTS
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
-import com.example.nutriia.accesibilidad.vibrateTap
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
@@ -240,17 +232,22 @@ fun NutrientesScreen(
         }
     }
 
-    LaunchedEffect(Unit) { 
-        visible = true 
+    LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(esBlind, idiomaActual) { 
         if (esBlind) {
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == IdiomaVoz.INGLES) "log what they ate" else "anotar lo que comió",
+                idioma = idiomaActual
+            )
             a11yVm.hablar(loc(
-                "Módulo de nutrición para $childName. Aquí puedes llevar el control de calorías y nutrientes del día. El botón para anotar lo que comió está en la parte inferior central.",
-                "Nutrition module for $childName. Here you can track daily calories and nutrients. The button to log what he ate is at the bottom center."
+                "Módulo de nutrición para $childName. Aquí puedes llevar el control de calorías y nutrientes del día. $orientacionBoton",
+                "Nutrition module for $childName. Here you can track daily calories and nutrients. $orientacionBoton"
             ))
         }
     }
 
     Scaffold(
+        modifier       = Modifier.radarHapticoBlind(context, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -271,21 +268,16 @@ fun NutrientesScreen(
                     visible = visible,
                     enter   = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300))
                 ) {
-                    ExtendedFloatingActionButton(
-                        onClick        = { mostrarForm = true },
-                        containerColor = Sol.Purple,
-                        contentColor   = Sol.White,
-                        shape          = RoundedCornerShape(20.dp),
-                        modifier       = Modifier.height(52.dp).shadow(
-                            8.dp, RoundedCornerShape(20.dp),
-                            ambientColor = Sol.Purple.copy(.35f),
-                            spotColor    = Sol.Purple.copy(.35f)
-                        )
-                    ) {
-                        Icon(Icons.Rounded.Add, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Anotar lo que comió", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
+                    BotonFlotanteAccesible(
+                        texto      = if (idiomaActual == IdiomaVoz.INGLES) "Log food" else "Anotar lo que comió",
+                        icono      = Icons.Rounded.Add,
+                        colorFondo = Sol.Purple,
+                        esBlind    = esBlind,
+                        ttsManager = ttsManager,
+                        a11yVm     = a11yVm,
+                        idioma     = idiomaActual,
+                        onClick    = { mostrarForm = true }
+                    )
                 }
             }
         },
@@ -755,6 +747,23 @@ private fun AgregarRegistroDialog(
         }
     }
 
+    // Palabras que NO deben guardarse como nombre de alimento
+    val palabrasComando = setOf(
+        "nada", "ninguno", "ninguna", "no se", "no sé", "vacío", "vacio",
+        "seleccionado", "selected", "guardando", "saving", "guardar", "save",
+        "desayuno", "almuerzo", "cena", "merienda", "media mañana", "snack",
+        "cancelar", "cancel", "continuar", "siguiente"
+    )
+
+    fun filtrarVozAlimento(texto: String): String {
+        val limpio = texto.trim()
+        // Si el texto dictado empieza con "seleccionado" o "selected" es un eco del TTS
+        if (limpio.lowercase().startsWith("seleccionado") || limpio.lowercase().startsWith("selected")) return alimento
+        // Si el texto es exactamente una palabra de comando, ignorar
+        if (palabrasComando.any { limpio.lowercase() == it }) return alimento
+        return limpio
+    }
+
     LaunchedEffect(alimento) {
         if (!esBlind || alimento.isBlank() || campoActivo != 0) return@LaunchedEffect
         if (alimento == valorInicial) return@LaunchedEffect
@@ -764,17 +773,31 @@ private fun AgregarRegistroDialog(
         }
     }
 
+    // Narrar instrucción al abrir el diálogo
+    LaunchedEffect(Unit) {
+        if (esBlind) {
+            ttsManager?.hablar(
+                if (idioma == IdiomaVoz.INGLES)
+                    "Food log dialog. First select the time of day by double tapping one of the options at the top: Breakfast, Mid morning, Lunch, Snack, or Dinner. Then say the food name."
+                else
+                    "Diálogo anotar alimento. Primero selecciona el momento del día tocando dos veces una de las opciones en la parte superior: Desayuno, Media mañana, Almuerzo, Merienda o Cena. Luego di el nombre del alimento."
+            )
+        }
+    }
+
     val guardarTodo = {
-        if (alimento.isNotBlank()) {
+        val alimentoFinal = alimento.trim()
+        val esComandoInvalido = palabrasComando.any { alimentoFinal.lowercase() == it }
+        if (alimentoFinal.isNotBlank() && !esComandoInvalido) {
             if (esBlind) {
-                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
+                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Saving food." else "Guardando alimento.")
             }
             onGuardar(
                 RegistroNutrientes(
                     childId  = childId,
                     fecha    = fecha,
                     comida   = comida,
-                    alimento = alimento,
+                    alimento = alimentoFinal,
                     macros   = Macronutrientes(
                         calorias      = calorias.toDoubleOrNull()  ?: 0.0,
                         proteinas     = proteinas.toDoubleOrNull() ?: 0.0,
@@ -789,6 +812,13 @@ private fun AgregarRegistroDialog(
                         zinc      = zinc.toDoubleOrNull()   ?: 0.0
                     )
                 )
+            )
+        } else if (esComandoInvalido && esBlind) {
+            ttsManager?.hablar(
+                if (idioma == IdiomaVoz.INGLES)
+                    "Please say the name of the food. Words like 'nothing' or 'selected' are not valid food names."
+                else
+                    "Por favor di el nombre del alimento. Palabras como 'nada' o 'seleccionado' no son nombres válidos."
             )
         }
     }
@@ -842,10 +872,13 @@ private fun AgregarRegistroDialog(
                     if (esAccesible) {
                         CampoTextoAccesible(
                             valor          = alimento,
-                            onValorChange  = { alimento = it },
+                            onValorChange  = { spoken -> alimento = filtrarVozAlimento(spoken) },
                             etiqueta       = loc("Nombre del alimento", "Food name"),
-                            descripcionVoz = loc("Di el nombre de lo que comió.", "Say the name of what he ate."),
-                            ttsManager     = ttsManager,
+                            descripcionVoz = loc(
+                                "Di el nombre del alimento o platillo que comió. Por ejemplo: pollo, arroz, leche.",
+                                "Say the name of the food or dish that was eaten. For example: chicken, rice, milk."
+                            ),
+                            ttsManager     = if (campoActivo == 0) ttsManager else null,
                             idioma         = idioma,
                             colorPrimario  = Sol.Purple,
                             activo         = campoActivo == 0,
@@ -885,17 +918,15 @@ private fun AgregarRegistroDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = { guardarTodo() },
-                enabled  = alimento.isNotBlank(),
-                colors   = ButtonDefaults.buttonColors(containerColor = Sol.Purple),
-                shape    = RoundedCornerShape(14.dp),
-                modifier = Modifier.height(44.dp)
-            ) {
-                Icon(Icons.Rounded.Check, null, Modifier.size(17.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(loc("Guardar", "Save"), fontWeight = FontWeight.Bold)
-            }
+            BotonConfirmarAccesible(
+                texto       = loc("Guardar", "Save"),
+                icono       = Icons.Rounded.Check,
+                colorFondo  = Sol.Purple,
+                habilitado  = alimento.isNotBlank(),
+                esBlind     = esBlind,
+                ttsManager  = ttsManager,
+                onClick     = { guardarTodo() }
+            )
         },
         dismissButton = { TextButton(onCerrar) { Text(loc("Cancelar", "Cancel"), color = Sol.TextMuted) } }
     )

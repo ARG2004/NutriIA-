@@ -1255,9 +1255,9 @@ fun EspecialistaBlindDialog(
 
     LaunchedEffect(Unit) {
         ttsManager?.hablarYEsperar(loc(
-            "Modo para personas ciegas activado. Vinculación de especialista. " +
+            "Modo para condición visual activado. Vinculación de especialista. " +
             "Di el código de tu nutriólogo o pediatra, o di cancelar para volver.",
-            "Blind mode activated. Specialist linking. " +
+            "Visual condition mode activated. Specialist linking. " +
             "Say your nutritionist or pediatrician's code, or say cancel to go back."
         ), 1000L)
     }

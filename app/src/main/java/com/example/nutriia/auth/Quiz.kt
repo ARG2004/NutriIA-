@@ -47,6 +47,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.state.ToggleableState
@@ -278,6 +279,7 @@ fun OnboardingQuizScreen(
     onCancel:                  () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val view    = LocalView.current
     val haptic  = LocalHapticFeedback.current
 
     val stepInicial = when {
@@ -311,7 +313,6 @@ fun OnboardingQuizScreen(
         )
     }
     val ttsManager = accessibilityVm.ttsManager
-    var mostrarDialogoTalkBack by remember { mutableStateOf(false) }
 
     val totalSteps = if (soloAccesibilidad) 1 else 7
 
@@ -319,7 +320,11 @@ fun OnboardingQuizScreen(
         0, 1 -> true
         2    -> profile.name.isNotBlank()
         3    -> profile.birthDate.length == 10
-        4    -> profile.weightKg.isNotBlank() && profile.heightCm.isNotBlank()
+        4    -> {
+            val w = profile.weightKg.toDoubleOrNull()
+            val h = profile.heightCm.toDoubleOrNull()
+            w != null && w > 0.0 && h != null && h > 0.0
+        }
         5    -> true
         6    -> true
         else -> true
@@ -349,12 +354,17 @@ fun OnboardingQuizScreen(
             4    -> loc(Voz.QUIZ_MEDIDAS,       VozEn.QUIZ_MEDIDAS)
             5    -> loc(Voz.QUIZ_CONDICIONES,   VozEn.QUIZ_CONDICIONES)
             6    -> loc(
-                "Último paso, lo prometo. Selecciona el ingreso familiar y la región de México donde vives. Cuando termines, toca el botón verde Finalizar registro al final.",
-                "Last step, I promise. Select your family income level and the region of Mexico where you live. When you're done, tap the green Finish registration button at the bottom."
+                "Último paso, lo prometo. Selecciona el ingreso familiar y la región de México donde vives.",
+                "Last step, I promise. Select your family income level and the region of Mexico where you live."
             )
             else -> ""
         }
-        if (texto.isNotEmpty()) accessibilityVm.hablar(texto)
+        val orientacion = if (currentStep == totalSteps - 1) {
+            orientacionBotonInferior(loc("finalizar registro", "finish registration"))
+        } else {
+            orientacionBotonInferior(loc("continuar", "continue"))
+        }
+        if (texto.isNotEmpty()) accessibilityVm.hablar("$texto $orientacion")
     }
 
     LaunchedEffect(currentStep, isNextEnabled) {
@@ -363,52 +373,14 @@ fun OnboardingQuizScreen(
         if (isNextEnabled) {
             if (currentStep in listOf(2, 3, 4)) {
                 accessibilityVm.hablar(loc(
-                    "Paso listo. El botón verde para continuar está al final de la pantalla.",
-                    "Step ready. The green continue button is at the bottom of the screen."
+                    "Paso listo. ${orientacionBotonInferior("continuar")}",
+                    "Step ready. ${orientacionBotonInferior("continue")}"
                 ))
             }
         }
     }
 
-    // ── Diálogo TalkBack ──────────────────────────────────────────────────────
-    if (mostrarDialogoTalkBack) {
-        AlertDialog(
-            onDismissRequest = { mostrarDialogoTalkBack = false },
-            icon  = { Icon(Icons.Rounded.Accessibility, null, tint = NutriaGreen, modifier = Modifier.size(32.dp)) },
-            title = { Text("Activar lector de pantalla", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Para que Android lea todo en voz alta activa TalkBack en Configuración.", fontSize = 14.sp, textAlign = TextAlign.Center, lineHeight = 20.sp)
-                    Surface(color = NutriaGreen.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp)) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Pasos:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
-                            Text("1. Toca \"Ir a Configuración\"", fontSize = 12.sp, color = Color.DarkGray)
-                            Text("2. Busca TalkBack o Lector de pantalla", fontSize = 12.sp, color = Color.DarkGray)
-                            Text("3. Actívalo y regresa a NutriIA", fontSize = 12.sp, color = Color.DarkGray)
-                        }
-                    }
-                    Text("Nutri/IA ya tiene voz propia. Funciona aunque no actives TalkBack.", fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { mostrarDialogoTalkBack = false; abrirConfiguracionTalkBack(context) },
-                    colors  = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
-                    shape   = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Rounded.Settings, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Ir a Configuración", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { mostrarDialogoTalkBack = false }) {
-                    Text("Continuar con voz de Nutri/IA", color = Color.Gray)
-                }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
-    }
+
 
     // ── Diálogo CANCELAR ──────────────────────────────────────────────────────
     AnimatedVisibility(
@@ -457,7 +429,12 @@ fun OnboardingQuizScreen(
         )
     }
 
-    Box(Modifier.fillMaxSize().background(NutriaBgCrema)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .radarHapticoBlind(context, selectedA11yMode == AccessibilityMode.BLIND)
+    ) {
         Column(
             modifier            = Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -529,13 +506,26 @@ fun OnboardingQuizScreen(
                                 idiomaActual   = idiomaActual,
                                 talkBackActivo = isTalkBackActive(context),
                                 onSelect       = { modo ->
-                                    vibrateTap(haptic)
+                                    triggerFeedbackAccesible(context, view)
                                     selectedA11yMode = modo
                                     accessibilityVm.setMode(modo)
-                                    if (modo == AccessibilityMode.BLIND && !isTalkBackActive(context))
-                                        mostrarDialogoTalkBack = true
+                                    val feedback = when (modo) {
+                                        AccessibilityMode.BLIND -> loc(
+                                            "Modo persona con condición visual seleccionado. NutriIA narrará todo por voz. ${orientacionBotonInferior("continuar")}",
+                                            "Visual condition mode selected. NutriIA will narrate everything by voice. ${orientacionBotonInferior("continue")}"
+                                        )
+                                        AccessibilityMode.MUTE -> loc(
+                                            "Modo persona con condición auditiva seleccionado. El teclado estará siempre visible. Toca el botón Continuar en la parte inferior para avanzar.",
+                                            "Hearing condition mode selected. The keyboard will always be visible. Tap the Continue button at the bottom to proceed."
+                                        )
+                                        else -> loc(
+                                            "Modo estándar seleccionado. Toca el botón verde Continuar en la parte inferior de la pantalla para avanzar.",
+                                            "Standard mode selected. Tap the green Continue button at the bottom of the screen to proceed."
+                                        )
+                                    }
+                                    accessibilityVm.hablar(feedback)
                                 },
-                                onIdiomaSelect = { idioma -> vibrateTap(haptic); accessibilityVm.setIdioma(idioma) }
+                                onIdiomaSelect = { idioma -> triggerFeedbackAccesible(context, view); accessibilityVm.setIdioma(idioma) }
                             )
                             1 -> StepBienvenida(isAddingChild, selectedA11yMode)
                             2 -> StepNombre(
@@ -581,7 +571,10 @@ fun OnboardingQuizScreen(
                                 nivelSeleccionado  = profile.nivelIngreso,
                                 regionSeleccionada = profile.region,
                                 onNivelChange      = { profile = profile.copy(nivelIngreso = it) },
-                                onRegionChange     = { profile = profile.copy(region = it) }
+                                onRegionChange     = { profile = profile.copy(region = it) },
+                                esBlind            = selectedA11yMode == AccessibilityMode.BLIND,
+                                ttsManager         = ttsManager,
+                                idiomaActual       = idiomaActual
                             )
                         }
                         Spacer(Modifier.height(20.dp))
@@ -599,22 +592,13 @@ fun OnboardingQuizScreen(
 
             Button(
                 onClick = {
-                    vibrateSuccess(haptic)
-                    if (selectedA11yMode == AccessibilityMode.BLIND) {
-                        accessibilityVm.hablar(
-                            when {
-                                soloAccesibilidad -> loc("Configuración guardada. Continuando.", "Settings saved. Continuing.")
-                                esFinalPaso       -> loc("Finalizando registro.", "Finishing registration.")
-                                else              -> loc("Avanzando al paso ${currentStep + 1}.", "Moving to step ${currentStep + 1}.")
-                            }
-                        )
-                    }
+                    triggerFeedbackAccesible(context, view)
                     if (soloAccesibilidad) {
                         accessibilityVm.setMode(selectedA11yMode)
                         onAccesibilidadCompletada()
                     } else if (currentStep < totalSteps - 1) {
                         goingForward = true
-                         currentStep++
+                        currentStep++
                     } else {
                         accessibilityVm.setMode(selectedA11yMode)
                         accessibilityVm.silenciar()
@@ -709,6 +693,7 @@ fun StepAccesibilidad(
     onSelect:       (AccessibilityMode) -> Unit,
     onIdiomaSelect: (IdiomaVoz) -> Unit
 ) {
+    val context = LocalContext.current
     QuizStepLayout(Icons.Rounded.Accessibility, NutriaGreen, "¿Cómo usas la app?", "Adaptamos Nutri/IA a tus necesidades") {
         AnimatedVisibility(visible = talkBackActivo) {
             Column {
@@ -716,7 +701,7 @@ fun StepAccesibilidad(
                     Row(Modifier.padding(12.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CheckCircle, null, tint = NutriaGreen, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text("TalkBack detectado — modo ciego activado.", fontSize = 12.sp, color = NutriaGreen, fontWeight = FontWeight.SemiBold)
+                        Text("TalkBack detectado — modo para condición visual activado.", fontSize = 12.sp, color = NutriaGreen, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -751,6 +736,34 @@ fun StepAccesibilidad(
                     }
                 }
                 if (isSelected) Icon(Icons.Rounded.CheckCircle, null, tint = NutriaGreen, modifier = Modifier.size(22.dp).semantics { contentDescription = "" })
+            }
+        }
+        if (!talkBackActivo) {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, NutriaGreen.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .background(NutriaGreen.copy(alpha = 0.04f))
+                    .clickable(onClickLabel = "Abrir ajustes de Android para activar lector TalkBack de Google") {
+                        abrirConfiguracionTalkBack(context)
+                    }
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "Lector de pantalla TalkBack de Google. Toca para abrir la configuración de accesibilidad de Android y activarlo si lo deseas."
+                    }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(40.dp).clip(CircleShape).background(NutriaGreen.copy(0.12f)), Alignment.Center) {
+                    Icon(Icons.Rounded.Settings, null, tint = NutriaGreen, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Lector TalkBack (Google)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                    Text("Toca para activar TalkBack en Ajustes de Android si lo prefieres", fontSize = 11.sp, color = Color.Gray)
+                }
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = NutriaGreen, modifier = Modifier.size(16.dp))
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -1382,25 +1395,40 @@ fun StepMedidas(
 
     var campoMedidaActivo by remember { mutableIntStateOf(0) }
     LaunchedEffect(weight) {
-        if ((modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) && weight.isNotBlank() && campoMedidaActivo == 0) {
-            kotlinx.coroutines.delay(600L)
-            if (weight.isNotBlank() && campoMedidaActivo == 0) campoMedidaActivo = 1
+        val wNum = weight.toDoubleOrNull()
+        if ((modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) && wNum != null && wNum > 0.0 && campoMedidaActivo == 0) {
+            kotlinx.coroutines.delay(2000L)
+            if (weight.toDoubleOrNull() != null && campoMedidaActivo == 0) campoMedidaActivo = 1
         }
     }
 
     QuizStepLayout(Icons.Rounded.MonitorWeight, Color(0xFF7E57C2), "Peso y talla actual", "Para calcular su curva de crecimiento") {
         if (modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) {
             CampoTextoAccesible(
-                valor = weight, onValorChange = onWeightChange, etiqueta = "Peso", descripcionVoz = descripcionVozPeso, placeholder = "Ej. 7.5",
-                ttsManager = if (campoMedidaActivo == 0) ttsManager else null, idioma = idioma, colorPrimario = Color(0xFF7E57C2),
+                valor = weight,
+                onValorChange = onWeightChange,
+                etiqueta = "Peso",
+                descripcionVoz = descripcionVozPeso,
+                placeholder = "Ej. 7.5",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                ttsManager = if (campoMedidaActivo == 0) ttsManager else null,
+                idioma = idioma,
+                colorPrimario = Color(0xFF7E57C2),
                 activo = campoMedidaActivo == 0,
                 onFocus = { campoMedidaActivo = 0 },
                 onNext = { campoMedidaActivo = 1 }
             )
             Spacer(Modifier.height(16.dp))
             CampoTextoAccesible(
-                valor = height, onValorChange = onHeightChange, etiqueta = "Talla", descripcionVoz = descripcionVozTalla, placeholder = "Ej. 68",
-                ttsManager = if (campoMedidaActivo == 1) ttsManager else null, idioma = idioma, colorPrimario = Color(0xFF7E57C2),
+                valor = height,
+                onValorChange = onHeightChange,
+                etiqueta = "Talla",
+                descripcionVoz = descripcionVozTalla,
+                placeholder = "Ej. 68",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                ttsManager = if (campoMedidaActivo == 1) ttsManager else null,
+                idioma = idioma,
+                colorPrimario = Color(0xFF7E57C2),
                 activo = campoMedidaActivo == 1,
                 onFocus = { campoMedidaActivo = 1 }
             )
@@ -1514,7 +1542,10 @@ fun StepIngresoRegion(
     nivelSeleccionado:  NivelIngreso,
     regionSeleccionada: RegionMexico,
     onNivelChange:      (NivelIngreso) -> Unit,
-    onRegionChange:     (RegionMexico) -> Unit
+    onRegionChange:     (RegionMexico) -> Unit,
+    esBlind:            Boolean   = false,
+    ttsManager:         NutriTTS? = null,
+    idiomaActual:       IdiomaVoz = IdiomaVoz.ESPANOL_MX
 ) {
     val nivelIconos = mapOf(
         NivelIngreso.BASICO     to Icons.Rounded.AccountBalanceWallet,
@@ -1532,7 +1563,15 @@ fun StepIngresoRegion(
         IQSectionHeader("Ingreso familiar mensual", Icons.Rounded.Payments)
         Spacer(Modifier.height(10.dp))
         NivelIngreso.entries.forEach { nivel ->
-            IQNivelCard(nivel = nivel, selected = nivel == nivelSeleccionado, icono = nivelIconos[nivel] ?: Icons.Rounded.Payments, onClick = { onNivelChange(nivel) })
+            IQNivelCard(
+                nivel      = nivel,
+                selected   = nivel == nivelSeleccionado,
+                icono      = nivelIconos[nivel] ?: Icons.Rounded.Payments,
+                esBlind    = esBlind,
+                ttsManager = ttsManager,
+                idioma     = idiomaActual,
+                onClick    = { onNivelChange(nivel) }
+            )
             Spacer(Modifier.height(8.dp))
         }
         IQFuenteNota("Rangos basados en el salario mínimo 2026: \$9,582/mes · CONASAMI (DOF 09/12/2025)")
@@ -1540,7 +1579,15 @@ fun StepIngresoRegion(
         IQSectionHeader("Región de México", Icons.Rounded.LocationOn)
         Spacer(Modifier.height(10.dp))
         regionesVisibles.forEach { reg ->
-            IQRegionCard(region = reg, selected = reg == regionSeleccionada, icono = regionIconos[reg] ?: Icons.Rounded.FiberManualRecord, onClick = { onRegionChange(reg) })
+            IQRegionCard(
+                region     = reg,
+                selected   = reg == regionSeleccionada,
+                icono      = regionIconos[reg] ?: Icons.Rounded.FiberManualRecord,
+                esBlind    = esBlind,
+                ttsManager = ttsManager,
+                idioma     = idiomaActual,
+                onClick    = { onRegionChange(reg) }
+            )
             Spacer(Modifier.height(8.dp))
         }
         IQFuenteNota("Las recetas se adaptan a ingredientes típicos de tu zona · ENIGH 2024 (INEGI)")
@@ -1562,15 +1609,32 @@ private fun IQSectionHeader(titulo: String, icono: ImageVector) {
 }
 
 @Composable
-private fun IQNivelCard(nivel: NivelIngreso, selected: Boolean, icono: ImageVector, onClick: () -> Unit) {
+private fun IQNivelCard(
+    nivel:      NivelIngreso,
+    selected:   Boolean,
+    icono:      ImageVector,
+    esBlind:    Boolean   = false,
+    ttsManager: NutriTTS? = null,
+    idioma:     IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onClick:    () -> Unit
+) {
     val borderColor by animateColorAsState(if (selected) NutriaGreen else IQ_Divider, tween(200), "nb")
     val bgColor     by animateColorAsState(if (selected) NutriaGreen.copy(0.07f) else IQ_CardBg, tween(200), "nbg")
     val iconTint    by animateColorAsState(if (selected) NutriaGreen else IQ_TextMid, tween(200), "ni")
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.5.dp, borderColor, RoundedCornerShape(16.dp))
-            .background(bgColor).clickable(onClickLabel = "Seleccionar ${nivel.label}") { onClick() }
+            .background(bgColor).clickable(onClickLabel = "Seleccionar ${nivel.label}") {
+                onClick()
+                if (esBlind) {
+                    val msg = if (idioma == IdiomaVoz.INGLES)
+                        "${nivel.label} selected. Budget for child: approximately ${nivel.presupuestoNinoMensual} pesos per month."
+                    else
+                        "${nivel.label} seleccionado. Presupuesto para niño: aproximadamente ${nivel.presupuestoNinoMensual} pesos al mes."
+                    ttsManager?.hablar(msg)
+                }
+            }
             .semantics(mergeDescendants = true) {
-                contentDescription = "${nivel.label}. ${nivel.rangoLabel}. Presupuesto niño: ${nivel.presupuestoNinoMensual} pesos al mes. " + if (selected) "Seleccionado." else "Toca para seleccionar."
+                contentDescription = "${nivel.label}. ${nivel.rangoLabel}. Presupuesto niño: ${nivel.presupuestoNinoMensual} pesos al mes. " + if (selected) "Seleccionado." else "Toca dos veces para seleccionar."
                 this.selected = selected
             }.padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1597,15 +1661,32 @@ private fun IQNivelCard(nivel: NivelIngreso, selected: Boolean, icono: ImageVect
 }
 
 @Composable
-private fun IQRegionCard(region: RegionMexico, selected: Boolean, icono: ImageVector, onClick: () -> Unit) {
+private fun IQRegionCard(
+    region:     RegionMexico,
+    selected:   Boolean,
+    icono:      ImageVector,
+    esBlind:    Boolean   = false,
+    ttsManager: NutriTTS? = null,
+    idioma:     IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onClick:    () -> Unit
+) {
     val borderColor by animateColorAsState(if (selected) NutriaGreen else IQ_Divider, tween(200), "rb")
     val bgColor     by animateColorAsState(if (selected) NutriaGreen.copy(0.07f) else IQ_CardBg, tween(200), "rbg")
     val iconTint    by animateColorAsState(if (selected) NutriaGreen else IQ_TextMid, tween(200), "ri")
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.5.dp, borderColor, RoundedCornerShape(16.dp))
-            .background(bgColor).clickable(onClickLabel = "Seleccionar región ${region.label}") { onClick() }
+            .background(bgColor).clickable(onClickLabel = "Seleccionar región ${region.label}") {
+                onClick()
+                if (esBlind) {
+                    val msg = if (idioma == IdiomaVoz.INGLES)
+                        "${region.label} region selected. ${region.estados}."
+                    else
+                        "Región ${region.label} seleccionada. ${region.estados}."
+                    ttsManager?.hablar(msg)
+                }
+            }
             .semantics(mergeDescendants = true) {
-                contentDescription = "Región ${region.label}. ${region.estados}. " + if (selected) "Seleccionada." else "Toca para seleccionar."
+                contentDescription = "Región ${region.label}. ${region.estados}. " + if (selected) "Seleccionada." else "Toca dos veces para seleccionar."
                 this.selected = selected
             }.padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically

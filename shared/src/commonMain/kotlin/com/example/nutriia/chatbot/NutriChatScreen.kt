@@ -122,13 +122,13 @@ fun NutriChatScreen(
             val analisisText = if (onNavigateToAnalisis != null) loc(" Además, arriba a la derecha tienes el botón de Análisis I A de alimentos por cámara.", " Also, at the top right you have the camera AI Food Analysis button.") else ""
             val introMsg = if (esModoEmbarazo) {
                 loc(
-                    "Bienvenida al chat de embarazo con NutriBot. Puedes hacer cualquier pregunta sobre tu gestación, síntomas o alimentación.$analisisText",
-                    "Welcome to NutriBot pregnancy chat. You can ask any questions about your pregnancy, symptoms or nutrition.$analisisText"
+                    "Chat con NutriBot. Di tu pregunta sobre tu embarazo, síntomas o alimentación.$analisisText",
+                    "NutriBot chat. Say your question about your pregnancy, symptoms, or nutrition.$analisisText"
                 )
             } else {
                 loc(
-                    "Bienvenido al chat con NutriBot. Habla cuando quieras y di enviar para enviar tu inquietud y recibir una respuesta.$analisisText",
-                    "Welcome to NutriBot chat. Talk when you want and say send to send your concern and get a response.$analisisText"
+                    "Chat con NutriBot. Di tu consulta y di enviar.$analisisText",
+                    "NutriBot chat. Say your question and say send.$analisisText"
                 )
             }
             a11yVm.hablar(introMsg)

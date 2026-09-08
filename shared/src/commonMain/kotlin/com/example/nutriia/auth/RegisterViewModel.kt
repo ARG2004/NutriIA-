@@ -37,6 +37,7 @@ class RegisterViewModel : ViewModel() {
             )
             _estado.value = when (resultado) {
                 is ResultadoAuth.Exito -> RegisterUiState.Exito(resultado.rol)
+                is ResultadoAuth.RequiereConsentimiento -> RegisterUiState.Exito(resultado.rol)
                 is ResultadoAuth.Error -> RegisterUiState.Error(resultado.mensaje)
             }
         }
@@ -58,6 +59,7 @@ class RegisterViewModel : ViewModel() {
             )
             _estado.value = when (resultado) {
                 is ResultadoAuth.Exito -> RegisterUiState.Exito(resultado.rol)
+                is ResultadoAuth.RequiereConsentimiento -> RegisterUiState.Exito(resultado.rol)
                 is ResultadoAuth.Error -> RegisterUiState.Error(resultado.mensaje)
             }
         }
@@ -89,6 +91,7 @@ class RegisterViewModel : ViewModel() {
             )
             _estado.value = when (resultado) {
                 is ResultadoAuth.Exito -> RegisterUiState.Exito(resultado.rol)
+                is ResultadoAuth.RequiereConsentimiento -> RegisterUiState.Exito(resultado.rol)
                 is ResultadoAuth.Error -> RegisterUiState.Error(resultado.mensaje)
             }
         }
@@ -120,6 +123,7 @@ class RegisterViewModel : ViewModel() {
             )
             _estado.value = when (resultado) {
                 is ResultadoAuth.Exito -> RegisterUiState.Exito(resultado.rol)
+                is ResultadoAuth.RequiereConsentimiento -> RegisterUiState.Exito(resultado.rol)
                 is ResultadoAuth.Error -> RegisterUiState.Error(resultado.mensaje)
             }
         }

@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -40,11 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.R
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.PerfilSaludNino
@@ -288,17 +286,21 @@ fun SolidosScreen(
 
     LaunchedEffect(uid, childId, ageMonths) { viewModel.init(uid, childId, ageMonths, sharedVm) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(esBlind, idiomaActual) {
         if (esBlind) {
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == IdiomaVoz.INGLES) "register food" else "registrar alimento",
+                idioma = idiomaActual
+            )
             a11yVm.hablar(
                 loc(
                     "Módulo de alimentación para $childName. " +
                             "Aquí puedes registrar alimentos introducidos, ver el plan semanal y explorar recetas. " +
-                            "El botón Registrar alimento está en la parte inferior central. " +
+                            "$orientacionBoton " +
                             "Las tres secciones son: Registrados, Plan semanal y Recetas.",
                     "Food module for $childName. " +
                             "Here you can log introduced foods, view the weekly plan, and browse recipes. " +
-                            "The Register food button is at the bottom center. " +
+                            "$orientacionBoton " +
                             "The three sections are: Registered, Weekly plan, and Recipes."
                 )
             )
@@ -310,7 +312,7 @@ fun SolidosScreen(
     var aEliminar   by remember { mutableStateOf<AlimentoIntroducido?>(null) }
     var aReaccion   by remember { mutableStateOf<AlimentoIntroducido?>(null) }
     var visible     by remember { mutableStateOf(false) }
-    val snackbar    = remember { SnackbarHostState() }
+    val snackbar    by remember { mutableStateOf(SnackbarHostState()) }
 
     LaunchedEffect(Unit) { visible = true }
     LaunchedEffect(uiState) {
@@ -366,6 +368,7 @@ fun SolidosScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.radarHapticoBlind(context, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -373,29 +376,16 @@ fun SolidosScreen(
                 visible = visible,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300))
             ) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        if (esBlind) a11yVm.hablar(
-                            loc(
-                                "Abriendo formulario para registrar alimento.",
-                                "Opening form to register food."
-                            )
-                        )
-                        showAgregar = true
-                    },
-                    containerColor = Sol.Orange,
-                    contentColor   = Sol.White,
-                    shape          = RoundedCornerShape(20.dp),
-                    modifier       = Modifier
-                        .height(52.dp)
-                        .shadow(8.dp, RoundedCornerShape(20.dp),
-                            ambientColor = Sol.Orange.copy(.35f),
-                            spotColor    = Sol.Orange.copy(.35f))
-                ) {
-                    Icon(Icons.Rounded.Add, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Registrar alimento", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
+                BotonFlotanteAccesible(
+                    texto          = if (idiomaActual == IdiomaVoz.INGLES) "Register food" else "Registrar alimento",
+                    icono          = Icons.Rounded.Add,
+                    colorFondo     = Sol.Orange,
+                    esBlind        = esBlind,
+                    ttsManager     = ttsManager,
+                    a11yVm         = a11yVm,
+                    idioma         = idiomaActual,
+                    onClick        = { showAgregar = true }
+                )
             }
         },
         floatingActionButtonPosition = FabPosition.Center
@@ -516,10 +506,11 @@ fun SolidosScreen(
 
     // ── Diálogo agregar — pasa esBlind, ttsManager e idioma ──────────────────
     if (showAgregar) AgregarAlimentoDialog(
-        esAccesible = esAccesible,
-        esBlind     = esBlind,
-        ttsManager  = ttsManager,
-        idioma     = idiomaActual,
+        esAccesible   = esAccesible,
+        esBlind       = esBlind,
+        ttsManager    = ttsManager,
+        idioma        = idiomaActual,
+        alergenosNino = alergenosNino,
         onDismiss  = {
             if (esBlind) a11yVm.hablar(loc("Registro cancelado.", "Registration cancelled."))
             showAgregar = false
@@ -1295,15 +1286,16 @@ private fun EstadoVacio(
 // ═══════════════════════════════════════════════════════════════════════════════
 @Composable
 private fun AgregarAlimentoDialog(
-    esAccesible: Boolean   = false,
-    esBlind:     Boolean   = false,
-    ttsManager:  NutriTTS? = null,
-    idioma:      IdiomaVoz = IdiomaVoz.ESPANOL_MX,
-    onDismiss:   () -> Unit,
-    onSave:      (AlimentoIntroducido) -> Unit
+    esAccesible:   Boolean       = false,
+    esBlind:       Boolean       = false,
+    ttsManager:    NutriTTS?     = null,
+    idioma:        IdiomaVoz     = IdiomaVoz.ESPANOL_MX,
+    alergenosNino: List<Alergeno> = emptyList(),
+    onDismiss:     () -> Unit,
+    onSave:        (AlimentoIntroducido) -> Unit
 ) {
     var nombre   by remember { mutableStateOf("") }
-    var grupo    by remember { mutableStateOf(GrupoAlimento.VERDURAS) }
+    var grupo    by remember { mutableStateOf(GrupoAlimento.PROTEINAS) }
     var fecha    by remember { mutableStateOf(FechaUtils.fechaActual()) }
     var reaccion by remember { mutableStateOf(ReaccionAlimento.NINGUNA) }
     var notas    by remember { mutableStateOf("") }
@@ -1327,21 +1319,106 @@ private fun AgregarAlimentoDialog(
 
 
 
+    // Estado para la advertencia de alergia
+    var mostrarAdvertenciaAlergia by remember { mutableStateOf(false) }
+    var alimentoPendiente by remember { mutableStateOf<AlimentoIntroducido?>(null) }
+
     val guardarTodo = {
         if (nombre.isNotBlank()) {
-            if (esBlind) {
-                ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar")
-            }
-            onSave(
-                AlimentoIntroducido(
-                    nombre            = nombre.trim(),
-                    grupo             = grupo,
-                    fechaIntroduccion = fecha,
-                    reaccion          = reaccion,
-                    notas             = notas.trim()
-                )
+            val alimentoAGuardar = AlimentoIntroducido(
+                nombre            = nombre.trim(),
+                grupo             = grupo,
+                fechaIntroduccion = fecha,
+                reaccion          = reaccion,
+                notas             = notas.trim()
             )
+            // Verificar si el alimento coincide con algún alérgeno del niño
+            val esAlergeno = alergenosNino.any { alergeno ->
+                nombre.trim().lowercase().contains(alergeno.label.lowercase()) ||
+                alergeno.label.lowercase().contains(nombre.trim().lowercase())
+            }
+            if (esAlergeno) {
+                alimentoPendiente = alimentoAGuardar
+                mostrarAdvertenciaAlergia = true
+                if (esBlind) {
+                    ttsManager?.hablar(
+                        if (idioma == IdiomaVoz.INGLES)
+                            "Warning! This food is a known allergen for this child. Do you want to register it anyway? There is a confirmation dialog on screen. Tap Confirm to proceed or Cancel to go back."
+                        else
+                            "¡Atención! Este alimento es un alérgeno conocido para este niño. ¿Deseas registrarlo de todas formas? Hay un diálogo de confirmación en pantalla. Toca dos veces Confirmar para continuar, o Cancelar para regresar."
+                    )
+                }
+            } else {
+                if (esBlind) {
+                    ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Saving food." else "Guardando alimento.")
+                }
+                onSave(alimentoAGuardar)
+            }
         }
+    }
+
+    // Diálogo de advertencia de alergia
+    if (mostrarAdvertenciaAlergia && alimentoPendiente != null) {
+        AlertDialog(
+            onDismissRequest = { mostrarAdvertenciaAlergia = false; alimentoPendiente = null },
+            shape          = RoundedCornerShape(24.dp),
+            containerColor = Color(0xFFFFF8E1),
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Warning, null, tint = Color(0xFFE65100), modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (idioma == IdiomaVoz.INGLES) "Allergen Warning" else "¡Advertencia de Alergia!",
+                        fontWeight = FontWeight.ExtraBold, color = Color(0xFFE65100), fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        if (idioma == IdiomaVoz.INGLES)
+                            "\"${alimentoPendiente!!.nombre}\" is registered as an allergen for this child. Registering it anyway could be dangerous."
+                        else
+                            "\"${alimentoPendiente!!.nombre}\" está registrado como alérgeno para este niño. Registrarlo puede ser peligroso.",
+                        fontSize = 14.sp, color = Color(0xFF5D4037), lineHeight = 20.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        if (idioma == IdiomaVoz.INGLES)
+                            "Only proceed if a doctor has authorized this introduction."
+                        else
+                            "Solo procede si un médico autorizó esta introducción.",
+                        fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFBF360C)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (esBlind) ttsManager?.hablar(if (idioma == IdiomaVoz.INGLES) "Confirmed. Saving food." else "Confirmado. Guardando alimento.")
+                        onSave(alimentoPendiente!!)
+                        mostrarAdvertenciaAlergia = false
+                        alimentoPendiente = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
+                    shape  = RoundedCornerShape(12.dp),
+                    modifier = Modifier.semantics { contentDescription = if (idioma == IdiomaVoz.INGLES) "Confirm. Toca dos veces to save despite allergy." else "Confirmar. Toca dos veces para guardar a pesar de la alergia." }
+                ) {
+                    Icon(Icons.Rounded.Check, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (idioma == IdiomaVoz.INGLES) "Register anyway" else "Registrar de todos modos", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { mostrarAdvertenciaAlergia = false; alimentoPendiente = null },
+                    border  = BorderStroke(1.5.dp, Color(0xFFBF360C)),
+                    shape   = RoundedCornerShape(12.dp)
+                ) {
+                    Text(if (idioma == IdiomaVoz.INGLES) "Cancel" else "Cancelar", color = Color(0xFFBF360C), fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 
     AlertDialog(
@@ -1585,17 +1662,15 @@ private fun AgregarAlimentoDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick  = { guardarTodo() },
-                modifier = Modifier.height(44.dp),
-                enabled  = nombre.isNotBlank(),
-                colors   = ButtonDefaults.buttonColors(containerColor = Sol.Orange),
-                shape    = RoundedCornerShape(14.dp)
-            ) {
-                Icon(Icons.Rounded.Check, null, Modifier.size(17.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Guardar", fontWeight = FontWeight.Bold)
-            }
+            BotonConfirmarAccesible(
+                texto       = if (idioma == IdiomaVoz.INGLES) "Save" else "Guardar",
+                icono       = Icons.Rounded.Check,
+                colorFondo  = Sol.Orange,
+                habilitado  = nombre.isNotBlank(),
+                esBlind     = esBlind,
+                ttsManager  = ttsManager,
+                onClick     = { guardarTodo() }
+            )
         },
         dismissButton = {
             TextButton(onDismiss) { Text("Cancelar", color = Sol.TextSecondary) }

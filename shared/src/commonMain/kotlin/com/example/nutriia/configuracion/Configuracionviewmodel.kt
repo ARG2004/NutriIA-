@@ -82,6 +82,9 @@ class ConfiguracionViewModel(
                     )
                     onResultado(false, res.mensaje)
                 }
+                else -> {
+                    _estado.value = _estado.value.copy(cargando = false)
+                }
             }
         }
     }
@@ -104,6 +107,9 @@ class ConfiguracionViewModel(
                         errorMensaje = res.mensaje
                     )
                     onDone(false, res.mensaje)
+                }
+                else -> {
+                    _estado.value = _estado.value.copy(cargando = false)
                 }
             }
         }

@@ -967,9 +967,9 @@ fun NutrienteBlindDialog(
 
     LaunchedEffect(Unit) {
         ttsManager?.hablarYEsperar(loc(
-            "Modo para personas ciegas activado. Formulario de registro de alimento. " +
+            "Modo para condición visual activado. Formulario de registro de alimento. " +
             "Primero, selecciona el tiempo de comida. Las opciones son: desayuno, almuerzo, merienda, colación o cena.",
-            "Blind mode activated. Food registration form. " +
+            "Visual condition mode activated. Food registration form. " +
             "First, select the meal time. Options are: breakfast, lunch, snack, or dinner."
         ), 1000L)
     }

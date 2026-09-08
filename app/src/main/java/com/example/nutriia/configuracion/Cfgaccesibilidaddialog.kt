@@ -123,7 +123,7 @@ fun CfgAccesibilidadDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "TalkBack detectado — modo ciego recomendado.",
+                            "TalkBack detectado — modo para condición visual recomendado.",
                             fontSize   = 12.sp,
                             color      = GreenConfig,
                             fontWeight = FontWeight.SemiBold

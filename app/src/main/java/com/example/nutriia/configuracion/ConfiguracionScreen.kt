@@ -1,5 +1,6 @@
 package com.example.nutriia.configuracion
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -111,12 +112,33 @@ fun ConfiguracionScreen(
     var mensajeArco             by remember { mutableStateOf<String?>(null) }
     val coroutineScopeArco = rememberCoroutineScope()
 
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val view   = androidx.compose.ui.platform.LocalView.current
+
     LaunchedEffect(Unit) {
         if (modoActual == AccessibilityMode.BLIND) {
             a11yVm.hablar(
-                "Pantalla de ajustes. Aquí puedes editar tu cuenta, perfil de tus hijos, " +
-                        "accesibilidad, notificaciones, privacidad y cerrar sesión."
+                "Pantalla de ajustes y configuración. Aquí puedes gestionar tu cuenta, perfiles de tus hijos, " +
+                        "modo de accesibilidad, notificaciones y privacidad. Desliza de arriba hacia abajo para explorar las opciones."
             )
+        }
+    }
+
+    BackHandler {
+        if (mostrarPrivacidad) {
+            mostrarPrivacidad = false
+        } else if (mostrarDialogoCerrar) {
+            mostrarDialogoCerrar = false
+        } else if (mostrarDialogoPassword) {
+            mostrarDialogoPassword = false
+        } else if (mostrarDialogoEliminar) {
+            mostrarDialogoEliminar = false
+        } else if (mostrarDialogoA11y) {
+            mostrarDialogoA11y = false
+        } else if (mostrarDialogoArco) {
+            if (!borrandoDatosArco) mostrarDialogoArco = false
+        } else {
+            onBack()
         }
     }
 
@@ -180,7 +202,12 @@ fun ConfiguracionScreen(
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize().background(CfgBg)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CfgBg)
+                .radarHapticoBlind(context, modoActual == AccessibilityMode.BLIND)
+        ) {
             LazyColumn(
                 modifier       = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 56.dp)
@@ -514,6 +541,7 @@ fun ConfiguracionScreen(
 
 @Composable
 fun PrivacidadScreen(onBack: () -> Unit) {
+    BackHandler { onBack() }
 
     data class PolicySection(val icon: ImageVector, val iconBg: Color, val iconTint: Color, val title: String, val body: String)
 
@@ -1090,9 +1118,9 @@ private fun CfgToggleRow(
 @Composable
 private fun CfgA11yChip(modo: AccessibilityMode) {
     val (label, bg, fg) = when (modo) {
-        AccessibilityMode.NORMAL -> Triple("Normal",         Color(0xFFE8F5E9), CfgGreen)
-        AccessibilityMode.BLIND  -> Triple("Modo ciego",     Color(0xFFEDE7F6), Color(0xFF5E35B1))
-        AccessibilityMode.MUTE   -> Triple("Voz silenciada", Color(0xFFE0F2F1), Color(0xFF00695C))
+        AccessibilityMode.NORMAL -> Triple("Estándar",           Color(0xFFE8F5E9), CfgGreen)
+        AccessibilityMode.BLIND  -> Triple("Condición visual",    Color(0xFFEDE7F6), Color(0xFF5E35B1))
+        AccessibilityMode.MUTE   -> Triple("Condición auditiva",  Color(0xFFE0F2F1), Color(0xFF00695C))
     }
     Row(
         modifier = Modifier

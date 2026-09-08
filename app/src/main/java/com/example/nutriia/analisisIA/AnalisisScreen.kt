@@ -42,9 +42,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.LocalAccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.embarazo.PerfilEmbarazo
 import com.example.nutriia.ui.theme.ChildProfile
 import androidx.compose.runtime.CompositionLocalProvider
@@ -190,7 +190,9 @@ fun AnalisisScreen(
             if (!tieneSub) loginVm.decrementarIntentoIaLocal()
         }
 
-        LaunchedEffect(uiState) {
+        // Usar uiState::class como key para que solo se dispare cuando
+        // CAMBIA EL TIPO de estado (no cuando cambia el mensaje interno de Analizando)
+        LaunchedEffect(uiState::class) {
             if (esBlind) {
                 when (val state = uiState) {
                     is AnalisisUiState.Idle -> {
@@ -200,7 +202,9 @@ fun AnalisisScreen(
                         a11yVm.hablar("Cámara activa. Alinea el alimento al centro de la pantalla y presiona el botón central inferior de captura.")
                     }
                     is AnalisisUiState.Analizando -> {
-                        a11yVm.hablar("Analizando alimento con Inteligencia Artificial para $targetNombre. Por favor, espera unos segundos.")
+                        // Solo habla la primera vez que entra en Analizando,
+                        // no en cada submensaje del proceso
+                        a11yVm.hablar("Analizando alimento con Inteligencia Artificial para $targetNombre. Por favor, espera unos segundos. Te avisaré cuando termine.")
                     }
                     is AnalisisUiState.Exito -> {
                         val food = state.resultado.foodDetection
@@ -239,6 +243,7 @@ fun AnalisisScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BgBase)
+                .radarHapticoBlind(context, esBlind)
         ) {
             AnimatedContent(
                 targetState = uiState,
@@ -361,17 +366,35 @@ private fun PantallaInicial(
 ) {
     var mostrarGuia by remember { mutableStateOf(false) }
 
-    val a11yMode = LocalAccessibilityMode.current
-    val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
+    val a11yVm: AccessibilityViewModel = viewModel()
+    val a11yMode     by a11yVm.mode.collectAsState()
+    val idiomaActual by a11yVm.idioma.collectAsState()
+    val esBlind      = a11yMode == AccessibilityMode.BLIND
+    val esAccesible  = esBlind || a11yMode == AccessibilityMode.MUTE
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val view   = androidx.compose.ui.platform.LocalView.current
 
     if (mostrarGuia) {
-        PantallaGuiaFoto(onListo = { mostrarGuia = false; onTomarFoto() })
+        PantallaGuiaFoto(
+            onListo = { mostrarGuia = false; onTomarFoto() },
+            esBlind = esBlind
+        )
         return
     }
 
     // Animación de entrada
     var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(Unit) { 
+        visible = true 
+        if (esBlind) {
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == com.example.nutriia.accesibilidad.IdiomaVoz.INGLES) "scan food" else "escanear el alimento",
+                idioma = idiomaActual
+            )
+            val target = if (isEmbarazo) "tu embarazo" else (child?.name ?: "tu bebé")
+            a11yVm.hablar("Módulo de análisis nutricional con Inteligencia Artificial para $target. $orientacionBoton")
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -529,10 +552,16 @@ private fun PantallaInicial(
 
             // ── Botón CTA principal ──
             Button(
-                onClick  = { mostrarGuia = true },
+                onClick  = {
+                    triggerFeedbackAccesible(haptic, view)
+                    mostrarGuia = true
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (esAccesible) 70.dp else 54.dp),
+                    .height(if (esAccesible) 70.dp else 54.dp)
+                    .semantics {
+                        contentDescription = "Escanear alimento con IA. Botón ubicado en la parte inferior, arriba del puerto de carga. Toca dos veces para continuar."
+                    },
                 shape  = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
@@ -658,7 +687,11 @@ private fun PasoItem(numero: Int, icon: ImageVector, texto: String, color: Color
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PantallaGuiaFoto(onListo: () -> Unit) {
+private fun PantallaGuiaFoto(
+    onListo: () -> Unit,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel = viewModel()
+) {
     Column(
         modifier            = Modifier
             .fillMaxSize()
@@ -667,6 +700,18 @@ private fun PantallaGuiaFoto(onListo: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(56.dp))
+
+        // Narrar consejos al entrar (solo modo ciego)
+        LaunchedEffect(Unit) {
+            if (esBlind) {
+                a11yVm.hablar(
+                    "Pantalla de consejos para tomar la foto. " +
+                    "Lo correcto: El alimento debe estar dentro del marco y todos los ingredientes visibles. " +
+                    "Lo incorrecto: El alimento muy cerca o cortado, o ingredientes no visibles. " +
+                    "Cuando estés listo, toca dos veces el botón Entendido, continuar en la parte inferior de la pantalla."
+                )
+            }
+        }
 
         Box(
             modifier         = Modifier
@@ -809,7 +854,10 @@ private fun PantallaGuiaFoto(onListo: () -> Unit) {
         Spacer(Modifier.weight(1f))
 
         Button(
-            onClick  = onListo,
+            onClick  = {
+                if (esBlind) a11yVm.hablar("Abriendo cámara. Alinea el alimento al centro de la pantalla.")
+                onListo()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -888,8 +936,23 @@ private fun PantallaCaptura(
     onCapturar      : () -> Unit,
     onCancelar      : () -> Unit
 ) {
-    val a11yMode = LocalAccessibilityMode.current
-    val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
+    val a11yVm: AccessibilityViewModel = viewModel()
+    val a11yMode by a11yVm.mode.collectAsState()
+    val idiomaActual by a11yVm.idioma.collectAsState()
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+    val esAccesible = esBlind || a11yMode == AccessibilityMode.MUTE
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val view   = androidx.compose.ui.platform.LocalView.current
+
+    LaunchedEffect(Unit) {
+        if (esBlind) {
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == com.example.nutriia.accesibilidad.IdiomaVoz.INGLES) "take the photo" else "tomar la fotografía",
+                idioma = idiomaActual
+            )
+            a11yVm.hablar("Cámara activa. Apunta el teléfono hacia el plato o alimento. $orientacionBoton")
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
@@ -970,9 +1033,17 @@ private fun PantallaCaptura(
                 contentAlignment = Alignment.Center
             ) {
                 FloatingActionButton(
-                    onClick        = onCapturar,
+                    onClick        = {
+                        triggerFeedbackAccesible(haptic, view)
+                        if (esBlind) a11yVm.hablar("Capturando foto. Analizando alimento...")
+                        onCapturar()
+                    },
                     shape          = CircleShape,
-                    modifier       = Modifier.size(if (esAccesible) 82.dp else 62.dp),
+                    modifier       = Modifier
+                        .size(if (esAccesible) 82.dp else 62.dp)
+                        .semantics {
+                            contentDescription = "Tomar foto del alimento. Botón abajo al centro, arriba del puerto de carga. Toca dos veces para capturar."
+                        },
                     containerColor = GreenPrimary,
                     contentColor   = Color.White
                 ) {

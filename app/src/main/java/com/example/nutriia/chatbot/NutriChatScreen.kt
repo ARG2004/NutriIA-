@@ -31,12 +31,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
-
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.embarazo.PerfilEmbarazo
 
 private val NutriaBgCrema = Color(0xFFF9F8F4)
@@ -124,15 +119,16 @@ fun NutriChatScreen(
         
         if (esBlind) {
             val analisisText = if (onNavigateToAnalisis != null) loc(" Además, arriba a la derecha tienes el botón de Análisis I A de alimentos por cámara.", " Also, at the top right you have the camera AI Food Analysis button.") else ""
+            val orientacionBarra = orientacionChatbot(idiomaActual)
             val introMsg = if (esModoEmbarazo) {
                 loc(
-                    "Bienvenida al chat de embarazo con NutriBot. Puedes hacer cualquier pregunta sobre tu gestación, síntomas o alimentación.$analisisText",
-                    "Welcome to NutriBot pregnancy chat. You can ask any questions about your pregnancy, symptoms or nutrition.$analisisText"
+                    "Chat con NutriBot. $orientacionBarra. Di tu pregunta sobre tu embarazo, síntomas o alimentación.$analisisText",
+                    "NutriBot chat. $orientacionBarra. Say your question about your pregnancy, symptoms, or nutrition.$analisisText"
                 )
             } else {
                 loc(
-                    "Bienvenido al chat con NutriBot. Habla cuando quieras y di enviar para enviar tu inquietud y recibir una respuesta.$analisisText",
-                    "Welcome to NutriBot chat. Talk when you want and say send to send your concern and get a response.$analisisText"
+                    "Chat con NutriBot. $orientacionBarra. Di tu consulta y di enviar.$analisisText",
+                    "NutriBot chat. $orientacionBarra. Say your question and say send.$analisisText"
                 )
             }
             a11yVm.hablar(introMsg)
@@ -163,6 +159,7 @@ fun NutriChatScreen(
     }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(context, esBlind),
         topBar = {
             TopAppBar(
                 title = {
@@ -356,8 +353,12 @@ fun NutriChatScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
+                val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+                val view   = androidx.compose.ui.platform.LocalView.current
+
                 FloatingActionButton(
                     onClick = {
+                        triggerFeedbackAccesible(haptic, view)
                         if (inputText.isNotBlank()) {
                             doSendChat(inputText)
                             inputText = ""
@@ -366,7 +367,9 @@ fun NutriChatScreen(
                     containerColor = NutriaGreen,
                     contentColor = Color.White,
                     shape = CircleShape,
-                    modifier = Modifier.size(50.dp)
+                    modifier = Modifier.size(50.dp).semantics {
+                        contentDescription = "Enviar mensaje. Botón a la derecha de la barra inferior. Toca dos veces para enviar."
+                    }
                 ) {
                     Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Enviar")
                 }

@@ -1,13 +1,13 @@
 package com.example.nutriia.accesibilidad
 
-import androidx.compose.animation.core.*
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,10 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class InputModoCiego { TECLADO, VOZ, BRAILLE, SENAS }
 
@@ -53,6 +55,9 @@ fun CampoTextoAccesible(
 ) {
     val haptic  = LocalHapticFeedback.current
     val a11yMode = LocalAccessibilityMode.current
+
+    val coroutineScope = rememberCoroutineScope()
+    val estadoConfirmacion = remember { mutableStateOf(false) }
 
     var modoEntrada  by remember(a11yMode) {
         mutableStateOf(
@@ -101,24 +106,23 @@ fun CampoTextoAccesible(
 
         if (tienePermiso) {
             voiceManager?.detener()
-            if (ttsManager != null) {
-                ttsManager.hablarYEsperar(Voz.VOZ_ESCUCHANDO, margenMs = 600L)
-            } else {
-                delay(600L)
-            }
-            delay(350L) // Pausa de guardia adicional
+            ttsManager?.silenciar()
+            delay(400L) // Pausa de guardia adicional
             iniciarEscuchaConReintento(
-                voiceManager  = voiceManager,
-                idioma        = idioma,
-                modoAccesible = true,
-                esCampoFecha  = esCampoFecha,
-                esCampoHora   = esCampoHora,
-                keyboardOptions = keyboardOptions,
-                ttsManager    = ttsManager,
-                onValorChange = onValorChange,
-                onNext        = onNext,
-                onCommandParsed = onCommandParsed,
-                onSwitchModo    = { modoEntrada = it }
+                voiceManager       = voiceManager,
+                idioma             = idioma,
+                modoAccesible      = true,
+                esCampoFecha       = esCampoFecha,
+                esCampoHora        = esCampoHora,
+                keyboardOptions    = keyboardOptions,
+                ttsManager         = ttsManager,
+                valorActual        = { valor },
+                onValorChange      = onValorChange,
+                onNext             = onNext,
+                onCommandParsed    = onCommandParsed,
+                onSwitchModo       = { modoEntrada = it },
+                coroutineScope     = coroutineScope,
+                estadoConfirmacion = estadoConfirmacion
             )
         }
     }
@@ -138,41 +142,57 @@ fun CampoTextoAccesible(
                 errorTexto.contains("servidor") ||
                 errorTexto.contains("timeout") ||
                 errorTexto.contains("no speech") ||
-                errorCodigo in listOf(1, 2, 3, 6, 7, 8)
+                errorTexto.contains("toca") ||
+                errorTexto.contains("micrófono") ||
+                errorCodigo in listOf(1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13)
 
         if (errorReintentable && tienePermiso) {
             val avisoReintento = if (idioma == IdiomaVoz.INGLES) {
-                "I didn't hear you. Say what you want to type, or say: change to keyboard."
+                if (descripcionVoz.isNotBlank()) {
+                    "I didn't hear you. $descripcionVoz. Or say: change to keyboard."
+                } else {
+                    "I didn't hear you. Say your $etiqueta, or say: change to keyboard."
+                }
             } else {
-                "No te escuché. Di lo que quieres escribir, o di: cambiar a teclado."
+                if (descripcionVoz.isNotBlank()) {
+                    "No te escuché. $descripcionVoz. O di: cambiar a teclado."
+                } else {
+                    "No te escuché. Di tu $etiqueta, o di: cambiar a teclado."
+                }
             }
             if (ttsManager != null) {
                 ttsManager.hablarYEsperar(avisoReintento, margenMs = 800L)
+                ttsManager.silenciar()
             } else {
                 delay(2000L)
             }
             if (voiceEstado == VoiceInputState.IDLE) {
                 iniciarEscuchaConReintento(
-                    voiceManager  = voiceManager,
-                    idioma        = idioma,
-                    modoAccesible = true,
-                    esCampoFecha  = esCampoFecha,
-                    esCampoHora   = esCampoHora,
-                    keyboardOptions = keyboardOptions,
-                    ttsManager    = ttsManager,
-                    onValorChange = onValorChange,
-                    onNext        = onNext,
-                    onCommandParsed = onCommandParsed,
-                    onSwitchModo    = { modoEntrada = it }
+                    voiceManager       = voiceManager,
+                    idioma             = idioma,
+                    modoAccesible      = true,
+                    esCampoFecha       = esCampoFecha,
+                    esCampoHora        = esCampoHora,
+                    keyboardOptions    = keyboardOptions,
+                    ttsManager         = ttsManager,
+                    valorActual        = { valor },
+                    onValorChange      = onValorChange,
+                    onNext             = onNext,
+                    onCommandParsed    = onCommandParsed,
+                    onSwitchModo       = { modoEntrada = it },
+                    coroutineScope     = coroutineScope,
+                    estadoConfirmacion = estadoConfirmacion
                 )
             }
         }
     }
 
-    // Cancelar al desactivar
-    LaunchedEffect(activo) {
-        if (!activo && voiceEstado == VoiceInputState.LISTENING) {
+    DisposableEffect(Unit) { onDispose { voiceManager?.liberar() } }
+
+    LaunchedEffect(activo, modoEntrada) {
+        if (!activo || modoEntrada != InputModoCiego.VOZ) {
             voiceManager?.detener()
+            estadoConfirmacion.value = false
         }
     }
 
@@ -193,194 +213,187 @@ fun CampoTextoAccesible(
                     Triple(InputModoCiego.BRAILLE,  "Braille",  Icons.Rounded.GridOn)
                 )
                 AccessibilityMode.MUTE -> listOf(
-                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard)
+                    Triple(InputModoCiego.TECLADO,  "Teclado",  Icons.Rounded.Keyboard),
+                    Triple(InputModoCiego.SENAS,    "Señas",    Icons.Rounded.BackHand)
                 )
                 else -> emptyList()
             }
         }
 
         if (a11yMode == AccessibilityMode.MUTE) {
-            if (esCampoFecha || esCampoHora) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (esCampoFecha) mostrarDatePicker = true
-                            else if (esCampoHora) mostrarTimePicker = true
-                        },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = (if (activo) colorPrimario else Color.LightGray).copy(0.05f)
-                    ),
-                    border = BorderStroke(1.5.dp, (if (activo) colorPrimario else Color.LightGray).copy(0.4f))
+            if (activo && opcionesDisponibles.size > 1) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (esCampoFecha) Icons.Rounded.CalendarToday else Icons.Rounded.AccessTime,
-                            contentDescription = null,
-                            tint = if (activo) colorPrimario else Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = etiqueta,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (activo) colorPrimario else Color.Gray
-                            )
-                            Text(
-                                text = valor.ifEmpty { "Presiona aquí para elegir..." },
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.Black
-                            )
-                        }
-                    }
-                }
-                
-                if (activo && onNext != null) {
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = {
-                            vibrateSuccess(haptic)
-                            onNext.invoke()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth().height(44.dp)
-                    ) {
-                        Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    }
-                }
-            } else {
-                if (activo && opcionesDisponibles.size > 1) {
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        opcionesDisponibles.forEach { (modo, label, icon) ->
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (modoEntrada == modo) colorPrimario.copy(0.14f) else Color(0xFFF5F5F5))
-                                    .border(
-                                        1.5.dp,
-                                        if (modoEntrada == modo) colorPrimario else Color.LightGray.copy(0.4f),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable {
-                                        vibrateTap(haptic)
-                                        modoEntrada = modo
-                                    }
-                                    .padding(vertical = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(icon, null, tint = if (modoEntrada == modo) colorPrimario else Color.Gray, modifier = Modifier.size(20.dp))
-                                Spacer(Modifier.height(4.dp))
-                                Text(label, fontSize = 11.sp, fontWeight = if (modoEntrada == modo) FontWeight.Bold else FontWeight.Normal, color = if (modoEntrada == modo) colorPrimario else Color.Gray)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
-
-                OutlinedTextField(
-                    value           = valor,
-                    onValueChange   = onValorChange,
-                    label           = { Text(etiqueta) },
-                    placeholder     = { Text(placeholder) },
-                    modifier        = Modifier
-                        .fillMaxWidth()
-                        .clickable { if (!activo) onFocus?.invoke() },
-                    readOnly        = !activo,
-                    enabled         = true,
-                    singleLine      = !esCampoFecha && !esCampoHora,
-                    trailingIcon    = if (activo && onNext != null && valor.isNotBlank()) {
-                        {
-                            IconButton(
-                                onClick = {
-                                    vibrateSuccess(haptic)
-                                    onNext.invoke()
+                    opcionesDisponibles.forEach { (modo, label, icon) ->
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (modoEntrada == modo) colorPrimario.copy(0.14f) else Color(0xFFF5F5F5))
+                                .border(
+                                    1.5.dp,
+                                    if (modoEntrada == modo) colorPrimario else Color.LightGray.copy(0.4f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    vibrateTap(haptic)
+                                    modoEntrada = modo
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ArrowForward,
-                                    contentDescription = "Siguiente campo",
-                                    tint = colorPrimario
+                                .padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(icon, null, tint = if (modoEntrada == modo) colorPrimario else Color.Gray, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.height(4.dp))
+                            Text(label, fontSize = 11.sp, fontWeight = if (modoEntrada == modo) FontWeight.Bold else FontWeight.Normal, color = if (modoEntrada == modo) colorPrimario else Color.Gray)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            if (modoEntrada == InputModoCiego.TECLADO) {
+                if (esCampoFecha || esCampoHora) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (esCampoFecha) mostrarDatePicker = true
+                                else if (esCampoHora) mostrarTimePicker = true
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = (if (activo) colorPrimario else Color.LightGray).copy(0.05f)
+                        ),
+                        border = BorderStroke(1.5.dp, (if (activo) colorPrimario else Color.LightGray).copy(0.4f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (esCampoFecha) Icons.Rounded.CalendarToday else Icons.Rounded.AccessTime,
+                                contentDescription = null,
+                                tint = if (activo) colorPrimario else Color.Gray,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = etiqueta,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (activo) colorPrimario else Color.Gray
+                                )
+                                Text(
+                                    text = valor.ifEmpty { "Presiona aquí para elegir..." },
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.Black
                                 )
                             }
                         }
-                    } else null,
-                    shape           = RoundedCornerShape(16.dp),
-                    keyboardOptions = keyboardOptions.copy(
-                        imeAction = if (onNext != null) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onNext = {
-                            vibrateSuccess(haptic)
-                            onNext?.invoke()
-                        },
-                        onDone = {
-                            vibrateSuccess(haptic)
-                            onNext?.invoke()
-                        }
-                    ),
-                    colors          = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor     = Color.Black,
-                        unfocusedTextColor   = Color.Black,
-                        focusedBorderColor   = colorPrimario,
-                        unfocusedBorderColor = Color.LightGray
-                    )
-                )
-
-                if (activo) {
-                    if (modoEntrada == InputModoCiego.SENAS) {
-                        Spacer(Modifier.height(12.dp))
-                        val soloNum = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number || 
-                                      keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
-                                      keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone
-                        SignLanguageCameraView(
-                            textoActual   = valor,
-                            onTextoChange = onValorChange,
-                            colorPrimario = colorPrimario,
-                            soloNumeros   = soloNum,
-                            esCampoFecha  = false,
-                            onCompletado  = onNext
-                        )
                     }
-
-                    if (onNext != null) {
-                        Spacer(Modifier.height(16.dp))
-                        Button(
-                            onClick = {
+                } else {
+                    OutlinedTextField(
+                        value           = valor,
+                        onValueChange   = onValorChange,
+                        label           = { Text(etiqueta) },
+                        placeholder     = { Text(placeholder) },
+                        modifier        = Modifier
+                            .fillMaxWidth()
+                            .clickable { if (!activo) onFocus?.invoke() },
+                        readOnly        = !activo,
+                        enabled         = true,
+                        singleLine      = true,
+                        trailingIcon    = if (activo && onNext != null && valor.isNotBlank()) {
+                            {
+                                IconButton(
+                                    onClick = {
+                                        vibrateSuccess(haptic)
+                                        onNext.invoke()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowForward,
+                                        contentDescription = "Siguiente campo",
+                                        tint = colorPrimario
+                                    )
+                                }
+                            }
+                        } else null,
+                        shape           = RoundedCornerShape(16.dp),
+                        keyboardOptions = keyboardOptions.copy(
+                            imeAction = if (onNext != null) androidx.compose.ui.text.input.ImeAction.Next else androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onNext = {
                                 vibrateSuccess(haptic)
-                                onNext.invoke()
+                                onNext?.invoke()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth().height(44.dp)
-                    ) {
-                        Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    }
+                            onDone = {
+                                vibrateSuccess(haptic)
+                                onNext?.invoke()
+                            }
+                        ),
+                        textStyle       = TextStyle(
+                            fontSize   = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = Color(0xFF111827)
+                        ),
+                        colors          = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor          = Color(0xFF111827),
+                            unfocusedTextColor        = Color(0xFF111827),
+                            focusedContainerColor     = Color.White,
+                            unfocusedContainerColor   = Color(0xFFFAFAFA),
+                            focusedBorderColor        = colorPrimario,
+                            unfocusedBorderColor      = Color(0xFF94A3B8),
+                            focusedLabelColor         = colorPrimario,
+                            unfocusedLabelColor       = Color(0xFF475569),
+                            focusedPlaceholderColor   = Color(0xFF94A3B8),
+                            unfocusedPlaceholderColor = Color(0xFF94A3B8)
+                        )
+                    )
+                }
+            } else if (modoEntrada == InputModoCiego.SENAS && activo) {
+                val soloNum = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number || 
+                              keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
+                              keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone ||
+                              esCampoFecha
+                SignLanguageCameraView(
+                    textoActual   = valor,
+                    onTextoChange = onValorChange,
+                    colorPrimario = colorPrimario,
+                    soloNumeros   = soloNum,
+                    esCampoFecha  = esCampoFecha,
+                    onCompletado  = onNext
+                )
+            }
+
+            if (activo && onNext != null) {
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        vibrateSuccess(haptic)
+                        onNext.invoke()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                ) {
+                    Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
-        }
-    } else {
+        } else {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White)
-                    .border(1.5.dp, colorPrimario.copy(0.4f), RoundedCornerShape(16.dp))
+                    .background(colorPrimario.copy(0.08f))
+                    .border(1.5.dp, colorPrimario.copy(0.3f), RoundedCornerShape(16.dp))
                     .clickable {
                         vibrateTap(haptic)
                         onFocus?.invoke()
@@ -417,30 +430,25 @@ fun CampoTextoAccesible(
                             "Campo activo: $etiqueta. Valor actual: $valorParaHablar. Toca dos veces para escuchar las instrucciones completas. Si prefieres, di: cambiar a teclado, o: cambiar a teclado braille."
                         }
                     }
+                    .padding(12.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = colorPrimario.copy(0.1f),
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Info,
-                                contentDescription = null,
-                                tint = colorPrimario,
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Rounded.Info,
+                            contentDescription = null,
+                            tint = colorPrimario,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
                         Text(
                             text = etiqueta,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = colorPrimario
                         )
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
                     val valorParaMostrar = if (esCampoFecha && valor.isNotEmpty()) {
                         if (valor.matches(Regex("""\d{4}-\d{2}-\d{2}"""))) {
                             val p = valor.split("-")
@@ -454,8 +462,8 @@ fun CampoTextoAccesible(
                         } else {
                             if (idioma == IdiomaVoz.INGLES) "Value: $valorParaMostrar" else "Valor: $valorParaMostrar"
                         },
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = Color.Black
                     )
                 }
@@ -472,47 +480,53 @@ fun CampoTextoAccesible(
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(if (seleccionado) Color.White else Color(0xFFF8F9FA))
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (seleccionado) colorPrimario.copy(0.16f) else Color.White)
                                 .border(
-                                    2.dp,
-                                    if (seleccionado) colorPrimario else Color.Transparent,
-                                    RoundedCornerShape(14.dp)
+                                    if (seleccionado) 2.dp else 1.dp,
+                                    if (seleccionado) colorPrimario else Color(0xFFCBD5E1),
+                                    RoundedCornerShape(12.dp)
                                 )
                                 .clickable(onClickLabel = "Cambiar a modo $label") {
                                     vibrateTap(haptic)
-                                    modoEntrada = modo
-                                    if (modo != InputModoCiego.VOZ) {
-                                        voiceManager?.detener()
-                                    }
-                                    when (modo) {
-                                        InputModoCiego.TECLADO -> ttsManager?.hablar("Modo teclado. Escribe con el teclado. Al terminar, el botón verde Continuar está abajo.")
-                                        InputModoCiego.VOZ     -> { /* LaunchedEffect lo maneja */ }
-                                        InputModoCiego.BRAILLE -> ttsManager?.hablar("Modo teclado Braille. Toca los puntos para formar cada letra. Al terminar de escribir, el botón verde Continuar está abajo a la derecha.")
-                                        InputModoCiego.SENAS   -> ttsManager?.hablar("Cámara de señas activada. Haz gestos frente a la cámara frontal.")
+                                    if (modo != modoEntrada) {
+                                        if (modoEntrada == InputModoCiego.VOZ) {
+                                            voiceManager?.detener()
+                                            estadoConfirmacion.value = false
+                                        }
+                                        modoEntrada = modo
+                                        when (modo) {
+                                            InputModoCiego.TECLADO -> ttsManager?.hablar("Modo teclado. Escribe con el teclado. Al terminar, el botón verde Continuar está abajo.")
+                                            InputModoCiego.VOZ     -> {
+                                                voiceManager?.limpiarError()
+                                                ttsManager?.hablar("Modo voz activado. Escuchando...")
+                                            }
+                                            InputModoCiego.BRAILLE -> ttsManager?.hablar("Modo teclado Braille. Toca los puntos para formar cada letra. Al terminar de escribir, el botón verde Continuar está abajo a la derecha.")
+                                            InputModoCiego.SENAS   -> ttsManager?.hablar("Cámara de señas activada. Haz gestos frente a la cámara frontal.")
+                                        }
                                     }
                                  }
                                 .semantics { contentDescription = "Modo $label. ${if (seleccionado) "Activo" else "Toca para activar"}" }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 10.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
                                 icon, 
                                 null, 
-                                tint = if (seleccionado) colorPrimario else Color.Gray, 
+                                tint = if (seleccionado) colorPrimario else Color(0xFF475569), 
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 label, 
                                 fontSize = 11.sp, 
-                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Medium, 
-                                color = if (seleccionado) colorPrimario else Color.Gray
+                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.SemiBold, 
+                                color = if (seleccionado) colorPrimario else Color(0xFF334155)
                             )
                         }
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
             }
 
             AnimatedVisibility(visible = activo && modoEntrada == InputModoCiego.TECLADO) {
@@ -520,7 +534,16 @@ fun CampoTextoAccesible(
                     OutlinedTextField(
                         value           = valor,
                         onValueChange   = { v ->
-                            val resultado = if (esCampoFecha) formatearFechaDigitos(v) else v
+                            val resultado = when {
+                                esCampoFecha -> formatearFechaDigitos(v)
+                                keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
+                                keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword -> v.filter { it.isDigit() }
+                                keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> {
+                                    val cleaned = v.replace(',', '.')
+                                    if (cleaned.count { it == '.' } <= 1 && cleaned.all { it.isDigit() || it == '.' }) cleaned else valor
+                                }
+                                else -> v
+                            }
                             onValorChange(resultado)
                         },
                         label           = { Text(etiqueta) },
@@ -561,9 +584,22 @@ fun CampoTextoAccesible(
                                 onNext?.invoke()
                             }
                         ),
+                        textStyle       = TextStyle(
+                            fontSize   = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = Color(0xFF111827)
+                        ),
                         colors          = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor   = colorPrimario,
-                            unfocusedBorderColor = Color.LightGray
+                            focusedTextColor          = Color(0xFF111827),
+                            unfocusedTextColor        = Color(0xFF111827),
+                            focusedContainerColor     = Color.White,
+                            unfocusedContainerColor   = Color(0xFFFAFAFA),
+                            focusedBorderColor        = colorPrimario,
+                            unfocusedBorderColor      = Color(0xFF94A3B8),
+                            focusedLabelColor         = colorPrimario,
+                            unfocusedLabelColor       = Color(0xFF475569),
+                            focusedPlaceholderColor   = Color(0xFF94A3B8),
+                            unfocusedPlaceholderColor = Color(0xFF94A3B8)
                         )
                     )
 
@@ -594,6 +630,7 @@ fun CampoTextoAccesible(
                 visible = activo && modoEntrada == InputModoCiego.VOZ,
                 enter   = expandVertically(), exit = shrinkVertically()
             ) {
+                val esTelefono = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (valor.isNotEmpty()) {
                         Box(
@@ -602,12 +639,105 @@ fun CampoTextoAccesible(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(colorPrimario.copy(0.08f))
                                 .border(1.dp, colorPrimario.copy(0.3f), RoundedCornerShape(12.dp))
-                                .padding(12.dp)
+                                .padding(14.dp)
                                 .semantics { contentDescription = "Texto reconocido: $valor" }
                         ) {
-                            Text(valor, fontSize = 15.sp, color = Color(0xFF1B5E20), fontWeight = FontWeight.Medium)
+                            val textoMostrar = if (esTelefono && valor.all { it.isDigit() }) {
+                                valor.chunked(2).joinToString(" ")
+                            } else valor
+                            Text(
+                                text = textoMostrar,
+                                fontSize = 18.sp,
+                                color = Color(0xFF1B5E20),
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(10.dp))
+                    }
+
+                    // Banner de Confirmación para Teléfono
+                    if (esTelefono && estadoConfirmacion.value) {
+                        Surface(
+                            color = Color(0xFFFFF3E0),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFFB74D)),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "¿Es correcto tu número?",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFE65100)
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Di \"Correcto\" o toca el botón para continuar. Di \"Mal\" para corregir.",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF5D4037),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            estadoConfirmacion.value = false
+                                            voiceManager?.detener()
+                                            val confirmMsg = if (idioma == IdiomaVoz.INGLES) "Phone number confirmed. Moving to next field." else "Número confirmado. Avanzando al siguiente campo."
+                                            ttsManager?.hablar(confirmMsg)
+                                            onNext?.invoke()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f).height(40.dp)
+                                    ) {
+                                        Text("✓ Correcto", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            estadoConfirmacion.value = false
+                                            onValorChange("")
+                                            val borrarMsg = if (idioma == IdiomaVoz.INGLES) "Number cleared. Please say your ten-digit phone number." else "Número borrado. Por favor, di tu número de diez dígitos."
+                                            voiceManager?.detener()
+                                            coroutineScope.launch {
+                                                if (ttsManager != null) {
+                                                    ttsManager.hablarYEsperar(borrarMsg, margenMs = 400L)
+                                                } else {
+                                                    delay(1500L)
+                                                }
+                                                iniciarEscuchaConReintento(
+                                                    voiceManager       = voiceManager,
+                                                    idioma             = idioma,
+                                                    modoAccesible      = true,
+                                                    esCampoFecha       = esCampoFecha,
+                                                    esCampoHora        = esCampoHora,
+                                                    keyboardOptions    = keyboardOptions,
+                                                    ttsManager         = ttsManager,
+                                                    valorActual        = { "" },
+                                                    onValorChange      = onValorChange,
+                                                    onNext             = onNext,
+                                                    onCommandParsed    = onCommandParsed,
+                                                    onSwitchModo       = { modoEntrada = it },
+                                                    coroutineScope     = coroutineScope,
+                                                    estadoConfirmacion = estadoConfirmacion
+                                                )
+                                            }
+                                        },
+                                        border = BorderStroke(1.dp, Color(0xFFE53935)),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f).height(40.dp)
+                                    ) {
+                                        Text("✗ Repetir", fontSize = 13.sp, color = Color(0xFFE53935), fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Box(
@@ -657,6 +787,7 @@ fun CampoTextoAccesible(
                                     }
                                 )
                                 .clickable {
+                                    voiceManager?.limpiarError()
                                     when (voiceEstado) {
                                         VoiceInputState.LISTENING -> {
                                             voiceManager?.detener()
@@ -664,19 +795,22 @@ fun CampoTextoAccesible(
                                         }
                                         else -> {
                                             if (tienePermiso) {
-                                                ttsManager?.hablar(Voz.VOZ_ESCUCHANDO)
+                                                ttsManager?.silenciar()
                                                 iniciarEscuchaConReintento(
-                                                    voiceManager  = voiceManager,
-                                                    idioma        = idioma,
-                                                    modoAccesible = true,
-                                                    esCampoFecha  = esCampoFecha,
-                                                    esCampoHora   = esCampoHora,
-                                                    keyboardOptions = keyboardOptions,
-                                                    ttsManager    = ttsManager,
-                                                    onValorChange = onValorChange,
-                                                    onNext        = onNext,
-                                                    onCommandParsed = onCommandParsed,
-                                                    onSwitchModo    = { modoEntrada = it }
+                                                    voiceManager       = voiceManager,
+                                                    idioma             = idioma,
+                                                    modoAccesible      = true,
+                                                    esCampoFecha       = esCampoFecha,
+                                                    esCampoHora        = esCampoHora,
+                                                    keyboardOptions    = keyboardOptions,
+                                                    ttsManager         = ttsManager,
+                                                    valorActual        = { valor },
+                                                    onValorChange      = onValorChange,
+                                                    onNext             = onNext,
+                                                    onCommandParsed    = onCommandParsed,
+                                                    onSwitchModo       = { modoEntrada = it },
+                                                    coroutineScope     = coroutineScope,
+                                                    estadoConfirmacion = estadoConfirmacion
                                                 )
                                             }
                                         }
@@ -684,9 +818,9 @@ fun CampoTextoAccesible(
                                 }
                                 .semantics {
                                     contentDescription = when (voiceEstado) {
-                                        VoiceInputState.LISTENING  -> "Escuchando. Toca para detener."
+                                        VoiceInputState.LISTENING  -> "Escuchando. Toca dos veces para detener."
                                         VoiceInputState.PROCESSING -> "Procesando tu voz."
-                                        else -> "Botón micrófono, centro de la pantalla. Toca para hablar y escribir $etiqueta."
+                                        else -> "Botón micrófono en el centro de la pantalla. Toca dos veces para hablar y escribir $etiqueta."
                                     }
                                 },
                             contentAlignment = Alignment.Center
@@ -704,15 +838,20 @@ fun CampoTextoAccesible(
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                     Text(
-                        text = when (voiceEstado) {
-                            VoiceInputState.LISTENING  -> "Escuchando... habla ahora"
-                            VoiceInputState.PROCESSING -> "Procesando..."
-                            else                       -> "Toca el microfono o espera unos segundos"
+                        text = when {
+                            voiceEstado == VoiceInputState.LISTENING && estadoConfirmacion.value -> "Escuchando... Di \"correcto\" o \"mal\""
+                            voiceEstado == VoiceInputState.LISTENING && esTelefono && valor.isNotEmpty() && valor.length < 10 -> "Escuchando... Llevas ${valor.length} de 10 dígitos"
+                            voiceEstado == VoiceInputState.LISTENING -> "Escuchando... habla ahora"
+                            voiceEstado == VoiceInputState.PROCESSING -> "Procesando..."
+                            estadoConfirmacion.value -> "Di \"correcto\" o \"mal\", o toca el botón"
+                            esTelefono && valor.length in 1..9 -> "Faltan ${10 - valor.length} dígitos. Continúa hablando o toca el micrófono"
+                            else -> "Toca el micrófono o espera unos segundos"
                         },
-                        fontSize  = 12.sp,
-                        color     = Color.Gray,
+                        fontSize  = 13.sp,
+                        color     = if (estadoConfirmacion.value) Color(0xFFE65100) else Color.Gray,
+                        fontWeight = if (estadoConfirmacion.value) FontWeight.Medium else FontWeight.Normal,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
 
@@ -738,14 +877,41 @@ fun CampoTextoAccesible(
                     }
 
                     if (valor.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(6.dp))
                         TextButton(
                             onClick = {
+                                estadoConfirmacion.value = false
                                 onValorChange("")
-                                ttsManager?.hablar("Texto borrado. Habla de nuevo.")
+                                val msg = if (idioma == IdiomaVoz.INGLES) "Text cleared. Speak again." else "Texto borrado. Habla de nuevo."
+                                voiceManager?.detener()
+                                coroutineScope.launch {
+                                    if (ttsManager != null) {
+                                        ttsManager.hablarYEsperar(msg, margenMs = 400L)
+                                    } else {
+                                        delay(1500L)
+                                    }
+                                    iniciarEscuchaConReintento(
+                                        voiceManager       = voiceManager,
+                                        idioma             = idioma,
+                                        modoAccesible      = true,
+                                        esCampoFecha       = esCampoFecha,
+                                        esCampoHora        = esCampoHora,
+                                        keyboardOptions    = keyboardOptions,
+                                        ttsManager         = ttsManager,
+                                        valorActual        = { "" },
+                                        onValorChange      = onValorChange,
+                                        onNext             = onNext,
+                                        onCommandParsed    = onCommandParsed,
+                                        onSwitchModo       = { modoEntrada = it },
+                                        coroutineScope     = coroutineScope,
+                                        estadoConfirmacion = estadoConfirmacion
+                                    )
+                                }
                             },
                             modifier = Modifier.semantics { contentDescription = "Borrar y repetir" }
                         ) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
                             Text("Borrar y repetir", color = Color.Gray, fontSize = 12.sp)
                         }
                     }
@@ -903,19 +1069,22 @@ private fun formatearFechaDigitos(input: String): String {
     }
 }
 
-// ─── Helper: inicia escucha limpiando error previo ────────────────────────────
+// ─── Helper: inicia escucha con acumulación y confirmación de teléfono ────────
 fun iniciarEscuchaConReintento(
-    voiceManager:    VoiceInputManager?,
-    idioma:          IdiomaVoz,
-    modoAccesible:   Boolean,
-    esCampoFecha:    Boolean,
-    esCampoHora:     Boolean,
-    keyboardOptions: KeyboardOptions,
-    ttsManager:      NutriTTS? = null,
-    onValorChange:   (String) -> Unit,
-    onNext:          (() -> Unit)? = null,
-    onCommandParsed: ((String) -> Boolean)? = null,
-    onSwitchModo:    ((InputModoCiego) -> Unit)? = null
+    voiceManager:       VoiceInputManager?,
+    idioma:             IdiomaVoz,
+    modoAccesible:      Boolean   = false,
+    esCampoFecha:       Boolean,
+    esCampoHora:        Boolean,
+    keyboardOptions:    KeyboardOptions,
+    ttsManager:         NutriTTS? = null,
+    valorActual:        () -> String = { "" },
+    onValorChange:      (String) -> Unit,
+    onNext:             (() -> Unit)? = null,
+    onCommandParsed:    ((String) -> Boolean)? = null,
+    onSwitchModo:       ((InputModoCiego) -> Unit)? = null,
+    coroutineScope:     kotlinx.coroutines.CoroutineScope? = null,
+    estadoConfirmacion: androidx.compose.runtime.MutableState<Boolean>? = null
 ) {
     voiceManager?.errorMsg?.value    = ""
     voiceManager?.errorCodigo?.value = -1
@@ -951,7 +1120,13 @@ fun iniciarEscuchaConReintento(
         }
 
         if (onCommandParsed != null && onCommandParsed.invoke(command)) {
-            voiceManager?.detener()
+            if (isFinal) {
+                iniciarEscuchaConReintento(
+                    voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                    keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                    onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                )
+            }
             return@escuchar
         }
 
@@ -963,12 +1138,116 @@ fun iniciarEscuchaConReintento(
 
         if (pareceComando && !isFinal) return@escuchar
 
+        val esTelefono = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone
+
+        // ── MANEJO ESPECIAL PARA TELÉFONO EN ESTADO DE CONFIRMACIÓN ──────────
+        if (esTelefono && estadoConfirmacion?.value == true) {
+            val esAfirmativo = command.contains("correcto") || command.contains("correct") ||
+                               command == "si" || command == "sí" || command == "yes" ||
+                               command.contains("está bien") || command.contains("esta bien") ||
+                               command.contains("es correcto") || command == "bien" || command == "ok" ||
+                               command == "continuar" || command == "siguiente" || command == "next"
+
+            val esNegativo = command.contains("mal") || command.contains("incorrecto") ||
+                             command.contains("repetir") || command.contains("cambiar") ||
+                             command.contains("borrar") || command == "no" ||
+                             command.contains("wrong") || command.contains("retry") ||
+                             command.contains("otra vez") || command.contains("de nuevo") ||
+                             command.contains("bad") || command.contains("clear")
+
+            if (esAfirmativo) {
+                if (isFinal) {
+                    estadoConfirmacion.value = false
+                    voiceManager?.detener()
+                    val confirmMsg = if (idioma == IdiomaVoz.INGLES) "Phone number confirmed. Moving to next field." else "Número confirmado. Avanzando al siguiente campo."
+                    ttsManager?.hablar(confirmMsg)
+                    onNext?.invoke()
+                }
+                return@escuchar
+            } else if (esNegativo) {
+                if (isFinal) {
+                    estadoConfirmacion.value = false
+                    onValorChange("")
+                    val borrarMsg = if (idioma == IdiomaVoz.INGLES) "Number cleared. Please say your ten-digit phone number." else "Número borrado. Por favor, di tu número de diez dígitos."
+                    voiceManager?.detener()
+                    coroutineScope?.launch {
+                        if (ttsManager != null) {
+                            ttsManager.hablarYEsperar(borrarMsg, margenMs = 400L)
+                        } else {
+                            delay(2000L)
+                        }
+                        iniciarEscuchaConReintento(
+                            voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                            keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                            onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                        )
+                    }
+                }
+                return@escuchar
+            } else {
+                val nuevosDigitos = parsearTelefonoVoz(texto).filter { it.isDigit() }
+                if (nuevosDigitos.length >= 7) {
+                    estadoConfirmacion.value = false
+                } else if (isFinal) {
+                    val numActual = valorActual().filter { it.isDigit() }
+                    val repregunta = if (idioma == IdiomaVoz.INGLES) {
+                        "Please confirm. Your phone number is ${numActual.chunked(2).joinToString(" ")}. Say 'correct' to continue, or 'retry' to start over."
+                    } else {
+                        "Por favor confirma. Tu número es ${numActual.chunked(2).joinToString(" ")}. Di 'correcto' para continuar, o 'repetir' para volver a ingresarlo."
+                    }
+                    voiceManager?.detener()
+                    coroutineScope?.launch {
+                        if (ttsManager != null) {
+                            ttsManager.hablarYEsperar(repregunta, margenMs = 400L)
+                        } else {
+                            delay(2500L)
+                        }
+                        iniciarEscuchaConReintento(
+                            voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                            keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                            onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                        )
+                    }
+                    return@escuchar
+                } else {
+                    return@escuchar
+                }
+            }
+        }
+
+        // ── MANEJO DE COMANDO BORRAR / REPETIR ──────────
+        val esCmdBorrar = command == "borrar" || command == "repetir" || command == "limpiar" ||
+                          command.contains("borrar todo") || command.contains("empezar de nuevo") ||
+                          command.contains("reiniciar") || command.contains("clear") || command.contains("start over")
+
+        if (esCmdBorrar) {
+            if (isFinal) {
+                estadoConfirmacion?.value = false
+                onValorChange("")
+                val msgBorrado = if (idioma == IdiomaVoz.INGLES) "Cleared. Say it again." else "Texto borrado. Habla de nuevo."
+                voiceManager?.detener()
+                coroutineScope?.launch {
+                    if (ttsManager != null) {
+                        ttsManager.hablarYEsperar(msgBorrado, margenMs = 400L)
+                    } else {
+                        delay(1500L)
+                    }
+                    iniciarEscuchaConReintento(
+                        voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                        keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                        onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                    )
+                }
+            }
+            return@escuchar
+        }
+
         val isSave = command == "guardar" || command == "save" || command == "guardar alimento" || 
                      command == "guardar registro" || command == "guardar toma" || command == "guardar alerta" || 
                      command == "guardar medición" || command == "guardar todo" || command.startsWith("guardar ")
-        val isSkip = command == "no lo tengo" || command == "no tengo" || command == "don't have it" || 
-                     command == "dont have it" || command == "skip" || command == "omitir" || 
-                     command == "sin notas" || command == "ninguna"
+        val isSkip = command.contains("no lo tengo") || command.contains("no tengo") || command == "no" || 
+                     command.contains("don't have it") || command.contains("dont have it") || command == "skip" || 
+                     command == "omitir" || command.contains("sin notas") || command == "ninguna"
         val isNext = command == "siguiente" || command == "continuar" || command == "next" || command == "continue"
 
         if (isSave) {
@@ -998,28 +1277,300 @@ fun iniciarEscuchaConReintento(
             return@escuchar
         }
 
-        val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
-        if (resultado.isNotBlank()) {
-            onValorChange(resultado)
+        // ── MANEJO DE ENTRADA POR VOZ SEGÚN TIPO DE CAMPO ────────────────────
+        if (esTelefono) {
+            val digitosPrevios = valorActual().filter { it.isDigit() }
+            val nuevosDigitos = parsearTelefonoVoz(texto).filter { it.isDigit() }
+
+            if (nuevosDigitos.isNotEmpty()) {
+                val totalDigitos = if (nuevosDigitos.length >= 10 || digitosPrevios.isEmpty()) {
+                    nuevosDigitos.take(10)
+                } else if (nuevosDigitos.startsWith(digitosPrevios)) {
+                    nuevosDigitos.take(10)
+                } else {
+                    (digitosPrevios + nuevosDigitos).take(10)
+                }
+
+                onValorChange(totalDigitos)
+
+                if (isFinal) {
+                    if (totalDigitos.length >= 10) {
+                        // 10 DÍGITOS COMPLETOS -> PASAR A CONFIRMACIÓN
+                        estadoConfirmacion?.value = true
+                        voiceManager?.detener()
+                        val confirmacionMsg = if (idioma == IdiomaVoz.INGLES) {
+                            "Your phone number is: ${totalDigitos.chunked(2).joinToString(" ")}. Is this correct? Say 'correct' or 'yes' to continue, or say 'wrong' or 'retry' to start over."
+                        } else {
+                            "Tu número es: ${totalDigitos.chunked(2).joinToString(" ")}. ¿Está correcto? Di: 'correcto' o 'sí' para continuar, o di: 'mal', 'incorrecto' o 'repetir' para volver a ingresarlo."
+                        }
+                        coroutineScope?.launch {
+                            if (ttsManager != null) {
+                                ttsManager.hablarYEsperar(confirmacionMsg, margenMs = 400L)
+                            } else {
+                                val palabras = confirmacionMsg.split(" ").size
+                                delay((palabras * 120L) + 500L)
+                            }
+                            iniciarEscuchaConReintento(
+                                voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                                keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                                onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                            )
+                        }
+                    } else {
+                        // MENOS DE 10 DÍGITOS -> NOTIFICAR Y CONTINUAR ESCUCHANDO AUTOMÁTICAMENTE
+                        val faltan = 10 - totalDigitos.length
+                        val mensajeParcial = if (idioma == IdiomaVoz.INGLES) {
+                            "You have ${totalDigitos.length} digits: ${totalDigitos.chunked(2).joinToString(" ")}. $faltan digits remaining. Continue saying your number."
+                        } else {
+                            "Llevas ${totalDigitos.length} dígitos: ${totalDigitos.chunked(2).joinToString(" ")}. Faltan $faltan dígitos. Continúa diciendo tu número."
+                        }
+                        voiceManager?.detener()
+                        coroutineScope?.launch {
+                            if (ttsManager != null) {
+                                ttsManager.hablarYEsperar(mensajeParcial, margenMs = 400L)
+                            } else {
+                                val palabras = mensajeParcial.split(" ").size
+                                delay((palabras * 120L) + 500L)
+                            }
+                            iniciarEscuchaConReintento(
+                                voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                                keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                                onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                            )
+                        }
+                    }
+                }
+            }
+            return@escuchar
         }
 
-        if (isFinal && resultado.isNotBlank() && onNext != null) {
-            // Validar formato correcto antes de avanzar
-            val esValidoParaAvanzar = when {
-                esCampoFecha -> resultado.matches(Regex("""\d{2}/\d{2}/\d{4}"""))
-                esCampoHora  -> resultado.matches(Regex("""\d{2}:\d{2}"""))
-                keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
-                keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
-                keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone -> resultado.toIntOrNull() != null
-                keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> resultado.toDoubleOrNull() != null
-                else -> resultado.isNotBlank()
-            }
-            if (esValidoParaAvanzar) {
+        val esNumerico = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
+                         keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal ||
+                         keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword
+
+        if (esNumerico) {
+            val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
+            if (resultado.isNotBlank()) {
+                onValorChange(resultado)
+                if (isFinal && onNext != null) {
+                    voiceManager?.detener()
+                    onNext.invoke()
+                }
+            } else if (isFinal) {
+                // El usuario habló pero no dijo un número válido (ej. "talla mediano")
+                val msgErrorNumero = if (idioma == IdiomaVoz.INGLES) {
+                    "Please say a valid number, for example 68."
+                } else {
+                    "La medida debe ser un número. Por ejemplo sesenta y ocho. Intenta de nuevo."
+                }
                 voiceManager?.detener()
-                onNext.invoke()
+                coroutineScope?.launch {
+                    if (ttsManager != null) {
+                        ttsManager.hablarYEsperar(msgErrorNumero, margenMs = 400L)
+                    } else {
+                        delay(2000L)
+                    }
+                    iniciarEscuchaConReintento(
+                        voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                        keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                        onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                    )
+                }
+            }
+        } else {
+            val resultado = sanitizarResultadoVoz(texto, esCampoFecha, esCampoHora, keyboardOptions, ttsManager, idioma)
+            if (resultado.isNotBlank()) {
+                onValorChange(resultado)
+            }
+
+            if (isFinal && resultado.isNotBlank() && onNext != null) {
+                val esPassword = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Password || 
+                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword
+                val esCorreo   = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Email
+
+                if (esPassword) {
+                    if (resultado.length >= 6) {
+                        voiceManager?.detener()
+                        onNext.invoke()
+                    } else {
+                        val msgClave = if (idioma == IdiomaVoz.INGLES) "Password must be at least 6 characters. Please try again." else "La clave debe tener al menos 6 caracteres. Intenta de nuevo."
+                        voiceManager?.detener()
+                        coroutineScope?.launch {
+                            if (ttsManager != null) {
+                                ttsManager.hablarYEsperar(msgClave, margenMs = 400L)
+                            } else {
+                                delay(2000L)
+                            }
+                            iniciarEscuchaConReintento(
+                                voiceManager, idioma, modoAccesible, esCampoFecha, esCampoHora,
+                                keyboardOptions, ttsManager, valorActual, onValorChange, onNext,
+                                onCommandParsed, onSwitchModo, coroutineScope, estadoConfirmacion
+                            )
+                        }
+                    }
+                } else if (esCorreo) {
+                    if (resultado.contains("@") && resultado.contains(".")) {
+                        voiceManager?.detener()
+                        onNext.invoke()
+                    }
+                } else {
+                    // Validar formato correcto antes de avanzar
+                    val esValidoParaAvanzar = when {
+                        esCampoFecha -> resultado.matches(Regex("""\d{2}/\d{2}/\d{4}"""))
+                        esCampoHora  -> resultado.matches(Regex("""\d{2}:\d{2}"""))
+                        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
+                        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword -> resultado.toIntOrNull() != null
+                        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> resultado.toDoubleOrNull() != null
+                        else -> resultado.isNotBlank()
+                    }
+                    if (esValidoParaAvanzar) {
+                        voiceManager?.detener()
+                        onNext.invoke()
+                    }
+                }
             }
         }
     }
+}
+
+private val FRASES_ECO_SISTEMA = listOf(
+    "no te escuché",
+    "no te escuche",
+    "di tu correo",
+    "di tu nombre",
+    "di tu teléfono",
+    "di tu telefono",
+    "di tu",
+    "por ejemplo",
+    "te escucho, habla cuando quieras",
+    "te escucho habla cuando quieras",
+    "habla cuando quieras",
+    "hablacuandoquieras",
+    "te escucho",
+    "tees como",
+    "escuchando",
+    "speak whenever you're ready",
+    "i'm listening",
+    "listening"
+)
+
+private fun limpiarEcosDelSistema(texto: String): String {
+    var limpio = texto.trim()
+    for (eco in FRASES_ECO_SISTEMA) {
+        if (limpio.equals(eco, ignoreCase = true)) {
+            return ""
+        }
+        limpio = limpio.replace(eco, "", ignoreCase = true).trim()
+    }
+    return limpio
+}
+
+private fun parsearTelefonoVoz(texto: String): String {
+    val textoSinEco = limpiarEcosDelSistema(texto)
+    if (textoSinEco.isBlank()) return ""
+
+    var t = textoSinEco.lowercase()
+        .replace("-", " ")
+        .replace(".", " ")
+        .replace(",", " ")
+        .trim()
+
+    // Eliminar palabras y prefijos comunes
+    val prefijos = listOf(
+        "mi número es", "mi numero es", "mi teléfono es", "mi telefono es",
+        "es el", "es", "número", "numero", "teléfono", "telefono"
+    )
+    for (p in prefijos) {
+        if (t.startsWith(p)) {
+            t = t.substring(p.length).trim()
+        }
+    }
+
+    // Manejo de "doble X" y "triple X"
+    val repeticiones = listOf(
+        "doble cero" to "00", "doble uno" to "11", "doble dos" to "22", "doble tres" to "33",
+        "doble cuatro" to "44", "doble cinco" to "55", "doble seis" to "66", "doble siete" to "77",
+        "doble ocho" to "88", "doble nueve" to "99",
+        "triple cero" to "000", "triple uno" to "111", "triple dos" to "222", "triple tres" to "333",
+        "triple cuatro" to "444", "triple cinco" to "555", "triple seis" to "666", "triple siete" to "777",
+        "triple ocho" to "888", "triple nueve" to "999"
+    )
+    for ((frase, rep) in repeticiones) {
+        t = t.replace(frase, rep)
+    }
+
+    // Manejo de decenas compuestas con "y" (ej: "treinta y cinco" -> "35", "cuarenta y dos" -> "42")
+    val decenasCompuestas = listOf(
+        "veinte y" to 20, "treinta y" to 30, "cuarenta y" to 40, "cincuenta y" to 50,
+        "sesenta y" to 60, "setenta y" to 70, "ochenta y" to 80, "noventa y" to 90
+    )
+    val unidadesMap = mapOf(
+        "uno" to 1, "un" to 1, "una" to 1, "dos" to 2, "tres" to 3, "cuatro" to 4,
+        "cinco" to 5, "seis" to 6, "siete" to 7, "ocho" to 8, "nueve" to 9
+    )
+    for ((decStr, decVal) in decenasCompuestas) {
+        for ((uniStr, uniVal) in unidadesMap) {
+            val compuesto = "$decStr $uniStr"
+            val valorNum = (decVal + uniVal).toString()
+            t = t.replace(compuesto, valorNum)
+        }
+    }
+
+    val mapaPalabras = mapOf(
+        "cero" to "0", "zero" to "0",
+        "uno" to "1", "un" to "1", "una" to "1", "one" to "1",
+        "dos" to "2", "two" to "2",
+        "tres" to "3", "three" to "3",
+        "cuatro" to "4", "four" to "4",
+        "cinco" to "5", "five" to "5",
+        "seis" to "6", "six" to "6",
+        "siete" to "7", "seven" to "7",
+        "ocho" to "8", "eight" to "8",
+        "nueve" to "9", "nine" to "9",
+        "diez" to "10", "ten" to "10",
+        "once" to "11", "eleven" to "11",
+        "doce" to "12", "twelve" to "12",
+        "trece" to "13", "thirteen" to "13",
+        "catorce" to "14", "fourteen" to "14",
+        "quince" to "15", "fifteen" to "15",
+        "dieciséis" to "16", "dieciseis" to "16", "sixteen" to "16",
+        "diecisiete" to "17", "seventeen" to "17",
+        "dieciocho" to "18", "eighteen" to "18",
+        "diecinueve" to "19", "nineteen" to "19",
+        "veinte" to "20", "twenty" to "20",
+        "veintiuno" to "21", "veintiún" to "21", "twenty-one" to "21", "twenty one" to "21",
+        "veintidós" to "22", "veintidos" to "22", "twenty-two" to "22", "twenty two" to "22",
+        "veintitrés" to "23", "veintitres" to "23", "twenty-three" to "23", "twenty three" to "23",
+        "veinticuatro" to "24", "twenty-four" to "24", "twenty four" to "24",
+        "veinticinco" to "25", "twenty-five" to "25", "twenty five" to "25",
+        "veintiséis" to "26", "veintiseis" to "26", "twenty-six" to "26", "twenty six" to "26",
+        "veintisiete" to "27", "twenty-seven" to "27", "twenty seven" to "27",
+        "veintiocho" to "28", "twenty-eight" to "28", "twenty eight" to "28",
+        "veintinueve" to "29", "twenty-nine" to "29", "twenty nine" to "29",
+        "treinta" to "30", "thirty" to "30",
+        "cuarenta" to "40", "forty" to "40",
+        "cincuenta" to "50", "fifty" to "50",
+        "sesenta" to "60", "sixty" to "60",
+        "setenta" to "70", "seventy" to "70",
+        "ochenta" to "80", "eighty" to "80",
+        "noventa" to "90", "ninety" to "90",
+        "cien" to "100", "ciento" to "100"
+    )
+
+    val tokens = t.split(Regex("""\s+"""))
+    val sb = StringBuilder()
+    for (tok in tokens) {
+        val cleanTok = tok.trim()
+        if (cleanTok.isEmpty() || cleanTok == "y" || cleanTok == "and") continue
+        
+        val digitsOnly = cleanTok.filter { it.isDigit() }
+        if (digitsOnly.isNotEmpty()) {
+            sb.append(digitsOnly)
+        } else if (mapaPalabras.containsKey(cleanTok)) {
+            sb.append(mapaPalabras[cleanTok])
+        }
+    }
+    return sb.toString()
 }
 
 private fun sanitizarResultadoVoz(
@@ -1030,60 +1581,117 @@ private fun sanitizarResultadoVoz(
     ttsManager:      NutriTTS? = null,
     idioma:          IdiomaVoz = IdiomaVoz.ESPANOL_MX
 ): String {
-    val t = texto.trim()
-    if (t.isBlank()) return ""
-    
-    return when {
-        esCampoFecha -> parsearFecha(t)
-        esCampoHora  -> parsearHora(t)
+    val textoLimpio = limpiarEcosDelSistema(texto)
+    if (textoLimpio.isBlank()) return ""
+
+    var resultado = when {
+        esCampoFecha -> parsearFecha(textoLimpio)
+        esCampoHora  -> parsearHora(textoLimpio)
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone -> parsearTelefonoVoz(textoLimpio)
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> parsearNumeroDecimal(textoLimpio)
         keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
-        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
-        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone -> parsearNumeroEntero(t)
-        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal -> parsearNumeroDecimal(t)
-        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Email ||
-        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Password -> t.replace(" ", "")
-        else -> t
+        keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword -> parsearNumeroEntero(textoLimpio)
+        else         -> textoLimpio
     }
+    val esNumericoOClaveOCorreo = keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Number ||
+                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Phone ||
+                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.NumberPassword ||
+                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Decimal ||
+                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Password ||
+                                 keyboardOptions.keyboardType == androidx.compose.ui.text.input.KeyboardType.Email
+    if (esNumericoOClaveOCorreo) {
+        resultado = resultado.replace(" ", "")
+    }
+    return resultado
 }
 
 private fun parsearNumeroDecimal(texto: String): String {
     val t = texto.lowercase().trim()
         .replace("kilos", "").replace("kilo", "").replace("kg", "")
-        .replace("centímetros", "").replace("centimetros", "").replace("cm", "")
+        .replace("centímetros", "").replace("centimetros", "").replace("cms", "").replace("cm", "")
         .replace("gramos", "").replace("gramo", "").replace("gr", "")
         .replace("mililitros", "").replace("mililitro", "").replace("ml", "")
         .replace("minutos", "").replace("minuto", "").replace("min", "")
         .trim()
     
+    // Casos con metros para talla / estatura (e.g. "un metro diez" -> 110, "1 metro 15" -> 115, "un metro cinco" -> 105, "un metro" -> 100)
+    if (t.contains("metro") || t.contains(" metros") || t.contains(" meter")) {
+        val tMetro = t.replace("un metro", "100").replace("1 metro", "100")
+                      .replace("dos metros", "200").replace("2 metros", "200")
+                      .replace("one meter", "100").replace("1 meter", "100")
+                      .replace("metro", "100").replace("metros", "200")
+                      .replace(" y ", " ").replace(" con ", " ")
+        val palabras = tMetro.split(Regex("\\s+"))
+        var total = 0
+        var found = false
+        for (p in palabras) {
+            val n = p.toIntOrNull() ?: parsearNumeroEspanol(p)
+            if (n > 0 || p == "0" || p == "cero") {
+                if (n in 1..9 && total >= 100 && palabras.size > 1 && palabras.last() == p && !t.contains("cincuenta") && !t.contains("cinco")) {
+                    total += n * 10
+                } else {
+                    total += n
+                }
+                found = true
+            }
+        }
+        if (found && total > 0) return total.toString()
+    }
+
+    // Casos con "medio" / "media" (ej. "siete y medio", "7 y medio", "siete kilos y medio" -> 7.5)
+    if (t.contains("medio") || t.contains("media") || t.contains("and a half") || t.contains("half")) {
+        val tSinMedio = t.replace("y medio", "").replace("con medio", "").replace("y media", "").replace("con media", "")
+                         .replace("and a half", "").replace("half", "").trim()
+        val entero = tSinMedio.filter { it.isDigit() }.ifEmpty {
+            val n = parsearNumeroEspanol(tSinMedio)
+            if (n > 0) n.toString() else "0"
+        }
+        return "$entero.5"
+    }
+
+    // Casos decimales con dígitos directos: "7.5", "7,5", "68.2"
     val regexDecimal = Regex("""(\d+)[,\.](\d+)""")
     regexDecimal.find(t)?.let { m ->
         return "${m.groupValues[1]}.${m.groupValues[2]}"
     }
     
-    if (t.contains("punto") || t.contains("coma") || t.contains(" con ")) {
-        val partes = t.split(Regex("""\s+(?:punto|coma|con)\s+"""))
+    // Casos con palabras "punto", "coma", "point", "dot", " con "
+    if (t.contains("punto") || t.contains("coma") || t.contains("point") || t.contains("dot") || t.contains(" con ")) {
+        val partes = t.split(Regex("""\s+(?:punto|coma|point|dot|con)\s+"""))
         if (partes.size >= 2) {
-            val entero = partes[0].filter { it.isDigit() }.ifEmpty { parsearNumeroEspanol(partes[0]).toString() }
-            val dec = partes[1].filter { it.isDigit() }.ifEmpty { parsearNumeroEspanol(partes[1]).toString() }
-            return "$entero.$dec"
+            val enteroStr = partes[0].filter { it.isDigit() }.ifEmpty {
+                val n = parsearNumeroEspanol(partes[0])
+                if (n > 0 || partes[0].trim() == "cero") n.toString() else ""
+            }
+            val decStr = partes[1].filter { it.isDigit() }.ifEmpty {
+                val n = parsearNumeroEspanol(partes[1])
+                if (n > 0 || partes[1].trim() == "cero") n.toString() else ""
+            }
+            if (enteroStr.isNotBlank() && decStr.isNotBlank()) {
+                val decNorm = if (decStr.length == 3 && decStr.endsWith("00")) decStr.take(1) else decStr
+                return "$enteroStr.$decNorm"
+            }
         }
     }
     
+    // Dígitos enteros presentes en el texto (ej. "68", "75", "110", "pesa 8", "mide 70")
     val regexEntero = Regex("""\d+""")
     regexEntero.find(t)?.let { m ->
         return m.value
     }
     
+    // Número expresado completamente en palabras (ej. "sesenta y ocho", "ciento diez", "setenta y cinco")
     val num = parsearNumeroEspanol(t)
-    if (num > 0 || t == "cero") return num.toString()
+    if (num > 0 || t == "cero" || t == "zero") return num.toString()
     
-    return t
+    // Si no contiene ningún número (ej. "talla mediano", "mediano", "grande", "chico", "no sé") -> RETORNAR VACÍO
+    return ""
 }
 
 private fun parsearNumeroEntero(texto: String): String {
     val t = texto.lowercase().trim()
         .replace("kilos", "").replace("kilo", "").replace("kg", "")
-        .replace("centímetros", "").replace("centimetros", "").replace("cm", "")
+        .replace("centímetros", "").replace("centimetros", "").replace("cms", "").replace("cm", "")
         .replace("minutos", "").replace("minuto", "").replace("min", "")
         .replace("mililitros", "").replace("mililitro", "").replace("ml", "")
         .trim()
@@ -1092,9 +1700,9 @@ private fun parsearNumeroEntero(texto: String): String {
     if (digitos.isNotBlank()) return digitos
     
     val num = parsearNumeroEspanol(t)
-    if (num > 0 || t == "cero") return num.toString()
+    if (num > 0 || t == "cero" || t == "zero") return num.toString()
     
-    return t
+    return ""
 }
 
 private fun parsearHora(texto: String): String {

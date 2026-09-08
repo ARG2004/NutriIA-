@@ -19,6 +19,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +38,7 @@ fun EmbarazoQuizScreen(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
+    val view    = LocalView.current
     val haptic = LocalHapticFeedback.current
     val accessibilityVm: AccessibilityViewModel = viewModel()
     val idiomaActual by accessibilityVm.idioma.collectAsState()
@@ -67,10 +69,20 @@ fun EmbarazoQuizScreen(
             7 -> loc("Nivel de ingreso y región. Selecciona tu nivel y región para estimar tu plan.", "Income level and region. Select your level and region to estimate your plan.")
             else -> ""
         }
-        if (texto.isNotEmpty()) accessibilityVm.hablar(texto)
+        val orientacion = if (currentStep == totalSteps - 1) {
+            orientacionBotonInferior(loc("comenzar seguimiento", "start tracking"))
+        } else {
+            orientacionBotonInferior(loc("continuar", "continue"))
+        }
+        if (texto.isNotEmpty()) accessibilityVm.hablar("$texto $orientacion")
     }
 
-    Box(Modifier.fillMaxSize().background(Color(0xFFF8F9F3))) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F9F3))
+            .radarHapticoBlind(context, selectedA11yMode == AccessibilityMode.BLIND)
+    ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -80,12 +92,18 @@ fun EmbarazoQuizScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 if (currentStep > 0) {
                     Box(Modifier.size(38.dp).clip(CircleShape).background(Color(0xFF689F38).copy(0.1f))
-                        .clickable { currentStep-- }, contentAlignment = Alignment.Center) {
+                        .clickable {
+                            triggerFeedbackAccesible(context, view)
+                            currentStep--
+                        }, contentAlignment = Alignment.Center) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = Color(0xFF689F38), modifier = Modifier.size(18.dp))
                     }
                 } else Spacer(Modifier.width(38.dp))
                 
-                TextButton(onClick = onCancel) {
+                TextButton(onClick = {
+                    triggerFeedbackAccesible(context, view)
+                    onCancel()
+                }) {
                     Icon(Icons.Rounded.Close, null, tint = Color.Gray, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(loc("Cancelar", "Cancel"), color = Color.Gray, fontSize = 13.sp)
@@ -116,10 +134,14 @@ fun EmbarazoQuizScreen(
                                 idiomaActual = idiomaActual,
                                 talkBackActivo = isTalkBackActive(context),
                                 onSelect = { modo ->
+                                     triggerFeedbackAccesible(context, view)
                                      selectedA11yMode = modo
                                      accessibilityVm.setMode(modo)
                                 },
-                                onIdiomaSelect = { accessibilityVm.setIdioma(it) }
+                                onIdiomaSelect = {
+                                    triggerFeedbackAccesible(context, view)
+                                    accessibilityVm.setIdioma(it)
+                                }
                             )
                             1 -> StepBienvenidaEmbarazo(idiomaActual == IdiomaVoz.INGLES)
                             2 -> StepSemanaEmbarazo(
@@ -173,6 +195,7 @@ fun EmbarazoQuizScreen(
 
             Button(
                 onClick = {
+                    triggerFeedbackAccesible(context, view)
                     if (currentStep < totalSteps - 1) {
                         currentStep++
                     } else {

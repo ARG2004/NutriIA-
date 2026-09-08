@@ -48,3 +48,44 @@
 -keepnames class com.example.nutriia.teleconsulta.** { *; }
 -keepclassmembers class com.example.nutriia.analisisIA.** { *; }
 -keepclassmembers class com.example.nutriia.teleconsulta.** { *; }
+
+# Firebase & Firestore Models - Protección completa contra ofuscación
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-keepclassmembers class * {
+    @com.google.firebase.firestore.PropertyName <fields>;
+    @com.google.firebase.firestore.PropertyName <methods>;
+    @com.google.firebase.firestore.Exclude <fields>;
+    @com.google.firebase.firestore.Exclude <methods>;
+    @com.google.firebase.database.PropertyName <fields>;
+    @com.google.firebase.database.PropertyName <methods>;
+    @com.google.firebase.database.Exclude <fields>;
+    @com.google.firebase.database.Exclude <methods>;
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+-keep class com.example.nutriia.embarazo.** { *; }
+-keepclassmembers class com.example.nutriia.embarazo.** { *; }
+-keep class com.example.nutriia.auth.** { *; }
+-keepclassmembers class com.example.nutriia.auth.** { *; }
+-keep class com.example.nutriia.crecimiento.** { *; }
+-keepclassmembers class com.example.nutriia.crecimiento.** { *; }
+-keep class com.example.nutriia.sueldo.** { *; }
+-keepclassmembers class com.example.nutriia.sueldo.** { *; }
+-keep class com.example.nutriia.solidos.** { *; }
+-keepclassmembers class com.example.nutriia.solidos.** { *; }
+-keep class com.example.nutriia.lactancia.** { *; }
+-keepclassmembers class com.example.nutriia.lactancia.** { *; }
+-keep class com.example.nutriia.alerta.** { *; }
+-keepclassmembers class com.example.nutriia.alerta.** { *; }
+-keep class com.example.nutriia.nutriente.** { *; }
+-keepclassmembers class com.example.nutriia.nutriente.** { *; }
+-keep class com.example.nutriia.ginecologo.** { *; }
+-keepclassmembers class com.example.nutriia.ginecologo.** { *; }
+-keep class com.example.nutriia.expediente.** { *; }
+-keepclassmembers class com.example.nutriia.expediente.** { *; }
+-keep class com.example.nutriia.chatbot.** { *; }
+-keepclassmembers class com.example.nutriia.chatbot.** { *; }
+-keep class com.example.nutriia.ui.theme.** { *; }
+-keepclassmembers class com.example.nutriia.ui.theme.** { *; }
+-keep class com.example.nutriia.accesibilidad.** { *; }
+-keepclassmembers class com.example.nutriia.accesibilidad.** { *; }

@@ -45,6 +45,7 @@ import com.example.nutriia.accesibilidad.Voz
 import com.example.nutriia.accesibilidad.VozEn
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // ─── COLORES ──────────────────────────────────────────────────────────────────
 private val RegGreen     = Color(0xFF689F38)
@@ -207,6 +208,7 @@ fun RegisterTypeScreen(
     val a11yMode     = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val idiomaActual by a11yVm.idioma.collectAsState()
+    val scope        = rememberCoroutineScope()
 
     // ── Helper local de localización ──────────────────────────────────────────
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
@@ -242,9 +244,15 @@ fun RegisterTypeScreen(
             Row(Modifier.fillMaxWidth()) {
                 IconButton(
                     onClick  = {
-                        if (a11yMode == AccessibilityMode.BLIND)
+                        if (a11yMode == AccessibilityMode.BLIND) {
                             a11yVm.hablar(loc("Regresando a inicio de sesión.", "Going back to sign in."))
-                        onNavigateBack()
+                            scope.launch {
+                                delay(700L)
+                                onNavigateBack()
+                            }
+                        } else {
+                            onNavigateBack()
+                        }
                     },
                     modifier = Modifier
                         .clip(CircleShape)
@@ -316,12 +324,18 @@ fun RegisterTypeScreen(
                     tag       = loc("Familia", "Family"),
                     tagColor  = RegGreen,
                     onClick   = {
-                        if (a11yMode == AccessibilityMode.BLIND)
+                        if (a11yMode == AccessibilityMode.BLIND) {
                             a11yVm.hablar(loc(
-                                "Abriendo registro de padre o madre.",
-                                "Opening parent registration."
+                                "Seleccionaste: Soy Padre o Madre. Abriendo registro.",
+                                "You selected: Parent. Opening registration."
                             ))
-                        onSelectParent()
+                            scope.launch {
+                                delay(1200L)
+                                onSelectParent()
+                            }
+                        } else {
+                            onSelectParent()
+                        }
                     }
                 )
                 AccountTypeCard(
@@ -335,12 +349,18 @@ fun RegisterTypeScreen(
                     tag       = loc("Embarazo", "Pregnancy"),
                     tagColor  = RegRosa,
                     onClick   = {
-                        if (a11yMode == AccessibilityMode.BLIND)
+                        if (a11yMode == AccessibilityMode.BLIND) {
                             a11yVm.hablar(loc(
-                                "Abriendo registro de mamá primeriza.",
-                                "Opening first-time mom registration."
+                                "Seleccionaste: Mamá Primeriza. Abriendo registro.",
+                                "You selected: First-time Mom. Opening registration."
                             ))
-                        onSelectMamaPrimeriza()
+                            scope.launch {
+                                delay(1200L)
+                                onSelectMamaPrimeriza()
+                            }
+                        } else {
+                            onSelectMamaPrimeriza()
+                        }
                     }
                 )
                 AccountTypeCard(
@@ -354,12 +374,18 @@ fun RegisterTypeScreen(
                     tag       = loc("Profesional", "Professional"),
                     tagColor  = RegTeal,
                     onClick   = {
-                        if (a11yMode == AccessibilityMode.BLIND)
+                        if (a11yMode == AccessibilityMode.BLIND) {
                             a11yVm.hablar(loc(
-                                "Abriendo registro de nutriólogo.",
-                                "Opening nutritionist registration."
+                                "Seleccionaste: Soy Nutriólogo o Nutrióloga. Abriendo registro.",
+                                "You selected: Nutritionist. Opening registration."
                             ))
-                        onSelectNutritionist()
+                            scope.launch {
+                                delay(1200L)
+                                onSelectNutritionist()
+                            }
+                        } else {
+                            onSelectNutritionist()
+                        }
                     }
                 )
                 AccountTypeCard(
@@ -373,12 +399,18 @@ fun RegisterTypeScreen(
                     tag       = loc("Profesional", "Professional"),
                     tagColor  = RegRosaGine,
                     onClick   = {
-                        if (a11yMode == AccessibilityMode.BLIND)
+                        if (a11yMode == AccessibilityMode.BLIND) {
                             a11yVm.hablar(loc(
-                                "Abriendo registro de ginecólogo.",
-                                "Opening gynecologist registration."
+                                "Seleccionaste: Soy Ginecólogo o Ginecóloga. Abriendo registro.",
+                                "You selected: Gynecologist. Opening registration."
                             ))
-                        onSelectGinecologo()
+                            scope.launch {
+                                delay(1200L)
+                                onSelectGinecologo()
+                            }
+                        } else {
+                            onSelectGinecologo()
+                        }
                     }
                 )
             }
@@ -396,9 +428,15 @@ fun RegisterTypeScreen(
                 )
                 TextButton(
                     onClick  = {
-                        if (a11yMode == AccessibilityMode.BLIND)
+                        if (a11yMode == AccessibilityMode.BLIND) {
                             a11yVm.hablar(loc("Regresando a inicio de sesión.", "Going back to sign in."))
-                        onNavigateBack()
+                            scope.launch {
+                                delay(700L)
+                                onNavigateBack()
+                            }
+                        } else {
+                            onNavigateBack()
+                        }
                     },
                     modifier = Modifier.semantics {
                         contentDescription = loc(
@@ -440,6 +478,9 @@ private fun AccountTypeCard(
         modifier  = Modifier
             .fillMaxWidth()
             .scale(scale)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "$title. $tag. $description"
+            }
             .clickable { pressed = true; onClick() },
         shape     = RoundedCornerShape(28.dp),
         colors    = CardDefaults.cardColors(containerColor = RegCardWhite),
@@ -610,8 +651,13 @@ fun ParentRegisterScreen(
     LaunchedEffect(campoActivo) {
         if (esBlind && campoActivo == 6) {
             a11yVm.hablar(loc(
-                "Todos los campos obligatorios han sido completados. El botón verde para Crear Cuenta y Continuar está ubicado en la parte inferior de la pantalla.",
-                "All required fields have been completed. The green Create Account and Continue button is located at the bottom of the screen."
+                "Has completado los campos obligatorios. El código de nutriólogo es opcional. Para finalizar y crear tu perfil, toca dos veces el botón verde que está en la parte inferior de la pantalla que dice Crear cuenta y continuar.",
+                "You have completed the required fields. The nutritionist code is optional. To finish and create your profile, double tap the green Create account and continue button at the bottom of the screen."
+            ))
+        } else if (esBlind && campoActivo >= 7) {
+            a11yVm.hablar(loc(
+                "Todos los datos han sido completados. Toca dos veces el botón verde que está en la parte inferior de la pantalla que dice Crear cuenta y continuar para crear tu perfil.",
+                "All information has been completed. Double tap the green Create account and continue button at the bottom of the screen to create your profile."
             ))
         }
     }
@@ -877,8 +923,8 @@ fun ParentRegisterScreen(
                         icon          = Icons.Rounded.QrCode2,
                         placeholder   = "Ej. NUTRI-A3X7F2",
                         a11yLabel     = loc(
-                            "Todos los datos principales han sido completados. Este campo de código es opcional. Puedes dictarlo, o decir guardar para finalizar el registro.",
-                            "All required fields complete. This nutritionist code field is optional. Say the code, or say save to finish registration."
+                            "Todos los datos principales han sido completados. Este campo de código es opcional. Puedes dictarlo, o presionar el botón verde abajo para crear tu perfil.",
+                            "All required fields complete. This nutritionist code field is optional. Say the code, or tap the green button below to create your profile."
                         ),
                         a11yActive    = esAccesible,
                         activo        = campoActivo == 6,
@@ -918,7 +964,34 @@ fun ParentRegisterScreen(
                         childNameError = loc("Escribe el nombre de tu hijo/a", "Enter your child's name"); hasErrors = true
                     }
                     if (hasErrors) {
-                        if (esBlind) a11yVm.hablar(loc(Voz.REGISTRO_ERROR_CAMPOS, VozEn.REGISTRO_ERROR_CAMPOS))
+                        val primerErrorMsg = when {
+                            data.name.isBlank() -> {
+                                campoActivo = 0
+                                loc("Falta tu nombre completo. Por favor dilo ahora.", "Your full name is missing. Please say it now.")
+                            }
+                            data.phone.isBlank() || !tieneDiezDigitos(data.phone) -> {
+                                campoActivo = 1
+                                loc("Falta tu teléfono de 10 dígitos. Por favor dilo ahora.", "Your 10-digit phone is missing. Please say it now.")
+                            }
+                            data.email.isBlank() || !(data.email.contains("@") && data.email.contains(".")) -> {
+                                campoActivo = 2
+                                loc("Falta tu correo electrónico o es inválido. Por favor dilo ahora.", "Your email is missing or invalid. Please say it now.")
+                            }
+                            data.password.length < 6 -> {
+                                campoActivo = 3
+                                loc("La contraseña debe tener al menos 6 caracteres. Por favor dila ahora.", "Password must have at least 6 characters. Please say it now.")
+                            }
+                            confirmPassword != data.password -> {
+                                campoActivo = 4
+                                loc("Las contraseñas no coinciden. Por favor confirma tu contraseña.", "Passwords do not match. Please confirm your password.")
+                            }
+                            data.childName.isBlank() -> {
+                                campoActivo = 5
+                                loc("Falta el nombre de tu hijo o hija. Por favor dilo ahora.", "Your child's name is missing. Please say it now.")
+                            }
+                            else -> loc(Voz.REGISTRO_ERROR_CAMPOS, VozEn.REGISTRO_ERROR_CAMPOS)
+                        }
+                        if (esBlind) a11yVm.hablar(primerErrorMsg)
                     } else {
                         if (esBlind) a11yVm.hablar(loc(
                             "Creando tu cuenta. Por favor espera.",
@@ -933,8 +1006,8 @@ fun ParentRegisterScreen(
                     .height(if (esBlind) 70.dp else 56.dp)
                     .semantics {
                         contentDescription = loc(
-                            "Botón Crear cuenta y continuar. Parte inferior.",
-                            "Create account and continue button. Bottom of screen."
+                            "Botón Crear cuenta y continuar. Parte inferior. Presiona aquí para crear tu perfil.",
+                            "Create account and continue button. Bottom of screen. Tap here to create your profile."
                         )
                     },
                 shape  = RoundedCornerShape(18.dp),
@@ -1079,10 +1152,10 @@ fun MamaPrimerizaRegisterScreen(
     }
 
     LaunchedEffect(campoActivo) {
-        if (esBlind && campoActivo == 6) {
+        if (esBlind && campoActivo >= 6) {
             ttsManager?.hablar(loc(
-                "Todos los campos obligatorios han sido completados. El botón verde para Crear Cuenta y Continuar está ubicado en la parte inferior de la pantalla.",
-                "All required fields have been completed. The green Create Account and Continue button is located at the bottom of the screen."
+                "Todos los campos han sido completados. Toca dos veces el botón en la parte inferior de la pantalla que dice Crear cuenta para crear tu perfil.",
+                "All fields have been completed. Double tap the button at the bottom of the screen that says Create account to create your profile."
             ))
         }
     }
@@ -1265,9 +1338,49 @@ fun MamaPrimerizaRegisterScreen(
                     if (data.password.length < 6) { passwordError = loc("Mínimo 6 caracteres", "Min 6 characters"); hasErrors = true }
                     if (confirmPassword != data.password) { confirmError = loc("No coinciden", "No match"); hasErrors = true }
 
-                    if (!hasErrors) viewModel.registrarMamaPrimeriza(data, confirmPassword)
+                    if (hasErrors) {
+                        val primerErrorMsg = when {
+                            data.name.isBlank() -> {
+                                campoActivo = 0
+                                loc("Falta tu nombre completo. Por favor dilo ahora.", "Your full name is missing. Please say it now.")
+                            }
+                            data.phone.isBlank() || !tieneDiezDigitos(data.phone) -> {
+                                campoActivo = 1
+                                loc("Falta tu teléfono de 10 dígitos. Por favor dilo ahora.", "Your 10-digit phone is missing. Please say it now.")
+                            }
+                            data.semanas !in 1..40 -> {
+                                campoActivo = 2
+                                loc("Faltan tus semanas de embarazo. Di un número entre 1 y 40.", "Missing pregnancy weeks. Say a number between 1 and 40.")
+                            }
+                            data.email.isBlank() || !(data.email.contains("@") && data.email.contains(".")) -> {
+                                campoActivo = 3
+                                loc("Falta tu correo electrónico o es inválido. Por favor dilo ahora.", "Your email is missing or invalid. Please say it now.")
+                            }
+                            data.password.length < 6 -> {
+                                campoActivo = 4
+                                loc("La contraseña debe tener al menos 6 caracteres. Por favor dila ahora.", "Password must have at least 6 characters. Please say it now.")
+                            }
+                            confirmPassword != data.password -> {
+                                campoActivo = 5
+                                loc("Las contraseñas no coinciden. Por favor confirma tu contraseña.", "Passwords do not match. Please confirm your password.")
+                            }
+                            else -> loc(Voz.REGISTRO_ERROR_CAMPOS, VozEn.REGISTRO_ERROR_CAMPOS)
+                        }
+                        if (esBlind) a11yVm.hablar(primerErrorMsg)
+                    } else {
+                        if (esBlind) a11yVm.hablar(loc("Creando tu cuenta de embarazo. Por favor espera.", "Creating your pregnancy account. Please wait."))
+                        viewModel.registrarMamaPrimeriza(data, confirmPassword)
+                    }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (esBlind) 70.dp else 56.dp)
+                    .semantics {
+                        contentDescription = loc(
+                            "Botón Crear cuenta. Parte inferior. Presiona aquí para crear tu perfil.",
+                            "Create account button. Bottom of screen. Tap here to create your profile."
+                        )
+                    },
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = RegRosa)
             ) {
@@ -1782,8 +1895,8 @@ fun NutritionistRegisterScreen(
                     // Esperar que termine el TTS antes de abrir el mic
                     ttsManager?.hablarYEsperar(
                         loc(
-                            "Formulario completo. Di registrarme para crear tu cuenta.",
-                            "Form complete. Say register me to create your account."
+                            "Formulario completo. Toca dos veces el botón en la parte inferior de la pantalla que dice Crear perfil profesional, o di registrarme para crear tu perfil.",
+                            "Form complete. Double tap the button at the bottom of the screen that says Create professional profile, or say register me to create your profile."
                         ),
                         margenMs = 800L
                     )
@@ -1799,7 +1912,7 @@ fun NutritionistRegisterScreen(
                         } else {
                             // Volver a escuchar si no reconoció el comando
                             escuchandoRegistro = true
-                            a11yVm.hablar(loc("No entendí. Di registrarme para crear tu cuenta.", "I didn't understand. Say register me to create your account."))
+                            a11yVm.hablar(loc("No entendí. Di registrarme o toca dos veces el botón Crear perfil profesional abajo.", "I didn't understand. Say register me or double tap Create professional profile button below."))
                         }
                     }
                 }
@@ -1821,7 +1934,7 @@ fun NutritionistRegisterScreen(
                             }
                         } else {
                             Text(
-                                loc("🎤 Di \"registrarme\" para completar el registro", "🎤 Say \"register me\" to complete registration"),
+                                loc("🎤 Di \"registrarme\" o toca el botón Crear perfil abajo", "🎤 Say \"register me\" or tap Create profile button below"),
                                 fontSize = 13.sp, color = RegTeal, fontWeight = FontWeight.Medium,
                                 textAlign = TextAlign.Center
                             )
@@ -1840,8 +1953,8 @@ fun NutritionistRegisterScreen(
                     .height(if (esBlind) 70.dp else 56.dp)
                     .semantics {
                         contentDescription = loc(
-                            "Botón Crear perfil profesional. Parte inferior.",
-                            "Create professional profile button. Bottom of screen."
+                            "Botón Crear perfil profesional. Parte inferior. Presiona aquí para crear tu perfil.",
+                            "Create professional profile button. Bottom of screen. Tap here to create your profile."
                         )
                     },
                 shape  = RoundedCornerShape(18.dp),
@@ -2315,8 +2428,8 @@ fun GinecologistRegisterScreen(
                     // Esperar que termine el TTS antes de abrir el mic
                     ttsManager?.hablarYEsperar(
                         loc(
-                            "Formulario completo. Di registrarme para crear tu cuenta.",
-                            "Form complete. Say register me to create your account."
+                            "Formulario completo. Toca dos veces el botón en la parte inferior de la pantalla que dice Crear perfil profesional, o di registrarme para crear tu perfil.",
+                            "Form complete. Double tap the button at the bottom of the screen that says Create professional profile, or say register me to create your profile."
                         ),
                         margenMs = 800L
                     )
@@ -2331,7 +2444,7 @@ fun GinecologistRegisterScreen(
                             ejecutarRegistroGine()
                         } else {
                             escuchandoRegistroGine = true
-                            a11yVm.hablar(loc("No entendí. Di registrarme para crear tu cuenta.", "I didn't understand. Say register me to create your account."))
+                            a11yVm.hablar(loc("No entendí. Di registrarme o toca dos veces el botón Crear perfil profesional abajo.", "I didn't understand. Say register me or double tap Create professional profile button below."))
                         }
                     }
                 }
@@ -2353,7 +2466,7 @@ fun GinecologistRegisterScreen(
                             }
                         } else {
                             Text(
-                                loc("🎤 Di \"registrarme\" para completar el registro", "🎤 Say \"register me\" to complete registration"),
+                                loc("🎤 Di \"registrarme\" o toca el botón Crear perfil abajo", "🎤 Say \"register me\" or tap Create profile button below"),
                                 fontSize = 13.sp, color = RegRosaGine, fontWeight = FontWeight.Medium,
                                 textAlign = TextAlign.Center
                             )
@@ -2367,7 +2480,15 @@ fun GinecologistRegisterScreen(
             Button(
                 onClick = { ejecutarRegistroGine() },
                 enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedulaGine && verificadoCedulaGineState?.valida == true && !nombreNoCoincideGine && !profesionInvalidaGine,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (esBlind) 70.dp else 56.dp)
+                    .semantics {
+                        contentDescription = loc(
+                            "Botón Crear perfil profesional. Parte inferior. Presiona aquí para crear tu perfil.",
+                            "Create professional profile button. Bottom of screen. Tap here to create your profile."
+                        )
+                    },
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = RegRosaGine,

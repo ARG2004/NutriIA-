@@ -43,14 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
-import com.example.nutriia.accesibilidad.NutriTTS
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.accesibilidad.*
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TOKENS DE DISEÑO — sistema Sol unificado con acento índigo/violeta
@@ -154,12 +147,18 @@ fun AlertasScreen(
         viewModel.init(childId)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             permLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
 
+    LaunchedEffect(esBlind, idiomaActual) {
         if (esBlind) {
             val nombreParaA11y = childName ?: loc("tu embarazo", "your pregnancy")
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == IdiomaVoz.INGLES) "schedule a new alert" else "programar una nueva alerta",
+                idioma = idiomaActual
+            )
             a11yVm.hablar(loc(
-                "Módulo de alertas para $nombreParaA11y. Puedes programar recordatorios de tipo: Toma o Comida, Vacuna, Cita Médica y Medición. El botón para programar una nueva alerta se encuentra en la parte inferior central de la pantalla.",
-                "Alerts module for $nombreParaA11y. You can schedule reminders for: Feeding or Meal, Vaccine, Medical Appointment, and Measurement. The button to schedule a new alert is located at the bottom center of the screen."
+                "Módulo de alertas para $nombreParaA11y. Puedes programar recordatorios de tipo: Toma o Comida, Vacuna, Cita Médica y Medición. $orientacionBoton",
+                "Alerts module for $nombreParaA11y. You can schedule reminders for: Feeding or Meal, Vaccine, Medical Appointment, and Measurement. $orientacionBoton"
             ))
         }
     }
@@ -284,6 +283,7 @@ fun AlertasScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.radarHapticoBlind(context, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -304,27 +304,21 @@ fun AlertasScreen(
                     visible = visible,
                     enter   = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300))
                 ) {
-                    ExtendedFloatingActionButton(
-                        onClick        = { 
-                            if (esBlind) a11yVm.hablar(loc("Abriendo formulario para nueva alerta.", "Opening form for new alert."))
+                    BotonFlotanteAccesible(
+                        texto      = if (idiomaActual == IdiomaVoz.INGLES) "New alert" else "Nueva alerta",
+                        icono      = Icons.Rounded.Add,
+                        colorFondo = Sol.Indigo,
+                        esBlind    = esBlind,
+                        ttsManager = ttsManager,
+                        a11yVm     = a11yVm,
+                        idioma     = idiomaActual,
+                        onClick    = {
                             checkAndRun {
                                 alertaAEditar = null
                                 showDialog = true
                             }
-                        },
-                        containerColor = Sol.Indigo,
-                        contentColor   = Sol.White,
-                        shape          = RoundedCornerShape(20.dp),
-                        modifier       = Modifier.height(52.dp).shadow(
-                            8.dp, RoundedCornerShape(20.dp),
-                            ambientColor = Sol.Indigo.copy(.35f),
-                            spotColor    = Sol.Indigo.copy(.35f)
-                        )
-                    ) {
-                        Icon(Icons.Rounded.Add, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Nueva alerta", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
+                        }
+                    )
                 }
             }
         },
@@ -1209,17 +1203,15 @@ private fun AlertaDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = { guardarTodo() },
-                enabled  = titulo.isNotBlank(),
-                colors   = ButtonDefaults.buttonColors(containerColor = tipo.color),
-                shape    = RoundedCornerShape(14.dp),
-                modifier = Modifier.height(44.dp)
-            ) {
-                Icon(Icons.Rounded.Check, null, Modifier.size(17.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(loc("Guardar", "Save"), fontWeight = FontWeight.Bold)
-            }
+            BotonConfirmarAccesible(
+                texto       = loc("Guardar", "Save"),
+                icono       = Icons.Rounded.Check,
+                colorFondo  = tipo.color,
+                habilitado  = titulo.isNotBlank(),
+                esBlind     = esBlind,
+                ttsManager  = ttsManager,
+                onClick     = { guardarTodo() }
+            )
         },
         dismissButton = { TextButton(onDismiss) { Text(loc("Cancelar", "Cancel"), color = Sol.TextMuted) } }
     )

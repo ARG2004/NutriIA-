@@ -964,12 +964,22 @@ fun NutriIAiOSApp() {
                             nombreMama = ""
                             currentScreen = Screen.LOGIN
                         }
+                        val rolActual = loginViewModel.rolUsuario.ifBlank { "padre" }
+                        val targetScreen = when {
+                            pantallaOrigenConfig != Screen.CONFIGURACION &&
+                            pantallaOrigenConfig != Screen.LOGIN &&
+                            pantallaOrigenConfig != Screen.REGISTER_TYPE -> pantallaOrigenConfig
+                            rolActual == "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
+                            rolActual == "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
+                            rolActual == "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
+                            else -> Screen.DASHBOARD_PARENT
+                        }
                         ConfiguracionScreen(
                             children = children,
                             nombrePadre = loginViewModel.nombreUsuario.ifBlank { "Usuario NutriIA" },
                             emailPadre = loginViewModel.emailUsuario.ifBlank { "usuario@nutriia.com" },
-                            rol = loginViewModel.rolUsuario.ifBlank { "padre" },
-                            onBack = { currentScreen = pantallaOrigenConfig },
+                            rol = rolActual,
+                            onBack = { currentScreen = targetScreen },
                             onEditarPerfil = { currentScreen = Screen.EDITAR_PERFIL },
                             onCambiarPasswordDirecto = { actual, nueva, callback ->
                                 cfgVm.cambiarContrasenaDirecta(actual, nueva) { exito, msg ->

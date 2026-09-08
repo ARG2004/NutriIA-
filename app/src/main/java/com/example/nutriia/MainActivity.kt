@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,6 +38,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
@@ -136,6 +140,9 @@ class MainActivity : FragmentActivity() {
         //     } catch (_: Exception) {}
         // }
         
+        // Limpiar caché automáticamente si se detectó una actualización
+        limpiarCacheEnActualizacion()
+
         setContent { 
             NutriIATheme { 
                 NutriIAContent() 
@@ -151,6 +158,57 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         procesarIntent(intent)
+    }
+
+    /**
+     * Detecta si se instaló una actualización comparando el versionCode actual
+     * con el último registrado en SharedPreferences. Si cambió, limpia la
+     * caché de la app automáticamente — sin que el usuario haga nada.
+     *
+     * Esto resuelve la corrupción de caché en Motorola y otros dispositivos
+     * que no limpian el caché al instalar APKs por fuera de Play Store.
+     */
+    /**
+     * Limpia SOLO el cacheDir al detectar una actualización.
+     *
+     * SEGURO:  cacheDir es solo archivos temporales (imágenes en caché,
+     *          Compose compiler cache, respuestas HTTP temporales).
+     *          Android lo puede borrar en cualquier momento, la app no
+     *          debe depender de él para datos permanentes.
+     *
+     * NO TOCA: filesDir, databases/, shared_prefs/ → ahí viven los datos
+     *          offline, la sesión, los biométricos y las preferencias del usuario.
+     *          Los biométricos están en el Android Keystore (hardware), imposible
+     *          borrarlos desde aquí.
+     */
+    private fun limpiarCacheEnActualizacion() {
+        try {
+            val prefs = getSharedPreferences("nutriia_meta", MODE_PRIVATE)
+            val versionActual = packageManager.getPackageInfo(packageName, 0).versionCode
+            val versionAnterior = prefs.getInt("ultimo_version_code", -1)
+
+            if (versionAnterior != -1 && versionAnterior != versionActual) {
+                android.util.Log.d("NutriIA", "[Update] Versión $versionAnterior → $versionActual. Limpiando caché temporal...")
+
+                lifecycleScope.launch {
+                    try {
+                        // Solo borramos archivos temporales de caché
+                        // NUNCA tocamos: shared_prefs/, databases/, files/
+                        cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+
+                        android.util.Log.d("NutriIA", "[Update] Caché temporal limpiada. Sesión, offline y biométricos intactos.")
+                    } catch (e: Exception) {
+                        android.util.Log.w("NutriIA", "[Update] Error limpiando caché: ${e.message}")
+                    }
+                }
+            }
+
+            // Guardar el versionCode actual para la próxima vez
+            prefs.edit().putInt("ultimo_version_code", versionActual).apply()
+
+        } catch (e: Exception) {
+            android.util.Log.w("NutriIA", "[Update] Error verificando versión: ${e.message}")
+        }
     }
 
     private fun procesarIntent(intent: Intent?) {
@@ -182,6 +240,9 @@ fun NutriIAContent() {
     val gineVm:          GinecologoViewModel    = viewModel(factory = factory)
     val gineDashVm:      GinecologoDashboardViewModel = viewModel(factory = factory)
 
+    val vmChildren by loginViewModel.hijos.collectAsState()
+    val vmPerfilEmbarazo by loginViewModel.perfilEmbarazoState.collectAsState()
+
     var currentScreen             by rememberSaveable { mutableStateOf(Screen.LOGIN) }
     var children                  by remember { mutableStateOf<List<ChildProfile>>(emptyList()) }
     var isAddingChild             by rememberSaveable { mutableStateOf(false) }
@@ -198,6 +259,18 @@ fun NutriIAContent() {
     var nombreMama                by rememberSaveable { mutableStateOf("") }
     var perfilEmbarazo            by rememberSaveable { mutableStateOf<PerfilEmbarazo?>(null) }
     var pacienteEmbarazoSeleccionado by remember { mutableStateOf<VinculacionEmbarazo?>(null) }
+
+    LaunchedEffect(vmChildren) {
+        if (vmChildren.isNotEmpty()) {
+            children = vmChildren
+        }
+    }
+
+    LaunchedEffect(vmPerfilEmbarazo) {
+        if (vmPerfilEmbarazo != null) {
+            perfilEmbarazo = vmPerfilEmbarazo
+        }
+    }
 
     val hasActiveSession = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null
     var isCheckingInitialSession by remember { mutableStateOf(hasActiveSession) }
@@ -400,7 +473,11 @@ fun NutriIAContent() {
                 }
             }
             5 -> {
-                val msg = if (isIngles) "All set. Permissions configuration completed." else "Todo listo. Configuración de permisos completada."
+                val msg = if (isIngles) {
+                    "All set! Permissions granted. Now tap the green Continue button at the bottom of the screen to proceed with your registration."
+                } else {
+                    "¡Todo listo! Permisos concedidos. Ahora toca el botón verde Continuar en la parte inferior de la pantalla para seguir con tu registro."
+                }
                 accessibilityVm.hablar(msg)
             }
         }
@@ -544,34 +621,53 @@ fun NutriIAContent() {
                 onNavigateToRegister = { currentScreen = Screen.REGISTER_TYPE },
                 onNavigateToBiometricActivation = { _, _ -> currentScreen = Screen.BIOMETRIC_ACTIVATION }
             )
-            Screen.REGISTER_TYPE -> RegisterTypeScreen(
-                onNavigateBack = { currentScreen = Screen.LOGIN },
-                onSelectParent = { currentScreen = Screen.REGISTER_PARENT },
-                onSelectNutritionist = { currentScreen = Screen.REGISTER_NUTRITIONIST },
-                onSelectMamaPrimeriza = { currentScreen = Screen.REGISTER_MAMA_PRIMERIZA },
-                onSelectGinecologo = { currentScreen = Screen.REGISTER_GINECOLOGO }
-            )
-            Screen.REGISTER_PARENT -> ParentRegisterScreen(onNavigateBack = { currentScreen = Screen.REGISTER_TYPE }, onRegisterSuccess = { data -> prefilledChildName = data.childName; saltarAccesibilidadEnQuiz = true; currentScreen = Screen.QUIZ })
+            Screen.REGISTER_TYPE -> {
+                BackHandler { currentScreen = Screen.LOGIN }
+                RegisterTypeScreen(
+                    onNavigateBack = { currentScreen = Screen.LOGIN },
+                    onSelectParent = { currentScreen = Screen.REGISTER_PARENT },
+                    onSelectNutritionist = { currentScreen = Screen.REGISTER_NUTRITIONIST },
+                    onSelectMamaPrimeriza = { currentScreen = Screen.REGISTER_MAMA_PRIMERIZA },
+                    onSelectGinecologo = { currentScreen = Screen.REGISTER_GINECOLOGO }
+                )
+            }
+            Screen.REGISTER_PARENT -> {
+                BackHandler { currentScreen = Screen.REGISTER_TYPE }
+                ParentRegisterScreen(onNavigateBack = { currentScreen = Screen.REGISTER_TYPE }, onRegisterSuccess = { data -> prefilledChildName = data.childName; saltarAccesibilidadEnQuiz = true; currentScreen = Screen.QUIZ })
+            }
             
-            Screen.REGISTER_MAMA_PRIMERIZA -> MamaPrimerizaRegisterScreen(
-                onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
-                onRegisterSuccess = { data ->
-                    nombreMama = data.name
-                    semanasEmbarazo = data.semanas
-                    currentScreen = Screen.QUIZ_MAMA_PRIMERIZA
-                }
-            )
+            Screen.REGISTER_MAMA_PRIMERIZA -> {
+                BackHandler { currentScreen = Screen.REGISTER_TYPE }
+                MamaPrimerizaRegisterScreen(
+                    onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
+                    onRegisterSuccess = { data ->
+                        nombreMama = data.name
+                        semanasEmbarazo = data.semanas
+                        currentScreen = Screen.QUIZ_MAMA_PRIMERIZA
+                    }
+                )
+            }
 
-            Screen.REGISTER_NUTRITIONIST -> NutritionistRegisterScreen(onNavigateBack = { currentScreen = Screen.REGISTER_TYPE }, onRegisterSuccess = { currentScreen = Screen.DASHBOARD_NUTRITIONIST })
+            Screen.REGISTER_NUTRITIONIST -> {
+                BackHandler { currentScreen = Screen.REGISTER_TYPE }
+                NutritionistRegisterScreen(onNavigateBack = { currentScreen = Screen.REGISTER_TYPE }, onRegisterSuccess = { currentScreen = Screen.DASHBOARD_NUTRITIONIST })
+            }
             
-            Screen.REGISTER_GINECOLOGO -> GinecologistRegisterScreen(
-                onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
-                onRegisterSuccess = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
-            )
+            Screen.REGISTER_GINECOLOGO -> {
+                BackHandler { currentScreen = Screen.REGISTER_TYPE }
+                GinecologistRegisterScreen(
+                    onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
+                    onRegisterSuccess = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+                )
+            }
 
-            Screen.QUIZ -> OnboardingQuizScreen(isAddingChild = isAddingChild, prefilledChildName = prefilledChildName, saltarAccesibilidad = saltarAccesibilidadEnQuiz, onQuizComplete = { newProfile -> children = children + newProfile; isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; activeChildIndex = children.lastIndex; loginViewModel.guardarHijo(newProfile); currentScreen = Screen.DASHBOARD_PARENT }, onCancel = { isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT })
+            Screen.QUIZ -> {
+                BackHandler { isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT }
+                OnboardingQuizScreen(isAddingChild = isAddingChild, prefilledChildName = prefilledChildName, saltarAccesibilidad = saltarAccesibilidadEnQuiz, onQuizComplete = { newProfile -> children = children + newProfile; isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; activeChildIndex = children.lastIndex; loginViewModel.guardarHijo(newProfile); currentScreen = Screen.DASHBOARD_PARENT }, onCancel = { isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT })
+            }
             
             Screen.QUIZ_MAMA_PRIMERIZA -> {
+                BackHandler { currentScreen = Screen.LOGIN }
                 EmbarazoQuizScreen(
                     semanasIniciales = semanasEmbarazo,
                     onQuizComplete = { perfil ->
@@ -583,11 +679,73 @@ fun NutriIAContent() {
                 )
             }
             
-            Screen.DASHBOARD_PARENT -> NutriIADashboardScreen(children = children, initialPageIndex = activeChildIndex, esNutriologo = false, onPageChange = { index -> activeChildIndex = index }, onLogout = { accessibilityVm.silenciar(); loginViewModel.cerrarSesion(); sharedVm.limpiarPerfil(); children = emptyList(); activeChildIndex = 0; saltarAccesibilidadEnQuiz = false; currentScreen = Screen.LOGIN }, onConfiguracion = { pantallaOrigenConfig = Screen.DASHBOARD_PARENT; currentScreen = Screen.CONFIGURACION }, onAddChild = { isAddingChild = true; saltarAccesibilidadEnQuiz = false; currentScreen = Screen.QUIZ }, onOpenLactancia = { idx -> activeChildIndex = idx; currentScreen = Screen.LACTANCIA }, onOpenSolidos = { idx -> activeChildIndex = idx; currentScreen = Screen.SOLIDOS }, onOpenCrecimiento = { idx -> activeChildIndex = idx; currentScreen = Screen.CRECIMIENTO }, onOpenSueno = { idx -> activeChildIndex = idx; currentScreen = Screen.SUENO }, onOpenMicronutrientes = { idx -> activeChildIndex = idx; currentScreen = Screen.NUTRIENTES }, onOpenPediatra = { idx -> activeChildIndex = idx; currentScreen = Screen.PEDIATRA_DASHBOARD }, onOpenChatIA = { idx -> activeChildIndex = idx; currentScreen = Screen.CHAT_IA }, onOpenDiario = { idx -> activeChildIndex = idx; currentScreen = Screen.DIARIO_VISUAL }, onOpenRecordatorios = { idx -> activeChildIndex = idx; currentScreen = Screen.RECORDATORIOS }, onAyuda = { currentScreen = Screen.AYUDA })
-            Screen.DASHBOARD_NUTRITIONIST -> NutritionistDashboardScreen(teleconsultaViewModel = teleconsultaVm, onLogout = { accessibilityVm.silenciar(); loginViewModel.cerrarSesion(); currentScreen = Screen.LOGIN }, onPatientClick = { paciente -> pacienteSeleccionado = paciente; currentScreen = Screen.PACIENTE_EXPEDIENTE }, onNewPlan = {}, onViewAllPatients = {})
+            Screen.DASHBOARD_PARENT -> {
+                val effectiveChildren = if (children.isNotEmpty()) children else vmChildren
+                if (effectiveChildren.isEmpty()) {
+                    LaunchedEffect(Unit) {
+                        loginViewModel.recargarHijos()
+                    }
+                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFFF9F8F4)), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF4CAF50))
+                    }
+                } else {
+                    NutriIADashboardScreen(
+                        children = effectiveChildren,
+                        initialPageIndex = activeChildIndex.coerceIn(0, (effectiveChildren.size - 1).coerceAtLeast(0)),
+                        esNutriologo = false,
+                        onPageChange = { index -> activeChildIndex = index },
+                        onLogout = {
+                            accessibilityVm.silenciar()
+                            loginViewModel.cerrarSesion()
+                            sharedVm.limpiarPerfil()
+                            children = emptyList()
+                            activeChildIndex = 0
+                            saltarAccesibilidadEnQuiz = false
+                            currentScreen = Screen.LOGIN
+                        },
+                        onConfiguracion = {
+                            pantallaOrigenConfig = Screen.DASHBOARD_PARENT
+                            currentScreen = Screen.CONFIGURACION
+                        },
+                        onAddChild = {
+                            isAddingChild = true
+                            saltarAccesibilidadEnQuiz = false
+                            currentScreen = Screen.QUIZ
+                        },
+                        onOpenLactancia = { idx -> activeChildIndex = idx; currentScreen = Screen.LACTANCIA },
+                        onOpenSolidos = { idx -> activeChildIndex = idx; currentScreen = Screen.SOLIDOS },
+                        onOpenCrecimiento = { idx -> activeChildIndex = idx; currentScreen = Screen.CRECIMIENTO },
+                        onOpenSueno = { idx -> activeChildIndex = idx; currentScreen = Screen.SUENO },
+                        onOpenMicronutrientes = { idx -> activeChildIndex = idx; currentScreen = Screen.NUTRIENTES },
+                        onOpenPediatra = { idx -> activeChildIndex = idx; currentScreen = Screen.PEDIATRA_DASHBOARD },
+                        onOpenChatIA = { idx -> activeChildIndex = idx; currentScreen = Screen.CHAT_IA },
+                        onOpenDiario = { idx -> activeChildIndex = idx; currentScreen = Screen.DIARIO_VISUAL },
+                        onOpenRecordatorios = { idx -> activeChildIndex = idx; currentScreen = Screen.RECORDATORIOS },
+                        onAyuda = { currentScreen = Screen.AYUDA }
+                    )
+                }
+            }
+            Screen.DASHBOARD_NUTRITIONIST -> NutritionistDashboardScreen(
+                teleconsultaViewModel = teleconsultaVm,
+                onLogout = {
+                    accessibilityVm.silenciar()
+                    loginViewModel.cerrarSesion()
+                    currentScreen = Screen.LOGIN
+                },
+                onConfiguracion = {
+                    pantallaOrigenConfig = Screen.DASHBOARD_NUTRITIONIST
+                    currentScreen = Screen.CONFIGURACION
+                },
+                onPatientClick = { paciente ->
+                    pacienteSeleccionado = paciente
+                    currentScreen = Screen.PACIENTE_EXPEDIENTE
+                },
+                onNewPlan = {},
+                onViewAllPatients = {}
+            )
             
             Screen.DASHBOARD_MAMA_PRIMERIZA -> {
-                val p = perfilEmbarazo
+                val p = perfilEmbarazo ?: vmPerfilEmbarazo
                 if (p != null) {
                     EmbarazoDashboardScreen(
                         nombreMama = nombreMama.ifBlank { loginViewModel.nombreUsuario },
@@ -626,7 +784,8 @@ fun NutriIAContent() {
             }
 
             Screen.NUTRICION_EMBARAZO -> {
-                val p = perfilEmbarazo
+                BackHandler { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                val p = perfilEmbarazo ?: vmPerfilEmbarazo
                 if (p != null) {
                     EmbarazoNutricionScreen(
                         perfil = p,
@@ -653,20 +812,27 @@ fun NutriIAContent() {
                 }
             )
             
-            Screen.VINCULACION_GINECOLOGO -> VinculacionGinecologoScreen(
-                viewModel = gineVm,
-                onNavigateToDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS },
-                onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
-            )
+            Screen.VINCULACION_GINECOLOGO -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                VinculacionGinecologoScreen(
+                    viewModel = gineVm,
+                    onNavigateToDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS },
+                    onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
+                )
+            }
             
-            Screen.DIRECTORIO_GINECOLOGOS -> DirectorioGinecologosScreen(
-                viewModel = gineVm,
-                mamaNombre = nombreMama.ifBlank { loginViewModel.nombreUsuario },
-                onBack = { currentScreen = Screen.VINCULACION_GINECOLOGO },
-                onVinculado = { currentScreen = Screen.VINCULACION_GINECOLOGO }
-            )
+            Screen.DIRECTORIO_GINECOLOGOS -> {
+                BackHandler { currentScreen = Screen.VINCULACION_GINECOLOGO }
+                DirectorioGinecologosScreen(
+                    viewModel = gineVm,
+                    mamaNombre = nombreMama.ifBlank { loginViewModel.nombreUsuario },
+                    onBack = { currentScreen = Screen.VINCULACION_GINECOLOGO },
+                    onVinculado = { currentScreen = Screen.VINCULACION_GINECOLOGO }
+                )
+            }
 
             Screen.CITAS_EMBARAZO -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
                 CitasEmbarazoScreen(
                     viewModel = gineVm,
                     teleconsultaViewModel = teleconsultaVm,
@@ -685,8 +851,20 @@ fun NutriIAContent() {
                 )
             }
 
-            Screen.PACIENTE_EXPEDIENTE -> { pacienteSeleccionado?.let { paciente -> PacienteExpedienteScreen(ownerUid = paciente.ownerUid, childId = paciente.childId, childNombre = paciente.childNombre, padreNombre = paciente.padreNombre, onBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST }) } ?: run { currentScreen = Screen.DASHBOARD_NUTRITIONIST } }
+            Screen.PACIENTE_EXPEDIENTE -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
+                pacienteSeleccionado?.let { paciente ->
+                    PacienteExpedienteScreen(
+                        ownerUid = paciente.ownerUid,
+                        childId = paciente.childId,
+                        childNombre = paciente.childNombre,
+                        padreNombre = paciente.padreNombre,
+                        onBack = { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
+                    )
+                } ?: run { currentScreen = Screen.DASHBOARD_NUTRITIONIST }
+            }
             Screen.EXPEDIENTE_EMBARAZO -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_GINECOLOGO }
                 pacienteEmbarazoSeleccionado?.let { pac ->
                     PacienteExpedienteEmbarazoScreen(
                         mamaUid = pac.mamaUid,
@@ -697,9 +875,35 @@ fun NutriIAContent() {
                     currentScreen = Screen.DASHBOARD_GINECOLOGO
                 }
             }
-            Screen.PEDIATRA_DASHBOARD -> { activeChild?.let { child -> PediatraScreen(teleconsultaViewModel = teleconsultaVm, padreUid = loginViewModel.uidUsuario, padreNombre = loginViewModel.nombreUsuario, childId = child.id, childNombre = child.name, iniciarLlamadaAlEntrar = if (iniciarLlamadaTrasExito) pagoTipoLlamada else null, pagoNutriologoUid = pagoNutriologoUid, pagoNutriologoNombre = pagoNutriologoNombre, pagoIdExitoso = pagoIdExitoso, padreNombreCompleto = loginViewModel.nombreUsuario, onLlamadaIniciada = { iniciarLlamadaTrasExito = false; pagoIdExitoso = "" }, onAbrirPago = { nutriologoUid, nutriologoNombre, tipo -> pagoNutriologoUid = nutriologoUid; pagoNutriologoNombre = nutriologoNombre; pagoTipoLlamada = tipo; currentScreen = Screen.PAGO_TELECONSULTA }, onBack = { currentScreen = Screen.DASHBOARD_PARENT }) } ?: run { currentScreen = Screen.DASHBOARD_PARENT } }
+            Screen.PEDIATRA_DASHBOARD -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_PARENT }
+                activeChild?.let { child ->
+                    PediatraScreen(
+                        teleconsultaViewModel = teleconsultaVm,
+                        padreUid = loginViewModel.uidUsuario,
+                        padreNombre = loginViewModel.nombreUsuario,
+                        childId = child.id,
+                        childNombre = child.name,
+                        iniciarLlamadaAlEntrar = if (iniciarLlamadaTrasExito) pagoTipoLlamada else null,
+                        pagoNutriologoUid = pagoNutriologoUid,
+                        pagoNutriologoNombre = pagoNutriologoNombre,
+                        pagoIdExitoso = pagoIdExitoso,
+                        padreNombreCompleto = loginViewModel.nombreUsuario,
+                        onLlamadaIniciada = { iniciarLlamadaTrasExito = false; pagoIdExitoso = "" },
+                        onAbrirPago = { nutriologoUid, nutriologoNombre, tipo ->
+                            pagoNutriologoUid = nutriologoUid
+                            pagoNutriologoNombre = nutriologoNombre
+                            pagoTipoLlamada = tipo
+                            currentScreen = Screen.PAGO_TELECONSULTA
+                        },
+                        onBack = { currentScreen = Screen.DASHBOARD_PARENT }
+                    )
+                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+            }
             Screen.PAGO_TELECONSULTA -> {
                 val rol = loginViewModel.rolUsuario
+                val destinoCancelar = if (rol == "mama_primeriza") Screen.CITAS_EMBARAZO else Screen.PEDIATRA_DASHBOARD
+                BackHandler { currentScreen = destinoCancelar }
                 if (rol == "mama_primeriza") {
                     PaymentGateScreen(
                         viewModel = paymentVm,
@@ -747,12 +951,29 @@ fun NutriIAContent() {
                     nombreMama = ""
                     currentScreen = Screen.LOGIN
                 }
+
+                val rolActual = loginViewModel.rolUsuario
+                val targetScreen = when {
+                    pantallaOrigenConfig != Screen.CONFIGURACION &&
+                    pantallaOrigenConfig != Screen.LOGIN &&
+                    pantallaOrigenConfig != Screen.REGISTER_TYPE -> pantallaOrigenConfig
+                    rolActual == "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
+                    rolActual == "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
+                    rolActual == "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
+                    else -> Screen.DASHBOARD_PARENT
+                }
+
+                BackHandler {
+                    currentScreen = targetScreen
+                }
+
+                val effectiveChildren = if (children.isNotEmpty()) children else vmChildren
                 ConfiguracionScreen(
-                    children                    = children,
+                    children                    = effectiveChildren,
                     nombrePadre                 = loginViewModel.nombreUsuario,
                     emailPadre                  = loginViewModel.emailUsuario,
-                    rol                         = loginViewModel.rolUsuario,
-                    onBack                      = { currentScreen = pantallaOrigenConfig },
+                    rol                         = rolActual,
+                    onBack                      = { currentScreen = targetScreen },
                     onEditarPerfil              = { currentScreen = Screen.EDITAR_PERFIL },
                     onCambiarPasswordDirecto    = { actual, nueva, callback ->
                         cfgVm.cambiarContrasenaDirecta(actual, nueva, callback)
@@ -774,28 +995,81 @@ fun NutriIAContent() {
                     }
                 )
             }
-            Screen.EDITAR_PERFIL -> EditarPerfilScreen(
-                nombreInicial   = loginViewModel.nombreUsuario,
-                emailInicial    = loginViewModel.emailUsuario,
-                telefonoInicial = loginViewModel.telefonoUsuario,
-                onBack          = { currentScreen = Screen.CONFIGURACION },
-                onGuardar       = { nombre, email, telefono ->
-                    loginViewModel.actualizarPerfil(nombre, email, telefono)
-                    android.widget.Toast.makeText(
-                        context,
-                        if (telefono != loginViewModel.telefonoUsuario) "Teléfono actualizado exitosamente" else "Perfil actualizado exitosamente",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+            Screen.EDITAR_PERFIL -> {
+                BackHandler { currentScreen = Screen.CONFIGURACION }
+                EditarPerfilScreen(
+                    nombreInicial   = loginViewModel.nombreUsuario,
+                    emailInicial    = loginViewModel.emailUsuario,
+                    telefonoInicial = loginViewModel.telefonoUsuario,
+                    onBack          = { currentScreen = Screen.CONFIGURACION },
+                    onGuardar       = { nombre, email, telefono ->
+                        loginViewModel.actualizarPerfil(nombre, email, telefono)
+                        android.widget.Toast.makeText(
+                            context,
+                            if (telefono != loginViewModel.telefonoUsuario) "Teléfono actualizado exitosamente" else "Perfil actualizado exitosamente",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        currentScreen = Screen.CONFIGURACION
+                    }
+                )
+            }
+            Screen.EDITAR_REGION -> {
+                BackHandler { hijoParaEditar = null; currentScreen = Screen.CONFIGURACION }
+                val hijo = hijoParaEditar
+                if (hijo == null) {
                     currentScreen = Screen.CONFIGURACION
+                } else {
+                    OnboardingQuizScreen(
+                        isAddingChild = false,
+                        saltarAccesibilidad = true,
+                        initialStep = 6,
+                        prefilledProfile = hijo,
+                        onQuizComplete = { perfilActualizado ->
+                            val hijoActualizado = hijo.copy(nivelIngreso = perfilActualizado.nivelIngreso, region = perfilActualizado.region)
+                            loginViewModel.guardarHijo(hijoActualizado) { exito ->
+                                if (exito) {
+                                    children = children.map { c: ChildProfile -> if (c.id == hijoActualizado.id) hijoActualizado else c }
+                                    loginViewModel.recargarHijos()
+                                }
+                            }
+                            hijoParaEditar = null
+                            currentScreen = Screen.CONFIGURACION
+                        },
+                        onCancel = {
+                            hijoParaEditar = null
+                            currentScreen = Screen.CONFIGURACION
+                        }
+                    )
                 }
-            )
-            Screen.EDITAR_REGION -> { val hijo = hijoParaEditar; if (hijo == null) { currentScreen = Screen.CONFIGURACION } else { OnboardingQuizScreen(isAddingChild = false, saltarAccesibilidad = true, initialStep = 6, prefilledProfile = hijo, onQuizComplete = { perfilActualizado -> val hijoActualizado = hijo.copy(nivelIngreso = perfilActualizado.nivelIngreso, region = perfilActualizado.region); loginViewModel.guardarHijo(hijoActualizado) { exito -> if (exito) { children = children.map { c: ChildProfile -> if (c.id == hijoActualizado.id) hijoActualizado else c }; loginViewModel.recargarHijos() } }; hijoParaEditar = null; currentScreen = Screen.CONFIGURACION }, onCancel = { hijoParaEditar = null; currentScreen = Screen.CONFIGURACION }) } }
-            Screen.LACTANCIA -> { activeChild?.let { child -> LactanciaScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }) } ?: run { currentScreen = Screen.DASHBOARD_PARENT } }
-            Screen.SOLIDOS -> { activeChild?.let { child -> SolidosScreen(uid = loginViewModel.uidUsuario, childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm) } ?: run { currentScreen = Screen.DASHBOARD_PARENT } }
-            Screen.CRECIMIENTO -> { activeChild?.let { child -> CrecimientoScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), sexo = child.sexo, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }) } ?: run { currentScreen = Screen.DASHBOARD_PARENT } }
-            Screen.NUTRIENTES -> { activeChild?.let { child -> NutrientesScreen(childId = child.id, childName = child.name, mesesEdad = mesesDeVida(child.birthDate), onBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm) } ?: run { currentScreen = Screen.DASHBOARD_PARENT } }
+            }
+            Screen.LACTANCIA -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_PARENT }
+                activeChild?.let { child ->
+                    LactanciaScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+            }
+            Screen.SOLIDOS -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_PARENT }
+                activeChild?.let { child ->
+                    SolidosScreen(uid = loginViewModel.uidUsuario, childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
+                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+            }
+            Screen.CRECIMIENTO -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_PARENT }
+                activeChild?.let { child ->
+                    CrecimientoScreen(childId = child.id, childName = child.name, ageMonths = mesesDeVida(child.birthDate), sexo = child.sexo, onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+            }
+            Screen.NUTRIENTES -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_PARENT }
+                activeChild?.let { child ->
+                    NutrientesScreen(childId = child.id, childName = child.name, mesesEdad = mesesDeVida(child.birthDate), onBack = { currentScreen = Screen.DASHBOARD_PARENT }, sharedVm = sharedVm)
+                } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+            }
             Screen.RECORDATORIOS -> {
                 val rol = loginViewModel.rolUsuario
+                val destinoRegreso = if (rol == "mama_primeriza") Screen.DASHBOARD_MAMA_PRIMERIZA else Screen.DASHBOARD_PARENT
+                BackHandler { currentScreen = destinoRegreso }
                 if (rol == "mama_primeriza") {
                     AlertasScreen(
                         childId = null,
@@ -815,17 +1089,13 @@ fun NutriIAContent() {
             Screen.DIARIO_VISUAL -> {
                 val rol = loginViewModel.rolUsuario
                 val esEmbarazoUser = (rol == "mama_primeriza" || perfilEmbarazo != null)
+                val destinoRegreso = if (rol == "mama_primeriza") Screen.DASHBOARD_MAMA_PRIMERIZA else Screen.DASHBOARD_PARENT
+                BackHandler { currentScreen = destinoRegreso }
                 if (esEmbarazoUser) {
                     AnalisisScreen(
                         perfilEmbarazo = perfilEmbarazo,
                         isEmbarazo = true,
-                        onNavigateBack = {
-                            if (rol == "mama_primeriza") {
-                                currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
-                            } else {
-                                currentScreen = Screen.DASHBOARD_PARENT
-                            }
-                        }
+                        onNavigateBack = { currentScreen = destinoRegreso }
                     )
                 } else {
                     activeChild?.let { child ->
@@ -842,18 +1112,14 @@ fun NutriIAContent() {
             Screen.CHAT_IA -> {
                 val rol = loginViewModel.rolUsuario
                 val esEmbarazoUser = (rol == "mama_primeriza" || perfilEmbarazo != null)
+                val destinoRegreso = if (rol == "mama_primeriza") Screen.DASHBOARD_MAMA_PRIMERIZA else Screen.DASHBOARD_PARENT
+                BackHandler { currentScreen = destinoRegreso }
                 if (esEmbarazoUser) {
                     NutriChatScreen(
                         childName = "Mi Embarazo",
                         perfilEmbarazo = perfilEmbarazo,
                         isEmbarazo = true,
-                        onBack = {
-                            if (rol == "mama_primeriza") {
-                                currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
-                            } else {
-                                currentScreen = Screen.DASHBOARD_PARENT
-                            }
-                        },
+                        onBack = { currentScreen = destinoRegreso },
                         onNavigateToAnalisis = { currentScreen = Screen.DIARIO_VISUAL }
                     )
                 } else {
@@ -870,7 +1136,66 @@ fun NutriIAContent() {
                     }
                 }
             }
-            Screen.AYUDA -> HelpScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+            Screen.SUENO -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_PARENT }
+                val esBlind = accessibilityMode == AccessibilityMode.BLIND
+                LaunchedEffect(Unit) {
+                    if (esBlind) {
+                        accessibilityVm.hablar("Módulo de Sueño infantil. Próximamente disponible. Toca dos veces el botón inferior para regresar al inicio.")
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFF9F8F4))
+                        .radarHapticoBlind(context, esBlind),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEDE7F6)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🌙", fontSize = 38.sp)
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = "Módulo de Sueño",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4A148C)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Seguimiento de siestas, calidad de descanso y rutinas nocturnas. ¡Próximamente!",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(32.dp))
+                        BotonConfirmarAccesible(
+                            texto = "Volver al inicio",
+                            colorFondo = Color(0xFF7E57C2),
+                            esBlind = esBlind,
+                            a11yVm = accessibilityVm,
+                            onClick = {
+                                triggerFeedbackAccesible(context, null)
+                                currentScreen = Screen.DASHBOARD_PARENT
+                            }
+                        )
+                    }
+                }
+            }
+            Screen.AYUDA -> {
+                BackHandler { currentScreen = Screen.DASHBOARD_PARENT }
+                HelpScreen(onNavigateBack = { currentScreen = Screen.DASHBOARD_PARENT })
+            }
             
             Screen.BIOMETRIC_ACTIVATION -> {
                 BiometricActivationScreen(

@@ -19,6 +19,7 @@ import com.example.nutriia.firebase.firestore.await
 sealed class ResultadoAuth {
     data class Exito(val uid: String, val rol: String) : ResultadoAuth()
     data class Error(val mensaje: String)              : ResultadoAuth()
+    data class RequiereConsentimiento(val uid: String, val rol: String) : ResultadoAuth()
 }
 
 class RepositorioLogin {
@@ -54,20 +55,17 @@ class RepositorioLogin {
 
             val rol   = obtenerRol(usuario.uid)
             if (rol == "nutriologo") {
-                try {
-                    val userDoc = db.collection("usuarios").document(usuario.uid).get().await()
-                    val uNombre = userDoc.getString("nombre") ?: ""
-                    val uEspecialidad = userDoc.getString("especialidad") ?: "Nutrición Pediátrica"
-                    val uCedula = userDoc.getString("cedula") ?: ""
-                    val uEmail = userDoc.getString("email") ?: usuario.email ?: ""
-                    com.example.nutriia.vinculacion.VinculacionRepository().publicarPerfilNutriologo(
-                        nombre = uNombre,
-                        especialidad = uEspecialidad,
-                        cedula = uCedula,
-                        email = uEmail
-                    )
-                } catch (_: Exception) {}
+                val doc = db.collection("usuarios").document(usuario.uid).get().await()
+                if (doc.getBoolean("needsReverification") == true) {
+                    return ResultadoAuth.RequiereConsentimiento(usuario.uid, "nutriologo")
+                }
+            } else if (rol == "ginecologo") {
+                val doc = db.collection("usuarios").document(usuario.uid).get().await()
+                if (doc.getBoolean("needsReverification") == true) {
+                    return ResultadoAuth.RequiereConsentimiento(usuario.uid, "ginecologo")
+                }
             }
+
             guardarRolCache(usuario.uid, rol)
             SessionManager.guardarSesion(usuario.uid)
             ResultadoAuth.Exito(usuario.uid, rol)

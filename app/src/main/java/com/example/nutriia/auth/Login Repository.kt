@@ -24,7 +24,9 @@ sealed class ResultadoAuth {
 
 class RepositorioLogin(private val context: Context) {
 
-    private val auth = FirebaseAuth.getInstance()
+    private val auth = FirebaseAuth.getInstance().apply {
+        setLanguageCode("es")
+    }
     private val db   = FirebaseFirestore.getInstance()
 
     private val rolCache: SharedPreferences =
@@ -115,6 +117,10 @@ class RepositorioLogin(private val context: Context) {
 
             db.collection("usuarios").document(usuario.uid).set(datos).await()
 
+            try {
+                usuario.sendEmailVerification()
+            } catch (ignored: Exception) {}
+
             guardarRolCache(usuario.uid, "padre")
             SessionManager.guardarSesion(context, usuario.uid)
             ResultadoAuth.Exito(usuario.uid, "padre")
@@ -155,6 +161,10 @@ class RepositorioLogin(private val context: Context) {
             )
 
             db.collection("usuarios").document(usuario.uid).set(datos).await()
+
+            try {
+                usuario.sendEmailVerification()
+            } catch (ignored: Exception) {}
 
             guardarRolCache(usuario.uid, "mama_primeriza")
             SessionManager.guardarSesion(context, usuario.uid)
@@ -243,6 +253,10 @@ class RepositorioLogin(private val context: Context) {
 
             db.collection("usuarios").document(usuario.uid).set(datosUsuario).await()
 
+            try {
+                usuario.sendEmailVerification()
+            } catch (ignored: Exception) {}
+
             guardarRolCache(usuario.uid, "nutriologo")
             SessionManager.guardarSesion(context, usuario.uid)
             ResultadoAuth.Exito(usuario.uid, "nutriologo")
@@ -298,6 +312,10 @@ class RepositorioLogin(private val context: Context) {
             )
 
             db.collection("usuarios").document(usuario.uid).set(datosUsuario).await()
+
+            try {
+                usuario.sendEmailVerification()
+            } catch (ignored: Exception) {}
 
             // DECISIÓN: A diferencia del nutriólogo, aquí publicamos el perfil público de inmediato
             GinecologoRepository().publicarPerfilGinecologo(

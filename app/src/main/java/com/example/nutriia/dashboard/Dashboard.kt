@@ -42,11 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.LocalAccessibilityMode
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.crecimiento.CrecimientoViewModel
 import com.example.nutriia.crecimiento.MedicionCrecimiento
 import com.example.nutriia.crecimiento.Sexo
@@ -217,20 +213,35 @@ fun NutriIADashboardScreen(
     onEditarPerfil:        (ChildProfile) -> Unit = {},
     onAyuda:               () -> Unit = {}
 ) {
-    if (children.isEmpty()) return
+    if (children.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(DashBgCrema),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(color = DashNutriaGreen)
+                Spacer(Modifier.height(12.dp))
+                Text("Cargando perfil...", color = Color.Gray, fontSize = 14.sp)
+            }
+        }
+        return
+    }
 
     val a11yMode         = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val context = LocalContext.current
 
     val pagerState = rememberPagerState(
-        initialPage               = initialPageIndex.coerceIn(0, children.lastIndex),
+        initialPage               = initialPageIndex.coerceIn(0, (children.size - 1).coerceAtLeast(0)),
         initialPageOffsetFraction = 0f,
         pageCount                 = { children.size }
     )
 
-    val currentPage = pagerState.currentPage
-    val child       = children.getOrNull(currentPage) ?: return
+    val currentPage = pagerState.currentPage.coerceIn(0, (children.size - 1).coerceAtLeast(0))
+    val child       = children.getOrNull(currentPage) ?: children.firstOrNull() ?: return
     val etapa       = calcularEtapa(child.birthDate)
     val etapaColor  = colorDeEtapa(etapa.nombre)
     val edadInfo    = obtenerEdadTexto(child.birthDate)
@@ -365,6 +376,7 @@ fun NutriIADashboardScreen(
     )
 
     Scaffold(
+        modifier       = Modifier.radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND),
         containerColor = DashBgCrema,
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

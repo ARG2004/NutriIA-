@@ -38,12 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
-import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.utils.FechaUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -87,6 +82,7 @@ fun LactanciaScreen(
     val ttsManager   = a11yVm.ttsManager
     val esAccesible  = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
     val esBlind      = a11yMode == AccessibilityMode.BLIND
+    val context      = LocalContext.current
 
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
@@ -108,16 +104,20 @@ fun LactanciaScreen(
     LaunchedEffect(Unit) { screenVisible = true }
 
     // Anuncio inicial de accesibilidad
-    LaunchedEffect(Unit) {
+    LaunchedEffect(esBlind, idiomaActual) {
         if (esBlind) {
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == IdiomaVoz.INGLES) "log a feeding" else "registrar una toma",
+                idioma = idiomaActual
+            )
             a11yVm.hablar(
                 loc(
                     "Módulo de lactancia para $childName. " +
                             "Aquí puedes registrar las tomas del día y ver recomendaciones de la OMS. " +
-                            "El botón Registrar toma está en la parte inferior derecha.",
+                            "$orientacionBoton",
                     "Breastfeeding module for $childName. " +
                             "Here you can log daily feedings and view WHO recommendations. " +
-                            "The Register feeding button is at the bottom right."
+                            "$orientacionBoton"
                 )
             )
         }
@@ -158,6 +158,7 @@ fun LactanciaScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.radarHapticoBlind(context, esBlind),
         containerColor = LactBg,
         snackbarHost   = { SnackbarHost(snackbarHost) },
         floatingActionButton = {
@@ -172,20 +173,19 @@ fun LactanciaScreen(
                     initialScale = 0f
                 ) + fadeIn(tween(300))
             ) {
-                FloatingActionButton(
-                    onClick        = {
-                        if (esBlind) a11yVm.hablar(loc("Abriendo formulario para registrar toma.", "Opening form to register feeding."))
-                        showAddDialog = true
-                    },
-                    containerColor = LactPink,
-                    contentColor   = Color.White,
-                    shape          = CircleShape,
-                    modifier       = Modifier.shadow(10.dp, CircleShape)
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Registrar toma", modifier = Modifier.size(28.dp))
-                }
+                BotonFlotanteAccesible(
+                    texto      = if (idiomaActual == IdiomaVoz.INGLES) "Register feeding" else "Registrar toma",
+                    icono      = Icons.Rounded.Add,
+                    colorFondo = LactPinkDark,
+                    esBlind    = esBlind,
+                    ttsManager = ttsManager,
+                    a11yVm     = a11yVm,
+                    idioma     = idiomaActual,
+                    onClick    = { showAddDialog = true }
+                )
             }
-        }
+        },
+        floatingActionButtonPosition = FabPosition.Center
     ) { padding ->
 
         LazyColumn(
@@ -974,12 +974,15 @@ fun AddFeedingDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = { guardarTodo() },
-                enabled = duration.isNotBlank() || selectedSide == BreastSide.FORMULA,
-                colors  = ButtonDefaults.buttonColors(containerColor = LactPink),
-                shape   = RoundedCornerShape(14.dp)
-            ) { Text("Guardar toma", fontWeight = FontWeight.Bold) }
+            BotonConfirmarAccesible(
+                texto       = if (idioma == IdiomaVoz.INGLES) "Save feeding" else "Guardar toma",
+                icono       = Icons.Rounded.Check,
+                colorFondo  = LactPinkDark,
+                habilitado  = duration.isNotBlank() || selectedSide == BreastSide.FORMULA,
+                esBlind     = esBlind,
+                ttsManager  = ttsManager,
+                onClick     = { guardarTodo() }
+            )
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar", color = Color.Gray) } }
     )

@@ -82,6 +82,10 @@ class LoginViewModel : ViewModel() {
                     cargarDatosSesion(resultado.uid, resultado.rol, email)
                     LoginUiState.Exito(rol = resultado.rol, hijos = hijos)
                 }
+                is ResultadoAuth.RequiereConsentimiento -> {
+                    cargarDatosSesion(resultado.uid, resultado.rol, email)
+                    LoginUiState.Exito(rol = resultado.rol, hijos = emptyList())
+                }
                 is ResultadoAuth.Error -> LoginUiState.Error(resultado.mensaje)
             }
         }

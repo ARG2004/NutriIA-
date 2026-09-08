@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 // ─── Modos ────────────────────────────────────────────────────────────────────
 enum class AccessibilityMode(val label: String, val description: String) {
     NORMAL("Estándar",                  "Experiencia completa sin adaptaciones"),
-    BLIND( "Modo para personas ciegas", "Lector de pantalla, voz y alto contraste"),
-    MUTE(  "Modo para personas mudas",  "Sin entrada de voz, teclado visual siempre visible")
+    BLIND( "Condición visual",          "Lector de pantalla, voz y alto contraste"),
+    MUTE(  "Condición auditiva",        "Sin entrada de voz, teclado visual siempre visible")
 }
 
 // ─── Idiomas ──────────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ object Voz {
                 "Juntos vamos a cuidar la nutricion de tu familia."
 
     const val MODO_MUDO =
-        "Modo para personas mudas activado. El teclado estara siempre visible para ti."
+        "Modo para condición auditiva activado. El teclado estará siempre visible para ti."
 
     const val MODO_NORMAL =
         "Modo estandar activado. Bienvenido a Nutr IA."
@@ -191,8 +191,8 @@ object Voz {
                 "Antes de empezar, cuentame como usas el telefono para yo adaptarme a ti. " +
                 "Abajo tienes tres opciones. " +
                 "Primera: Estandar, para uso normal. " +
-                "Segunda: Modo ciego, donde yo hablo todo y el microfono se activa solo. " +
-                "Tercera: Modo mudo, con teclado siempre visible. " +
+                "Segunda: Modo para condición visual, donde yo hablo todo y el microfono se activa solo. " +
+                "Tercera: Modo para condición auditiva, con teclado siempre visible. " +
                 "Toca la opcion que va contigo. " +
                 "Debajo de los modos puedes elegir el idioma de mi voz. " +
                 "Cuando termines, toca el boton verde Continuar al final de la pantalla."
@@ -214,40 +214,42 @@ object Voz {
     const val LOGIN_CAMPO_CLAVE  = "Ahora dime tu clave de acceso."
 
     const val REGISTRO_TIPO_INTRO =
-        "Excelente, vamos a crear tu cuenta. Primero dime, como vas a usar Nutr IA. " +
-                "Hay dos opciones en el centro. " +
-                "Primera: Soy Padre o Madre. Para registrar a tu hijo o hija y llevar su nutricion. " +
-                "Segunda: Soy Nutriologo o Nutriologa. Para gestionar pacientes y crear planes de alimentacion. " +
-                "Toca la que va contigo. " +
-                "Si ya tienes cuenta, el boton Inicia sesion esta hasta abajo."
+        "Excelente, vamos a crear tu cuenta. Cuéntame cómo vas a usar NutriIA. " +
+                "Tienes cuatro opciones en pantalla: " +
+                "Primera: Soy Padre o Madre, para registrar a tu hijo y llevar su nutrición. " +
+                "Segunda: Mamá Primeriza, para seguimiento durante tu embarazo. " +
+                "Tercera: Soy Nutriólogo o Nutrióloga, para gestionar pacientes y crear planes de alimentación. " +
+                "Cuarta: Soy Ginecólogo o Ginecóloga, para seguimiento especializado del embarazo. " +
+                "Toca la opción que va contigo. " +
+                "Si ya tienes cuenta, el botón Inicia sesión está al final de la pantalla."
 
     const val REGISTRO_PADRE_INTRO =
-        "Que emocion, una familia nueva en Nutr IA. Vamos a crear tu cuenta de papa o mama. " +
+        "Que emoción, una familia nueva en Nutr IA. Vamos a crear tu cuenta de papá o mamá. " +
                 "Hay seis campos que llenar, yo te voy guiando uno por uno. " +
                 "Primero tu nombre completo con apellidos. " +
-                "Segundo tu numero de telefono de diez digitos. " +
-                "Tercero tu correo electronico. " +
-                "Cuarto tu clave de acceso, minimo seis caracteres. " +
+                "Segundo tu número de teléfono de diez dígitos. " +
+                "Tercero tu correo electrónico. " +
+                "Cuarto tu clave de acceso, mínimo seis caracteres. " +
                 "Quinto repite la misma clave para confirmar. " +
                 "Sexto el nombre de tu primer hijo o hija. " +
-                "El codigo de nutriologo es opcional, puedes dejarlo vacio. " +
-                "Cuando termines todos, toca el boton verde Crear cuenta al final."
+                "El código de nutriólogo es opcional, puedes dejarlo vacío. " +
+                "Al terminar, toca dos veces el botón verde 'Crear cuenta y continuar' que está en la parte inferior de la pantalla para crear tu perfil."
 
     const val REGISTRO_PADRE_EXITO =
-        "Perfecto, tu cuenta esta lista. Ahora vamos a registrar a tu pequeño o pequeña. " +
-                "Esto es lo mas bonito para mi."
+        "Perfecto, tu cuenta está lista. Ahora vamos a registrar a tu pequeño o pequeña. " +
+                "Esto es lo más bonito para mí."
 
     const val REGISTRO_NUTRI_INTRO =
         "Bienvenido colega. Vamos a crear tu perfil profesional en Nutr IA. " +
                 "Son siete campos en total. " +
                 "Primero tu nombre completo. " +
-                "Segundo tu telefono. " +
-                "Tercero tu especialidad, por ejemplo Nutricion Pediatrica. " +
-                "Cuarto tu cedula profesional. " +
-                "Quinto tu correo electronico. " +
-                "Sexto tu clave de acceso, minimo seis caracteres. " +
-                "Septimo confirma tu clave. " +
-                "Al terminar toca el boton verde Crear perfil profesional."
+                "Segundo tu teléfono. " +
+                "Tercero tu especialidad, por ejemplo Nutrición Pediátrica. " +
+                "Cuarto tu cédula profesional. " +
+                "Quinto tu correo electrónico. " +
+                "Sexto tu clave de acceso, mínimo seis caracteres. " +
+                "Séptimo confirma tu clave. " +
+                "Al terminar, toca dos veces el botón 'Crear perfil profesional' que está en la parte inferior de la pantalla para crear tu perfil."
 
     const val REGISTRO_NUTRI_EXITO =
         "Bienvenido al equipo. Tu perfil profesional esta listo. " +
@@ -282,13 +284,13 @@ object Voz {
 
     const val QUIZ_CONDICIONES =
         "Penúltimo paso. Necesito saber si tu hijo o hija tiene algo especial de salud. " +
-                "Hay dos interruptores: alergias alimentarias y condición especial. " +
-                "Tócalos para activar o desactivar."
+                "En el centro de la pantalla hay dos interruptores: alergias alimentarias y condición especial. " +
+                "Toca dos veces sobre ellos para activar o desactivar."
 
-    const val VOZ_ESCUCHANDO  = "Te escucho, habla cuando quieras."
+    const val VOZ_ESCUCHANDO  = "Escuchando."
     const val VOZ_PROCESANDO  = "Dejame entender lo que dijiste."
     const val VOZ_LISTO       = "Listo, lo anote."
-    const val VOZ_ERROR_MIC   = "No te escuche bien. Toca el circulo del microfono para intentarlo de nuevo."
+    const val VOZ_ERROR_MIC   = "No te escuché bien. Toca dos veces el círculo del micrófono en el centro de la pantalla para intentarlo de nuevo."
     const val VOZ_SIN_PERMISO = "Necesito permiso para usar el microfono. Ve a Configuracion y activalo."
 
     const val BRAILLE_INTRO =
@@ -300,8 +302,8 @@ object Voz {
                 "toca el boton central Agregar para confirmarla. " +
                 "El boton Borrar esta a la izquierda y el boton Espacio a la derecha."
 
-    const val BTN_CONTINUAR = "Boton verde Continuar. Al final de la pantalla."
-    const val BTN_FINALIZAR = "Boton verde Finalizar registro. Al final de la pantalla."
+    const val BTN_CONTINUAR = "Botón verde Continuar, ubicado en la parte inferior de la pantalla. Toca dos veces aquí para avanzar."
+    const val BTN_FINALIZAR = "Botón verde Finalizar registro, ubicado en la parte inferior de la pantalla. Toca dos veces aquí para terminar de crear tu perfil."
 }
 
 // ─── Textos de voz — English ──────────────────────────────────────────────────
@@ -314,7 +316,7 @@ object VozEn {
                 "Together we will take care of your family's nutrition."
 
     const val MODO_MUDO =
-        "Mute mode activated. The keyboard will always be visible for you."
+        "Hearing condition mode activated. The keyboard will always be visible for you."
 
     const val MODO_NORMAL =
         "Standard mode activated. Welcome to NutriIA."
@@ -329,8 +331,8 @@ object VozEn {
                 "Before we start, tell me how you use your phone so I can adapt to you. " +
                 "Below you have three options. " +
                 "First: Standard, for normal use. " +
-                "Second: Blind mode, where I speak everything and the microphone activates automatically. " +
-                "Third: Mute mode, with the keyboard always visible. " +
+                "Second: Visual condition mode, where I speak everything and the microphone activates automatically. " +
+                "Third: Hearing condition mode, with the keyboard always visible. " +
                 "Tap the option that works for you. " +
                 "Below the modes you can choose the language of my voice. " +
                 "When you're done, tap the green Continue button at the bottom of the screen."
@@ -352,12 +354,14 @@ object VozEn {
     const val LOGIN_CAMPO_CLAVE  = "Now tell me your password."
 
     const val REGISTRO_TIPO_INTRO =
-        "Excellent, let's create your account. First tell me, how are you going to use NutriIA. " +
-                "There are two options in the center. " +
-                "First: I'm a Parent. To register your child and track their nutrition. " +
-                "Second: I'm a Nutritionist. To manage patients and create meal plans. " +
-                "Tap the one that fits you. " +
-                "If you already have an account, the Sign In button is at the bottom."
+        "Excellent, let's create your account. How will you use NutriIA? " +
+                "You have four options on screen: " +
+                "First: Parent, to register your child and track their nutrition. " +
+                "Second: First-time Mom, for pregnancy tracking. " +
+                "Third: Nutritionist, to manage patients and create meal plans. " +
+                "Fourth: Gynecologist, for specialized medical pregnancy tracking. " +
+                "Tap the option that works for you. " +
+                "If you already have an account, the Sign In button is at the bottom of the screen."
 
     const val REGISTRO_PADRE_INTRO =
         "How exciting, a new family in NutriIA. Let's create your parent account. " +
@@ -369,7 +373,7 @@ object VozEn {
                 "Fifth repeat the same password to confirm. " +
                 "Sixth the name of your first child. " +
                 "The nutritionist code is optional, you can leave it empty. " +
-                "When you finish all of them, tap the green Create account button at the bottom."
+                "At the bottom of the screen, tap the green 'Create account and continue' button to create your profile."
 
     const val REGISTRO_PADRE_EXITO =
         "Perfect, your account is ready. Now let's register your little one. " +
@@ -385,7 +389,7 @@ object VozEn {
                 "Fifth your email address. " +
                 "Sixth your password, at least six characters. " +
                 "Seventh confirm your password. " +
-                "When you're done tap the green Create professional profile button."
+                "When finished, tap the 'Create professional profile' button at the bottom of the screen to create your profile."
 
     const val REGISTRO_NUTRI_EXITO =
         "Welcome to the team. Your professional profile is ready. " +
@@ -420,13 +424,13 @@ object VozEn {
 
     const val QUIZ_CONDICIONES =
         "Second to last step. I need to know if your child has any special health conditions. " +
-                "There are two switches: food allergies and special condition. " +
-                "Tap them to turn on or off."
+                "In the center of the screen there are two switches: food allergies and special condition. " +
+                "Double tap them to turn on or off."
 
-    const val VOZ_ESCUCHANDO  = "I'm listening, speak whenever you're ready."
+    const val VOZ_ESCUCHANDO  = "Listening."
     const val VOZ_PROCESANDO  = "Let me understand what you said."
     const val VOZ_LISTO       = "Got it, noted."
-    const val VOZ_ERROR_MIC   = "I didn't hear you well. Tap the microphone circle to try again."
+    const val VOZ_ERROR_MIC   = "I didn't hear you well. Double tap the microphone circle in the center of the screen to try again."
     const val VOZ_SIN_PERMISO = "I need permission to use the microphone. Go to Settings and enable it."
 
     const val BRAILLE_INTRO =
@@ -438,6 +442,6 @@ object VozEn {
                 "tap the center Add button to confirm it. " +
                 "The Delete button is on the left and the Space button is on the right."
 
-    const val BTN_CONTINUAR = "Green Continue button. At the bottom of the screen."
-    const val BTN_FINALIZAR = "Green Finish registration button. At the bottom of the screen."
+    const val BTN_CONTINUAR = "Green Continue button, located at the bottom of the screen. Double tap here to proceed."
+    const val BTN_FINALIZAR = "Green Finish registration button, located at the bottom of the screen. Double tap here to finish creating your profile."
 }

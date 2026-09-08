@@ -42,11 +42,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -103,6 +99,7 @@ fun CrecimientoScreen(
     val ttsManager   = a11yVm.ttsManager
     val esAccesible  = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
     val esBlind      = a11yMode == AccessibilityMode.BLIND
+    val context      = androidx.compose.ui.platform.LocalContext.current
 
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
@@ -123,17 +120,21 @@ fun CrecimientoScreen(
     LaunchedEffect(Unit) { visible = true }
 
     // Anuncio inicial de accesibilidad
-    LaunchedEffect(Unit) {
+    LaunchedEffect(esBlind, idiomaActual) {
         if (esBlind) {
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == IdiomaVoz.INGLES) "register a measurement" else "registrar una medición",
+                idioma = idiomaActual
+            )
             a11yVm.hablar(
                 loc(
                     "Módulo de crecimiento para $childName. " +
                             "Aquí puedes registrar y ver la evolución de peso, talla e IMC. " +
-                            "El botón Registrar medición está en la parte inferior central. " +
+                            "$orientacionBoton " +
                             "Las tres secciones son: Resumen e IMC, Historial y Gráficas OMS.",
                     "Growth module for $childName. " +
                             "Here you can log and view the evolution of weight, height, and BMI. " +
-                            "The Register measurement button is at the bottom center. " +
+                            "$orientacionBoton " +
                             "The three sections are: Summary and BMI, History, and WHO Charts."
                 )
             )
@@ -161,27 +162,25 @@ fun CrecimientoScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.radarHapticoBlind(context, esBlind),
         containerColor = C_Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
             AnimatedVisibility(
                 visible = visible,
-                enter   = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300)),
+                enter   = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(260)),
                 exit    = scaleOut() + fadeOut()
             ) {
-                ExtendedFloatingActionButton(
-                    onClick        = { 
-                        if (esBlind) a11yVm.hablar(loc("Abriendo formulario para nueva medición.", "Opening form for new measurement."))
-                        showDialog = true 
-                    },
-                    containerColor = C_Green,
-                    contentColor   = Color.White,
-                    shape          = RoundedCornerShape(50.dp)
-                ) {
-                    Icon(Icons.Rounded.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Registrar medición", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
+                BotonFlotanteAccesible(
+                    texto      = if (idiomaActual == IdiomaVoz.INGLES) "Register measurement" else "Registrar medición",
+                    icono      = Icons.Rounded.Add,
+                    colorFondo = C_Green,
+                    esBlind    = esBlind,
+                    ttsManager = ttsManager,
+                    a11yVm     = a11yVm,
+                    idioma     = idiomaActual,
+                    onClick    = { showDialog = true }
+                )
             }
         },
         floatingActionButtonPosition = FabPosition.Center
@@ -1036,18 +1035,37 @@ private fun DialogoMedicion(
 
 
     val guardarTodo = {
-        if (peso.isNotBlank() && talla.isNotBlank()) {
-            if (esBlind) {
-                ttsManager?.hablar(loc("Guardar", "Save"))
-            }
+        val pesoNum  = peso.replace(",", ".").toDoubleOrNull()
+        val tallaNum = talla.replace(",", ".").toDoubleOrNull()
+        if (pesoNum != null && tallaNum != null && pesoNum > 0 && tallaNum > 0) {
+            if (esBlind) ttsManager?.hablar(loc("Guardando medición.", "Saving measurement."))
             onSave(MedicionCrecimiento(
                 id        = java.util.UUID.randomUUID().toString(),
                 fecha     = fecha,
-                pesoKg    = peso.replace(",", ".").toDoubleOrNull()  ?: 0.0,
-                tallaCm   = talla.replace(",", ".").toDoubleOrNull() ?: 0.0,
+                pesoKg    = pesoNum,
+                tallaCm   = tallaNum,
                 circCefCm = circC.replace(",", ".").toDoubleOrNull() ?: 0.0,
                 notas     = notas
             ))
+        } else {
+            if (esBlind) ttsManager?.hablar(
+                loc(
+                    "El peso y la talla deben ser números válidos. Por ejemplo: sesenta y cinco para el peso, o ciento veinte para la talla.",
+                    "Weight and height must be valid numbers. For example: sixty five for weight, or one hundred twenty for height."
+                )
+            )
+        }
+    }
+
+    // Narrar instrucción al abrir el diálogo
+    LaunchedEffect(Unit) {
+        if (esBlind) {
+            ttsManager?.hablar(
+                loc(
+                    "Diálogo Nueva medición abierto. Hay cuatro campos: fecha, peso en kilos, talla en centímetros y perímetro cefálico opcional. El micrófono se activará para cada campo. Habla solo números para peso y talla.",
+                    "New measurement dialog open. There are four fields: date, weight in kilos, height in centimeters, and optional head circumference. The microphone will activate for each field. Speak only numbers for weight and height."
+                )
+            )
         }
     }
 
@@ -1074,8 +1092,8 @@ private fun DialogoMedicion(
                         valor          = fecha,
                         onValorChange  = { fecha = it },
                         etiqueta       = "Fecha (DD/MM/AAAA)",
-                        descripcionVoz = "Di la fecha de la medición.",
-                        ttsManager     = ttsManager,
+                        descripcionVoz = loc("Di la fecha de la medición. Por ejemplo: siete de septiembre de dos mil veinticuatro.", "Say the measurement date. For example: September seventh two thousand twenty four."),
+                        ttsManager     = if (campoActivo == 0) ttsManager else null,
                         idioma         = idioma,
                         esCampoFecha   = true,
                         colorPrimario  = C_Green,
@@ -1086,10 +1104,15 @@ private fun DialogoMedicion(
                     androidx.compose.animation.AnimatedVisibility(visible = !esBlind && esAccesible || campoActivo >= 1) {
                         CampoTextoAccesible(
                             valor          = peso,
-                            onValorChange  = { peso = it },
+                            onValorChange  = { spoken ->
+                                // Solo aceptar números para el peso
+                                val soloNumero = spoken.replace(",", ".").filter { it.isDigit() || it == '.' }
+                                val extractado = Regex("""\d+([.,]\d+)?""").find(spoken)?.value?.replace(",", ".")
+                                peso = extractado ?: soloNumero
+                            },
                             etiqueta       = "Peso (kg)",
-                            descripcionVoz = "Di el peso en kilogramos.",
-                            ttsManager     = ttsManager,
+                            descripcionVoz = loc("Di solo el número del peso en kilogramos. Por ejemplo: sesenta y cinco, o siete punto cinco.", "Say only the weight number in kilograms. For example: sixty five, or seven point five."),
+                            ttsManager     = if (campoActivo == 1) ttsManager else null,
                             idioma         = idioma,
                             colorPrimario  = C_Green,
                             activo         = campoActivo == 1,
@@ -1100,10 +1123,15 @@ private fun DialogoMedicion(
                     androidx.compose.animation.AnimatedVisibility(visible = !esBlind && esAccesible || campoActivo >= 2) {
                         CampoTextoAccesible(
                             valor          = talla,
-                            onValorChange  = { talla = it },
+                            onValorChange  = { spoken ->
+                                // Solo aceptar números para la talla
+                                val extractado = Regex("""\d+([.,]\d+)?""").find(spoken)?.value?.replace(",", ".")
+                                val soloNumero = spoken.replace(",", ".").filter { it.isDigit() || it == '.' }
+                                talla = extractado ?: soloNumero
+                            },
                             etiqueta       = "Talla (cm)",
-                            descripcionVoz = "Di la talla en centímetros.",
-                            ttsManager     = ttsManager,
+                            descripcionVoz = loc("Di solo el número de la talla en centímetros. Por ejemplo: ciento veinte, o sesenta y ocho.", "Say only the height number in centimeters. For example: one hundred twenty, or sixty eight."),
+                            ttsManager     = if (campoActivo == 2) ttsManager else null,
                             idioma         = idioma,
                             colorPrimario  = C_Green,
                             activo         = campoActivo == 2,
@@ -1114,10 +1142,14 @@ private fun DialogoMedicion(
                     androidx.compose.animation.AnimatedVisibility(visible = !esBlind && esAccesible || campoActivo >= 3) {
                         CampoTextoAccesible(
                             valor          = circC,
-                            onValorChange  = { circC = it },
+                            onValorChange  = { spoken ->
+                                val extractado = Regex("""\d+([.,]\d+)?""").find(spoken)?.value?.replace(",", ".")
+                                val soloNumero = spoken.replace(",", ".").filter { it.isDigit() || it == '.' }
+                                circC = extractado ?: soloNumero
+                            },
                             etiqueta       = "Perímetro cefálico (opcional)",
                             descripcionVoz = loc("Di el perímetro cefálico en centímetros, o di no lo tengo para continuar.", "Say the head circumference in centimeters, or say I don't have it to continue."),
-                            ttsManager     = ttsManager,
+                            ttsManager     = if (campoActivo == 3) ttsManager else null,
                             idioma         = idioma,
                             colorPrimario  = C_Green,
                             activo         = campoActivo == 3,
@@ -1131,7 +1163,7 @@ private fun DialogoMedicion(
                             onValorChange  = { notas = it },
                             etiqueta       = "Notas (opcional)",
                             descripcionVoz = loc("Todos los datos requeridos completos. Este campo de notas es opcional. Puedes dictar tu nota, o decir guardar para finalizar y guardar la medición.", "All required fields complete. This note field is optional. Say your note, or say save to save it."),
-                            ttsManager     = ttsManager,
+                            ttsManager     = if (campoActivo == 4) ttsManager else null,
                             idioma         = idioma,
                             colorPrimario  = C_Green,
                             activo         = campoActivo == 4,
@@ -1175,12 +1207,15 @@ private fun DialogoMedicion(
             }
         },
         confirmButton = {
-            Button(
-                onClick = { guardarTodo() },
-                enabled = peso.isNotBlank() && talla.isNotBlank(),
-                colors  = ButtonDefaults.buttonColors(containerColor = C_Green),
-                shape   = RoundedCornerShape(50.dp)
-            ) { Text("Guardar medición", fontWeight = FontWeight.Bold) }
+            BotonConfirmarAccesible(
+                texto       = if (idioma == IdiomaVoz.INGLES) "Save measurement" else "Guardar medición",
+                icono       = Icons.Rounded.Check,
+                colorFondo  = C_Green,
+                habilitado  = peso.isNotBlank() && talla.isNotBlank(),
+                esBlind     = esBlind,
+                ttsManager  = ttsManager,
+                onClick     = { guardarTodo() }
+            )
         },
         dismissButton = { TextButton(onDismiss) { Text("Cancelar", color = C_TextSub) } }
     )

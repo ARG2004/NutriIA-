@@ -24,15 +24,15 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Estados observables ───────────────────────────────────────────────────
     val mode = repo.modeFlow.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5_000), AccessibilityMode.NORMAL
+        viewModelScope, SharingStarted.Eagerly, AccessibilityMode.NORMAL
     )
 
     val idioma = repo.langFlow.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5_000), IdiomaVoz.ESPANOL_MX
+        viewModelScope, SharingStarted.Eagerly, IdiomaVoz.ESPANOL_MX
     )
 
     val primeraVez = repo.primeraVezFlow.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5_000), true
+        viewModelScope, SharingStarted.Eagerly, true
     )
 
     private val _primeraVezCargada = MutableStateFlow(false)
@@ -44,9 +44,10 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
             _primeraVezCargada.value = true
         }
         viewModelScope.launch {
-            val modoGuardado = repo.modeFlow.first()
-            if (modoGuardado == AccessibilityMode.BLIND) {
-                iniciarTTS(null)
+            repo.modeFlow.collect { modoGuardado ->
+                if (modoGuardado == AccessibilityMode.BLIND) {
+                    if (ttsManager == null) iniciarTTS(null)
+                }
             }
         }
     }
@@ -84,14 +85,28 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
     fun hablar(texto: String) {
         if (mode.value != AccessibilityMode.BLIND) return
         val tts = ttsManager
-        if (tts == null || !tts.isReady()) { colaPendiente.add(texto); return }
+        if (tts == null) {
+            iniciarTTS(texto)
+            return
+        }
+        if (!tts.isReady()) {
+            colaPendiente.add(texto)
+            return
+        }
         tts.hablar(texto)
     }
 
     fun hablarEnCola(texto: String) {
         if (mode.value != AccessibilityMode.BLIND) return
         val tts = ttsManager
-        if (tts == null || !tts.isReady()) { colaPendiente.add(texto); return }
+        if (tts == null) {
+            iniciarTTS(texto)
+            return
+        }
+        if (!tts.isReady()) {
+            colaPendiente.add(texto)
+            return
+        }
         tts.hablarEnCola(texto)
     }
 
@@ -114,12 +129,12 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         ttsManager = NutriTTS(getApplication(), idioma.value)
-        if (mensajeInicial != null) colaPendiente.add(0, mensajeInicial)
+        if (mensajeInicial != null) colaPendiente.add(mensajeInicial)
 
         viewModelScope.launch {
             var intentos = 0
-            while (ttsManager?.isReady() == false && intentos < 25) {
-                delay(150); intentos++
+            while (ttsManager?.isReady() == false && intentos < 30) {
+                delay(100); intentos++
             }
             val cola = colaPendiente.toList()
             colaPendiente.clear()

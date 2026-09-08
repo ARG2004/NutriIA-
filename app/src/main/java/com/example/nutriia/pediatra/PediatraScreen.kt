@@ -42,13 +42,7 @@ import androidx.core.content.ContextCompat
 import android.util.Log
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.LocalAccessibilityMode
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.accesibilidad.*
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -253,13 +247,23 @@ fun PediatraScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val view   = androidx.compose.ui.platform.LocalView.current
+
     LaunchedEffect(Unit) {
         vinculacionViewModel.initComoPadre()
         vinculacionViewModel.cargarDirectorio()
+    }
+
+    LaunchedEffect(esBlind, idiomaActual) {
         if (esBlind) {
+            val orientacionBoton = orientacionBotonInferior(
+                accion = if (idiomaActual == IdiomaVoz.INGLES) "activate voice commands or search specialist" else "activar comandos de voz o buscar especialista",
+                idioma = idiomaActual
+            )
             a11yVm.hablar(loc(
-                "Módulo de especialista para $childNombre. Aquí puedes buscar y vincularte con tu pediatra o nutriólogo. Puedes usar comandos de voz activando el botón del micrófono.",
-                "Specialist module for $childNombre. Here you can search and link with your pediatrician or nutritionist. You can use voice commands by activating the microphone button."
+                "Módulo de especialista para $childNombre. Aquí puedes buscar y vincularte con tu pediatra o nutriólogo. $orientacionBoton",
+                "Specialist module for $childNombre. Here you can search and link with your pediatrician or nutritionist. $orientacionBoton"
             ))
         }
     }
@@ -306,17 +310,21 @@ fun PediatraScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.radarHapticoBlind(context, esBlind),
         containerColor = PBgCrema,
         snackbarHost   = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (esBlind) {
                 FloatingActionButton(
-                    onClick = { isListening = !isListening },
+                    onClick = {
+                        triggerFeedbackAccesible(haptic, view)
+                        isListening = !isListening
+                    },
                     containerColor = if (voiceState == VoiceInputState.LISTENING) Color.Red else PGreen,
                     contentColor = Color.White,
                     shape = CircleShape,
                     modifier = Modifier.padding(bottom = 16.dp).size(64.dp)
-                        .semantics { contentDescription = if (voiceState == VoiceInputState.LISTENING) "Detener comandos de voz" else "Activar comandos de voz para navegación. Al presionar, escucha la lista de comandos disponibles." }
+                        .semantics { contentDescription = if (voiceState == VoiceInputState.LISTENING) "Detener comandos de voz" else "Activar comandos de voz para navegación. Botón ubicado abajo al centro, arriba del puerto de carga. Toca dos veces para activar." }
                 ) {
                     Icon(if (voiceState == VoiceInputState.LISTENING) Icons.Rounded.Stop else Icons.Rounded.Mic, contentDescription = null, modifier = Modifier.size(30.dp))
                 }

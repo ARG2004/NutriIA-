@@ -16,6 +16,11 @@ class VoiceInputManager(context: Any? = null) {
 
     fun isDisponible(): Boolean = platformVoice.isAvailable()
 
+    fun limpiarError() {
+        errorMsg.value = ""
+        errorCodigo.value = -1
+    }
+
     fun esErrorRecuperable(): Boolean = false
 
     fun escuchar(

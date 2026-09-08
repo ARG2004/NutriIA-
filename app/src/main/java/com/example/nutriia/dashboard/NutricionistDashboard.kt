@@ -56,6 +56,7 @@ fun NutritionistDashboardScreen(
     // ── TeleconsultaViewModel compartido ─────────────────────────────────────
     teleconsultaViewModel: TeleconsultaViewModel     = viewModel(),
     onLogout:          () -> Unit                    = {},
+    onConfiguracion:   () -> Unit                    = {},
     onPatientClick:    (PacienteResumen) -> Unit      = {},
     onNewPlan:         () -> Unit                    = {},
     onViewAllPatients: () -> Unit                    = {}
@@ -114,9 +115,10 @@ fun NutritionistDashboardScreen(
         ) {
             item {
                 NutritionistTopBar(
-                    nombre       = uiState.miPerfil?.nombre ?: "Nutriólogo/a",
-                    especialidad = uiState.miPerfil?.especialidad ?: "Seguimiento activo",
-                    onLogout     = onLogout
+                    nombre          = uiState.miPerfil?.nombre ?: "Nutriólogo/a",
+                    especialidad    = uiState.miPerfil?.especialidad ?: "Seguimiento activo",
+                    onLogout        = onLogout,
+                    onConfiguracion = onConfiguracion
                 )
             }
 
@@ -195,7 +197,12 @@ fun NutritionistDashboardScreen(
 }
 
 @Composable
-private fun NutritionistTopBar(nombre: String, especialidad: String, onLogout: () -> Unit) {
+private fun NutritionistTopBar(
+    nombre:          String,
+    especialidad:    String,
+    onLogout:        () -> Unit,
+    onConfiguracion: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -208,7 +215,7 @@ private fun NutritionistTopBar(nombre: String, especialidad: String, onLogout: (
             Text(especialidad.ifBlank { "Nutriólogo/a" }, fontSize = 13.sp, color = Color.Gray)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TopBarCircleButton(Icons.Rounded.Settings) { }
+            TopBarCircleButton(Icons.Rounded.Settings, onClick = onConfiguracion)
             TopBarCircleButton(Icons.AutoMirrored.Rounded.ExitToApp, isLogout = true, onClick = onLogout)
         }
     }

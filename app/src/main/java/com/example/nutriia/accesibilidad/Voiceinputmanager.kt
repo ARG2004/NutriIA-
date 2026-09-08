@@ -19,7 +19,11 @@ enum class VoiceInputState { IDLE, LISTENING, PROCESSING, ERROR }
 private val ERRORES_RECUPERABLES = setOf(
     SpeechRecognizer.ERROR_NO_MATCH,
     SpeechRecognizer.ERROR_SPEECH_TIMEOUT,
-    SpeechRecognizer.ERROR_RECOGNIZER_BUSY
+    SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
+    SpeechRecognizer.ERROR_CLIENT,
+    SpeechRecognizer.ERROR_SERVER,
+    SpeechRecognizer.ERROR_NETWORK,
+    SpeechRecognizer.ERROR_NETWORK_TIMEOUT
 )
 
 // ─── Manager de voz ───────────────────────────────────────────────────────────
@@ -35,10 +39,15 @@ class VoiceInputManager(private val context: Context) {
 
     fun isDisponible(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
+    fun limpiarError() {
+        errorMsg.value    = ""
+        errorCodigo.value = -1
+    }
+
     // ── Escucha con idioma configurable ───────────────────────────────────────
     fun escuchar(
         idioma:          IdiomaVoz = IdiomaVoz.ESPANOL_MX,
-        modoAccesible:   Boolean   = false,   // true = tiempos extendidos para discapacidad visual
+        modoAccesible:   Boolean   = false,   // true = tiempos extendidos para condición visual
         onResult:        (String, Boolean) -> Unit // true si es el resultado final
     ) {
         if (!isDisponible()) {
@@ -48,8 +57,8 @@ class VoiceInputManager(private val context: Context) {
             return
         }
 
-        // FIX: destruir en el hilo principal y esperar 150 ms antes de crear uno nuevo
-        // Esto evita ERROR_RECOGNIZER_BUSY cuando la instancia anterior no liberó el hardware
+        // FIX: destruir en el hilo principal y esperar 200 ms antes de crear uno nuevo
+        // Esto evita ERROR_RECOGNIZER_BUSY y ERROR_CLIENT cuando la instancia anterior no liberó el hardware
         destroyAndRecreate(idioma, modoAccesible, onResult)
     }
 
@@ -59,15 +68,16 @@ class VoiceInputManager(private val context: Context) {
         onResult:      (String, Boolean) -> Unit
     ) {
         mainHandler.post {
+            try { recognizer?.cancel() } catch (_: Exception) {}
             try { recognizer?.destroy() } catch (_: Exception) {}
             recognizer = null
             errorMsg.value    = ""
             errorCodigo.value = -1
 
-            // Delay de 250 ms para garantizar que el audio hardware y el binder quedan libres
+            // Delay de 200 ms para garantizar que el audio hardware y el binder quedan libres
             mainHandler.postDelayed({
                 crearYEscuchar(idioma, modoAccesible, onResult)
-            }, 250L)
+            }, 200L)
         }
     }
 
@@ -79,9 +89,9 @@ class VoiceInputManager(private val context: Context) {
     ) {
         recognizer = SpeechRecognizer.createSpeechRecognizer(context)
  
-        // Tiempos de silencio: normales vs accesibles (el doble para personas ciegas)
-        val silencioCompleto    = if (modoAccesible) 4000L else 2000L
-        val silencioParcial     = if (modoAccesible) 3000L else 1500L
+        // Tiempos de silencio: normales vs accesibles (más tiempo para hablar pausado)
+        val silencioCompleto    = if (modoAccesible) 7500L else 3000L
+        val silencioParcial     = if (modoAccesible) 5500L else 2500L
  
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -92,6 +102,7 @@ class VoiceInputManager(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS,      true)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,          silencioCompleto)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, silencioParcial)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,                   if (modoAccesible) 4000L else 1500L)
             if (preferOffline) {
                 putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             }
@@ -114,6 +125,8 @@ class VoiceInputManager(private val context: Context) {
  
             override fun onResults(bundle: Bundle?) {
                 estado.value = VoiceInputState.IDLE
+                errorMsg.value = ""
+                errorCodigo.value = -1
                 // Toma el primer resultado no vacío del top-3
                 val texto = bundle
                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -126,11 +139,12 @@ class VoiceInputManager(private val context: Context) {
                 if (preferOffline && (code == 12 || code == SpeechRecognizer.ERROR_SERVER || code == SpeechRecognizer.ERROR_CLIENT)) {
                     android.util.Log.i("VoiceInput", "Fallo offline (error $code). Reintentando online...")
                     mainHandler.post {
+                        try { recognizer?.cancel() } catch (_: Exception) {}
                         try { recognizer?.destroy() } catch (_: Exception) {}
                         recognizer = null
                         mainHandler.postDelayed({
                             crearYEscuchar(idioma, modoAccesible, onResult, preferOffline = false)
-                        }, 300L)
+                        }, 200L)
                     }
                     return
                 }
@@ -147,29 +161,40 @@ class VoiceInputManager(private val context: Context) {
 
     fun detener() {
         mainHandler.post {
-            try { recognizer?.stopListening() } catch (_: Exception) {}
+            try { recognizer?.cancel() } catch (_: Exception) {}
+            try { recognizer?.destroy() } catch (_: Exception) {}
+            recognizer = null
         }
-        estado.value = VoiceInputState.IDLE
+        estado.value      = VoiceInputState.IDLE
+        errorMsg.value    = ""
+        errorCodigo.value = -1
     }
 
     fun liberar() {
         mainHandler.post {
+            try { recognizer?.cancel() } catch (_: Exception) {}
             try { recognizer?.destroy() } catch (_: Exception) {}
             recognizer = null
         }
+        errorMsg.value    = ""
+        errorCodigo.value = -1
     }
 
     fun esErrorRecuperable(): Boolean = errorCodigo.value in ERRORES_RECUPERABLES
 
     private fun traducirError(code: Int) = when (code) {
-        SpeechRecognizer.ERROR_AUDIO                   -> "Error de micrófono"
+        SpeechRecognizer.ERROR_AUDIO                    -> "Error de micrófono"
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Permiso de micrófono requerido"
         SpeechRecognizer.ERROR_NETWORK,
-        SpeechRecognizer.ERROR_NETWORK_TIMEOUT         -> "Sin conexión a internet"
-        SpeechRecognizer.ERROR_NO_MATCH                -> "No entendí. Habla de nuevo"
-        SpeechRecognizer.ERROR_SPEECH_TIMEOUT          -> "No detecté voz. Habla más cerca"
-        SpeechRecognizer.ERROR_RECOGNIZER_BUSY         -> "Micrófono ocupado, reintentando"
-        else                                           -> "Error desconocido ($code)"
+        SpeechRecognizer.ERROR_NETWORK_TIMEOUT          -> "Sin conexión a internet"
+        SpeechRecognizer.ERROR_NO_MATCH                 -> "No detecté voz. Habla de nuevo"
+        SpeechRecognizer.ERROR_SPEECH_TIMEOUT           -> "No detecté voz. Habla más cerca"
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY          -> "Micrófono ocupado, reintentando..."
+        SpeechRecognizer.ERROR_CLIENT                   -> "Toca el micrófono para hablar"
+        SpeechRecognizer.ERROR_SERVER,
+        SpeechRecognizer.ERROR_SERVER_DISCONNECTED      -> "Servicio de voz ocupado. Toca para reintentar"
+        SpeechRecognizer.ERROR_TOO_MANY_REQUESTS        -> "Espera un segundo para volver a hablar"
+        else                                            -> "Toca el micrófono para hablar"
     }
 }
 

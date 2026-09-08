@@ -211,19 +211,34 @@ fun NutriIADashboardScreen(
     onEditarPerfil:        (ChildProfile) -> Unit = {},
     onAyuda:               () -> Unit = {}
 ) {
-    if (children.isEmpty()) return
+    if (children.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(DashBgCrema),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(color = DashNutriaGreen)
+                Spacer(Modifier.height(12.dp))
+                Text("Cargando perfil...", color = Color.Gray, fontSize = 14.sp)
+            }
+        }
+        return
+    }
 
     val a11yMode         = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
 
     val pagerState = rememberPagerState(
-        initialPage               = initialPageIndex.coerceIn(0, children.lastIndex),
+        initialPage               = initialPageIndex.coerceIn(0, (children.size - 1).coerceAtLeast(0)),
         initialPageOffsetFraction = 0f,
         pageCount                 = { children.size }
     )
 
-    val currentPage = pagerState.currentPage
-    val child       = children.getOrNull(currentPage) ?: return
+    val currentPage = pagerState.currentPage.coerceIn(0, (children.size - 1).coerceAtLeast(0))
+    val child       = children.getOrNull(currentPage) ?: children.firstOrNull() ?: return
     val etapa       = calcularEtapa(child.birthDate)
     val etapaColor  = colorDeEtapa(etapa.nombre)
     val edadInfo    = obtenerEdadTexto(child.birthDate)

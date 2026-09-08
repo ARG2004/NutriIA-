@@ -36,10 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.R
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
+import com.example.nutriia.accesibilidad.*
 import kotlinx.coroutines.delay
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
@@ -190,18 +187,23 @@ fun HelpScreen(onNavigateBack: () -> Unit) {
 
     fun loc(es: String, en: String) = idiomaActual.loc(es, en)
 
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val view   = androidx.compose.ui.platform.LocalView.current
+
     LaunchedEffect(Unit) {
         if (esBlind) {
             a11yVm.hablar(loc(
-                "Centro de ayuda de NutriIA. Aquí puedes aprender a usar cada módulo de la aplicación. Selecciona una categoría para escuchar su descripción.",
-                "NutriIA Help Center. Here you can learn how to use each module. Select a category to hear its description."
+                "Centro de ayuda de NutriIA. Desliza de arriba hacia abajo para explorar los temas de ayuda y preguntas frecuentes. Toca dos veces cualquier tarjeta para escuchar su explicación.",
+                "NutriIA Help Center. Swipe top to bottom to browse help topics and FAQ. Double tap any card to listen to its explanation."
             ))
         }
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     val modules = remember { buildModules() }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(context = context, esBlind = esBlind),
         topBar = {
             TopAppBar(
                 title = {
@@ -213,7 +215,10 @@ fun HelpScreen(onNavigateBack: () -> Unit) {
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        triggerFeedbackAccesible(context, view)
+                        onNavigateBack()
+                    }) {
                         Box(
                             modifier         = Modifier
                                 .size(34.dp)

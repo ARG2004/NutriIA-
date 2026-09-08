@@ -283,7 +283,6 @@ fun OnboardingQuizScreen(
         )
     }
     val ttsManager = accessibilityVm.ttsManager
-    var mostrarDialogoTalkBack by remember { mutableStateOf(false) }
 
     val totalSteps = if (soloAccesibilidad) 1 else 7
 
@@ -291,7 +290,11 @@ fun OnboardingQuizScreen(
         0, 1 -> true
         2    -> profile.name.isNotBlank()
         3    -> profile.birthDate.length == 10
-        4    -> profile.weightKg.isNotBlank() && profile.heightCm.isNotBlank()
+        4    -> {
+            val w = profile.weightKg.toDoubleOrNull()
+            val h = profile.heightCm.toDoubleOrNull()
+            w != null && w > 0.0 && h != null && h > 0.0
+        }
         5    -> true
         6    -> true
         else -> true
@@ -321,8 +324,8 @@ fun OnboardingQuizScreen(
             4    -> loc(Voz.QUIZ_MEDIDAS,       VozEn.QUIZ_MEDIDAS)
             5    -> loc(Voz.QUIZ_CONDICIONES,   VozEn.QUIZ_CONDICIONES)
             6    -> loc(
-                "Último paso, lo prometo. Selecciona el ingreso familiar y la región de México donde vives. Cuando termines, toca el botón verde Finalizar registro al final.",
-                "Last step, I promise. Select your family income level and the region of Mexico where you live. When you're done, tap the green Finish registration button at the bottom."
+                "Último paso, lo prometo. Selecciona el ingreso familiar y la región de México donde vives. Cuando termines, toca dos veces el botón verde Finalizar registro en la parte inferior para crear tu perfil.",
+                "Last step, I promise. Select your family income level and the region of Mexico where you live. When you're done, double tap the green Finish registration button at the bottom to create your profile."
             )
             else -> ""
         }
@@ -342,45 +345,7 @@ fun OnboardingQuizScreen(
         }
     }
 
-    // ── Diálogo TalkBack ──────────────────────────────────────────────────────
-    if (mostrarDialogoTalkBack) {
-        AlertDialog(
-            onDismissRequest = { mostrarDialogoTalkBack = false },
-            icon  = { Icon(Icons.Rounded.Accessibility, null, tint = NutriaGreen, modifier = Modifier.size(32.dp)) },
-            title = { Text("Activar lector de pantalla", fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Para que Android lea todo en voz alta activa TalkBack en Configuración.", fontSize = 14.sp, textAlign = TextAlign.Center, lineHeight = 20.sp)
-                    Surface(color = NutriaGreen.copy(alpha = 0.07f), shape = RoundedCornerShape(12.dp)) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Pasos:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NutriaGreen)
-                            Text("1. Toca \"Ir a Configuración\"", fontSize = 12.sp, color = Color.DarkGray)
-                            Text("2. Busca TalkBack o Lector de pantalla", fontSize = 12.sp, color = Color.DarkGray)
-                            Text("3. Actívalo y regresa a NutriIA", fontSize = 12.sp, color = Color.DarkGray)
-                        }
-                    }
-                    Text("Nutri/IA ya tiene voz propia. Funciona aunque no actives TalkBack.", fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { mostrarDialogoTalkBack = false;  },
-                    colors  = ButtonDefaults.buttonColors(containerColor = NutriaGreen),
-                    shape   = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Rounded.Settings, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Ir a Configuración", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { mostrarDialogoTalkBack = false }) {
-                    Text("Continuar con voz de Nutri/IA", color = Color.Gray)
-                }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
-    }
+
 
     // ── Diálogo CANCELAR ──────────────────────────────────────────────────────
     AnimatedVisibility(
@@ -504,8 +469,21 @@ fun OnboardingQuizScreen(
                                     vibrateTap(haptic)
                                     selectedA11yMode = modo
                                     accessibilityVm.setMode(modo)
-                                    if (modo == AccessibilityMode.BLIND && !false)
-                                        mostrarDialogoTalkBack = true
+                                    val feedback = when (modo) {
+                                        AccessibilityMode.BLIND -> loc(
+                                            "Modo persona con condición visual seleccionado. NutriIA narrará todo por voz. Para continuar, toca el botón verde Continuar en la parte inferior de la pantalla.",
+                                            "Visual condition mode selected. NutriIA will narrate everything by voice. To continue, tap the green Continue button at the bottom of the screen."
+                                        )
+                                        AccessibilityMode.MUTE -> loc(
+                                            "Modo persona con condición auditiva seleccionado. El teclado estará siempre visible. Toca el botón Continuar en la parte inferior para avanzar.",
+                                            "Hearing condition mode selected. The keyboard will always be visible. Tap the Continue button at the bottom to proceed."
+                                        )
+                                        else -> loc(
+                                            "Modo estándar seleccionado. Toca el botón verde Continuar en la parte inferior de la pantalla para avanzar.",
+                                            "Standard mode selected. Tap the green Continue button at the bottom of the screen to proceed."
+                                        )
+                                    }
+                                    accessibilityVm.hablar(feedback)
                                 },
                                 onIdiomaSelect = { idioma -> vibrateTap(haptic); accessibilityVm.setIdioma(idioma) }
                             )
@@ -688,7 +666,7 @@ fun StepAccesibilidad(
                     Row(Modifier.padding(12.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CheckCircle, null, tint = NutriaGreen, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text("TalkBack detectado — modo ciego activado.", fontSize = 12.sp, color = NutriaGreen, fontWeight = FontWeight.SemiBold)
+                        Text("TalkBack detectado — modo para condición visual activado.", fontSize = 12.sp, color = NutriaGreen, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -723,6 +701,34 @@ fun StepAccesibilidad(
                     }
                 }
                 if (isSelected) Icon(Icons.Rounded.CheckCircle, null, tint = NutriaGreen, modifier = Modifier.size(22.dp).semantics { contentDescription = "" })
+            }
+        }
+        if (!talkBackActivo) {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, NutriaGreen.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .background(NutriaGreen.copy(alpha = 0.04f))
+                    .clickable(onClickLabel = "Abrir ajustes para activar lector TalkBack de Google") {
+                        abrirConfiguracionTalkBack()
+                    }
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "Lector de pantalla TalkBack de Google. Toca para abrir la configuración de accesibilidad y activarlo si lo deseas."
+                    }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(40.dp).clip(CircleShape).background(NutriaGreen.copy(0.12f)), Alignment.Center) {
+                    Icon(Icons.Rounded.Settings, null, tint = NutriaGreen, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Lector TalkBack (Google)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                    Text("Toca para activar TalkBack en Ajustes si lo prefieres", fontSize = 11.sp, color = Color.Gray)
+                }
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = NutriaGreen, modifier = Modifier.size(16.dp))
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -1349,25 +1355,40 @@ fun StepMedidas(
 
     var campoMedidaActivo by remember { mutableIntStateOf(0) }
     LaunchedEffect(weight) {
-        if ((modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) && weight.isNotBlank() && campoMedidaActivo == 0) {
-            kotlinx.coroutines.delay(600L)
-            if (weight.isNotBlank() && campoMedidaActivo == 0) campoMedidaActivo = 1
+        val wNum = weight.toDoubleOrNull()
+        if ((modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) && wNum != null && wNum > 0.0 && campoMedidaActivo == 0) {
+            kotlinx.coroutines.delay(2000L)
+            if (weight.toDoubleOrNull() != null && campoMedidaActivo == 0) campoMedidaActivo = 1
         }
     }
 
     QuizStepLayout(Icons.Rounded.MonitorWeight, Color(0xFF7E57C2), "Peso y talla actual", "Para calcular su curva de crecimiento") {
         if (modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) {
             CampoTextoAccesible(
-                valor = weight, onValorChange = onWeightChange, etiqueta = "Peso", descripcionVoz = descripcionVozPeso, placeholder = "Ej. 7.5",
-                ttsManager = if (campoMedidaActivo == 0) ttsManager else null, idioma = idioma, colorPrimario = Color(0xFF7E57C2),
+                valor = weight,
+                onValorChange = onWeightChange,
+                etiqueta = "Peso",
+                descripcionVoz = descripcionVozPeso,
+                placeholder = "Ej. 7.5",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                ttsManager = if (campoMedidaActivo == 0) ttsManager else null,
+                idioma = idioma,
+                colorPrimario = Color(0xFF7E57C2),
                 activo = campoMedidaActivo == 0,
                 onFocus = { campoMedidaActivo = 0 },
                 onNext = { campoMedidaActivo = 1 }
             )
             Spacer(Modifier.height(16.dp))
             CampoTextoAccesible(
-                valor = height, onValorChange = onHeightChange, etiqueta = "Talla", descripcionVoz = descripcionVozTalla, placeholder = "Ej. 68",
-                ttsManager = if (campoMedidaActivo == 1) ttsManager else null, idioma = idioma, colorPrimario = Color(0xFF7E57C2),
+                valor = height,
+                onValorChange = onHeightChange,
+                etiqueta = "Talla",
+                descripcionVoz = descripcionVozTalla,
+                placeholder = "Ej. 68",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                ttsManager = if (campoMedidaActivo == 1) ttsManager else null,
+                idioma = idioma,
+                colorPrimario = Color(0xFF7E57C2),
                 activo = campoMedidaActivo == 1,
                 onFocus = { campoMedidaActivo = 1 }
             )

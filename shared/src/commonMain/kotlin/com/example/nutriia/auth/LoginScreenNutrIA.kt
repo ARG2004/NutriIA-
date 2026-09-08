@@ -164,6 +164,13 @@ fun NutriaLoginScreen(
                     // Boton ENTRAR
                     Button(
                         onClick = {
+                            if (email.isBlank() || password.isBlank()) {
+                                val msg = if (email.isBlank()) "Falta ingresar tu correo electrónico."
+                                          else "Falta ingresar tu contraseña."
+                                if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(msg)
+                                showError = msg
+                                return@Button
+                            }
                             if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(Voz.LOGIN_INICIANDO)
                             viewModel.login(email, password)
                         },
