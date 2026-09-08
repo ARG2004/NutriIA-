@@ -79,8 +79,12 @@ data class ChildProfile(
             allergiesDetail  = map["allergiesDetail"]  as? String  ?: "",
             hasConditions    = map["hasConditions"]    as? Boolean ?: false,
             conditionsDetail = map["conditionsDetail"] as? String  ?: "",
-            sexo             = (map["sexo"] as? String)?.let {
-                runCatching { Sexo.valueOf(it) }.getOrNull()
+            sexo             = (map["sexo"] as? String)?.takeIf { it.isNotBlank() }?.let { raw ->
+                when (raw.uppercase().trim()) {
+                    "NINO", "NIÑO", "BOY", "VARON", "VARÓN", "MASCULINO", "M" -> Sexo.NINO
+                    "NINA", "NIÑA", "GIRL", "FEMENINO", "MUJER", "F"          -> Sexo.NINA
+                    else -> runCatching { Sexo.valueOf(raw) }.getOrNull()
+                }
             }
         )
     }

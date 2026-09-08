@@ -667,12 +667,11 @@ fun ParentRegisterScreen(
         when (val s = estado) {
             is RegisterUiState.Exito -> {
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
+                    a11yVm.hablar(
                         loc(
                             "Cuenta creada exitosamente. Ahora registraremos los datos de tu hijo.",
                             "Account created successfully. Now let's register your child's information."
-                        ),
-                        margenMs = 500L
+                        )
                     )
                 }
                 onRegisterSuccess(dataRef.value)
@@ -1168,9 +1167,8 @@ fun MamaPrimerizaRegisterScreen(
         when (val s = estado) {
             is RegisterUiState.Exito -> {
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
-                        loc("Cuenta creada exitosamente. Bienvenida a tu seguimiento prenatal.", "Account created successfully. Welcome to your prenatal tracking."),
-                        margenMs = 500L
+                    a11yVm.hablar(
+                        loc("Cuenta creada exitosamente. Bienvenida a tu seguimiento prenatal.", "Account created successfully. Welcome to your prenatal tracking.")
                     )
                 }
                 onRegisterSuccess(dataRef.value)
@@ -1556,12 +1554,11 @@ fun NutritionistRegisterScreen(
         when (val s = estado) {
             is RegisterUiState.Exito -> {
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
+                    a11yVm.hablar(
                         loc(
                             "Perfil profesional creado exitosamente. Bienvenido a NutriIA.",
                             "Professional profile created successfully. Welcome to NutriIA."
-                        ),
-                        margenMs = 500L
+                        )
                     )
                 }
                 onRegisterSuccess()
@@ -2163,9 +2160,8 @@ fun GinecologistRegisterScreen(
         when (val s = estado) {
             is RegisterUiState.Exito -> {
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
-                        loc("Perfil médico creado exitosamente. Bienvenido/a.", "Medical profile created successfully. Welcome."),
-                        margenMs = 500L
+                    a11yVm.hablar(
+                        loc("Perfil médico creado exitosamente. Bienvenido/a.", "Medical profile created successfully. Welcome.")
                     )
                 }
                 onRegisterSuccess()

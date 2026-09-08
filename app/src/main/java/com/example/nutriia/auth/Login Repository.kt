@@ -420,7 +420,13 @@ class RepositorioLogin(private val context: Context) {
                         conditionsDetail = doc.getString("conditionsDetail") ?: "",
                         sexo             = doc.getString("sexo")
                             ?.takeIf { it.isNotBlank() }
-                            ?.let { runCatching { Sexo.valueOf(it) }.getOrNull() },
+                            ?.let { raw ->
+                                when (raw.uppercase().trim()) {
+                                    "NINO", "NIÑO", "BOY", "VARON", "VARÓN", "MASCULINO", "M" -> Sexo.NINO
+                                    "NINA", "NIÑA", "GIRL", "FEMENINO", "MUJER", "F"          -> Sexo.NINA
+                                    else -> runCatching { Sexo.valueOf(raw) }.getOrNull()
+                                }
+                            },
                         nivelIngreso     = doc.getString("nivelIngreso")
                             ?.let { runCatching { NivelIngreso.valueOf(it) }.getOrDefault(NivelIngreso.BASICO) }
                             ?: NivelIngreso.BASICO,

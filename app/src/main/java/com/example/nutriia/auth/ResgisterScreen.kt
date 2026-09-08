@@ -46,6 +46,8 @@ import com.example.nutriia.accesibilidad.VozEn
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.triggerFeedbackAccesible
 import com.example.nutriia.accesibilidad.orientacionBotonInferior
+import com.example.nutriia.accesibilidad.MotorHapticoNutriIA
+import com.example.nutriia.accesibilidad.radarHapticoBlind
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.delay
@@ -238,7 +240,12 @@ fun RegisterTypeScreen(
         label         = "slideY"
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(RegBgCrema)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RegBgCrema)
+            .radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND)
+    ) {
         Column(
             modifier            = Modifier
                 .fillMaxSize()
@@ -433,6 +440,9 @@ private fun AccountTypeCard(
         label         = "press"
     )
 
+    val context = LocalContext.current
+    val view = LocalView.current
+
     Card(
         modifier  = Modifier
             .fillMaxWidth()
@@ -440,7 +450,11 @@ private fun AccountTypeCard(
             .semantics(mergeDescendants = true) {
                 contentDescription = "$title. $tag. $description"
             }
-            .clickable { pressed = true; onClick() },
+            .clickable { 
+                MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
+                pressed = true
+                onClick() 
+            },
         shape     = RoundedCornerShape(28.dp),
         colors    = CardDefaults.cardColors(containerColor = RegCardWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
@@ -615,13 +629,13 @@ fun ParentRegisterScreen(
     LaunchedEffect(estado) {
         when (val s = estado) {
             is RegisterUiState.Exito -> {
+                MotorHapticoNutriIA.vibrarFuerte(context, duracionMs = 80L, amplitud = 255)
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
+                    a11yVm.hablar(
                         loc(
                             "Cuenta creada exitosamente. Ahora registraremos los datos de tu hijo.",
                             "Account created successfully. Now let's register your child's information."
-                        ),
-                        margenMs = 500L
+                        )
                     )
                 }
                 onRegisterSuccess(dataRef.value)
@@ -640,7 +654,12 @@ fun ParentRegisterScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(RegBgCrema)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RegBgCrema)
+            .radarHapticoBlind(context, esBlind)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -889,7 +908,7 @@ fun ParentRegisterScreen(
             Spacer(Modifier.height(36.dp))
             Button(
                 onClick = {
-                    triggerFeedbackAccesible(context, view)
+                    MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                     var hasErrors = false
                     if (data.name.isBlank()) {
                         nameError  = loc("El nombre es requerido", "Name is required"); hasErrors = true
@@ -1123,10 +1142,10 @@ fun MamaPrimerizaRegisterScreen(
     LaunchedEffect(estado) {
         when (val s = estado) {
             is RegisterUiState.Exito -> {
+                MotorHapticoNutriIA.vibrarFuerte(context, duracionMs = 80L, amplitud = 255)
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
-                        loc("Cuenta creada exitosamente. Bienvenida a tu seguimiento prenatal.", "Account created successfully. Welcome to your prenatal tracking."),
-                        margenMs = 500L
+                    a11yVm.hablar(
+                        loc("Cuenta creada exitosamente. Bienvenida a tu seguimiento prenatal.", "Account created successfully. Welcome to your prenatal tracking.")
                     )
                 }
                 onRegisterSuccess(dataRef.value)
@@ -1139,7 +1158,12 @@ fun MamaPrimerizaRegisterScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(RegBgCrema)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RegBgCrema)
+            .radarHapticoBlind(context, esBlind)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1325,6 +1349,7 @@ fun MamaPrimerizaRegisterScreen(
                         }
                         if (esBlind) a11yVm.hablar(primerErrorMsg)
                     } else {
+                        MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                         if (esBlind) a11yVm.hablar(loc("Creando tu cuenta de embarazo. Por favor espera.", "Creating your pregnancy account. Please wait."))
                         viewModel.registrarMamaPrimeriza(data, confirmPassword)
                     }
@@ -1530,13 +1555,13 @@ fun NutritionistRegisterScreen(
     LaunchedEffect(estado) {
         when (val s = estado) {
             is RegisterUiState.Exito -> {
+                MotorHapticoNutriIA.vibrarFuerte(context, duracionMs = 80L, amplitud = 255)
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
+                    a11yVm.hablar(
                         loc(
                             "Perfil profesional creado exitosamente. Bienvenido a NutriIA.",
                             "Professional profile created successfully. Welcome to NutriIA."
-                        ),
-                        margenMs = 500L
+                        )
                     )
                 }
                 onRegisterSuccess()
@@ -1555,7 +1580,12 @@ fun NutritionistRegisterScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(RegBgCrema)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RegBgCrema)
+            .radarHapticoBlind(context, esBlind)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1922,7 +1952,7 @@ fun NutritionistRegisterScreen(
             Spacer(Modifier.height(36.dp))
             Button(
                 onClick = {
-                    triggerFeedbackAccesible(context, view)
+                    MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                     ejecutarRegistroNutri()
                 },
                 enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedula && !nombreNoCoincideNutri && !profesionInvalidaNutri,
@@ -2161,10 +2191,10 @@ fun GinecologistRegisterScreen(
     LaunchedEffect(estado) {
         when (val s = estado) {
             is RegisterUiState.Exito -> {
+                MotorHapticoNutriIA.vibrarFuerte(context, duracionMs = 80L, amplitud = 255)
                 if (esBlind) {
-                    ttsManager?.hablarYEsperar(
-                        loc("Perfil médico creado exitosamente. Bienvenido/a.", "Medical profile created successfully. Welcome."),
-                        margenMs = 500L
+                    a11yVm.hablar(
+                        loc("Perfil médico creado exitosamente. Bienvenido/a.", "Medical profile created successfully. Welcome.")
                     )
                 }
                 onRegisterSuccess()
@@ -2177,7 +2207,12 @@ fun GinecologistRegisterScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(RegBgCrema)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RegBgCrema)
+            .radarHapticoBlind(context, esBlind)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -2477,7 +2512,7 @@ fun GinecologistRegisterScreen(
 
             Button(
                 onClick = {
-                    triggerFeedbackAccesible(context, view)
+                    MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                     ejecutarRegistroGine()
                 },
                 enabled  = estado !is RegisterUiState.Loading && aceptoConsentimientoCedulaGine && !nombreNoCoincideGine && !profesionInvalidaGine,

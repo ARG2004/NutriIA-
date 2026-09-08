@@ -262,7 +262,7 @@ fun OnboardingQuizScreen(
     var goingForward     by remember { mutableStateOf(true) }
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    var profile by remember {
+    var profile by remember(prefilledChildName, prefilledProfile) {
         mutableStateOf(
             prefilledProfile?.copy(name = prefilledProfile.name.ifBlank { prefilledChildName })
                 ?: ChildProfile(
@@ -271,6 +271,12 @@ fun OnboardingQuizScreen(
                     region       = RegionMexico.CENTRO
                 )
         )
+    }
+
+    LaunchedEffect(prefilledChildName) {
+        if (prefilledChildName.isNotBlank() && (profile.name.isBlank() || profile.name != prefilledChildName)) {
+            profile = profile.copy(name = prefilledChildName)
+        }
     }
 
     val accessibilityVm: AccessibilityViewModel = remember { AccessibilityViewModel() }
@@ -827,13 +833,41 @@ fun StepNombre(
     ttsManager:           NutriTTS?         = null,
     descripcionVozNombre: String            = Voz.QUIZ_NOMBRE
 ) {
+    val haptic = LocalHapticFeedback.current
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (modo == AccessibilityMode.MUTE) focusRequester.requestFocus() }
 
-    var sexoActivo by remember { mutableStateOf(false) }
+    var sexoActivo by remember(value) { mutableStateOf(value.isNotBlank()) }
+
+    var textoSexo by remember(sexo) {
+        mutableStateOf(
+            when (sexo) {
+                Sexo.NINO -> if (idioma == IdiomaVoz.INGLES) "Niño (Boy)" else "Niño"
+                Sexo.NINA -> if (idioma == IdiomaVoz.INGLES) "Niña (Girl)" else "Niña"
+                null      -> ""
+            }
+        )
+    }
+
+    fun parsearSexo(texto: String): Sexo? {
+        val norm = texto.lowercase().trim()
+        return when {
+            norm.contains("niño") || norm.contains("nino") || norm.contains("boy") ||
+            norm.contains("varon") || norm.contains("varón") || norm.contains("masculino") ||
+            norm.contains("hombre") || norm.contains("nene") || norm.contains("chico") ||
+            norm.contains("hijo") || norm == "m" || norm == "v" -> Sexo.NINO
+            
+            norm.contains("niña") || norm.contains("nina") || norm.contains("girl") ||
+            norm.contains("femenino") || norm.contains("mujer") || norm.contains("nena") ||
+            norm.contains("chica") || norm.contains("hija") || norm == "f" -> Sexo.NINA
+            
+            else -> null
+        }
+    }
+
     LaunchedEffect(value) {
         if ((modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) && value.isNotBlank() && !sexoActivo) {
-            delay(2000L)
+            delay(1500L)
             if (value.isNotBlank() && !sexoActivo) {
                 sexoActivo = true
             }
@@ -843,31 +877,50 @@ fun StepNombre(
     QuizStepLayout(Icons.Rounded.Face, NutriaGreen, "¿Cómo se llama?", "Nombre y sexo de tu hijo/a") {
         if (modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) {
             val descripcion = if (value.isNotBlank())
-                if (idioma == IdiomaVoz.INGLES) "Your child's name is $value. If it's correct, tap Continue."
-                else "El nombre de tu hijo es $value. Si es correcto toca Continuar."
+                if (idioma == IdiomaVoz.INGLES) "Your child's name is $value. Say boy or girl, or choose the option below."
+                else "El nombre de tu hijo es $value. Di si es niño o niña, o selecciona la opción abajo."
             else descripcionVozNombre
+
             CampoTextoAccesible(
-                valor          = value, onValorChange = onValueChange,
-                etiqueta       = "Nombre", descripcionVoz = descripcion,
-                placeholder    = "Ej. Sofía, Mateo...", ttsManager = if (!sexoActivo) ttsManager else null,
-                idioma         = idioma, colorPrimario = NutriaGreen,
+                valor          = value,
+                onValorChange  = {
+                    onValueChange(it)
+                    if (it.isNotBlank()) {
+                        sexoActivo = true
+                    }
+                },
+                etiqueta       = if (idioma == IdiomaVoz.INGLES) "Child's Name" else "Nombre",
+                descripcionVoz = descripcion,
+                placeholder    = "Ej. Sofía, Mateo...",
+                ttsManager     = if (!sexoActivo) ttsManager else null,
+                idioma         = idioma,
+                colorPrimario  = NutriaGreen,
                 activo         = !sexoActivo,
                 onFocus        = { sexoActivo = false },
                 onNext         = { sexoActivo = true }
             )
             Spacer(Modifier.height(20.dp))
-            val descVozSexo = if (idioma == IdiomaVoz.INGLES) "Is your child a boy or a girl? Say boy or girl." else "¿Es niño o niña? Di niño o niña."
+            val descVozSexo = if (idioma == IdiomaVoz.INGLES) "Is your child a boy or a girl? Say boy or girl, or double tap the buttons below." else "¿Es niño o niña? Di niño o niña, o toca dos veces los botones abajo."
             CampoTextoAccesible(
-                valor          = when(sexo) { Sexo.NINO -> if (idioma == IdiomaVoz.INGLES) "Boy" else "Niño"; Sexo.NINA -> if (idioma == IdiomaVoz.INGLES) "Girl" else "Niña"; null -> "" },
+                valor          = textoSexo,
                 onValorChange  = { txt ->
-                    val normalized = txt.lowercase()
-                    if (normalized.contains("niño") || normalized.contains("boy") || normalized.contains("varon") || normalized.contains("varón") || normalized.contains("masculino") || normalized.contains("nińo")) {
-                        onSexoChange(Sexo.NINO)
-                    } else if (normalized.contains("niña") || normalized.contains("girl") || normalized.contains("femenino")) {
-                        onSexoChange(Sexo.NINA)
+                    textoSexo = txt
+                    val parsed = parsearSexo(txt)
+                    if (parsed != null) {
+                        vibrateTap(haptic)
+                        onSexoChange(parsed)
                     }
                 },
-                etiqueta       = "Sexo",
+                onCommandParsed = { cmd ->
+                    val parsed = parsearSexo(cmd)
+                    if (parsed != null) {
+                        onSexoChange(parsed)
+                        textoSexo = if (parsed == Sexo.NINO) (if (idioma == IdiomaVoz.INGLES) "Boy" else "Niño") else (if (idioma == IdiomaVoz.INGLES) "Girl" else "Niña")
+                        vibrateSuccess(haptic)
+                        true
+                    } else false
+                },
+                etiqueta       = if (idioma == IdiomaVoz.INGLES) "Sex / Gender" else "Sexo",
                 descripcionVoz = descVozSexo,
                 placeholder    = if (idioma == IdiomaVoz.INGLES) "Boy, Girl..." else "Ej. Niño, Niña...",
                 ttsManager     = if (sexoActivo) ttsManager else null,
@@ -875,6 +928,18 @@ fun StepNombre(
                 colorPrimario  = NutriaGreen,
                 activo         = sexoActivo,
                 onFocus        = { sexoActivo = true }
+            )
+            Spacer(Modifier.height(16.dp))
+            SexoSlider(
+                sexo = sexo,
+                onSexoChange = { s ->
+                    vibrateTap(haptic)
+                    onSexoChange(s)
+                    if (s != null) {
+                        textoSexo = if (s == Sexo.NINO) (if (idioma == IdiomaVoz.INGLES) "Boy" else "Niño") else (if (idioma == IdiomaVoz.INGLES) "Girl" else "Niña")
+                        ttsManager?.hablar(if (s == Sexo.NINO) (if (idioma == IdiomaVoz.INGLES) "Boy selected" else "Niño seleccionado") else (if (idioma == IdiomaVoz.INGLES) "Girl selected" else "Niña seleccionada"))
+                    }
+                }
             )
         } else {
             OutlinedTextField(
@@ -887,13 +952,20 @@ fun StepNombre(
                 leadingIcon     = { Icon(Icons.Rounded.Person, null, tint = NutriaGreen) }
             )
             Spacer(Modifier.height(20.dp))
-            SexoSlider(sexo = sexo, onSexoChange = onSexoChange)
+            SexoSlider(
+                sexo = sexo,
+                onSexoChange = {
+                    vibrateTap(haptic)
+                    onSexoChange(it)
+                }
+            )
         }
     }
 }
 
 @Composable
 private fun SexoSlider(sexo: Sexo?, onSexoChange: (Sexo?) -> Unit) {
+    val haptic = LocalHapticFeedback.current
     val ninoColor = Color(0xFF1565C0)
     val ninaColor = QuizAccent
 
@@ -944,8 +1016,11 @@ private fun SexoSlider(sexo: Sexo?, onSexoChange: (Sexo?) -> Unit) {
                         color = if (ninoSelected) Color.Transparent else ninoColor.copy(0.4f),
                         shape = RoundedCornerShape(18.dp)
                     )
-                    .clickable(onClickLabel = "Seleccionar Niño") { onSexoChange(Sexo.NINO) }
-                    .semantics { contentDescription = "Botón Niño. ${if (ninoSelected) "Seleccionado." else "Toca para elegir Niño."}" }
+                    .clickable(onClickLabel = "Seleccionar Niño") {
+                        vibrateTap(haptic)
+                        onSexoChange(Sexo.NINO)
+                    }
+                    .semantics { contentDescription = "Botón Niño. ${if (ninoSelected) "Seleccionado." else "Toca dos veces para elegir Niño."}" }
                     .padding(vertical = 18.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -976,8 +1051,11 @@ private fun SexoSlider(sexo: Sexo?, onSexoChange: (Sexo?) -> Unit) {
                         color = if (ninaSelected) Color.Transparent else ninaColor.copy(0.4f),
                         shape = RoundedCornerShape(18.dp)
                     )
-                    .clickable(onClickLabel = "Seleccionar Niña") { onSexoChange(Sexo.NINA) }
-                    .semantics { contentDescription = "Botón Niña. ${if (ninaSelected) "Seleccionada." else "Toca para elegir Niña."}" }
+                    .clickable(onClickLabel = "Seleccionar Niña") {
+                        vibrateTap(haptic)
+                        onSexoChange(Sexo.NINA)
+                    }
+                    .semantics { contentDescription = "Botón Niña. ${if (ninaSelected) "Seleccionada." else "Toca dos veces para elegir Niña."}" }
                     .padding(vertical = 18.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -1009,7 +1087,7 @@ private fun SexoSlider(sexo: Sexo?, onSexoChange: (Sexo?) -> Unit) {
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text       = if (sexo == Sexo.NINO) "Niño seleccionado" else "Niña seleccionada",
-                    fontSize   = 12.sp,
+                    fontSize   = 13.sp,
                     color      = color,
                     fontWeight = FontWeight.SemiBold
                 )

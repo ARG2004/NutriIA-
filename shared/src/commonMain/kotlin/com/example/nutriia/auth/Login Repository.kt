@@ -407,11 +407,7 @@ class RepositorioLogin {
                     if (existing.isEmpty()) {
                         val crecId = generateUUID()
                         val datosCrec = mapOf(
-                            "id" to crecId,
-                            "childId" to childId,
-                            "userId" to uid,
-                            "fecha" to FechaUtils.fechaActual(),
-                            "pesoKg" to pesoNum,
+                                  "pesoKg" to pesoNum,
                             "tallaCm" to tallaNum,
                             "circCefCm" to 0.0,
                             "notas" to "Registro inicial de nacimiento / perfil",
@@ -457,7 +453,7 @@ class RepositorioLogin {
                     ?: doc.getString("talla") 
                     ?: doc.getDouble("talla")?.toString() 
                     ?: ""
-                
+
                 val birthDate = doc.getString("birthDate") 
                     ?: doc.getString("fechaNacimiento") 
                     ?: ""
@@ -474,7 +470,13 @@ class RepositorioLogin {
                     conditionsDetail = doc.getString("conditionsDetail") ?: (doc.getString("condiciones") ?: ""),
                     sexo             = doc.getString("sexo")
                         ?.takeIf { it.isNotBlank() }
-                        ?.let { runCatching { Sexo.valueOf(it) }.getOrNull() },
+                        ?.let { raw ->
+                            when (raw.uppercase().trim()) {
+                                "NINO", "NIÑO", "BOY", "VARON", "VARÓN", "MASCULINO", "M" -> Sexo.NINO
+                                "NINA", "NIÑA", "GIRL", "FEMENINO", "MUJER", "F"          -> Sexo.NINA
+                                else -> runCatching { Sexo.valueOf(raw) }.getOrNull()
+                            }
+                        },
                     nivelIngreso     = doc.getString("nivelIngreso")
                         ?.let { runCatching { NivelIngreso.valueOf(it) }.getOrDefault(NivelIngreso.BASICO) }
                         ?: NivelIngreso.BASICO,
@@ -487,7 +489,6 @@ class RepositorioLogin {
             if (hijosList.isNotEmpty()) {
                 hijosList
             } else if (parentDoc != null && !parentDoc.getString("nombreHijo").isNullOrBlank()) {
-                // Fallback para usuarios antiguos que tienen nombreHijo en el doc principal
                 val nombreHijo = parentDoc.getString("nombreHijo")!!.trim()
                 listOf(
                     ChildProfile(
@@ -503,9 +504,9 @@ class RepositorioLogin {
             } else {
                 emptyList()
             }
-        } catch (e: Exception) { 
+        } catch (e: Exception) {
             com.example.nutriia.platform.Log.e("LoginRepository", "Error cargando hijos de $uid: ${e.message}")
-            emptyList() 
+            emptyList()
         }
     }
 

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +35,8 @@ import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.Voz
+import com.example.nutriia.accesibilidad.MotorHapticoNutriIA
+import com.example.nutriia.accesibilidad.radarHapticoBlind
 import kotlin.random.Random
 
 val NutriaGreen     = Color(0xFF689F38)
@@ -58,6 +61,7 @@ fun NutriaLoginScreen(
     val estado       by viewModel.estado.collectAsState()
 
     val context = LocalContext.current
+    val view    = LocalView.current
     val a11yMode = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
 
@@ -87,7 +91,12 @@ fun NutriaLoginScreen(
     LaunchedEffect(Unit) { startAnimation = true }
     val entranceAlpha by animateFloatAsState(if (startAnimation) 1f else 0f, tween(1000), label = "alpha")
 
-    Box(modifier = Modifier.fillMaxSize().background(NutriaBgCrema)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NutriaBgCrema)
+            .radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND)
+    ) {
         AnimatedMinimalistBackground()
         Column(
             modifier = Modifier
@@ -165,6 +174,7 @@ fun NutriaLoginScreen(
                     // Boton ENTRAR
                     Button(
                         onClick = {
+                            MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                             if (email.isBlank() || password.isBlank()) {
                                 val msg = if (email.isBlank()) "Falta ingresar tu correo electrónico."
                                           else "Falta ingresar tu contraseña."
@@ -206,6 +216,7 @@ fun NutriaLoginScreen(
                         Spacer(Modifier.height(16.dp))
                         Button(
                             onClick = {
+                                MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                                 (context as? FragmentActivity)?.let { activity ->
                                     viewModel.loginConHuella(
                                         activity = activity,
@@ -243,6 +254,7 @@ fun NutriaLoginScreen(
                 Text("Nuevo en NutriIA?", color = Color.Gray, fontSize = 14.sp)
                 TextButton(
                     onClick = {
+                        MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                         if (a11yMode == AccessibilityMode.BLIND)
                             a11yVm.hablar("Abriendo pantalla para crear cuenta nueva en NutriIA.")
                         onNavigateToRegister()
