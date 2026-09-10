@@ -193,6 +193,13 @@ fun EmbarazoQuizScreen(
                 }
             }
 
+            val isNextEnabled = when (currentStep) {
+                0, 1 -> true
+                2    -> perfil.semanas in 1..42
+                3    -> perfil.edad in 12..60 && perfil.tallaM in 1.0..2.2 && perfil.pesoPregestacionalKg in 30.0..250.0
+                else -> true
+            }
+
             Button(
                 onClick = {
                     triggerFeedbackAccesible(context, view)
@@ -202,9 +209,13 @@ fun EmbarazoQuizScreen(
                         onQuizComplete(perfil)
                     }
                 },
+                enabled  = isNextEnabled,
                 modifier = Modifier.fillMaxWidth().height(if (selectedA11yMode == AccessibilityMode.BLIND || selectedA11yMode == AccessibilityMode.MUTE) 70.dp else 56.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF689F38))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor         = Color(0xFF689F38),
+                    disabledContainerColor = Color.LightGray
+                )
             ) {
                 Text(
                     text = if (currentStep == totalSteps - 1) loc("Comenzar seguimiento", "Start tracking") else loc("Continuar", "Continue"),
@@ -251,13 +262,25 @@ private fun StepSemanaEmbarazo(semanas: Int, onSemanasChange: (Int) -> Unit, mod
     }
 
     QuizStepLayout(Icons.Rounded.ChildFriendly, Color(0xFFEC9BBF), loc("¿En qué semana estás?", "Which week are you in?"), loc("Esto nos permite ajustar tus planes", "This allows us to adjust your plans")) {
-        if (modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) {
+        if (modo == AccessibilityMode.BLIND) {
             CampoTextoAccesible(
                 valor = if(semanas==0) "" else semanas.toString(),
-                onValorChange = { onSemanasChange(it.toIntOrNull() ?: 1) },
+                onValorChange = { input ->
+                    val num = input.toIntOrNull()
+                    if (num != null) {
+                        if (num in 1..42) {
+                            onSemanasChange(num)
+                        } else {
+                            ttsManager?.hablar(loc("Por favor indica una semana de embarazo válida entre 1 y 42.", "Please indicate a valid pregnancy week between 1 and 42."))
+                            onSemanasChange(num.coerceIn(1, 42))
+                        }
+                    } else {
+                        onSemanasChange(1)
+                    }
+                },
                 etiqueta = loc("Semana", "Week"),
-                descripcionVoz = loc("Di el número de semana, por ejemplo doce", "Say the week number, for example twelve"),
-                placeholder = "1-40",
+                descripcionVoz = loc("Di el número de semana de gestación entre 1 y 42, por ejemplo doce", "Say the pregnancy week number between 1 and 42, for example twelve"),
+                placeholder = "1-42",
                 ttsManager = ttsManager,
                 colorPrimario = Color(0xFFEC9BBF)
             )

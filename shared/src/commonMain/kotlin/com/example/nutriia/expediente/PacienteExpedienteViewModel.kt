@@ -152,6 +152,8 @@ class PacienteExpedienteViewModel : ViewModel() {
             var basePeso = 0.0
             var baseTalla = 0.0
             var hasAllergiesVal = false
+            var allergiesDetailVal = ""
+            var conditionsDetailVal = ""
 
             try {
                 val hijoDoc = db.collection("usuarios")
@@ -174,6 +176,8 @@ class PacienteExpedienteViewModel : ViewModel() {
                     basePeso = doc.getDouble("weightKg") ?: 0.0
                     baseTalla = doc.getDouble("heightCm") ?: 0.0
                     hasAllergiesVal = doc.getBoolean("hasAllergies") ?: false
+                    allergiesDetailVal = doc.getString("allergiesDetail") ?: ""
+                    conditionsDetailVal = doc.getString("conditionsDetail") ?: ""
                 }
             } catch (e: Exception) {
                 com.example.nutriia.platform.Log.w("Expediente", "Fallo al obtener perfil base del hijo: ${e.message}")
@@ -198,6 +202,21 @@ class PacienteExpedienteViewModel : ViewModel() {
                 .filter { it.estado == "Aceptado" || it.estado == "En prueba" }
                 .map { it.nombre }
 
+            val nombresConReaccion = _ui.value.alimentosIntrod
+                .filter { it.estado == "Rechazado" || it.estado == "Alergia" }
+                .map { it.nombre }
+
+            val alergenosNino = if (hasAllergiesVal && allergiesDetailVal.isNotBlank())
+                com.example.nutriia.ui.theme.parsearAlergenos(allergiesDetailVal)
+            else emptyList()
+
+            val excluidosPerfil = (com.example.nutriia.ui.theme.extraerAlimentosExcluidosTexto(allergiesDetailVal) +
+                    com.example.nutriia.ui.theme.extraerAlimentosExcluidosTexto(conditionsDetailVal)).distinct()
+
+            val excluidosFinales = (excluidosPerfil.filter { ex ->
+                nombresTolerados.none { tol -> tol.contains(ex, ignoreCase = true) || ex.contains(tol, ignoreCase = true) }
+            } + nombresConReaccion).distinct()
+
             val edadParaMotor = meses.coerceAtLeast(6)
 
             val planDieta = try {
@@ -205,8 +224,9 @@ class PacienteExpedienteViewModel : ViewModel() {
                     meses                = edadParaMotor,
                     nivel                = nivelIngreso,
                     region               = region,
-                    alergenosNiño        = emptyList(),
-                    alimentosRegistrados = nombresTolerados
+                    alergenosNiño        = alergenosNino,
+                    alimentosRegistrados = nombresTolerados,
+                    alimentosExcluidos   = excluidosFinales
                 )
             } catch (e: Exception) { emptyList() }
 
@@ -228,8 +248,9 @@ class PacienteExpedienteViewModel : ViewModel() {
                         nivel                = nivelIngreso,
                         tipo                 = tipo,
                         region               = region,
-                        alergenosNiño        = emptyList(),
-                        alimentosRegistrados = nombresTolerados
+                        alergenosNiño        = alergenosNino,
+                        alimentosRegistrados = nombresTolerados,
+                        alimentosExcluidos   = excluidosFinales
                     )
                 }.distinctBy { it.nombre }.take(12)
             } catch (e: Exception) { emptyList() }

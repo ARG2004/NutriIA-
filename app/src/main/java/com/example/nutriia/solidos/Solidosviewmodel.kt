@@ -217,8 +217,18 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
         val guia = guiaParaEdad(meses)
 
         val nombresTolerados = lista
-            .filter { it.reaccion != ReaccionAlimento.ALERGIA }
+            .filter { it.reaccion == ReaccionAlimento.NINGUNA || it.reaccion == ReaccionAlimento.ACEPTADO }
             .map { it.nombre }
+
+        val nombresConReaccion = lista
+            .filter { it.reaccion == ReaccionAlimento.ALERGIA || it.reaccion == ReaccionAlimento.LEVE || it.reaccion == ReaccionAlimento.RECHAZO }
+            .map { it.nombre }
+
+        val excluidosQuiz: List<String> = shared?.childProfile?.value?.obtenerAlimentosExcluidos() ?: emptyList()
+        val excluidosQuizSinTolerar: List<String> = excluidosQuiz.filter { excluido: String ->
+            nombresTolerados.none { tol -> tol.contains(excluido, ignoreCase = true) || excluido.contains(tol, ignoreCase = true) }
+        }
+        val alimentosExcluidosFinales: List<String> = (excluidosQuizSinTolerar + nombresConReaccion).distinct()
 
         val planDieta = DietaEngine.generarPlanSemanal(
             meses                = meses,
@@ -226,7 +236,8 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
             region               = region,
             alergenosNiño        = alergenos,
             alimentosRegistrados = nombresTolerados,
-            recetasCustom        = recetasCustom
+            recetasCustom        = recetasCustom,
+            alimentosExcluidos   = alimentosExcluidosFinales
         )
 
         shared?.setPlanSemanalAlimentacion(planDieta)

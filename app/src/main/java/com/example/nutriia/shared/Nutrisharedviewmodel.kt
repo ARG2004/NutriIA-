@@ -65,6 +65,19 @@ data class ChildProfile(
             parsearAlergenos(allergiesDetail)
         else emptyList()
 
+    fun parsearAlergenos(): List<Alergeno> = alergenosParsados
+
+    fun obtenerAlimentosExcluidos(): List<String> {
+        val lista = mutableListOf<String>()
+        if (hasAllergies && allergiesDetail.isNotBlank()) {
+            lista.addAll(com.example.nutriia.ui.theme.extraerAlimentosExcluidosTexto(allergiesDetail))
+        }
+        if (hasConditions && conditionsDetail.isNotBlank()) {
+            lista.addAll(com.example.nutriia.ui.theme.extraerAlimentosExcluidosTexto(conditionsDetail))
+        }
+        return lista.distinct()
+    }
+
     fun edadEnMeses(): Int = ageMonths
 
     // Conversión a modelo de lógica de negocio (Sueldo/Engine)
@@ -361,16 +374,23 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
     fun generarPlan(meses: Int, nivel: NivelIngreso, region: RegionMexico = RegionMexico.CENTRO) {
         if (_planAlimentacionActivo.value) return // Respeta plan manual
 
-        val perfil = _childProfile.value?.toPerfilSalud() ?: PerfilSaludNino()
+        val perfilSalud = _childProfile.value?.toPerfilSalud() ?: PerfilSaludNino()
         val tolerados = _alimentosTolerados.value
+        val excluidosQuiz = _childProfile.value?.obtenerAlimentosExcluidos() ?: emptyList()
+
+        // Un alimento del quiz permanece excluido a menos que haya sido probado y tolerado en SolidosScreen
+        val excluidosFinales = excluidosQuiz.filter { excluido ->
+            tolerados.none { tol -> tol.contains(excluido, ignoreCase = true) || excluido.contains(tol, ignoreCase = true) }
+        }
 
         _planSemanal.value = DietaEngine.generarPlanSemanal(
-            meses = meses,
-            nivel = nivel,
-            region = region,
-            alergenosNiño = perfil.alergenos,
+            meses                = meses,
+            nivel                = nivel,
+            region               = region,
+            alergenosNiño        = perfilSalud.alergenos,
             alimentosRegistrados = tolerados,
-            recetasCustom = _recetasPersonalizadas.value
+            recetasCustom        = _recetasPersonalizadas.value,
+            alimentosExcluidos   = excluidosFinales
         )
     }
 

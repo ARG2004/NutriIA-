@@ -46,6 +46,19 @@ data class ChildProfile(
             parsearAlergenos(allergiesDetail)
         else emptyList()
 
+    fun parsearAlergenos(): List<Alergeno> = alergenosParsados
+
+    fun obtenerAlimentosExcluidos(): List<String> {
+        val lista = mutableListOf<String>()
+        if (hasAllergies && allergiesDetail.isNotBlank()) {
+            lista.addAll(extraerAlimentosExcluidosTexto(allergiesDetail))
+        }
+        if (hasConditions && conditionsDetail.isNotBlank()) {
+            lista.addAll(extraerAlimentosExcluidosTexto(conditionsDetail))
+        }
+        return lista.distinct()
+    }
+
     fun toPerfilSaludNino(): PerfilSaludNino = PerfilSaludNino(
         alergenos   = alergenosParsados,
         condiciones = if (hasConditions && conditionsDetail.isNotBlank())
@@ -242,4 +255,49 @@ fun parsearAlergenos(texto: String): List<Alergeno> {
     }
 
     return resultado.toList()
+}
+
+/**
+ * Extrae nombres individuales de alimentos excluidos a partir de texto libre de alergias/condiciones.
+ * Elimina palabras vacías (stop words) para dejar los nombres de alimentos limpios.
+ * Ejemplo: "alergia a la fresa, plátano y huevo" -> ["fresa", "platano", "huevo"]
+ */
+fun extraerAlimentosExcluidosTexto(texto: String): List<String> {
+    if (texto.isBlank()) return emptyList()
+
+    val stopWords = setOf(
+        "alergia", "alergico", "alergica", "alergias", "intolerancia", "intolerante",
+        "reaccion", "reacciones", "sensibilidad", "sensible", "sindrome", "enfermedad",
+        "el", "la", "los", "las", "un", "una", "unos", "unas", "al", "del", "de",
+        "con", "sin", "por", "para", "en", "y", "e", "o", "u", "a", "no", "si", "se",
+        "tiene", "presenta", "le", "da", "hace", "hizo", "dano", "ronchas", "vomito", "diarrea"
+    )
+
+    val normalizado = texto.lowercase()
+        .replace("á", "a").replace("é", "e").replace("í", "i")
+        .replace("ó", "o").replace("ú", "u").replace("ü", "u")
+        .replace("ñ", "n")
+
+    val partes = normalizado
+        .split(",", ".", ";", "/", "\n", "\r", " y ", " e ", " o ", " and ")
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+
+    val alimentos = mutableSetOf<String>()
+
+    for (parte in partes) {
+        val palabras = parte.split(Regex("[\\s+\\-/()]+"))
+            .map { it.trim() }
+            .filter { it.length >= 3 && it !in stopWords }
+
+        if (palabras.isNotEmpty()) {
+            val fraseLimpia = palabras.joinToString(" ")
+            alimentos.add(fraseLimpia)
+            for (p in palabras) {
+                if (p.length >= 3) alimentos.add(p)
+            }
+        }
+    }
+
+    return alimentos.toList()
 }

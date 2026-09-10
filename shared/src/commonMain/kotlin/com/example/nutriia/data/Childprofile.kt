@@ -84,4 +84,19 @@ data class ChildProfile(
         condiciones = if (hasConditions && conditionsDetail.isNotBlank())
             listOf(conditionsDetail) else emptyList()
     )
+
+    /**
+     * Extrae todos los nombres de alimentos excluidos indicados en el Quiz (alergias y condiciones).
+     */
+    fun obtenerAlimentosExcluidos(): List<String> {
+        val alergias = if (hasAllergies && allergiesDetail.isNotBlank())
+            com.example.nutriia.ui.theme.extraerAlimentosExcluidosTexto(allergiesDetail)
+        else emptyList()
+
+        val condiciones = if (hasConditions && conditionsDetail.isNotBlank())
+            com.example.nutriia.ui.theme.extraerAlimentosExcluidosTexto(conditionsDetail)
+        else emptyList()
+
+        return (alergias + condiciones).distinct()
+    }
 }

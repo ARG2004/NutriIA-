@@ -1993,31 +1993,42 @@ object DietaEngine {
     private fun extraerPalabrasClave(nombre: String): List<String> {
         val stopWords = setOf(
             "pure", "puré", "de", "en", "con", "al", "la", "el", "del", "los", "las",
+            "un", "una", "unos", "unas", "por", "para", "sin",
             "papilla", "crema", "sopa", "caldo", "guiso", "guisado",
             "cocida", "cocido", "cocidos", "molida", "molido",
-            "frita", "frito", "trozos", "liso", "grumoso", "muy", "sin",
-            "integral", "natural", "casera", "casero", "simple"
+            "frita", "frito", "trozos", "liso", "grumoso", "muy",
+            "integral", "natural", "casera", "casero", "simple", "fresco", "fresca"
         )
-        return nombre
+        val normalizado = nombre
             .lowercase()
             .map { c ->
                 when (c) {
                     'á' -> 'a'; 'é' -> 'e'; 'í' -> 'i'; 'ó' -> 'o'; 'ú' -> 'u'
+                    'ñ' -> 'n'
                     else -> c
                 }
             }
             .joinToString("")
+
+        val palabras = normalizado
             .split(Regex("[\\s+\\-/()]+"))
             .map { it.trim() }
-            .filter { it.length >= 4 && it !in stopWords }
+            .filter { it.length >= 3 && it !in stopWords }
             .distinct()
+
+        return if (palabras.isEmpty() && normalizado.isNotBlank() && normalizado !in stopWords) {
+            listOf(normalizado)
+        } else {
+            palabras
+        }
     }
 
     /**
      * Devuelve true si la receta contiene al menos una de las palabras clave
      * extraídas del [nombreAlimento] — buscando en ingredientes y nombre de la receta.
      */
-    private fun RecetaMexicana.contieneIngrediente(nombreAlimento: String): Boolean {
+    fun RecetaMexicana.contieneIngrediente(nombreAlimento: String): Boolean {
+        if (nombreAlimento.isBlank()) return false
         val palabrasClave = extraerPalabrasClave(nombreAlimento)
         if (palabrasClave.isEmpty()) return false
 
@@ -2027,6 +2038,7 @@ object DietaEngine {
             .map { c ->
                 when (c) {
                     'á' -> 'a'; 'é' -> 'e'; 'í' -> 'i'; 'ó' -> 'o'; 'ú' -> 'u'
+                    'ñ' -> 'n'
                     else -> c
                 }
             }
@@ -2046,7 +2058,8 @@ object DietaEngine {
         region:               RegionMexico      = RegionMexico.GENERAL,
         alergenosNiño:        List<Alergeno>    = emptyList(),
         alimentosRegistrados: List<String>      = emptyList(),
-        recetasCustom:        List<RecetaMexicana> = emptyList()
+        recetasCustom:        List<RecetaMexicana> = emptyList(),
+        alimentosExcluidos:   List<String>      = emptyList()
     ): List<RecetaMexicana> {
         val nivelesAccesibles = when (nivel) {
             NivelIngreso.BASICO     -> listOf(NivelIngreso.BASICO)
@@ -2060,6 +2073,7 @@ object DietaEngine {
                     r.nivelMinimo in nivelesAccesibles &&
                     meses >= r.edadMinMeses &&
                     r.esSegurasParaPerfil(alergenosNiño) &&
+                    alimentosExcluidos.none { excluido -> r.contieneIngrediente(excluido) } &&
                     (r.regiones.contains(RegionMexico.GENERAL) || r.regiones.contains(region))
         }
 
@@ -2072,7 +2086,7 @@ object DietaEngine {
         }
 
         // Fallback: si ninguna receta usa los ingredientes registrados,
-        // devolver todas las candidatas para no dejar el plan vacío.
+        // devolver todas las candidatas (que ya están libres de alimentos excluidos).
         return conIngredientes.ifEmpty { candidatas }
     }
 
@@ -2086,18 +2100,19 @@ object DietaEngine {
         region:               RegionMexico   = RegionMexico.GENERAL,
         alergenosNiño:        List<Alergeno> = emptyList(),
         alimentosRegistrados: List<String>   = emptyList(),
-        recetasCustom:        List<RecetaMexicana> = emptyList()
+        recetasCustom:        List<RecetaMexicana> = emptyList(),
+        alimentosExcluidos:   List<String>   = emptyList()
     ): List<PlanDietaSemanal> {
         val dias   = listOf("Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo")
         val macros = macrosPorEdad(meses)
 
-        val desayunos  = recetasPorPerfil(meses, nivel, TipoComida.DESAYUNO,  region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val desayunos  = recetasPorPerfil(meses, nivel, TipoComida.DESAYUNO,  region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.DESAYUNO,  meses)) }
-        val comidas    = recetasPorPerfil(meses, nivel, TipoComida.COMIDA,    region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val comidas    = recetasPorPerfil(meses, nivel, TipoComida.COMIDA,    region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.COMIDA,    meses)) }
-        val cenas      = recetasPorPerfil(meses, nivel, TipoComida.CENA,      region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val cenas      = recetasPorPerfil(meses, nivel, TipoComida.CENA,      region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.CENA,      meses)) }
-        val colaciones = recetasPorPerfil(meses, nivel, TipoComida.COLACION,  region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val colaciones = recetasPorPerfil(meses, nivel, TipoComida.COLACION,  region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.COLACION,  meses)) }
 
         return dias.mapIndexed { i, dia ->
@@ -2176,9 +2191,10 @@ object DietaEngine {
     }
 
     fun resumenNutricional(
-        meses:         Int,
-        nivel:         NivelIngreso,
-        perfilSalud:   PerfilSaludNino = PerfilSaludNino()
+        meses:              Int,
+        nivel:              NivelIngreso,
+        perfilSalud:        PerfilSaludNino = PerfilSaludNino(),
+        alimentosExcluidos: List<String>    = emptyList()
     ): ResumenNutricional {
         val macros = macrosPorEdad(meses)
         val alertas = mutableListOf<String>()
@@ -2224,7 +2240,11 @@ object DietaEngine {
 
         val alimentosSeguros = alimentosClave.filter { alimento ->
             val alergenosDelAlimento = mapAlimentoAlergeno(alimento)
-            alergenosDelAlimento.none { it in perfilSalud.alergenos }
+            val libreAlergenos = alergenosDelAlimento.none { it in perfilSalud.alergenos }
+            val libreExcluidos = alimentosExcluidos.none { excluido ->
+                alimento.contains(excluido, ignoreCase = true) || excluido.contains(alimento, ignoreCase = true)
+            }
+            libreAlergenos && libreExcluidos
         }
 
         return ResumenNutricional(

@@ -1993,31 +1993,42 @@ object DietaEngine {
     private fun extraerPalabrasClave(nombre: String): List<String> {
         val stopWords = setOf(
             "pure", "puré", "de", "en", "con", "al", "la", "el", "del", "los", "las",
+            "un", "una", "unos", "unas", "por", "para", "sin",
             "papilla", "crema", "sopa", "caldo", "guiso", "guisado",
             "cocida", "cocido", "cocidos", "molida", "molido",
-            "frita", "frito", "trozos", "liso", "grumoso", "muy", "sin",
-            "integral", "natural", "casera", "casero", "simple"
+            "frita", "frito", "trozos", "liso", "grumoso", "muy",
+            "integral", "natural", "casera", "casero", "simple", "fresco", "fresca"
         )
-        return nombre
+        val normalizado = nombre
             .lowercase()
             .map { c ->
                 when (c) {
                     'á' -> 'a'; 'é' -> 'e'; 'í' -> 'i'; 'ó' -> 'o'; 'ú' -> 'u'
+                    'ñ' -> 'n'
                     else -> c
                 }
             }
             .joinToString("")
+
+        val palabras = normalizado
             .split(Regex("[\\s+\\-/()]+"))
             .map { it.trim() }
-            .filter { it.length >= 4 && it !in stopWords }
+            .filter { it.length >= 3 && it !in stopWords }
             .distinct()
+
+        return if (palabras.isEmpty() && normalizado.isNotBlank() && normalizado !in stopWords) {
+            listOf(normalizado)
+        } else {
+            palabras
+        }
     }
 
     /**
      * Devuelve true si la receta contiene al menos una de las palabras clave
      * extraídas del [nombreAlimento] — buscando en ingredientes y nombre de la receta.
      */
-    private fun RecetaMexicana.contieneIngrediente(nombreAlimento: String): Boolean {
+    fun RecetaMexicana.contieneIngrediente(nombreAlimento: String): Boolean {
+        if (nombreAlimento.isBlank()) return false
         val palabrasClave = extraerPalabrasClave(nombreAlimento)
         if (palabrasClave.isEmpty()) return false
 
@@ -2027,6 +2038,7 @@ object DietaEngine {
             .map { c ->
                 when (c) {
                     'á' -> 'a'; 'é' -> 'e'; 'í' -> 'i'; 'ó' -> 'o'; 'ú' -> 'u'
+                    'ñ' -> 'n'
                     else -> c
                 }
             }
@@ -2046,7 +2058,8 @@ object DietaEngine {
         region:               RegionMexico      = RegionMexico.GENERAL,
         alergenosNiño:        List<Alergeno>    = emptyList(),
         alimentosRegistrados: List<String>      = emptyList(),
-        recetasCustom:        List<RecetaMexicana> = emptyList()
+        recetasCustom:        List<RecetaMexicana> = emptyList(),
+        alimentosExcluidos:   List<String>      = emptyList()
     ): List<RecetaMexicana> {
         val nivelesAccesibles = when (nivel) {
             NivelIngreso.BASICO     -> listOf(NivelIngreso.BASICO)
@@ -2060,6 +2073,7 @@ object DietaEngine {
                     r.nivelMinimo in nivelesAccesibles &&
                     meses >= r.edadMinMeses &&
                     r.esSegurasParaPerfil(alergenosNiño) &&
+                    alimentosExcluidos.none { excluido -> r.contieneIngrediente(excluido) } &&
                     (r.regiones.contains(RegionMexico.GENERAL) || r.regiones.contains(region))
         }
 
@@ -2072,7 +2086,7 @@ object DietaEngine {
         }
 
         // Fallback: si ninguna receta usa los ingredientes registrados,
-        // devolver todas las candidatas para no dejar el plan vacío.
+        // devolver todas las candidatas (que ya están libres de alimentos excluidos).
         return conIngredientes.ifEmpty { candidatas }
     }
 
@@ -2086,18 +2100,19 @@ object DietaEngine {
         region:               RegionMexico   = RegionMexico.GENERAL,
         alergenosNiño:        List<Alergeno> = emptyList(),
         alimentosRegistrados: List<String>   = emptyList(),
-        recetasCustom:        List<RecetaMexicana> = emptyList()
+        recetasCustom:        List<RecetaMexicana> = emptyList(),
+        alimentosExcluidos:   List<String>   = emptyList()
     ): List<PlanDietaSemanal> {
         val dias   = listOf("Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo")
         val macros = macrosPorEdad(meses)
 
-        val desayunos  = recetasPorPerfil(meses, nivel, TipoComida.DESAYUNO,  region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val desayunos  = recetasPorPerfil(meses, nivel, TipoComida.DESAYUNO,  region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.DESAYUNO,  meses)) }
-        val comidas    = recetasPorPerfil(meses, nivel, TipoComida.COMIDA,    region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val comidas    = recetasPorPerfil(meses, nivel, TipoComida.COMIDA,    region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.COMIDA,    meses)) }
-        val cenas      = recetasPorPerfil(meses, nivel, TipoComida.CENA,      region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val cenas      = recetasPorPerfil(meses, nivel, TipoComida.CENA,      region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.CENA,      meses)) }
-        val colaciones = recetasPorPerfil(meses, nivel, TipoComida.COLACION,  region, alergenosNiño, alimentosRegistrados, recetasCustom)
+        val colaciones = recetasPorPerfil(meses, nivel, TipoComida.COLACION,  region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
             .ifEmpty { listOf(fallback(TipoComida.COLACION,  meses)) }
 
         return dias.mapIndexed { i, dia ->
@@ -2145,40 +2160,18 @@ object DietaEngine {
         else        -> 3   // cubre 6-12 años y adolescencia (144+)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CAMBIO v2.2 — costoEstimadoPorNivelEtapa() recalibrado PACIC/PROFECO 2026
-    //
-    // SMG 2026 (CONASAMI dic 2025, zona general):
-    //   $315.04 MXN/día  ·  $9,451 MXN/mes
-    //
-    // Canasta PACIC (24 productos PROFECO, mar 2026):
-    //   ~$874/semana · ~$3,758/mes familia de 4 personas (39.8% del SMG mensual)
-    //
-    // Límite razonable alimentación infantil adicional: ~$1,500–2,500/mes
-    //   → $50–83/día para el niño (sobre la canasta familiar base)
-    //
-    // Precios clave verificados PROFECO/SNIIM/ANPEC mar 2026:
-    //   Tortilla (Puebla) $17.69/kg · Pollo $57/kg · Frijol $32/kg
-    //   Huevo $45/kg · Jitomate $25.90/kg · Res $124/kg
-    //   Mojarra/tilapia $150–164/kg · Sierra $200–275/kg
-    //   Salmón >$300/kg · Yogur griego $80/200g · Quinoa $180–250/kg
-    //
-    // CORRECCIÓN vs v2.1: MEDIO etapa 3 bajó de $140 → $95 (era 50% del SMG)
-    //                      ALTO etapa 3 bajó de $185 → $160 (más realista)
-    // ─────────────────────────────────────────────────────────────────────────
     private fun costoEstimadoPorNivelEtapa(nivel: NivelIngreso, etapa: Int): Double = when (nivel) {
-        //                          etapa:  0      1      2      3
-        //                                 <1a   1-3a   3-6a   6-12a
-        NivelIngreso.BASICO     -> listOf(27.0,  37.0,  47.0,  55.0)[etapa]  // tortilla+frijol+huevo+pollo
-        NivelIngreso.MEDIO_BAJO -> listOf(42.0,  55.0,  68.0,  80.0)[etapa]  // + atún, queso panela, fruta
-        NivelIngreso.MEDIO      -> listOf(60.0,  75.0,  88.0,  95.0)[etapa]  // + mojarra, res ocasional
-        NivelIngreso.ALTO       -> listOf(85.0, 100.0, 130.0, 160.0)[etapa]  // + salmón, quinoa, yogur griego
+        NivelIngreso.BASICO     -> listOf(27.0,  37.0,  47.0,  55.0)[etapa]
+        NivelIngreso.MEDIO_BAJO -> listOf(42.0,  55.0,  68.0,  80.0)[etapa]
+        NivelIngreso.MEDIO      -> listOf(60.0,  75.0,  88.0,  95.0)[etapa]
+        NivelIngreso.ALTO       -> listOf(85.0, 100.0, 130.0, 160.0)[etapa]
     }
 
     fun resumenNutricional(
-        meses:         Int,
-        nivel:         NivelIngreso,
-        perfilSalud:   PerfilSaludNino = PerfilSaludNino()
+        meses:              Int,
+        nivel:              NivelIngreso,
+        perfilSalud:        PerfilSaludNino = PerfilSaludNino(),
+        alimentosExcluidos: List<String>    = emptyList()
     ): ResumenNutricional {
         val macros = macrosPorEdad(meses)
         val alertas = mutableListOf<String>()
@@ -2202,7 +2195,6 @@ object DietaEngine {
         if (meses in 12..24)
             alertas.add("OMS: leche entera desde 12 meses, no reemplaza lactancia antes de 2 años")
 
-        // ── CAMBIO v2.2: alimentosClave actualizado con sierra y sardina ──────
         val alimentosClave = when (nivel) {
             NivelIngreso.BASICO     -> listOf(
                 "Frijol","Tortilla","Huevo","Lentejas","Plátano",
@@ -2224,7 +2216,11 @@ object DietaEngine {
 
         val alimentosSeguros = alimentosClave.filter { alimento ->
             val alergenosDelAlimento = mapAlimentoAlergeno(alimento)
-            alergenosDelAlimento.none { it in perfilSalud.alergenos }
+            val libreAlergenos = alergenosDelAlimento.none { it in perfilSalud.alergenos }
+            val libreExcluidos = alimentosExcluidos.none { excluido ->
+                alimento.contains(excluido, ignoreCase = true) || excluido.contains(alimento, ignoreCase = true)
+            }
+            libreAlergenos && libreExcluidos
         }
 
         return ResumenNutricional(

@@ -295,7 +295,7 @@ fun OnboardingQuizScreen(
     val isNextEnabled = when (currentStep) {
         0, 1 -> true
         2    -> profile.name.isNotBlank()
-        3    -> profile.birthDate.length == 10
+        3    -> profile.birthDate.length == 10 && esFechaValida(profile.birthDate) && !edadSuperaLimite(profile.birthDate)
         4    -> {
             val w = profile.weightKg.toDoubleOrNull()
             val h = profile.heightCm.toDoubleOrNull()
@@ -531,7 +531,10 @@ fun OnboardingQuizScreen(
                                 onAllergiesToggle        = { profile = profile.copy(hasAllergies = it) },
                                 onAllergiesDetailChange  = { profile = profile.copy(allergiesDetail = it) },
                                 onConditionsToggle       = { profile = profile.copy(hasConditions = it) },
-                                onConditionsDetailChange = { profile = profile.copy(conditionsDetail = it) }
+                                onConditionsDetailChange = { profile = profile.copy(conditionsDetail = it) },
+                                modo                     = selectedA11yMode,
+                                idioma                   = idiomaActual,
+                                ttsManager               = ttsManager
                             )
                             6 -> StepIngresoRegion(
                                 nivelSeleccionado  = profile.nivelIngreso,
@@ -1112,10 +1115,31 @@ fun StepFechaNacimiento(
     descripcionVozFecha: String            = Voz.QUIZ_FECHA
 ) {
     QuizStepLayout(Icons.Rounded.Event, QuizAccent, "¿Cuándo nació?", "Fecha de nacimiento") {
-        if (modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) {
+        if (modo == AccessibilityMode.BLIND) {
             CampoTextoAccesible(
                 valor          = value,
-                onValorChange  = { onValueChange(parsearFechaVoz(it)) },
+                onValorChange  = { input ->
+                    val parsed = parsearFechaVoz(input)
+                    if (parsed.length == 10) {
+                        when {
+                            edadSuperaLimite(parsed) -> {
+                                val msg = if (idioma == IdiomaVoz.INGLES)
+                                    "Maximum allowed age is 12 years. NutriIA accompanies from pregnancy up to 12 years. Please say a valid date."
+                                else
+                                    "La edad máxima permitida es de 12 años. NutriIA acompaña desde el embarazo hasta los 12 años de edad. Por favor di una fecha válida."
+                                ttsManager?.hablar(msg)
+                            }
+                            !esFechaValida(parsed) -> {
+                                val msg = if (idioma == IdiomaVoz.INGLES)
+                                    "Invalid or future date. Please say a valid birth date, for example March 15, 2022."
+                                else
+                                    "Fecha inválida o futura. Por favor di una fecha de nacimiento válida, por ejemplo 15 de marzo de 2022."
+                                ttsManager?.hablar(msg)
+                            }
+                        }
+                    }
+                    onValueChange(parsed)
+                },
                 etiqueta       = "Fecha de nacimiento (DD/MM/AAAA)",
                 descripcionVoz = descripcionVozFecha,
                 placeholder    = "DD/MM/AAAA",
@@ -1509,63 +1533,102 @@ fun StepCondiciones(
     onAllergiesToggle:       (Boolean) -> Unit,
     onAllergiesDetailChange: (String) -> Unit,
     onConditionsToggle:      (Boolean) -> Unit,
-    onConditionsDetailChange:(String) -> Unit
+    onConditionsDetailChange:(String) -> Unit,
+    modo:                    AccessibilityMode = AccessibilityMode.NORMAL,
+    idioma:                  IdiomaVoz         = IdiomaVoz.ESPANOL_MX,
+    ttsManager:              NutriTTS?         = null
 ) {
     val alergenosReconocidos = remember(allergiesDetail) {
         if (allergiesDetail.isNotBlank()) parsearAlergenos(allergiesDetail) else emptyList()
     }
     QuizStepLayout(Icons.Rounded.MedicalServices, Color(0xFFFFB300), "Salud especial", "Alergias o condiciones a considerar") {
-        ToggleOptionCard("¿Tiene alergias alimentarias?", Icons.Rounded.BakeryDining, hasAllergies, onAllergiesToggle)
-        AnimatedVisibility(visible = hasAllergies, enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(250)), exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(200))) {
-            Column {
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = allergiesDetail, onValueChange = onAllergiesDetailChange,
-                    placeholder = { Text("Ej. leche, huevo, maní, trigo...") },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Describe las alergias" },
-                    shape = RoundedCornerShape(16.dp),
-                    leadingIcon = { Icon(Icons.Rounded.Warning, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp)) },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFFFB300), unfocusedBorderColor = Color.LightGray, focusedLabelColor = Color(0xFFFFB300))
-                )
-                AnimatedVisibility(visible = alergenosReconocidos.isNotEmpty()) {
-                    Column {
-                        Spacer(Modifier.height(10.dp))
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF3E0)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFFE65100), modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Alérgenos reconocidos:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+        if (modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) {
+            CampoTextoAccesible(
+                valor          = allergiesDetail,
+                onValorChange  = {
+                    onAllergiesDetailChange(it)
+                    if (it.isNotBlank()) onAllergiesToggle(true)
+                },
+                etiqueta       = "Alergias alimentarias",
+                descripcionVoz = if (idioma == IdiomaVoz.INGLES)
+                    "Food allergies. Say any allergies your child has, for example strawberry, egg, milk, or say none."
+                else
+                    "Alergias alimentarias. Di las alergias de tu hijo, por ejemplo fresa, huevo, leche, o di ninguna.",
+                placeholder    = "Ej. leche, huevo, fresa...",
+                ttsManager     = ttsManager,
+                idioma         = idioma,
+                colorPrimario  = Color(0xFFFFB300)
+            )
+            Spacer(Modifier.height(16.dp))
+            CampoTextoAccesible(
+                valor          = conditionsDetail,
+                onValorChange  = {
+                    onConditionsDetailChange(it)
+                    if (it.isNotBlank()) onConditionsToggle(true)
+                },
+                etiqueta       = "Condición médica especial",
+                descripcionVoz = if (idioma == IdiomaVoz.INGLES)
+                    "Special medical conditions. Say any medical condition, or say none."
+                else
+                    "Condición médica especial. Di alguna condición como reflujo o intolerancia, o di ninguna.",
+                placeholder    = "Ej. reflujo, intolerancia...",
+                ttsManager     = null,
+                idioma         = idioma,
+                colorPrimario  = Color(0xFFFFB300)
+            )
+        } else {
+            ToggleOptionCard("¿Tiene alergias alimentarias?", Icons.Rounded.BakeryDining, hasAllergies, onAllergiesToggle)
+            AnimatedVisibility(visible = hasAllergies, enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(250)), exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(200))) {
+                Column {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = allergiesDetail, onValueChange = onAllergiesDetailChange,
+                        placeholder = { Text("Ej. leche, huevo, maní, trigo, fresa...") },
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Describe las alergias" },
+                        shape = RoundedCornerShape(16.dp),
+                        leadingIcon = { Icon(Icons.Rounded.Warning, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp)) },
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFFFB300), unfocusedBorderColor = Color.LightGray, focusedLabelColor = Color(0xFFFFB300))
+                    )
+                    AnimatedVisibility(visible = alergenosReconocidos.isNotEmpty()) {
+                        Column {
+                            Spacer(Modifier.height(10.dp))
+                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF3E0)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFFE65100), modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Alérgenos reconocidos:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { items(alergenosReconocidos) { AlergenoChip(it) } }
+                            Spacer(Modifier.height(4.dp))
+                            Text("Estos quedarán registrados en el perfil de tu hijo/a", fontSize = 10.sp, color = Color.Gray, modifier = Modifier.padding(start = 4.dp))
                         }
-                        Spacer(Modifier.height(6.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { items(alergenosReconocidos) { AlergenoChip(it) } }
-                        Spacer(Modifier.height(4.dp))
-                        Text("Estos quedarán registrados en el perfil de tu hijo/a", fontSize = 10.sp, color = Color.Gray, modifier = Modifier.padding(start = 4.dp))
                     }
-                }
-                AnimatedVisibility(visible = allergiesDetail.isNotBlank() && alergenosReconocidos.isEmpty()) {
-                    Column {
-                        Spacer(Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color.LightGray.copy(0.15f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Info, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("No se reconoció el alérgeno. Se guardará el texto tal como lo escribiste.", fontSize = 10.sp, color = Color.Gray, lineHeight = 14.sp)
+                    AnimatedVisibility(visible = allergiesDetail.isNotBlank() && alergenosReconocidos.isEmpty()) {
+                        Column {
+                            Spacer(Modifier.height(8.dp))
+                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color.LightGray.copy(0.15f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Info, null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("No se reconoció el alérgeno. Se guardará el texto tal como lo escribiste.", fontSize = 10.sp, color = Color.Gray, lineHeight = 14.sp)
+                            }
                         }
                     }
                 }
             }
-        }
-        Spacer(Modifier.height(12.dp))
-        ToggleOptionCard("¿Tiene alguna condición especial?", Icons.Rounded.AssignmentLate, hasConditions, onConditionsToggle)
-        AnimatedVisibility(visible = hasConditions, enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(250)), exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(200))) {
-            Column {
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = conditionsDetail, onValueChange = onConditionsDetailChange,
-                    placeholder = { Text("Ej. intolerancia a la lactosa, reflujo, bajo peso...") },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Describe la condición" },
-                    shape = RoundedCornerShape(16.dp),
-                    leadingIcon = { Icon(Icons.Rounded.MedicalServices, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp)) },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFFFB300), unfocusedBorderColor = Color.LightGray)
-                )
+            Spacer(Modifier.height(12.dp))
+            ToggleOptionCard("¿Tiene alguna condición especial?", Icons.Rounded.AssignmentLate, hasConditions, onConditionsToggle)
+            AnimatedVisibility(visible = hasConditions, enter = expandVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(250)), exit = shrinkVertically(spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(200))) {
+                Column {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = conditionsDetail, onValueChange = onConditionsDetailChange,
+                        placeholder = { Text("Ej. intolerancia a la lactosa, reflujo, bajo peso...") },
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Describe la condición" },
+                        shape = RoundedCornerShape(16.dp),
+                        leadingIcon = { Icon(Icons.Rounded.MedicalServices, null, tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp)) },
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFFFB300), unfocusedBorderColor = Color.LightGray)
+                    )
+                }
             }
         }
     }
