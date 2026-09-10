@@ -164,25 +164,24 @@ class PacienteExpedienteViewModel : ViewModel() {
                     .document(childId)
                     .get().await()
 
-                val doc = hijoDoc as? com.example.nutriia.firebase.firestore.DocumentSnapshot
-                if (doc != null && doc.exists) {
-                    nacimiento = doc.getString("birthDate") ?: ""
-                    nivelIngreso = doc.getString("nivelIngreso")
+                if (hijoDoc != null && hijoDoc.exists()) {
+                    nacimiento = hijoDoc.getString("birthDate") ?: ""
+                    nivelIngreso = hijoDoc.getString("nivelIngreso")
                         ?.let { runCatching { NivelIngreso.valueOf(it) }.getOrDefault(NivelIngreso.BASICO) }
                         ?: NivelIngreso.BASICO
 
-                    region = doc.getString("region")
+                    region = hijoDoc.getString("region")
                         ?.let { runCatching { RegionMexico.valueOf(it) }.getOrDefault(RegionMexico.PUEBLA) }
                         ?: RegionMexico.PUEBLA
 
-                    basePeso = doc.getDouble("weightKg") ?: 0.0
-                    baseTalla = doc.getDouble("heightCm") ?: 0.0
-                    hasAllergiesVal = doc.getBoolean("hasAllergies") ?: false
-                    allergiesDetailVal = doc.getString("allergiesDetail") ?: ""
-                    conditionsDetailVal = doc.getString("conditionsDetail") ?: ""
+                    basePeso = hijoDoc.getDouble("weightKg") ?: 0.0
+                    baseTalla = hijoDoc.getDouble("heightCm") ?: 0.0
+                    hasAllergiesVal = hijoDoc.getBoolean("hasAllergies") ?: false
+                    allergiesDetailVal = hijoDoc.getString("allergiesDetail") ?: ""
+                    conditionsDetailVal = hijoDoc.getString("conditionsDetail") ?: ""
                 }
             } catch (e: Exception) {
-                com.example.nutriia.platform.Log.w("Expediente", "Fallo al obtener perfil base del hijo: ${e.message}")
+                Log.w("Expediente", "Fallo al obtener perfil base del hijo: ${e.message}")
             }
 
             val meses = calcularEdadMeses(nacimiento)
