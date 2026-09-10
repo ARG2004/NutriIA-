@@ -322,6 +322,7 @@ class RepositorioLogin {
 
     // ── Derechos ARCO: Eliminación de Datos de Verificación de Cédula ───────
     suspend fun eliminarDatosVerificacionCedula(uid: String): Boolean {
+        if (uid.isBlank()) return false
         return try {
             db.collection("usuarios").document(uid).update(
                 mapOf(
@@ -347,6 +348,7 @@ class RepositorioLogin {
     }
 
     suspend fun guardarModoAccesibilidad(uid: String, modo: AccessibilityMode): Boolean {
+        if (uid.isBlank()) return false
         return try {
             db.collection("usuarios").document(uid)
                 .update("modoAccesibilidad", modo.name).await()
@@ -355,6 +357,7 @@ class RepositorioLogin {
     }
 
     suspend fun cargarModoAccesibilidad(uid: String): AccessibilityMode {
+        if (uid.isBlank()) return AccessibilityMode.NORMAL
         return try {
             val snap  = db.collection("usuarios").document(uid).get().await()
             val saved = snap.getString("modoAccesibilidad") ?: AccessibilityMode.NORMAL.name
@@ -363,6 +366,7 @@ class RepositorioLogin {
     }
 
     suspend fun guardarHijo(uid: String, child: ChildProfile): Boolean {
+        if (uid.isBlank()) return false
         return try {
             val childId = child.id.ifBlank { generateUUID() }
             val datosHijo = mapOf(
@@ -407,7 +411,7 @@ class RepositorioLogin {
                     if (existing.isEmpty()) {
                         val crecId = generateUUID()
                         val datosCrec = mapOf(
-                                  "pesoKg" to pesoNum,
+                            "pesoKg" to pesoNum,
                             "tallaCm" to tallaNum,
                             "circCefCm" to 0.0,
                             "notas" to "Registro inicial de nacimiento / perfil",
@@ -426,6 +430,7 @@ class RepositorioLogin {
     }
 
     suspend fun cargarHijos(uid: String): List<ChildProfile> {
+        if (uid.isBlank()) return emptyList()
         return try {
             val parentDoc = try {
                 db.collection("usuarios").document(uid).get().await()
@@ -511,6 +516,7 @@ class RepositorioLogin {
     }
 
     suspend fun guardarPerfilEmbarazo(uid: String, perfil: PerfilEmbarazo): Boolean {
+        if (uid.isBlank()) return false
         return try {
             db.collection("usuarios").document(uid)
                 .collection("perfilEmbarazo").document("unico")
@@ -520,6 +526,7 @@ class RepositorioLogin {
     }
 
     suspend fun cargarPerfilEmbarazo(uid: String): PerfilEmbarazo? {
+        if (uid.isBlank()) return null
         return try {
             val snap = db.collection("usuarios").document(uid)
                 .collection("perfilEmbarazo").document("unico").get().await()
@@ -543,6 +550,7 @@ class RepositorioLogin {
     }
 
     suspend fun obtenerRol(uid: String): String {
+        if (uid.isBlank()) return "padre"
         return try {
             val rol = db.collection("usuarios").document(uid).get().await()
                 .getString("rol") ?: "padre"
@@ -575,8 +583,6 @@ class RepositorioLogin {
             } catch (e: Exception) { }
         }
     }
-
-
 
     fun cerrarSesionRapida() {
         // No hace nada con Auth ni Firestore por diseño para permitir re-login con huella
@@ -643,6 +649,7 @@ class RepositorioLogin {
     }
 
     suspend fun decrementarIntentoIa(uid: String, intentosRestantes: Int): Boolean {
+        if (uid.isBlank()) return false
         return try {
             val valorFinal = if (intentosRestantes < 0) 0 else intentosRestantes
             db.collection("usuarios").document(uid).update(
@@ -655,6 +662,7 @@ class RepositorioLogin {
     }
 
     suspend fun resetearIntentosDiarios(uid: String, nuevoReset: Long): Boolean {
+        if (uid.isBlank()) return false
         return try {
             db.collection("usuarios").document(uid).update(
                 mapOf(
@@ -669,6 +677,7 @@ class RepositorioLogin {
     }
 
     suspend fun activarSuscripcionIa(uid: String): Boolean {
+        if (uid.isBlank()) return false
         return try {
             // +30 días en milisegundos
             val treintaDiasMilis = 30L * 24 * 60 * 60 * 1000

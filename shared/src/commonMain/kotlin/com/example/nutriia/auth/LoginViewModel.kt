@@ -102,7 +102,7 @@ class LoginViewModel : ViewModel() {
     fun verificarSesion(onResultado: (rol: String?, hijos: List<ChildProfile>) -> Unit) {
         viewModelScope.launch {
             val uid = SessionManager.obtenerUid()
-            if (uid == null) {
+            if (uid.isNullOrBlank()) {
                 onResultado(null, emptyList())
                 return@launch
             }
@@ -193,6 +193,10 @@ class LoginViewModel : ViewModel() {
     // ── Helper privado ────────────────────────────────────────────────────────
     private fun cargarDatosSesion(uid: String, rol: String, fallbackEmail: String) {
         sesionListener?.remove()
+        if (uid.isBlank()) {
+            _sesion.value = _sesion.value.copy(uid = "", rol = rol, email = fallbackEmail)
+            return
+        }
         sesionListener = FirebaseFirestore.getInstance()
             .collection("usuarios")
             .document(uid)

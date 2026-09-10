@@ -20,8 +20,10 @@ class FirebaseFirestore private constructor() {
 
     private val delegate get() = Firebase.firestore
 
-    fun collection(path: String): CollectionReference =
-        CollectionReference(delegate.collection(path), path)
+    fun collection(path: String): CollectionReference {
+        val safePath = if (path.isBlank()) "default_collection" else path
+        return CollectionReference(delegate.collection(safePath), safePath)
+    }
 
     suspend fun clearPersistence(): Unit {
         try {
@@ -35,8 +37,10 @@ class CollectionReference(
     val delegate: dev.gitlive.firebase.firestore.CollectionReference,
     val path: String
 ) {
-    fun document(id: String = "doc_${com.example.nutriia.platform.currentTimeMillis()}"): DocumentReference =
-        DocumentReference(delegate.document(id), "$path/$id", id)
+    fun document(id: String = ""): DocumentReference {
+        val safeId = if (id.isBlank()) "doc_${com.example.nutriia.platform.currentTimeMillis()}" else id
+        return DocumentReference(delegate.document(safeId), "$path/$safeId", safeId)
+    }
 
     fun orderBy(field: String, direction: Direction = Direction.ASCENDING): CollectionReference = this
     fun whereEqualTo(field: String, value: Any?): CollectionReference = this
@@ -128,8 +132,10 @@ class DocumentReference(
         }
     }
 
-    fun collection(subPath: String): CollectionReference =
-        CollectionReference(delegate.collection(subPath), "$path/$subPath")
+    fun collection(subPath: String): CollectionReference {
+        val safeSubPath = if (subPath.isBlank()) "default_collection" else subPath
+        return CollectionReference(delegate.collection(safeSubPath), "$path/$safeSubPath")
+    }
 
     val snapshots: Flow<DocumentSnapshot>
         get() = delegate.snapshots

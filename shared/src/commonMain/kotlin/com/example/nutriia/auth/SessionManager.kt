@@ -5,26 +5,31 @@ import com.example.nutriia.platform.PlatformPreferences
 object SessionManager {
 
     fun guardarSesion(uid: String) {
+        if (uid.isBlank()) return
         PlatformPreferences.putString("user_uid", uid)
         PlatformPreferences.putString("ultimo_uid_biometrico", uid)
     }
 
     fun guardarSesion(context: Any?, uid: String) {
+        if (uid.isBlank()) return
         PlatformPreferences.putString("user_uid", uid)
         PlatformPreferences.putString("ultimo_uid_biometrico", uid)
     }
 
     fun guardarUltimoUid(uid: String) {
+        if (uid.isBlank()) return
         PlatformPreferences.putString("ultimo_uid_biometrico", uid)
     }
 
     fun obtenerUltimoUid(): String? {
-        return PlatformPreferences.getString("ultimo_uid_biometrico")
+        val uid = PlatformPreferences.getString("ultimo_uid_biometrico")
             ?: PlatformPreferences.getString("user_uid")
+        return if (uid.isNullOrBlank()) null else uid
     }
 
     fun obtenerUid(context: Any? = null): String? {
-        return PlatformPreferences.getString("user_uid")
+        val uid = PlatformPreferences.getString("user_uid")
+        return if (uid.isNullOrBlank()) null else uid
     }
 
     fun marcarBiometricoActivo(context: Any? = null, activo: Boolean = true) {
