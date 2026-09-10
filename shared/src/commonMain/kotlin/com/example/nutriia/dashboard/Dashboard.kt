@@ -41,11 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.LocalAccessibilityMode
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.crecimiento.CrecimientoViewModel
 import com.example.nutriia.crecimiento.MedicionCrecimiento
 import com.example.nutriia.crecimiento.Sexo
@@ -388,12 +384,16 @@ fun NutriIADashboardScreen(
     )
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(null, a11yMode == AccessibilityMode.BLIND),
         containerColor = DashBgCrema,
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (a11yMode == AccessibilityMode.BLIND) {
                     FloatingActionButton(
-                        onClick = { isListening = !isListening },
+                        onClick = {
+                            triggerFeedbackAccesible()
+                            isListening = !isListening
+                        },
                         containerColor = if (voiceState == VoiceInputState.LISTENING) Color.Red else DashSoftPurple,
                         contentColor = Color.White,
                         shape = CircleShape,
@@ -409,30 +409,21 @@ fun NutriIADashboardScreen(
                         Icon(if (voiceState == VoiceInputState.LISTENING) Icons.Rounded.Stop else Icons.Rounded.Mic, contentDescription = null, modifier = Modifier.size(34.dp))
                     }
                 }
-                ExtendedFloatingActionButton(
+                BotonFlotanteAccesible(
+                    texto = "Consultar NutriBot",
+                    icono = Icons.Rounded.AutoAwesome,
+                    colorFondo = DashNutriaGreen,
+                    colorTexto = DashCardWhite,
+                    esBlind = a11yMode == AccessibilityMode.BLIND,
+                    a11yVm = a11yVm,
+                    mensajeAnuncio = "Abriendo NutriBot. El asistente de inteligencia artificial.",
                     onClick = {
-                        if (a11yMode == AccessibilityMode.BLIND)
-                            a11yVm.hablar("Abriendo NutriBot. El asistente de inteligencia artificial.")
                         onOpenChatIA(currentPage)
                     },
-                    containerColor = DashNutriaGreen,
-                    contentColor   = DashCardWhite,
-                    shape          = CircleShape,
-                    modifier       = Modifier
+                    modifier = Modifier
                         .padding(bottom = 16.dp)
                         .scale(fabScale)
-                        .shadow(
-                            elevation    = 16.dp,
-                            shape        = CircleShape,
-                            ambientColor = DashNutriaGreen.copy(fabShadowAlpha),
-                            spotColor    = DashNutriaGreen.copy(fabShadowAlpha)
-                        )
-                        .semantics { contentDescription = "Botón Consultar NutriBot. Parte inferior central." }
-                ) {
-                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Consultar NutriBot", fontWeight = FontWeight.Bold)
-                }
+                )
             }
         },
         floatingActionButtonPosition = FabPosition.Center

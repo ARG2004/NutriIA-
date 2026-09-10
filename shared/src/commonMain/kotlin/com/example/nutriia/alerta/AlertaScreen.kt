@@ -35,15 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
-import com.example.nutriia.accesibilidad.NutriTTS
-import com.example.nutriia.accesibilidad.InputModoCiego
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.util.PermissionHelper
 import com.example.nutriia.util.PermissionType
 import com.example.nutriia.util.rememberPermissionState
@@ -273,13 +265,17 @@ fun AlertasScreen(
     }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 if (esBlind) {
                     FloatingActionButton(
-                        onClick = { isListening = !isListening },
+                        onClick = {
+                            triggerFeedbackAccesible()
+                            isListening = !isListening
+                        },
                         containerColor = if (voiceState == VoiceInputState.LISTENING) Color.Red else Sol.IndigoMid,
                         contentColor = Color.White,
                         shape = CircleShape,
@@ -293,27 +289,21 @@ fun AlertasScreen(
                     visible = visible,
                     enter   = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300))
                 ) {
-                    ExtendedFloatingActionButton(
-                        onClick        = { 
-                            if (esBlind) a11yVm.hablar(loc("Abriendo formulario para nueva alerta.", "Opening form for new alert."))
+                    BotonFlotanteAccesible(
+                        texto = loc("Nueva alerta", "New alert"),
+                        icono = Icons.Rounded.Add,
+                        colorFondo = Sol.Indigo,
+                        colorTexto = Sol.White,
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        mensajeAnuncio = loc("Abriendo formulario para nueva alerta.", "Opening form for new alert."),
+                        onClick = {
                             checkAndRun {
                                 alertaAEditar = null
                                 showDialog = true
                             }
-                        },
-                        containerColor = Sol.Indigo,
-                        contentColor   = Sol.White,
-                        shape          = RoundedCornerShape(20.dp),
-                        modifier       = Modifier.height(52.dp).shadow(
-                            8.dp, RoundedCornerShape(20.dp),
-                            ambientColor = Sol.Indigo.copy(.35f),
-                            spotColor    = Sol.Indigo.copy(.35f)
-                        )
-                    ) {
-                        Icon(Icons.Rounded.Add, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Nueva alerta", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
+                        }
+                    )
                 }
             }
         },

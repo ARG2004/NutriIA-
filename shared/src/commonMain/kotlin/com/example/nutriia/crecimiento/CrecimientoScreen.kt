@@ -37,12 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.NutriTTS
-import com.example.nutriia.accesibilidad.InputModoCiego
+import com.example.nutriia.accesibilidad.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.nutriia.resources.*
@@ -157,6 +152,7 @@ fun CrecimientoScreen(
     }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = C_Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -165,19 +161,18 @@ fun CrecimientoScreen(
                 enter   = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300)),
                 exit    = scaleOut() + fadeOut()
             ) {
-                ExtendedFloatingActionButton(
-                    onClick        = { 
-                        if (esBlind) a11yVm.hablar(loc("Abriendo formulario para nueva medición.", "Opening form for new measurement."))
-                        showDialog = true 
-                    },
-                    containerColor = C_Green,
-                    contentColor   = Color.White,
-                    shape          = RoundedCornerShape(50.dp)
-                ) {
-                    Icon(Icons.Rounded.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Registrar medición", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
+                BotonFlotanteAccesible(
+                    texto = loc("Registrar medición", "Register measurement"),
+                    icono = Icons.Rounded.Add,
+                    colorFondo = C_Green,
+                    colorTexto = Color.White,
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    mensajeAnuncio = loc("Abriendo formulario para nueva medición.", "Opening form for new measurement."),
+                    onClick = {
+                        showDialog = true
+                    }
+                )
             }
         },
         floatingActionButtonPosition = FabPosition.Center

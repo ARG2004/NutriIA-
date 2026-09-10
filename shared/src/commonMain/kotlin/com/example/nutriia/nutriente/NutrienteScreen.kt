@@ -28,21 +28,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.utils.FechaUtils
-import com.example.nutriia.accesibilidad.NutriTTS
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
-import com.example.nutriia.accesibilidad.vibrateTap
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.resources.*
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
-import com.example.nutriia.accesibilidad.InputModoCiego
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.KeyboardOptions
@@ -248,13 +239,17 @@ fun NutrientesScreen(
     }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 if (esBlind) {
                     FloatingActionButton(
-                        onClick = { isListening = !isListening },
+                        onClick = {
+                            triggerFeedbackAccesible()
+                            isListening = !isListening
+                        },
                         containerColor = if (voiceState == VoiceInputState.LISTENING) Color.Red else Sol.PurpleMid,
                         contentColor = Color.White,
                         shape = CircleShape,
@@ -268,21 +263,16 @@ fun NutrientesScreen(
                     visible = visible,
                     enter   = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300))
                 ) {
-                    ExtendedFloatingActionButton(
-                        onClick        = { mostrarForm = true },
-                        containerColor = Sol.Purple,
-                        contentColor   = Sol.White,
-                        shape          = RoundedCornerShape(20.dp),
-                        modifier       = Modifier.height(52.dp).shadow(
-                            8.dp, RoundedCornerShape(20.dp),
-                            ambientColor = Sol.Purple.copy(.35f),
-                            spotColor    = Sol.Purple.copy(.35f)
-                        )
-                    ) {
-                        Icon(Icons.Rounded.Add, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Anotar lo que comió", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
+                    BotonFlotanteAccesible(
+                        texto = loc("Anotar lo que comió", "Log food"),
+                        icono = Icons.Rounded.Add,
+                        colorFondo = Sol.Purple,
+                        colorTexto = Sol.White,
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        mensajeAnuncio = loc("Abriendo formulario para anotar comida.", "Opening food logging form."),
+                        onClick = { mostrarForm = true }
+                    )
                 }
             }
         },

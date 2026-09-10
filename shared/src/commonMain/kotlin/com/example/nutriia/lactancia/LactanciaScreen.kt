@@ -39,16 +39,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
-import com.example.nutriia.accesibilidad.NutriTTS
-import com.example.nutriia.accesibilidad.InputModoCiego
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
-import com.example.nutriia.accesibilidad.BrailleKeyboard
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.utils.FechaUtils
 
 private val LactPink      = Color(0xFFEC9BBF)
@@ -160,6 +151,7 @@ fun LactanciaScreen(
     }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = LactBg,
         snackbarHost   = { SnackbarHost(snackbarHost) },
         floatingActionButton = {
@@ -174,20 +166,21 @@ fun LactanciaScreen(
                     initialScale = 0f
                 ) + fadeIn(tween(300))
             ) {
-                FloatingActionButton(
-                    onClick        = {
-                        if (esBlind) a11yVm.hablar(loc("Abriendo formulario para registrar toma.", "Opening form to register feeding."))
+                BotonFlotanteAccesible(
+                    texto = loc("Registrar toma", "Register feeding"),
+                    icono = Icons.Rounded.Add,
+                    colorFondo = LactPink,
+                    colorTexto = Color.White,
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    mensajeAnuncio = loc("Abriendo formulario para registrar toma.", "Opening form to register feeding."),
+                    onClick = {
                         showAddDialog = true
-                    },
-                    containerColor = LactPink,
-                    contentColor   = Color.White,
-                    shape          = CircleShape,
-                    modifier       = Modifier.shadow(10.dp, CircleShape)
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Registrar toma", modifier = Modifier.size(28.dp))
-                }
+                    }
+                )
             }
-        }
+        },
+        floatingActionButtonPosition = FabPosition.Center
     ) { padding ->
 
         LazyColumn(

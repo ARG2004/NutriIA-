@@ -32,11 +32,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.loc
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.auth.LoginViewModel
 import com.example.nutriia.payment.AISubscriptionViewModel
 import com.example.nutriia.platform.currentTimeMillis
@@ -219,6 +215,7 @@ fun NutriChatScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = NutriaBgCrema)
             )
         },
+        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = NutriaBgCrema
     ) { innerPadding ->
         Column(
@@ -325,14 +322,22 @@ fun NutriChatScreen(
                     CampoTextoAccesible(
                         valor = inputText,
                         onValorChange = { inputText = it },
-                        etiqueta = loc("Tu mensaje", "Your message"),
+                        etiqueta = if (esModoEmbarazo)
+                            loc("Pregunta sobre embarazo", "Ask about pregnancy")
+                        else
+                            loc("Mensaje para NutriBot", "Message for NutriBot"),
                         descripcionVoz = loc("Dime tu pregunta para NutriBot. Di enviar para enviarla.", "Tell me your question for NutriBot. Say send to send it."),
-                        ttsManager = ttsManager,
+                        placeholder = if (esModoEmbarazo)
+                            loc("Pregúntale sobre tu embarazo...", "Ask about your pregnancy...")
+                        else
+                            loc("Pregúntale algo a NutriBot...", "Ask something..."),
                         idioma = idiomaActual,
                         colorPrimario = NutriaGreen,
                         modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Send),
                         onNext = {
                             if (inputText.isNotBlank()) {
+                                triggerFeedbackAccesible()
                                 onSendAttempt(inputText)
                                 inputText = ""
                             }
@@ -340,6 +345,7 @@ fun NutriChatScreen(
                         onCommandParsed = { cmd ->
                             if (cmd.contains("enviar") || cmd.contains("send") || cmd.contains("preguntar") || cmd.contains("ask")) {
                                 if (inputText.isNotBlank()) {
+                                    triggerFeedbackAccesible()
                                     onSendAttempt(inputText)
                                     inputText = ""
                                 }
@@ -381,6 +387,7 @@ fun NutriChatScreen(
 
                 FloatingActionButton(
                     onClick = {
+                        triggerFeedbackAccesible()
                         if (inputText.isNotBlank()) {
                             onSendAttempt(inputText)
                             inputText = ""
@@ -390,8 +397,14 @@ fun NutriChatScreen(
                     contentColor = Color.White,
                     shape = CircleShape,
                     modifier = Modifier.size(50.dp)
+                        .semantics {
+                            contentDescription = if (idiomaActual == IdiomaVoz.INGLES)
+                                "Send message. Bottom right above charging port."
+                            else
+                                "Enviar mensaje. Botón inferior derecho arriba del puerto de carga."
+                        }
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Enviar")
+                    Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null)
                 }
             }
         }

@@ -37,16 +37,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.util.CalendarEvent
 import com.example.nutriia.util.PlatformCalendarManager
 import com.example.nutriia.resources.*
-import com.example.nutriia.accesibilidad.InputModoCiego
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.KeyboardOptions
@@ -375,6 +370,7 @@ fun SolidosScreen(
     }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -382,29 +378,21 @@ fun SolidosScreen(
                 visible = visible,
                 enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(tween(300))
             ) {
-                ExtendedFloatingActionButton(
+                BotonFlotanteAccesible(
+                    texto = loc("Registrar alimento", "Register food"),
+                    icono = Icons.Rounded.Add,
+                    colorFondo = Sol.Orange,
+                    colorTexto = Sol.White,
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    mensajeAnuncio = loc(
+                        "Abriendo formulario para registrar alimento.",
+                        "Opening form to register food."
+                    ),
                     onClick = {
-                        if (esBlind) a11yVm.hablar(
-                            loc(
-                                "Abriendo formulario para registrar alimento.",
-                                "Opening form to register food."
-                            )
-                        )
                         showAgregar = true
-                    },
-                    containerColor = Sol.Orange,
-                    contentColor   = Sol.White,
-                    shape          = RoundedCornerShape(20.dp),
-                    modifier       = Modifier
-                        .height(52.dp)
-                        .shadow(8.dp, RoundedCornerShape(20.dp),
-                            ambientColor = Sol.Orange.copy(.35f),
-                            spotColor    = Sol.Orange.copy(.35f))
-                ) {
-                    Icon(Icons.Rounded.Add, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Registrar alimento", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
+                    }
+                )
             }
         },
         floatingActionButtonPosition = FabPosition.Center

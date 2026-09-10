@@ -33,15 +33,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.example.nutriia.platform.Log
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
-import com.example.nutriia.accesibilidad.LocalAccessibilityMode
-import com.example.nutriia.accesibilidad.CampoTextoAccesible
-import com.example.nutriia.accesibilidad.IdiomaVoz
-import com.example.nutriia.accesibilidad.VoiceInputManager
-import com.example.nutriia.accesibilidad.VoiceInputState
-import com.example.nutriia.accesibilidad.InputModoCiego
-import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
@@ -320,12 +312,16 @@ fun PediatraScreen(
     }
 
     Scaffold(
+        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = PBgCrema,
         snackbarHost   = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (esBlind) {
                 FloatingActionButton(
-                    onClick = { isListening = !isListening },
+                    onClick = {
+                        triggerFeedbackAccesible()
+                        isListening = !isListening
+                    },
                     containerColor = if (voiceState == VoiceInputState.LISTENING) Color.Red else PGreen,
                     contentColor = Color.White,
                     shape = CircleShape,
