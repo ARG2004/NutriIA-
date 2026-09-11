@@ -85,37 +85,56 @@ actual object PlatformPreferences {
             deleteFromKeychain(key)
             val data = (value as NSString).dataUsingEncoding(NSUTF8StringEncoding) ?: return
 
-            val query = NSMutableDictionary()
-            query.setObject(kSecClassGenericPassword, forKey = kSecClass)
-            query.setObject(SERVICE_NAME, forKey = kSecAttrService)
-            query.setObject(key, forKey = kSecAttrAccount)
-            query.setObject(data, forKey = kSecValueData)
-            query.setObject(kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, forKey = kSecAttrAccessible)
+            val serviceRef = CFBridgingRetain(SERVICE_NAME as NSString)
+            val accountRef = CFBridgingRetain(key as NSString)
+            val dataRef = CFBridgingRetain(data)
 
-            SecItemAdd(query as CFDictionaryRef, null)
+            val query = CFDictionaryCreateMutable(null, 0, null, null)
+            CFDictionarySetValue(query, kSecClass, kSecClassGenericPassword)
+            CFDictionarySetValue(query, kSecAttrService, serviceRef)
+            CFDictionarySetValue(query, kSecAttrAccount, accountRef)
+            CFDictionarySetValue(query, kSecValueData, dataRef)
+            CFDictionarySetValue(query, kSecAttrAccessible, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+
+            SecItemAdd(query, null)
+
+            if (query != null) CFRelease(query)
+            if (serviceRef != null) CFRelease(serviceRef)
+            if (accountRef != null) CFRelease(accountRef)
+            if (dataRef != null) CFRelease(dataRef)
         } catch (_: Throwable) {}
     }
 
     private fun loadFromKeychain(key: String): String? {
         return try {
-            val query = NSMutableDictionary()
-            query.setObject(kSecClassGenericPassword, forKey = kSecClass)
-            query.setObject(SERVICE_NAME, forKey = kSecAttrService)
-            query.setObject(key, forKey = kSecAttrAccount)
-            query.setObject(kCFBooleanTrue, forKey = kSecReturnData)
-            query.setObject(kSecMatchLimitOne, forKey = kSecMatchLimit)
+            val serviceRef = CFBridgingRetain(SERVICE_NAME as NSString)
+            val accountRef = CFBridgingRetain(key as NSString)
+
+            val query = CFDictionaryCreateMutable(null, 0, null, null)
+            CFDictionarySetValue(query, kSecClass, kSecClassGenericPassword)
+            CFDictionarySetValue(query, kSecAttrService, serviceRef)
+            CFDictionarySetValue(query, kSecAttrAccount, accountRef)
+            CFDictionarySetValue(query, kSecReturnData, kCFBooleanTrue)
+            CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitOne)
+
+            var resultString: String? = null
 
             memScoped {
                 val result = alloc<COpaquePointerVar>()
-                val status = SecItemCopyMatching(query as CFDictionaryRef, result.ptr.reinterpret())
+                val status = SecItemCopyMatching(query, result.ptr.reinterpret())
                 if (status == errSecSuccess && result.value != null) {
                     val data = CFBridgingRelease(result.value) as? NSData
                     if (data != null) {
-                        return NSString.create(data = data, encoding = NSUTF8StringEncoding) as? String
+                        resultString = NSString.create(data = data, encoding = NSUTF8StringEncoding) as? String
                     }
                 }
             }
-            null
+
+            if (query != null) CFRelease(query)
+            if (serviceRef != null) CFRelease(serviceRef)
+            if (accountRef != null) CFRelease(accountRef)
+
+            resultString
         } catch (_: Throwable) {
             null
         }
@@ -123,12 +142,19 @@ actual object PlatformPreferences {
 
     private fun deleteFromKeychain(key: String) {
         try {
-            val query = NSMutableDictionary()
-            query.setObject(kSecClassGenericPassword, forKey = kSecClass)
-            query.setObject(SERVICE_NAME, forKey = kSecAttrService)
-            query.setObject(key, forKey = kSecAttrAccount)
+            val serviceRef = CFBridgingRetain(SERVICE_NAME as NSString)
+            val accountRef = CFBridgingRetain(key as NSString)
 
-            SecItemDelete(query as CFDictionaryRef)
+            val query = CFDictionaryCreateMutable(null, 0, null, null)
+            CFDictionarySetValue(query, kSecClass, kSecClassGenericPassword)
+            CFDictionarySetValue(query, kSecAttrService, serviceRef)
+            CFDictionarySetValue(query, kSecAttrAccount, accountRef)
+
+            SecItemDelete(query)
+
+            if (query != null) CFRelease(query)
+            if (serviceRef != null) CFRelease(serviceRef)
+            if (accountRef != null) CFRelease(accountRef)
         } catch (_: Throwable) {}
     }
 }
