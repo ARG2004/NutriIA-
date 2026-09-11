@@ -246,14 +246,23 @@ class DocumentSnapshot(
             Timestamp(gitliveT.seconds, gitliveT.nanoseconds)
         } else {
             val raw = rawData[field]
-            if (raw == null) null
+            if (raw == null) {
+                val strVal = runCatching { delegate?.get<String?>(field) }.getOrNull()
+                if (!strVal.isNullOrBlank()) com.example.nutriia.utils.FechaUtils.parsearTextoATimestamp(strVal)
+                else null
+            }
             else if (raw is Timestamp) raw
             else if (raw is dev.gitlive.firebase.firestore.Timestamp) Timestamp(raw.seconds, raw.nanoseconds)
             else if (raw is Number) Timestamp(raw.toLong() / 1000, ((raw.toLong() % 1000) * 1000000).toInt())
+            else if (raw is String) com.example.nutriia.utils.FechaUtils.parsearTextoATimestamp(raw)
             else {
                 val longVal = runCatching { delegate?.get<Long?>(field) }.getOrNull()
                 if (longVal != null) Timestamp(longVal / 1000, ((longVal % 1000) * 1000000).toInt())
-                else null
+                else {
+                    val strVal = runCatching { delegate?.get<String?>(field) }.getOrNull()
+                    if (!strVal.isNullOrBlank()) com.example.nutriia.utils.FechaUtils.parsearTextoATimestamp(strVal)
+                    else null
+                }
             }
         }
     } catch (_: Throwable) {

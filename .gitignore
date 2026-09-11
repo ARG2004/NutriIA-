@@ -1,38 +1,135 @@
-*.iml
-.gradle
+# ==============================================================================
+# NutrIA - Global .gitignore
+# Excluye archivos sensibles, credenciales, certificados, binarios y artefactos temporales.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Credenciales, Secretos y Variables de Entorno (CRÍTICO)
+# ------------------------------------------------------------------------------
+*.env
+*.env.*
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+local.properties
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+secrets.properties
+secure.properties
+apikeys.properties
+keystore.properties
+crashlytics-build.properties
+*secret*.json
+*credentials*.json
+*service-account*.json
+*service_account*.json
+jwt*.key
+private-key.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# ------------------------------------------------------------------------------
+# 2. Certificados, Llaves y Firmas de Android / iOS (CRÍTICO)
+# ------------------------------------------------------------------------------
+# Android Keystores & Keys
+*.jks
+*.keystore
+*.pk8
+*.bks
+*.der
+release.keystore
+debug.keystore
+
+# Apple / iOS Certificates, Keys & Profiles
+*.p12
+*.cer
+*.crt
+*.csr
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+cert_base64.txt
+*.xcconfig
+AuthKey_*.p8
+*.p8
+ExportOptions.plist
+
+# ------------------------------------------------------------------------------
+# 3. Artefactos de Compilación y Salidas Binarias
+# ------------------------------------------------------------------------------
 build/
 **/build/
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+/app/build/
+/app/release/
+/app/debug/
+/shared/build/
+.kotlin/
+.gradle/
+.externalNativeBuild/
+.cxx/
+/captures/
 *.apk
 *.aab
 *.dm
-/app/release/
-/app/debug/
-/app/build/
+*.ipa
+*.dSYM/
+*.dSYM.zip
 
-# Kotlin Multiplatform
-.kotlin/
+# ------------------------------------------------------------------------------
+# 4. Xcode & iOS Workspace Artifacts
+# ------------------------------------------------------------------------------
+*.xcuserdatad/
+*.xcuserstate
+*.xcbkptlist
+xcuserdata/
+DerivedData/
+*.xcscmblueprint
+project.xcworkspace/xcuserdata/
+iosApp.xcodeproj/project.xcworkspace/xcuserdata/
+iosApp.xcodeproj/xcuserdata/
 
-# OS Specific
+# ------------------------------------------------------------------------------
+# 5. IDE & Editores (Android Studio / IntelliJ / VS Code)
+# ------------------------------------------------------------------------------
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/sonarlint/
+.idea/dictionaries/
+.vscode/
+*.swp
+*~
+*.bak
+*.tmp
+
+# ------------------------------------------------------------------------------
+# 6. Firebase & Emuladores
+# ------------------------------------------------------------------------------
+.firebase/
+.firebaserc
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+*.log
+
+# ------------------------------------------------------------------------------
+# 7. Archivos del Sistema Operativo (macOS, Windows, Linux)
+# ------------------------------------------------------------------------------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
-
-# Certificate & Private Key Security
-*.p12
-*.cer
-*.key
-*.csr
-*.certSigningRequest
-cert_base64.txt
-*.xcconfig
-
+Desktop.ini
+ehthumbs.db

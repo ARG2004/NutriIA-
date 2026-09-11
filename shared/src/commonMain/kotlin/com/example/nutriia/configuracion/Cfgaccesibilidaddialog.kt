@@ -29,8 +29,8 @@ import androidx.compose.ui.window.Dialog
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.IdiomaVoz
 import com.example.nutriia.accesibilidad.NutriTTS
-import com.example.nutriia.accesibilidad.abrirConfiguracionTalkBack
-import com.example.nutriia.accesibilidad.isTalkBackActive
+import com.example.nutriia.accesibilidad.abrirConfiguracionVoiceOver
+import com.example.nutriia.accesibilidad.isVoiceOverActive
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Privado: opciones de accesibilidad reutilizando la misma data class del quiz
@@ -61,7 +61,8 @@ fun CfgAccesibilidadDialog(
 ) {
     var modoLocal   by remember(modoActual)  { mutableStateOf(modoActual)   }
     var idiomaLocal by remember(idiomaActual){ mutableStateOf(idiomaActual) }
-    var mostrarTalkBackInfo by remember { mutableStateOf(false) }
+    val voiceOverActivo = remember { isVoiceOverActive() }
+    var mostrarVoiceOverInfo by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -97,14 +98,14 @@ fun CfgAccesibilidadDialog(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text("Accesibilidad", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1B5E20))
-                        Text("Adapta NutriIA a tus necesidades", fontSize = 12.sp, color = Color.Gray)
+                        Text("Adapta NutrIA a tus necesidades", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
 
                 HorizontalDivider(color = Color(0xFFEEEEEE))
 
-                // Banner TalkBack detectado
-                AnimatedVisibility(visible = false) {
+                // Banner VoiceOver detectado
+                AnimatedVisibility(visible = voiceOverActivo) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -121,7 +122,7 @@ fun CfgAccesibilidadDialog(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "TalkBack detectado — modo para condición visual recomendado.",
+                            "VoiceOver detectado — modo para condición visual recomendado.",
                             fontSize   = 12.sp,
                             color      = GreenConfig,
                             fontWeight = FontWeight.SemiBold
@@ -146,8 +147,8 @@ fun CfgAccesibilidadDialog(
                             .background(if (selected) GreenConfig.copy(alpha = 0.06f) else Color.White)
                             .clickable {
                                 modoLocal = option.mode
-                                if (option.mode == AccessibilityMode.BLIND && !false)
-                                    mostrarTalkBackInfo = true
+                                if (option.mode == AccessibilityMode.BLIND && !voiceOverActivo)
+                                    mostrarVoiceOverInfo = true
                             }
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -191,9 +192,9 @@ fun CfgAccesibilidadDialog(
                     }
                 }
 
-                // Info TalkBack si elige modo ciego sin tenerlo
+                // Info VoiceOver si elige modo ciego sin tenerlo
                 AnimatedVisibility(
-                    visible = mostrarTalkBackInfo,
+                    visible = mostrarVoiceOverInfo,
                     enter   = fadeIn(tween(200)),
                     exit    = fadeOut(tween(200))
                 ) {
@@ -205,17 +206,17 @@ fun CfgAccesibilidadDialog(
                             .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text("Activar TalkBack (opcional)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5E35B1))
+                        Text("Activar VoiceOver (opcional)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5E35B1))
                         Text(
-                            "NutriIA ya tiene su propia voz y funciona sin TalkBack. " +
-                                    "Solo actívalo si usas lector de pantalla del sistema.",
+                            "NutrIA ya tiene su propia voz y funciona sin VoiceOver. " +
+                                    "Solo actívalo si prefieres usar el lector de pantalla y los gestos estándar de iOS.",
                             fontSize = 11.sp, color = Color.DarkGray, lineHeight = 15.sp
                         )
                         TextButton(
-                            onClick        = {  },
+                            onClick        = { abrirConfiguracionVoiceOver() },
                             contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
                         ) {
-                            Text("Ir a configuración de Android →", fontSize = 11.sp, color = Color(0xFF5E35B1))
+                            Text("Ir a Ajustes de iOS →", fontSize = 11.sp, color = Color(0xFF5E35B1))
                         }
                     }
                 }

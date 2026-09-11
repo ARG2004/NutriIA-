@@ -1,0 +1,161 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "alertas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "childId", "order": "ASCENDING" },
+        { "fieldPath": "hora", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "consultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tipo", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "crecimiento",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lactancia",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lactancia",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "startTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "nutrientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pagos_teleconsulta",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "padreUid", "order": "ASCENDING" },
+        { "fieldPath": "nutriologoUid", "order": "ASCENDING" },
+        { "fieldPath": "childId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "completadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pagos_teleconsulta",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "padreUid", "order": "ASCENDING" },
+        { "fieldPath": "nutriologoUid", "order": "ASCENDING" },
+        { "fieldPath": "childId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "llamadaId", "order": "ASCENDING" },
+        { "fieldPath": "completadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "planes_alimentarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "activo", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "solidos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "teleconsultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nutriologoUid", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "teleconsultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "padreUid", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "teleconsultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nutriologoUid", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "teleconsultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "padreUid", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "teleconsultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "padreUid", "order": "ASCENDING" },
+        { "fieldPath": "nutriologoUid", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vinculaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nutriologoUid", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vinculaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "padreUid", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vinculaciones_embarazo",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "mamaUid", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

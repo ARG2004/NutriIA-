@@ -96,8 +96,13 @@ data class SolicitudLlamada(
 
     companion object {
         private fun parseLong(value: Any?): Long = when (value) {
-            is Number -> value.toLong()
-            is String -> value.toLongOrNull() ?: 0L
+            is dev.gitlive.firebase.firestore.Timestamp -> value.seconds * 1000L + (value.nanoseconds / 1_000_000L)
+            is com.example.nutriia.shared.Timestamp -> value.toEpochMillis()
+            is Number -> {
+                val n = value.toLong()
+                if (n > 100_000_000_000L) n else n * 1000L
+            }
+            is String -> com.example.nutriia.utils.FechaUtils.parsearFechaHora(value)
             else -> 0L
         }
 

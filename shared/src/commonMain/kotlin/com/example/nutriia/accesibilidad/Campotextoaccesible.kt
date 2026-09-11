@@ -127,7 +127,8 @@ fun CampoTextoAccesible(
         }
     }
 
-    // ── Reactivar mic cuando hay error ───────────────────────────────────────
+    // ── Reactivar mic cuando hay error (hasta 2 reintentos con fallback a Braille) ──
+    var reintentosVoz by remember(etiqueta) { mutableIntStateOf(0) }
     val errorActual = voiceManager?.errorMsg?.value ?: ""
     val errorCodigo = voiceManager?.errorCodigo?.value ?: -1
     LaunchedEffect(errorCodigo, activo, a11yMode) {
@@ -147,42 +148,57 @@ fun CampoTextoAccesible(
                 errorCodigo in listOf(1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13)
 
         if (errorReintentable && tienePermiso) {
-            val avisoReintento = if (idioma == IdiomaVoz.INGLES) {
-                if (descripcionVoz.isNotBlank()) {
-                    "I didn't hear you. $descripcionVoz. Or say: change to keyboard."
+            if (reintentosVoz < 2) {
+                reintentosVoz++
+                val avisoReintento = if (idioma == IdiomaVoz.INGLES) {
+                    if (descripcionVoz.isNotBlank()) {
+                        "I didn't hear you. $descripcionVoz. Or say: change to keyboard."
+                    } else {
+                        "I didn't hear you. Say your $etiqueta, or say: change to keyboard."
+                    }
                 } else {
-                    "I didn't hear you. Say your $etiqueta, or say: change to keyboard."
+                    if (descripcionVoz.isNotBlank()) {
+                        "No te escuché. $descripcionVoz. O di: cambiar a teclado."
+                    } else {
+                        "No te escuché. Di tu $etiqueta, o di: cambiar a teclado."
+                    }
+                }
+                if (ttsManager != null) {
+                    ttsManager.hablarYEsperar(avisoReintento, margenMs = 800L)
+                    ttsManager.silenciar()
+                } else {
+                    delay(2000L)
+                }
+                if (voiceEstado == VoiceInputState.IDLE) {
+                    iniciarEscuchaConReintento(
+                        voiceManager       = voiceManager,
+                        idioma             = idioma,
+                        modoAccesible      = true,
+                        esCampoFecha       = esCampoFecha,
+                        esCampoHora        = esCampoHora,
+                        keyboardOptions    = keyboardOptions,
+                        ttsManager         = ttsManager,
+                        valorActual        = { valor },
+                        onValorChange      = onValorChange,
+                        onNext             = onNext,
+                        onCommandParsed    = onCommandParsed,
+                        onSwitchModo       = { modoEntrada = it },
+                        coroutineScope     = coroutineScope,
+                        estadoConfirmacion = estadoConfirmacion
+                    )
                 }
             } else {
-                if (descripcionVoz.isNotBlank()) {
-                    "No te escuché. $descripcionVoz. O di: cambiar a teclado."
+                // Fallback elegante a Teclado Braille tras agotar reintentos
+                val avisoBraille = if (idioma == IdiomaVoz.INGLES) {
+                    "Switched to Braille keyboard for convenience. Tap the microphone when you want to dictate again."
                 } else {
-                    "No te escuché. Di tu $etiqueta, o di: cambiar a teclado."
+                    "Cambié temporalmente al teclado Braille para facilitarte la entrada. Toca el micrófono cuando desees dictar de nuevo."
                 }
-            }
-            if (ttsManager != null) {
-                ttsManager.hablarYEsperar(avisoReintento, margenMs = 800L)
-                ttsManager.silenciar()
-            } else {
-                delay(2000L)
-            }
-            if (voiceEstado == VoiceInputState.IDLE) {
-                iniciarEscuchaConReintento(
-                    voiceManager       = voiceManager,
-                    idioma             = idioma,
-                    modoAccesible      = true,
-                    esCampoFecha       = esCampoFecha,
-                    esCampoHora        = esCampoHora,
-                    keyboardOptions    = keyboardOptions,
-                    ttsManager         = ttsManager,
-                    valorActual        = { valor },
-                    onValorChange      = onValorChange,
-                    onNext             = onNext,
-                    onCommandParsed    = onCommandParsed,
-                    onSwitchModo       = { modoEntrada = it },
-                    coroutineScope     = coroutineScope,
-                    estadoConfirmacion = estadoConfirmacion
-                )
+                if (ttsManager != null) {
+                    ttsManager.hablarYEsperar(avisoBraille, margenMs = 600L)
+                }
+                modoEntrada = InputModoCiego.BRAILLE
+                reintentosVoz = 0
             }
         }
     }

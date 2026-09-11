@@ -115,6 +115,18 @@ fun SignLanguageCameraView(
     var landmarker by remember { mutableStateOf<HandLandmarker?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
+    // ── Liberación segura de recursos de MediaPipe y Executor al salir ──────
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                landmarker?.close()
+            } catch (_: Exception) {}
+            try {
+                cameraExecutor.shutdown()
+            } catch (_: Exception) {}
+        }
+    }
+
     val launcherPermiso = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { concedido -> camaraPermisoConcedido = concedido }

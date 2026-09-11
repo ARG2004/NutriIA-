@@ -346,6 +346,39 @@ fun NutriIAiOSApp() {
         }
     }
 
+    // ─── Narración Espacial Contextual en Modo BLIND al Cambiar de Pantalla ─────
+    LaunchedEffect(currentScreen, accessibilityMode) {
+        if (accessibilityMode == AccessibilityMode.BLIND) {
+            delay(500) // Breve pausa tras transición visual
+            val tts = accessibilityVm.ttsManager
+            if (tts != null && !tts.esLectorDelSistemaActivo()) {
+                val intro = when (currentScreen) {
+                    Screen.DASHBOARD_PARENT, Screen.DASHBOARD_NUTRITIONIST,
+                    Screen.DASHBOARD_MAMA_PRIMERIZA, Screen.DASHBOARD_GINECOLOGO -> accessibilityVm.loc(Voz.DASHBOARD_INTRO, VozEn.DASHBOARD_INTRO)
+                    Screen.CRECIMIENTO -> accessibilityVm.loc(Voz.CRECIMIENTO_INTRO, VozEn.CRECIMIENTO_INTRO)
+                    Screen.LACTANCIA -> accessibilityVm.loc(Voz.LACTANCIA_INTRO, VozEn.LACTANCIA_INTRO)
+                    Screen.SOLIDOS -> accessibilityVm.loc(Voz.SOLIDOS_INTRO, VozEn.SOLIDOS_INTRO)
+                    Screen.NUTRIENTES -> accessibilityVm.loc(Voz.NUTRIENTES_INTRO, VozEn.NUTRIENTES_INTRO)
+                    Screen.SUENO -> accessibilityVm.loc(Voz.SUENO_INTRO, VozEn.SUENO_INTRO)
+                    Screen.RECORDATORIOS -> accessibilityVm.loc(Voz.RECORDATORIOS_INTRO, VozEn.RECORDATORIOS_INTRO)
+                    Screen.PEDIATRA_DASHBOARD -> accessibilityVm.loc(Voz.PEDIATRA_INTRO, VozEn.PEDIATRA_INTRO)
+                    Screen.AYUDA -> accessibilityVm.loc(Voz.AYUDA_INTRO, VozEn.AYUDA_INTRO)
+                    Screen.CITAS_EMBARAZO -> accessibilityVm.loc(Voz.CITAS_EMBARAZO_INTRO, VozEn.CITAS_EMBARAZO_INTRO)
+                    Screen.NUTRICION_EMBARAZO -> accessibilityVm.loc(Voz.NUTRICION_EMBARAZO_INTRO, VozEn.NUTRICION_EMBARAZO_INTRO)
+                    Screen.DIARIO_VISUAL -> accessibilityVm.loc(Voz.DIARIO_VISUAL_INTRO, VozEn.DIARIO_VISUAL_INTRO)
+                    Screen.DIRECTORIO_NUTRIOLOGOS, Screen.DIRECTORIO_GINECOLOGOS -> accessibilityVm.loc(Voz.CITAS_INTRO, VozEn.CITAS_INTRO)
+                    Screen.CHAT_IA -> accessibilityVm.loc(Voz.NUTRICAT_INTRO, VozEn.NUTRICAT_INTRO)
+                    Screen.CONFIGURACION -> accessibilityVm.loc(Voz.CONFIGURACION_INTRO, VozEn.CONFIGURACION_INTRO)
+                    Screen.LOGIN -> accessibilityVm.loc(Voz.LOGIN_INTRO, VozEn.LOGIN_INTRO)
+                    Screen.REGISTER_TYPE -> accessibilityVm.loc(Voz.REGISTRO_TIPO_INTRO, VozEn.REGISTRO_TIPO_INTRO)
+                    Screen.QUIZ, Screen.QUIZ_MAMA_PRIMERIZA -> accessibilityVm.loc(Voz.QUIZ_BIENVENIDA, VozEn.QUIZ_BIENVENIDA)
+                    else -> null
+                }
+                intro?.let { tts.hablar(it) }
+            }
+        }
+    }
+
     // ─── Solicitud Secuencial de Permisos Narrada en Modo BLIND ───────────
     var permissionStep by remember { mutableIntStateOf(0) }
 
@@ -560,8 +593,10 @@ fun NutriIAiOSApp() {
 
             delay(120)
 
-            val yaActivoHuella = SessionManager.huellaYaConfirmada() || SessionManager.esBiometricoActivo()
-            if (!yaActivoHuella && BiometricHelper.isAvailable()) {
+            val yaDecidioBiometrico = SessionManager.huellaYaConfirmada() || 
+                                     SessionManager.esBiometricoActivo() || 
+                                     SessionManager.yaSeMostroActivacionHuella()
+            if (!yaDecidioBiometrico && BiometricHelper.isAvailable()) {
                 currentScreen = Screen.BIOMETRIC_ACTIVATION
             } else {
                 when (s.rol) {

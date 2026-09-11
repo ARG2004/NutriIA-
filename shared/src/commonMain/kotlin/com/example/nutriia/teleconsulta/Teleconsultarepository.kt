@@ -112,12 +112,81 @@ class TeleconsultaRepository {
         }
     }
 
+    private fun llamadaDesdeDoc(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): SolicitudLlamada? {
+        return try {
+            if (!doc.exists) return null
+            val id = doc.id
+            val emisorUid = runCatching { doc.get<String?>("emisorUid") }.getOrNull() ?: ""
+            val receptorUid = runCatching { doc.get<String?>("receptorUid") }.getOrNull() ?: ""
+            val nutriologoUid = runCatching { doc.get<String?>("nutriologoUid") }.getOrNull() ?: ""
+            val nutriologoNombre = runCatching { doc.get<String?>("nutriologoNombre") }.getOrNull() ?: ""
+            val padreUid = runCatching { doc.get<String?>("padreUid") }.getOrNull() ?: ""
+            val padreNombre = runCatching { doc.get<String?>("padreNombre") }.getOrNull() ?: ""
+            val childId = runCatching { doc.get<String?>("childId") }.getOrNull() ?: ""
+            val childNombre = runCatching { doc.get<String?>("childNombre") }.getOrNull() ?: ""
+            val tipoStr = runCatching { doc.get<String?>("tipo") }.getOrNull() ?: TipoLlamada.VIDEO.name
+            val tipo = runCatching { TipoLlamada.valueOf(tipoStr) }.getOrDefault(TipoLlamada.VIDEO)
+            val estadoStr = runCatching { doc.get<String?>("estado") }.getOrNull() ?: EstadoLlamada.INICIANDO.name
+            val estado = runCatching { EstadoLlamada.valueOf(estadoStr) }.getOrDefault(EstadoLlamada.INICIANDO)
+            val offerSdp = runCatching { doc.get<String?>("offerSdp") }.getOrNull()
+            val answerSdp = runCatching { doc.get<String?>("answerSdp") }.getOrNull()
+
+            val creadoEnTs = runCatching { doc.get<dev.gitlive.firebase.firestore.Timestamp?>("creadoEn") }.getOrNull()
+            val creadoEnLong = runCatching { doc.get<Long?>("creadoEn") }.getOrNull()
+            val creadoEnStr = runCatching { doc.get<String?>("creadoEn") }.getOrNull()
+            val creadoEn = when {
+                creadoEnTs != null -> creadoEnTs.seconds * 1000L + (creadoEnTs.nanoseconds / 1_000_000L)
+                creadoEnLong != null -> if (creadoEnLong > 100_000_000_000L) creadoEnLong else creadoEnLong * 1000L
+                !creadoEnStr.isNullOrBlank() -> com.example.nutriia.utils.FechaUtils.parsearFechaHora(creadoEnStr)
+                else -> 0L
+            }
+
+            val aceptadoEnTs = runCatching { doc.get<dev.gitlive.firebase.firestore.Timestamp?>("aceptadoEn") }.getOrNull()
+            val aceptadoEnLong = runCatching { doc.get<Long?>("aceptadoEn") }.getOrNull()
+            val aceptadoEn = when {
+                aceptadoEnTs != null -> aceptadoEnTs.seconds * 1000L + (aceptadoEnTs.nanoseconds / 1_000_000L)
+                aceptadoEnLong != null -> if (aceptadoEnLong > 100_000_000_000L) aceptadoEnLong else aceptadoEnLong * 1000L
+                else -> null
+            }
+
+            val finalizadoEnTs = runCatching { doc.get<dev.gitlive.firebase.firestore.Timestamp?>("finalizadoEn") }.getOrNull()
+            val finalizadoEnLong = runCatching { doc.get<Long?>("finalizadoEn") }.getOrNull()
+            val finalizadoEn = when {
+                finalizadoEnTs != null -> finalizadoEnTs.seconds * 1000L + (finalizadoEnTs.nanoseconds / 1_000_000L)
+                finalizadoEnLong != null -> if (finalizadoEnLong > 100_000_000_000L) finalizadoEnLong else finalizadoEnLong * 1000L
+                else -> null
+            }
+
+            val duracion = runCatching { doc.get<Long?>("duracionSegundos")?.toInt() }.getOrNull() ?: 0
+
+            SolicitudLlamada(
+                id = id,
+                emisorUid = emisorUid,
+                receptorUid = receptorUid,
+                nutriologoUid = nutriologoUid,
+                nutriologoNombre = nutriologoNombre,
+                padreUid = padreUid,
+                padreNombre = padreNombre,
+                childId = childId,
+                childNombre = childNombre,
+                tipo = tipo,
+                estado = estado,
+                offerSdp = offerSdp,
+                answerSdp = answerSdp,
+                creadoEn = creadoEn,
+                aceptadoEn = aceptadoEn,
+                finalizadoEn = finalizadoEn,
+                duracionSegundos = duracion
+            )
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     fun observarLlamada(llamadaId: String): Flow<SolicitudLlamada?> {
         return try {
             col.document(llamadaId).snapshots.conflate().map { snapshot ->
-                if (snapshot.exists) {
-                    try { snapshot.data<SolicitudLlamada>().copy(id = snapshot.id) } catch (e: Exception) { null }
-                } else null
+                llamadaDesdeDoc(snapshot)
             }
         } catch (e: Exception) {
             flowOf(null)
@@ -220,10 +289,10 @@ class TeleconsultaRepository {
         return try {
             col.where { "padreUid".equalTo(padreUid) }
                 .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                .orderBy("creadoEn", Direction.DESCENDING)
                 .snapshots.conflate().map { querySnapshot ->
-                    val doc = querySnapshot.documents.firstOrNull()
-                    val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
+                    val lista = querySnapshot.documents.mapNotNull { llamadaDesdeDoc(it) }
+                        .sortedByDescending { it.creadoEn }
+                    val llamada = lista.firstOrNull()
                     if (llamada != null && llamada.emisorUid == padreUid) {
                         null
                     } else {
@@ -240,10 +309,10 @@ class TeleconsultaRepository {
         return try {
             col.where { "nutriologoUid".equalTo(nutriologoUid) }
                 .where { "estado".equalTo(EstadoLlamada.SONANDO.name) }
-                .orderBy("creadoEn", Direction.DESCENDING)
                 .snapshots.conflate().map { querySnapshot ->
-                    val doc = querySnapshot.documents.firstOrNull()
-                    val llamada = try { doc?.data<SolicitudLlamada>()?.copy(id = doc.id) } catch (e: Exception) { null }
+                    val lista = querySnapshot.documents.mapNotNull { llamadaDesdeDoc(it) }
+                        .sortedByDescending { it.creadoEn }
+                    val llamada = lista.firstOrNull()
                     if (llamada != null && llamada.emisorUid == nutriologoUid) {
                         null
                     } else {
@@ -259,11 +328,9 @@ class TeleconsultaRepository {
         if (nutriologoUid.isBlank()) return flowOf(emptyList())
         return try {
             col.where { "nutriologoUid".equalTo(nutriologoUid) }
-                .orderBy("creadoEn", Direction.DESCENDING)
                 .snapshots.conflate().map { querySnapshot ->
-                    querySnapshot.documents.mapNotNull { doc ->
-                        try { doc.data<SolicitudLlamada>().copy(id = doc.id) } catch (e: Exception) { null }
-                    }
+                    querySnapshot.documents.mapNotNull { llamadaDesdeDoc(it) }
+                        .sortedByDescending { it.creadoEn }
                 }
         } catch (e: Exception) {
             flowOf(emptyList())

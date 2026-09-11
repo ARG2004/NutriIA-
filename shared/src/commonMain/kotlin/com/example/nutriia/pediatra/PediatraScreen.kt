@@ -9,12 +9,14 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,6 +114,31 @@ fun PediatraScreen(
         vinculacionViewModel.cargarDirectorio()
     }
 
+    // ── Aviso Automático de Estado de Especialista en Modo Blind ─────────────
+    LaunchedEffect(activas, pendientes, esBlind) {
+        if (esBlind) {
+            delay(500)
+            if (activas.isNotEmpty()) {
+                val espNombre = activas.first().nutriologoNombre.ifBlank { "tu especialista" }
+                a11yVm.hablar(loc(
+                    "Pantalla Mi Nutriólogo y Pediatra. Ya tienes un especialista vinculado: $espNombre. Puedes deslizar hacia abajo o tocar el botón central para iniciar una llamada o videoconsulta.",
+                    "My Nutritionist and Pediatrician screen. You already have a linked specialist: $espNombre. You can swipe down or tap the central button to start a call or video consultation."
+                ))
+            } else if (pendientes.isNotEmpty()) {
+                val espNombre = pendientes.first().nutriologoNombre.ifBlank { "un especialista" }
+                a11yVm.hablar(loc(
+                    "Pantalla Mi Nutriólogo y Pediatra. Tienes una solicitud de vinculación pendiente para $espNombre.",
+                    "My Nutritionist and Pediatrician screen. You have a pending link request for $espNombre."
+                ))
+            } else {
+                a11yVm.hablar(loc(
+                    "Pantalla Mi Nutriólogo y Pediatra. Aún no tienes un especialista vinculado. En el centro tienes el campo para dictar o escribir su código. Si no tienes el código, di 'modo correo' o 'modo directorio', o usa los botones hápticos de acceso directo.",
+                    "My Nutritionist and Pediatrician screen. You do not have a linked specialist yet. In the center is the field to dictate or write the code. If you do not have the code, say 'email mode' or 'directory mode', or use the direct haptic buttons."
+                ))
+            }
+        }
+    }
+
     LaunchedEffect(modoBusqueda) {
         if (modoBusqueda == ModoBusqueda.DIRECTORIO) {
             vinculacionViewModel.cargarDirectorio()
@@ -141,8 +168,8 @@ fun PediatraScreen(
     LaunchedEffect(isListening) {
         if (isListening && esBlind) {
             val cmdGuia = loc(
-                "Te escucho. Puedes decir: modo código, modo correo, modo directorio, buscar especialista, escanear Q R, o volver atrás. ¿Hacia qué opción se va a dirigir?",
-                "I'm listening. You can say: code mode, email mode, directory mode, search specialist, scan Q R, or go back. Which option are you heading to?"
+                "Te escucho. Puedes decir: modo código, modo correo, modo directorio, no tengo código, no tengo correo, buscar especialista o volver atrás.",
+                "I'm listening. You can say: code mode, email mode, directory mode, no code, no email, search specialist or go back."
             )
             a11yVm.hablar(cmdGuia)
             delay(9500)
@@ -155,13 +182,15 @@ fun PediatraScreen(
                         modoBusqueda = ModoBusqueda.CODIGO
                         a11yVm.hablar(loc("Cambiado a búsqueda por código.", "Changed to search by code."))
                     }
-                    cmd.contains("correo") || cmd.contains("email") -> {
+                    cmd.contains("correo") || cmd.contains("email") || cmd.contains("no tengo código") || cmd.contains("no tengo el código") || cmd.contains("sin código") || cmd.contains("no code") -> {
                         modoBusqueda = ModoBusqueda.EMAIL
                         a11yVm.hablar(loc("Cambiado a búsqueda por correo.", "Changed to search by email."))
                     }
-                    cmd.contains("directorio") || cmd.contains("directory") -> {
-                        modoBusqueda = ModoBusqueda.DIRECTORIO
-                        a11yVm.hablar(loc("Cambiado a directorio de especialistas.", "Changed to specialists directory."))
+                    cmd.contains("directorio") || cmd.contains("directory") || cmd.contains("lista") || cmd.contains("doctores") || cmd.contains("sin correo") || cmd.contains("no tengo correo") || cmd.contains("no tengo el correo") -> {
+                        if (modoBusqueda != ModoBusqueda.DIRECTORIO) {
+                            onAbrirDirectorio()
+                            a11yVm.hablar(loc("Abriendo directorio de especialistas.", "Opening specialists directory."))
+                        }
                     }
                     cmd.contains("buscar") || cmd.contains("search") -> {
                         if (modoBusqueda == ModoBusqueda.CODIGO && textoCodigo.isNotBlank()) {
@@ -185,7 +214,7 @@ fun PediatraScreen(
                     cmd.contains("volver") || cmd.contains("atrás") || cmd.contains("back") || cmd.contains("salir") -> {
                         onBack()
                     }
-                    else -> a11yVm.hablar(loc("No entendí. Prueba con: modo código, modo directorio, buscar o escanear QR.", "I didn't understand. Try: code mode, directory mode, search or scan QR."))
+                    else -> a11yVm.hablar(loc("No entendí. Prueba con: modo código, modo correo, modo directorio, buscar o escanear QR.", "I didn't understand. Try: code mode, email mode, directory mode, search or scan QR."))
                 }
             }
         }
@@ -314,24 +343,7 @@ fun PediatraScreen(
     Scaffold(
         modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = PBgCrema,
-        snackbarHost   = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            if (esBlind) {
-                FloatingActionButton(
-                    onClick = {
-                        triggerFeedbackAccesible()
-                        isListening = !isListening
-                    },
-                    containerColor = if (voiceState == VoiceInputState.LISTENING) Color.Red else PGreen,
-                    contentColor = Color.White,
-                    shape = CircleShape,
-                    modifier = Modifier.padding(bottom = 16.dp).size(64.dp)
-                        .semantics { contentDescription = if (voiceState == VoiceInputState.LISTENING) "Detener comandos de voz" else "Activar comandos de voz para navegación. Al presionar, escucha la lista de comandos disponibles." }
-                ) {
-                    Icon(if (voiceState == VoiceInputState.LISTENING) Icons.Rounded.Stop else Icons.Rounded.Mic, contentDescription = null, modifier = Modifier.size(30.dp))
-                }
-            }
-        }
+        snackbarHost   = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         LazyColumn(
             modifier       = Modifier.fillMaxSize().padding(padding),
@@ -415,7 +427,14 @@ fun PediatraScreen(
                             onTexto  = { textoCodigo = it },
                             cargando = cargando,
                             onBuscar = { vinculacionViewModel.buscarPorCodigo(textoCodigo) },
-                            onScanQRClick = { mostrarEscannerQR = true }
+                            onScanQRClick = { mostrarEscannerQR = true },
+                            onCambiarModo = { nuevo ->
+                                if (nuevo == ModoBusqueda.DIRECTORIO) {
+                                    onAbrirDirectorio()
+                                } else {
+                                    modoBusqueda = nuevo
+                                }
+                            }
                         )
                     }
                     nutriologoEncontrado?.let { nutri ->
@@ -443,7 +462,14 @@ fun PediatraScreen(
                             texto    = textoEmail,
                             onTexto  = { textoEmail = it },
                             cargando = cargando,
-                            onBuscar = { vinculacionViewModel.buscarPorEmail(textoEmail) }
+                            onBuscar = { vinculacionViewModel.buscarPorEmail(textoEmail) },
+                            onCambiarModo = { nuevo ->
+                                if (nuevo == ModoBusqueda.DIRECTORIO) {
+                                    onAbrirDirectorio()
+                                } else {
+                                    modoBusqueda = nuevo
+                                }
+                            }
                         )
                     }
                     nutriologoEncontrado?.let { nutri ->
@@ -575,21 +601,26 @@ private fun SeccionTitulo(
 
 @Composable
 private fun SelectorModoBusqueda(modoActual: ModoBusqueda, onSeleccionar: (ModoBusqueda) -> Unit) {
+    val haptic = LocalHapticFeedback.current
     val modos = listOf(
         Triple(ModoBusqueda.CODIGO,     Icons.Rounded.QrCode2,           "Código"),
         Triple(ModoBusqueda.EMAIL,      Icons.Rounded.Email,              "Correo"),
-        Triple(ModoBusqueda.DIRECTORIO, Icons.Rounded.FormatListBulleted, "Directorio")
+        Triple(ModoBusqueda.DIRECTORIO, Icons.AutoMirrored.Rounded.FormatListBulleted, "Directorio")
     )
 
     Row(
         modifier              = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        modos.forEach { (modo, icon, label) ->
+        modos.forEachIndexed { index, (modo, icon, label) ->
             val selected = modoActual == modo
+            val posDesc = "Opción ${index + 1} de 3: Buscar por $label. ${if (selected) "Seleccionada actualmente." else "Toca dos veces para cambiar a esta opción."}"
             Surface(
-                onClick         = { onSeleccionar(modo) },
-                modifier        = Modifier.weight(1f),
+                onClick         = {
+                    triggerFeedbackAccesible(haptic, null)
+                    onSeleccionar(modo)
+                },
+                modifier        = Modifier.weight(1f).semantics { contentDescription = posDesc },
                 shape           = RoundedCornerShape(16.dp),
                 color           = if (selected) PGreen else PCardWhite,
                 shadowElevation = if (selected) 4.dp else 1.dp
@@ -615,12 +646,14 @@ private fun BusquedaPorCodigo(
     onTexto: (String) -> Unit,
     cargando: Boolean,
     onBuscar: () -> Unit,
-    onScanQRClick: () -> Unit
+    onScanQRClick: () -> Unit,
+    onCambiarModo: (ModoBusqueda) -> Unit = {}
 ) {
     val a11yMode = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val ttsManager = a11yVm.ttsManager
     val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
+    val haptic = LocalHapticFeedback.current
 
     Column(Modifier.padding(horizontal = 20.dp)) {
         Text("Ingresa el código del especialista", fontSize = 13.sp, color = Color.Gray)
@@ -630,7 +663,7 @@ private fun BusquedaPorCodigo(
                 valor = texto,
                 onValorChange = { onTexto(it.uppercase()) },
                 etiqueta = "Código del especialista",
-                descripcionVoz = "Di el código del especialista o toca dos veces el botón de la izquierda para escanear código QR",
+                descripcionVoz = "Di el código del especialista o usa los botones hápticos abajo si no tienes el código",
                 placeholder = "NUTRI-XXXX-XXXXXX",
                 ttsManager = ttsManager,
                 colorPrimario = PGreen
@@ -663,7 +696,62 @@ private fun BusquedaPorCodigo(
             shape    = RoundedCornerShape(14.dp)
         ) {
             if (cargando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
-            else { Icon(Icons.Rounded.Search, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Buscar", fontWeight = FontWeight.Bold) }
+            else { Icon(Icons.Rounded.Search, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Buscar por Código", fontWeight = FontWeight.Bold) }
+        }
+
+        // Accesos rápidos hápticos por si no posee el código
+        Spacer(Modifier.height(12.dp))
+        Text("¿No tienes el código?", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                onClick = {
+                    triggerFeedbackAccesible(haptic, null)
+                    onCambiarModo(ModoBusqueda.EMAIL)
+                    a11yVm.hablar("Cambiado a búsqueda por correo.")
+                },
+                modifier = Modifier.weight(1f).height(if (esAccesible) 58.dp else 44.dp)
+                    .semantics { contentDescription = "Buscar por correo electrónico. Botón con vibración táctil. Toca dos veces para cambiar a correo." },
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFF1F8E9),
+                border = BorderStroke(1.dp, PGreen.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Rounded.Email, null, tint = PDarkGreen, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Usar Correo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PDarkGreen)
+                }
+            }
+
+            Surface(
+                onClick = {
+                    triggerFeedbackAccesible(haptic, null)
+                    onCambiarModo(ModoBusqueda.DIRECTORIO)
+                    a11yVm.hablar("Abriendo directorio de especialistas.")
+                },
+                modifier = Modifier.weight(1f).height(if (esAccesible) 58.dp else 44.dp)
+                    .semantics { contentDescription = "Explorar directorio de especialistas. Botón con vibración táctil. Toca dos veces para abrir la lista." },
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFE0F2F1),
+                border = BorderStroke(1.dp, PTeal.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null, tint = PTeal, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Ver Directorio", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PDarkGreen)
+                }
+            }
         }
     }
 }
@@ -756,11 +844,18 @@ private fun QrScannerDialog(
 // ─── Búsqueda por Email ───────────────────────────────────────────────────────
 
 @Composable
-private fun BusquedaPorEmail(texto: String, onTexto: (String) -> Unit, cargando: Boolean, onBuscar: () -> Unit) {
+private fun BusquedaPorEmail(
+    texto: String,
+    onTexto: (String) -> Unit,
+    cargando: Boolean,
+    onBuscar: () -> Unit,
+    onCambiarModo: (ModoBusqueda) -> Unit = {}
+) {
     val a11yMode = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val ttsManager = a11yVm.ttsManager
     val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
+    val haptic = LocalHapticFeedback.current
 
     Column(Modifier.padding(horizontal = 20.dp)) {
         Text("Ingresa el correo del especialista", fontSize = 13.sp, color = Color.Gray)
@@ -770,7 +865,7 @@ private fun BusquedaPorEmail(texto: String, onTexto: (String) -> Unit, cargando:
                 valor = texto,
                 onValorChange = onTexto,
                 etiqueta = "Correo del especialista",
-                descripcionVoz = "Di el correo del especialista",
+                descripcionVoz = "Di el correo del especialista o toca abajo para explorar el directorio",
                 placeholder = "ejemplo@correo.com",
                 ttsManager = ttsManager,
                 colorPrimario = PGreen
@@ -799,7 +894,62 @@ private fun BusquedaPorEmail(texto: String, onTexto: (String) -> Unit, cargando:
             shape    = RoundedCornerShape(14.dp)
         ) {
             if (cargando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
-            else { Icon(Icons.Rounded.Search, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Buscar", fontWeight = FontWeight.Bold) }
+            else { Icon(Icons.Rounded.Search, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Buscar por Correo", fontWeight = FontWeight.Bold) }
+        }
+
+        // Accesos rápidos hápticos por si no posee el correo
+        Spacer(Modifier.height(12.dp))
+        Text("¿No tienes el correo?", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                onClick = {
+                    triggerFeedbackAccesible(haptic, null)
+                    onCambiarModo(ModoBusqueda.CODIGO)
+                    a11yVm.hablar("Cambiado a búsqueda por código.")
+                },
+                modifier = Modifier.weight(1f).height(if (esAccesible) 58.dp else 44.dp)
+                    .semantics { contentDescription = "Buscar por código de especialista. Botón con vibración táctil. Toca dos veces para cambiar a código." },
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFF1F8E9),
+                border = BorderStroke(1.dp, PGreen.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Rounded.QrCode2, null, tint = PDarkGreen, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Usar Código", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PDarkGreen)
+                }
+            }
+
+            Surface(
+                onClick = {
+                    triggerFeedbackAccesible(haptic, null)
+                    onCambiarModo(ModoBusqueda.DIRECTORIO)
+                    a11yVm.hablar("Abriendo directorio de especialistas.")
+                },
+                modifier = Modifier.weight(1f).height(if (esAccesible) 58.dp else 44.dp)
+                    .semantics { contentDescription = "Explorar directorio de especialistas. Botón con vibración táctil. Toca dos veces para abrir la lista." },
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFE0F2F1),
+                border = BorderStroke(1.dp, PTeal.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null, tint = PTeal, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Ver Directorio", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PDarkGreen)
+                }
+            }
         }
     }
 }

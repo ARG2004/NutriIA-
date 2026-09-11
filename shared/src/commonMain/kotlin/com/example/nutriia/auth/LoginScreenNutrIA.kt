@@ -30,7 +30,9 @@ import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.Voz
+import com.example.nutriia.accesibilidad.isVoiceOverActive
 import com.example.nutriia.resources.*
+import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 val NutriaGreen     = Color(0xFF689F38)
@@ -56,11 +58,12 @@ fun NutriaLoginScreen(
     var resetMessage by remember { mutableStateOf<String?>(null) }
     val estado       by viewModel.estado.collectAsState()
 
-    val a11yMode = LocalAccessibilityMode.current
+    val a11yMode = if (isVoiceOverActive()) AccessibilityMode.BLIND else LocalAccessibilityMode.current
     com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [NutriaLoginScreen] a11yMode cargado = $a11yMode")
 
     // Anuncia toda la pantalla al entrar
     LaunchedEffect(Unit) {
+        delay(300L)
         if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(Voz.LOGIN_INTRO)
     }
 
@@ -93,6 +96,7 @@ fun NutriaLoginScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
+                .imePadding()
                 .alpha(entranceAlpha),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -202,6 +206,11 @@ fun NutriaLoginScreen(
 
                     // Botón Biométrico
                     if (viewModel.hayHuellaDisponible()) {
+                        val tipoBiometria = remember { BiometricHelper.obtenerTipoBiometria() }
+                        val esFaceId = tipoBiometria == TipoBiometria.FACE_ID
+                        val textoBoton = if (esFaceId) "Ingresar con Face ID" else "Ingresar con huella"
+                        val iconoBoton = if (esFaceId) Icons.Default.Face else Icons.Default.Fingerprint
+
                         Spacer(Modifier.height(16.dp))
                         Button(
                             onClick = {
@@ -214,7 +223,7 @@ fun NutriaLoginScreen(
                                 .fillMaxWidth()
                                 .height(56.dp)
                                 .semantics {
-                                    contentDescription = "Ingresar con huella digital."
+                                    contentDescription = "$textoBoton. Toca dos veces para iniciar sesión con biometría."
                                 },
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
@@ -223,9 +232,9 @@ fun NutriaLoginScreen(
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Ingresar con huella", fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(textoBoton, fontWeight = FontWeight.Bold, color = Color.White)
                                 Spacer(Modifier.width(8.dp))
-                                Icon(Icons.Default.Fingerprint, null, tint = Color.White)
+                                Icon(iconoBoton, null, tint = Color.White)
                             }
                         }
                     }

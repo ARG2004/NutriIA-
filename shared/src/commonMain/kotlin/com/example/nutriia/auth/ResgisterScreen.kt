@@ -44,6 +44,7 @@ import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.Voz
 import com.example.nutriia.accesibilidad.VozEn
 import com.example.nutriia.accesibilidad.VoiceInputManager
+import com.example.nutriia.accesibilidad.isVoiceOverActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -205,7 +206,7 @@ fun RegisterTypeScreen(
     onSelectMamaPrimeriza: () -> Unit,
     onSelectGinecologo:    () -> Unit
 ) {
-    val a11yMode     = LocalAccessibilityMode.current
+    val a11yMode     = if (isVoiceOverActive()) AccessibilityMode.BLIND else LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val scope        = rememberCoroutineScope()
@@ -214,6 +215,7 @@ fun RegisterTypeScreen(
     fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
     LaunchedEffect(Unit) {
+        delay(300L)
         if (a11yMode == AccessibilityMode.BLIND)
             a11yVm.hablar(loc(Voz.REGISTRO_TIPO_INTRO, VozEn.REGISTRO_TIPO_INTRO))
     }
@@ -237,6 +239,7 @@ fun RegisterTypeScreen(
             modifier            = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
+                .imePadding()
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -569,7 +572,7 @@ fun ParentRegisterScreen(
 
     val estado by viewModel.estado.collectAsState()
 
-    val a11yMode     = LocalAccessibilityMode.current
+    val a11yMode     = if (isVoiceOverActive()) AccessibilityMode.BLIND else LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val esBlind      = a11yMode == AccessibilityMode.BLIND
@@ -645,6 +648,7 @@ fun ParentRegisterScreen(
     }
 
     LaunchedEffect(Unit) {
+        delay(300L)
         if (esBlind) a11yVm.hablar(loc(Voz.REGISTRO_PADRE_INTRO, VozEn.REGISTRO_PADRE_INTRO))
     }
 
@@ -696,6 +700,7 @@ fun ParentRegisterScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
+                .imePadding()
         ) {
             Spacer(Modifier.height(52.dp))
             RegisterScreenHeader(
@@ -1083,7 +1088,7 @@ fun MamaPrimerizaRegisterScreen(
 
     val estado by viewModel.estado.collectAsState()
 
-    val a11yMode     = LocalAccessibilityMode.current
+    val a11yMode     = if (isVoiceOverActive()) AccessibilityMode.BLIND else LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val esBlind      = a11yMode == AccessibilityMode.BLIND
@@ -1160,6 +1165,7 @@ fun MamaPrimerizaRegisterScreen(
     }
 
     LaunchedEffect(Unit) {
+        delay(300L)
         if (esBlind) a11yVm.hablar(loc("Registro de mamá primeriza. Vamos a crear tu perfil prenatal.", "First-time mom registration. Let's create your prenatal profile."))
     }
 
@@ -1187,6 +1193,7 @@ fun MamaPrimerizaRegisterScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
+                .imePadding()
         ) {
             Spacer(Modifier.height(52.dp))
             RegisterScreenHeader(
@@ -1437,7 +1444,7 @@ fun NutritionistRegisterScreen(
 
     val estado by viewModel.estado.collectAsState()
 
-    val a11yMode     = LocalAccessibilityMode.current
+    val a11yMode     = if (isVoiceOverActive()) AccessibilityMode.BLIND else LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val esBlind      = a11yMode == AccessibilityMode.BLIND
@@ -1466,6 +1473,7 @@ fun NutritionistRegisterScreen(
     }
 
     LaunchedEffect(Unit) {
+        delay(300L)
         if (esBlind) a11yVm.hablar(loc(Voz.REGISTRO_NUTRI_INTRO, VozEn.REGISTRO_NUTRI_INTRO))
     }
 
@@ -1583,6 +1591,7 @@ fun NutritionistRegisterScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
+                .imePadding()
         ) {
             Spacer(Modifier.height(52.dp))
             RegisterScreenHeader(
@@ -2049,7 +2058,7 @@ fun GinecologistRegisterScreen(
 
     val estado by viewModel.estado.collectAsState()
 
-    val a11yMode     = LocalAccessibilityMode.current
+    val a11yMode     = if (isVoiceOverActive()) AccessibilityMode.BLIND else LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val idiomaActual by a11yVm.idioma.collectAsState()
     val esBlind      = a11yMode == AccessibilityMode.BLIND
@@ -2153,6 +2162,7 @@ fun GinecologistRegisterScreen(
     }
 
     LaunchedEffect(Unit) {
+        delay(300L)
         if (esBlind) a11yVm.hablar(loc("Registro de Ginecólogo/a. Crea tu perfil médico.", "Gynecologist registration. Create your medical profile."))
     }
 
@@ -2180,6 +2190,7 @@ fun GinecologistRegisterScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
+                .imePadding()
         ) {
             Spacer(Modifier.height(52.dp))
             RegisterScreenHeader(

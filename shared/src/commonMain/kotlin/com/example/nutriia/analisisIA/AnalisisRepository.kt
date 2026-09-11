@@ -53,13 +53,14 @@ class AnalisisRepository {
                 Eres un experto en nutrición, gastronomía Y visión por computadora.
                 Tu tarea es identificar con máxima precisión el contenido de la imagen.
 
-                REGLA CRÍTICA PARA OBJETOS NO COMESTIBLES:
-                - Si la foto contiene un objeto, mueble, electrónico, herramienta u artículo de escritorio (ejemplo: laptop, computadora, lámpara, organizador de escritorio con tijeras y regla, celular, juguete, libro, etc.) Y NO contiene comida:
-                - DEBES identificar el objeto REAL en `foodName`.
-                - En `foodType` escribe 'objeto_no_comestible'.
-                - En `ingredients` pon una lista vacía `[]` o los elementos visibles.
-                - En `confidence` pon tu certeza real (ej: 0.90).
-                - NUNCA inventes que un objeto es comida ni devuelvas "Alimento detectado" o "Alimento desconocido". Escribe el nombre REAL del objeto.
+                REGLA CRÍTICA DE IDENTIFICACIÓN:
+                1. NUNCA devuelvas nombres genéricos como "Objeto detectado", "Alimento detectado", "Alimento desconocido" o "Cosa".
+                2. Si es comida o bebida: especifica con exactitud el platillo o ingrediente en español (ej: "Huevos revueltos con jamón", "Manzana picada", "Pechuga de pollo con verduras", "Taza de avena").
+                3. Si NO es comida (ejemplo: juguete, control remoto, laptop, libreta, tijeras, vaso vacío, mueble, calzado, etc.):
+                   - Escribe el nombre EXACTO y descriptivo del objeto en `foodName` (ej: "Control remoto de televisión", "Tijeras escolares", "Juguete de plástico", "Computadora portátil").
+                   - En `foodType` escribe obligatoriamente: 'objeto_no_comestible'.
+                   - En `ingredients` pon una lista vacía `[]`.
+                   - En `confidence` pon tu certeza real (ej: 0.95).
 
                 IMPORTANTE — Identificación de alimentos y errores comunes a evitar:
                 - ALIMENTOS ENTEROS Y CRUDOS: Las manzanas, naranjas, frutas enteras, verduras crudas y los huevos en cascarón SON COMIDA. NUNCA los clasifiques como "objeto_no_comestible". Su `foodType` debe ser "fruta", "verdura", "snack" o el que corresponda.
@@ -69,7 +70,7 @@ class AnalisisRepository {
 
                 Analiza esta imagen y responde ÚNICAMENTE con un JSON con este formato exacto:
                 {
-                  "foodName": "nombre descriptivo exacto",
+                  "foodName": "nombre descriptivo exacto (ej: 'Huevos revueltos con frijoles', 'Manzana roja', 'Laptop gris')",
                   "ingredients": ["ingrediente1", "ingrediente2"],
                   "foodType": "uno de: objeto_no_comestible|desayuno|comida|cena|snack|bebida|fruta|verdura|cereal|lacteo|producto_empacado",
                   "confidence": 0.95
@@ -79,6 +80,7 @@ class AnalisisRepository {
 
             val visionRemote = RemoteConfigManager.getVisionModel()
             val visionModels = (listOf(visionRemote) + listOf(
+                "qwen/qwen3.8-27b",
                 "qwen/qwen3.6-27b",
                 "meta-llama/llama-4-scout-17b-16e-instruct",
                 "llama-3.2-11b-vision-preview",
@@ -232,6 +234,24 @@ class AnalisisRepository {
         food: FoodDetectionResult,
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
+        // ── Si el objeto detectado no es comestible, evitar evaluación dietética ficticia ──
+        if (food.foodType.equals("objeto_no_comestible", ignoreCase = true) || 
+            food.foodName.contains("no comestible", ignoreCase = true) ||
+            food.foodName.contains("objeto no alimenticio", ignoreCase = true)) {
+            return Result.success(
+                PediatricAnalysis(
+                    recommended = false,
+                    recommendedPortion = "No aplica",
+                    benefits = emptyList(),
+                    warnings = listOf(
+                        "El elemento detectado '${food.foodName}' es un objeto no comestible.",
+                        "El analizador nutricional de NutrIA está diseñado exclusivamente para evaluar alimentos, platillos y bebidas."
+                    ),
+                    frequency = "No aplica"
+                )
+            )
+        }
+
         return try {
             val prompt = """
                 Eres un pediatra nutriólogo con experiencia clínica en México.
@@ -299,6 +319,24 @@ class AnalisisRepository {
         food: FoodDetectionResult,
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
+        // ── Si el objeto detectado no es comestible, evitar evaluación dietética ficticia ──
+        if (food.foodType.equals("objeto_no_comestible", ignoreCase = true) || 
+            food.foodName.contains("no comestible", ignoreCase = true) ||
+            food.foodName.contains("objeto no alimenticio", ignoreCase = true)) {
+            return Result.success(
+                PediatricAnalysis(
+                    recommended = false,
+                    recommendedPortion = "No aplica",
+                    benefits = emptyList(),
+                    warnings = listOf(
+                        "El elemento detectado '${food.foodName}' es un objeto no comestible.",
+                        "El analizador nutricional de NutrIA está diseñado exclusivamente para evaluar alimentos, platillos y bebidas."
+                    ),
+                    frequency = "No aplica"
+                )
+            )
+        }
+
         return try {
             val semanasText = if (perfil != null) "${perfil.semanas} semanas de gestación" else "Gestación"
             val condicionesText = if (perfil != null && perfil.condiciones.isNotEmpty()) perfil.condiciones.joinToString(", ") else "ninguna"
@@ -318,33 +356,33 @@ class AnalisisRepository {
                 Devuelve ÚNICAMENTE este JSON:
                 {
                   "recommended": true,
-                  "recommended_portion": "porción sugerida en el embarazo",
-                  "benefits": ["beneficio 1"],
-                  "warnings": ["advertencia sobre Listeria, toxoplasmosis o mercurio si aplica"],
-                  "frequency": "frecuencia recomendada"
+                  "recommended_portion": "porción recomendada para gestación",
+                  "benefits": ["beneficio para madre y feto 1", "beneficio 2"],
+                  "warnings": ["advertencia si aplica"],
+                  "frequency": "adecuada para el trimestre"
                 }
             """.trimIndent()
 
             val rawBody = queryGroqText(prompt, 600)
-                ?: return Result.failure(Exception("Error al comunicarse con el asistente de análisis gestacional"))
+                ?: return Result.failure(Exception("Error al comunicarse con el asistente de embarazo"))
 
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
             val obj = runCatching { json.parseToJsonElement(cleaned).jsonObject }.getOrElse {
                 buildJsonObject {
                     put("recommended", true)
-                    put("recommended_portion", "Porción moderada")
-                    putJsonArray("benefits") { add("Nutrición prenatal recomendada") }
+                    put("recommended_portion", "Porción balanceada")
+                    putJsonArray("benefits") { add("Aporte de nutrientes clave") }
                     putJsonArray("warnings") {}
-                    put("frequency", "3 a 4 veces por semana")
+                    put("frequency", "Frecuente")
                 }
             }
 
             val isRec = obj["recommended"]?.jsonPrimitive?.booleanOrNull ?: false
-            val portion = obj["recommended_portion"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "Porción moderada" else "Evitar en gestación"
+            val portion = obj["recommended_portion"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "Porción balanceada" else "Evitar"
             val benefits = obj["benefits"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
             val warnings = obj["warnings"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
-            val freq = obj["frequency"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "3 a 4 veces por semana" else "Evitar"
+            val freq = obj["frequency"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "Frecuente" else "Evitar"
 
             val analysis = PediatricAnalysis(
                 recommended = isRec,
@@ -435,12 +473,13 @@ class AnalisisRepository {
         val candidateModels = (listOf(primaryRemote) + listOf(
             "openai/gpt-oss-120b",
             "openai/gpt-oss-20b",
+            "qwen/qwen3.8-27b",
             "qwen/qwen3.6-27b",
+            "llama-3.3-70b-versatile",
             "gemma2-9b-it",
             "llama-3.1-8b-instant",
             "llama3-70b-8192",
-            "llama3-8b-8192",
-            "groq/compound-mini"
+            "llama3-8b-8192"
         )).distinct()
 
         for (model in candidateModels) {

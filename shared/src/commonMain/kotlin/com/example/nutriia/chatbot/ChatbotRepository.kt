@@ -115,12 +115,13 @@ class ChatbotRepository {
             val candidateModels = (listOf(primaryRemote) + listOf(
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
                 "qwen/qwen3.6-27b",
+                "llama-3.3-70b-versatile",
                 "gemma2-9b-it",
                 "llama-3.1-8b-instant",
                 "llama3-70b-8192",
-                "llama3-8b-8192",
-                "groq/compound-mini"
+                "llama3-8b-8192"
             )).distinct()
 
             var rawBody: String? = null

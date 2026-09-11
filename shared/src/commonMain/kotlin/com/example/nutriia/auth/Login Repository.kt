@@ -101,13 +101,17 @@ class RepositorioLogin {
                 "nombreHijo"        to nombreHijo,
                 "rol"               to "padre",
                 "modoAccesibilidad" to AccessibilityMode.NORMAL.name,
-                "creadoEn"          to FechaUtils.fechaHoraActual(),
+                "creadoEn"          to com.example.nutriia.shared.Timestamp.now(),
                 "fechaCreacion"     to FechaUtils.fechaActual(),
                 "horaCreacion"      to FechaUtils.horaActual()
             )
             if (codigoNutriologo.isNotBlank()) datos["codigoNutriologo"] = codigoNutriologo
 
             db.collection("usuarios").document(usuario.uid).set(datos).await()
+
+            try {
+                usuario.sendEmailVerification()
+            } catch (_: Exception) {}
 
             guardarRolCache(usuario.uid, "padre")
             SessionManager.guardarSesion(usuario.uid)
@@ -143,12 +147,16 @@ class RepositorioLogin {
                 "semanasEmbarazo"   to semanas,
                 "rol"               to "mama_primeriza",
                 "modoAccesibilidad" to AccessibilityMode.NORMAL.name,
-                "creadoEn"          to FechaUtils.fechaHoraActual(),
+                "creadoEn"          to com.example.nutriia.shared.Timestamp.now(),
                 "fechaCreacion"     to FechaUtils.fechaActual(),
                 "horaCreacion"      to FechaUtils.horaActual()
             )
 
             db.collection("usuarios").document(usuario.uid).set(datos).await()
+
+            try {
+                usuario.sendEmailVerification()
+            } catch (_: Exception) {}
 
             guardarRolCache(usuario.uid, "mama_primeriza")
             SessionManager.guardarSesion(usuario.uid)
@@ -230,7 +238,7 @@ class RepositorioLogin {
                 "needsReverification"   to false,
                 "rol"                   to "nutriologo",
                 "modoAccesibilidad"     to AccessibilityMode.NORMAL.name,
-                "creadoEn"              to FechaUtils.fechaHoraActual(),
+                "creadoEn"              to com.example.nutriia.shared.Timestamp.now(),
                 "fechaCreacion"         to FechaUtils.fechaActual(),
                 "horaCreacion"          to FechaUtils.horaActual()
             )
@@ -245,6 +253,10 @@ class RepositorioLogin {
                     cedula       = cedula,
                     email        = email
                 )
+            } catch (_: Exception) {}
+
+            try {
+                usuario.sendEmailVerification()
             } catch (_: Exception) {}
 
             guardarRolCache(usuario.uid, "nutriologo")
@@ -296,7 +308,7 @@ class RepositorioLogin {
                 "needsReverification"   to false,
                 "rol"                   to "ginecologo",
                 "modoAccesibilidad"     to AccessibilityMode.NORMAL.name,
-                "creadoEn"              to FechaUtils.fechaHoraActual(),
+                "creadoEn"              to com.example.nutriia.shared.Timestamp.now(),
                 "fechaCreacion"         to FechaUtils.fechaActual(),
                 "horaCreacion"          to FechaUtils.horaActual()
             )
@@ -310,6 +322,10 @@ class RepositorioLogin {
                 cedula       = cedula,
                 email        = email
             )
+
+            try {
+                usuario.sendEmailVerification()
+            } catch (_: Exception) {}
 
             guardarRolCache(usuario.uid, "ginecologo")
             SessionManager.guardarSesion(usuario.uid)

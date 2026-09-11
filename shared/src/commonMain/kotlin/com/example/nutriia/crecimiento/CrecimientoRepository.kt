@@ -38,8 +38,8 @@ class CrecimientoRepository {
             val id = if (m.id.isEmpty()) generateUUID() else m.id
             val ref = col(childId, ownerUid).document(id)
 
-            // FIX iOS: usar objeto @Serializable directo
-            ref.set(m.copy(id = id, userId = currentUid, childId = childId))
+            // FIX iOS: usar objeto @Serializable directo con Timestamp garantizado
+            ref.set(m.copy(id = id, userId = currentUid, childId = childId, creadoEn = m.creadoEn ?: com.example.nutriia.shared.Timestamp.now()))
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)

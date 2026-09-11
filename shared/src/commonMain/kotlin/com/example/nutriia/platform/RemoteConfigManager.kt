@@ -6,7 +6,7 @@ import dev.gitlive.firebase.firestore.firestore
 object RemoteConfigManager {
 
     private var cachedPrimaryModel: String = "openai/gpt-oss-120b"
-    private var cachedVisionModel: String = "qwen/qwen3.6-27b"
+    private var cachedVisionModel: String = "qwen/qwen3.8-27b"
 
     suspend fun fetchConfigs() {
         try {

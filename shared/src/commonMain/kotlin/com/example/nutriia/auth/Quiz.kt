@@ -285,7 +285,7 @@ fun OnboardingQuizScreen(
 
     var selectedA11yMode by remember(modoGuardado) {
         mutableStateOf(
-            if (false) AccessibilityMode.BLIND else modoGuardado
+            if (isVoiceOverActive()) AccessibilityMode.BLIND else modoGuardado
         )
     }
     val ttsManager = accessibilityVm.ttsManager
@@ -322,6 +322,7 @@ fun OnboardingQuizScreen(
     LaunchedEffect(currentStep, selectedA11yMode, idiomaActual) {
         if (selectedA11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
         if (soloAccesibilidad) return@LaunchedEffect
+        delay(350L) // Pausa suave para evitar colisiones de audio tras tocar el botón
         val texto = when (currentStep) {
             0    -> loc(Voz.ACCESIBILIDAD_INTRO + " " + Voz.IDIOMA_INTRO, VozEn.ACCESIBILIDAD_INTRO + " " + VozEn.IDIOMA_INTRO)
             1    -> loc(Voz.QUIZ_BIENVENIDA,   VozEn.QUIZ_BIENVENIDA)
@@ -402,7 +403,7 @@ fun OnboardingQuizScreen(
 
     Box(Modifier.fillMaxSize().background(NutriaBgCrema)) {
         Column(
-            modifier            = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier            = Modifier.fillMaxSize().imePadding().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(48.dp))
@@ -468,10 +469,10 @@ fun OnboardingQuizScreen(
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         when (step) {
                             0 -> StepAccesibilidad(
-                                selected       = selectedA11yMode,
-                                idiomaActual   = idiomaActual,
-                                talkBackActivo = false,
-                                onSelect       = { modo ->
+                                selected        = selectedA11yMode,
+                                idiomaActual    = idiomaActual,
+                                voiceOverActivo = isVoiceOverActive(),
+                                onSelect        = { modo ->
                                     vibrateTap(haptic)
                                     selectedA11yMode = modo
                                     accessibilityVm.setMode(modo)
@@ -662,20 +663,20 @@ fun QuizHeader(currentStep: Int, totalSteps: Int, isAddingChild: Boolean) {
 
 @Composable
 fun StepAccesibilidad(
-    selected:       AccessibilityMode,
-    idiomaActual:   IdiomaVoz,
-    talkBackActivo: Boolean,
-    onSelect:       (AccessibilityMode) -> Unit,
-    onIdiomaSelect: (IdiomaVoz) -> Unit
+    selected:        AccessibilityMode,
+    idiomaActual:    IdiomaVoz,
+    voiceOverActivo: Boolean = isVoiceOverActive(),
+    onSelect:        (AccessibilityMode) -> Unit,
+    onIdiomaSelect:  (IdiomaVoz) -> Unit
 ) {
-    QuizStepLayout(Icons.Rounded.Accessibility, NutriaGreen, "¿Cómo usas la app?", "Adaptamos Nutri/IA a tus necesidades") {
-        AnimatedVisibility(visible = talkBackActivo) {
+    QuizStepLayout(Icons.Rounded.Accessibility, NutriaGreen, "¿Cómo usas la app?", "Adaptamos NutrIA a tus necesidades") {
+        AnimatedVisibility(visible = voiceOverActivo) {
             Column {
                 Surface(color = NutriaGreen.copy(alpha = 0.10f), shape = RoundedCornerShape(12.dp)) {
                     Row(Modifier.padding(12.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CheckCircle, null, tint = NutriaGreen, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(10.dp))
-                        Text("TalkBack detectado — modo para condición visual activado.", fontSize = 12.sp, color = NutriaGreen, fontWeight = FontWeight.SemiBold)
+                        Text("VoiceOver detectado — modo para condición visual activado.", fontSize = 12.sp, color = NutriaGreen, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -712,7 +713,7 @@ fun StepAccesibilidad(
                 if (isSelected) Icon(Icons.Rounded.CheckCircle, null, tint = NutriaGreen, modifier = Modifier.size(22.dp).semantics { contentDescription = "" })
             }
         }
-        if (!talkBackActivo) {
+        if (!voiceOverActivo) {
             Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier
@@ -720,11 +721,11 @@ fun StepAccesibilidad(
                     .clip(RoundedCornerShape(16.dp))
                     .border(1.dp, NutriaGreen.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
                     .background(NutriaGreen.copy(alpha = 0.04f))
-                    .clickable(onClickLabel = "Abrir ajustes para activar lector TalkBack de Google") {
-                        abrirConfiguracionTalkBack()
+                    .clickable(onClickLabel = "Abrir Ajustes de iOS para activar lector VoiceOver de Apple") {
+                        abrirConfiguracionVoiceOver()
                     }
                     .semantics(mergeDescendants = true) {
-                        contentDescription = "Lector de pantalla TalkBack de Google. Toca para abrir la configuración de accesibilidad y activarlo si lo deseas."
+                        contentDescription = "Lector de pantalla VoiceOver de Apple. Toca para abrir los Ajustes de accesibilidad de iOS y activarlo si lo deseas."
                     }
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -734,8 +735,8 @@ fun StepAccesibilidad(
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Lector TalkBack (Google)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
-                    Text("Toca para activar TalkBack en Ajustes si lo prefieres", fontSize = 11.sp, color = Color.Gray)
+                    Text("Lector VoiceOver (Apple)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NutriaDarkGreen)
+                    Text("Toca para activar VoiceOver en Ajustes de iOS si lo prefieres", fontSize = 11.sp, color = Color.Gray)
                 }
                 Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = NutriaGreen, modifier = Modifier.size(16.dp))
             }
@@ -1115,7 +1116,7 @@ fun StepFechaNacimiento(
     descripcionVozFecha: String            = Voz.QUIZ_FECHA
 ) {
     QuizStepLayout(Icons.Rounded.Event, QuizAccent, "¿Cuándo nació?", "Fecha de nacimiento") {
-        if (modo == AccessibilityMode.BLIND) {
+        if (modo == AccessibilityMode.BLIND || modo == AccessibilityMode.MUTE) {
             CampoTextoAccesible(
                 valor          = value,
                 onValorChange  = { input ->

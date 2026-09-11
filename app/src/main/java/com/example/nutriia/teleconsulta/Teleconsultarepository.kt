@@ -218,21 +218,21 @@ class TeleconsultaRepository {
             val listener = col
                 .whereEqualTo("padreUid", padreUid)
                 .whereEqualTo("estado", EstadoLlamada.SONANDO.name)
-                .orderBy("creadoEn", Query.Direction.DESCENDING)
-                .limit(1)
                 .addSnapshotListener { snap, err ->
                     if (err != null) {
                         Log.e("TeleconsultaRepo", "Error escuchando llamadas entrantes", err)
                         trySend(null)
                         return@addSnapshotListener
                     }
-                    val doc     = snap?.documents?.firstOrNull()
-                    val llamada = doc?.data?.let { SolicitudLlamada.fromMap(doc.id, it) }
-                    if (llamada != null && llamada.emisorUid == padreUid) {
-                        trySend(null)
-                    } else {
-                        trySend(llamada)
-                    }
+                    val llamadas = snap?.documents?.mapNotNull { doc ->
+                        doc.data?.let { SolicitudLlamada.fromMap(doc.id, it) }
+                    } ?: emptyList()
+
+                    val llamada = llamadas
+                        .filter { it.emisorUid != padreUid }
+                        .maxByOrNull { it.creadoEn }
+
+                    trySend(llamada)
                 }
             awaitClose { listener.remove() }
         }.catch { emit(null) }
@@ -243,21 +243,21 @@ class TeleconsultaRepository {
             val listener = col
                 .whereEqualTo("nutriologoUid", nutriologoUid)
                 .whereEqualTo("estado",        EstadoLlamada.SONANDO.name)
-                .orderBy("creadoEn", Query.Direction.DESCENDING)
-                .limit(1)
                 .addSnapshotListener { snap, err ->
                     if (err != null) {
                         Log.e("TeleconsultaRepo", "Error escuchando llamadas entrantes", err)
                         trySend(null)
                         return@addSnapshotListener
                     }
-                    val doc     = snap?.documents?.firstOrNull()
-                    val llamada = doc?.data?.let { SolicitudLlamada.fromMap(doc.id, it) }
-                    if (llamada != null && llamada.emisorUid == nutriologoUid) {
-                        trySend(null)
-                    } else {
-                        trySend(llamada)
-                    }
+                    val llamadas = snap?.documents?.mapNotNull { doc ->
+                        doc.data?.let { SolicitudLlamada.fromMap(doc.id, it) }
+                    } ?: emptyList()
+
+                    val llamada = llamadas
+                        .filter { it.emisorUid != nutriologoUid }
+                        .maxByOrNull { it.creadoEn }
+
+                    trySend(llamada)
                 }
             awaitClose { listener.remove() }
         }.catch { emit(null) }
@@ -279,13 +279,12 @@ class TeleconsultaRepository {
         callbackFlow {
             val listener = col
                 .whereEqualTo("nutriologoUid", nutriologoUid)
-                .orderBy("creadoEn", Query.Direction.DESCENDING)
-                .limit(30)
                 .addSnapshotListener { snap, err ->
                     if (err != null) { trySend(emptyList()); return@addSnapshotListener }
                     val lista = snap?.documents?.mapNotNull { doc ->
                         doc.data?.let { SolicitudLlamada.fromMap(doc.id, it) }
-                    } ?: emptyList()
+                    }?.sortedByDescending { it.creadoEn }
+                     ?.take(30) ?: emptyList()
                     trySend(lista)
                 }
             awaitClose { listener.remove() }

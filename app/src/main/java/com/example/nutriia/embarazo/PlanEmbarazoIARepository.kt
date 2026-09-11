@@ -101,42 +101,58 @@ class PlanEmbarazoIARepository {
                 mapOf("role" to "user", "content" to "Genera el plan de dieta semanal en formato JSON.")
             )
 
-            val requestBodyJson = gson.toJson(
-                mapOf(
-                    "model"            to "openai/gpt-oss-120b",
-                    "messages"         to messages,
-                    "max_tokens"       to 1800,
-                    "temperature"      to 0.3,
-                    "response_format"  to mapOf("type" to "json_object")
-                )
+            val candidateModels = listOf(
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
+                "qwen/qwen3.6-27b",
+                "llama-3.3-70b-versatile"
             )
 
-            val request = Request.Builder()
-                .url("https://api.groq.com/openai/v1/chat/completions")
-                .addHeader("Authorization", "Bearer $apiKey")
-                .post(requestBodyJson.toRequestBody(jsonMediaType))
-                .build()
+            var lastError = "Error de red con el asistente de IA"
+            for (modelName in candidateModels) {
+                try {
+                    val requestBodyJson = gson.toJson(
+                        mapOf(
+                            "model"            to modelName,
+                            "messages"         to messages,
+                            "max_tokens"       to 1800,
+                            "temperature"      to 0.3,
+                            "response_format"  to mapOf("type" to "json_object")
+                        )
+                    )
 
-            val response = http.newCall(request).execute()
-            if (!response.isSuccessful) {
-                val errBody = response.body?.string() ?: ""
-                Log.e("PlanEmbarazoIA", "Error response from Groq: ${response.code} $errBody")
-                return@withContext Result.failure(Exception("Error de red con el asistente de IA: ${response.code}"))
+                    val request = Request.Builder()
+                        .url("https://api.groq.com/openai/v1/chat/completions")
+                        .addHeader("Authorization", "Bearer $apiKey")
+                        .post(requestBodyJson.toRequestBody(jsonMediaType))
+                        .build()
+
+                    val response = http.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val rawBody = response.body?.string() ?: ""
+                        val jsonRoot = JsonParser.parseString(rawBody).asJsonObject
+                        val jsonContent = jsonRoot.getAsJsonArray("choices")
+                            .get(0).asJsonObject
+                            .getAsJsonObject("message")
+                            .get("content").asString
+
+                        val responseObj = gson.fromJson(jsonContent, PlanIAResponse::class.java)
+                        if (responseObj?.dias != null && responseObj.dias.isNotEmpty()) {
+                            return@withContext Result.success(responseObj.dias)
+                        }
+                    } else {
+                        val errBody = response.body?.string() ?: ""
+                        lastError = "Error ($modelName): ${response.code} $errBody"
+                        Log.w("PlanEmbarazoIA", lastError)
+                    }
+                } catch (err: Exception) {
+                    lastError = err.message ?: "Error en $modelName"
+                    Log.w("PlanEmbarazoIA", "Fallo $modelName: $lastError")
+                }
             }
 
-            val rawBody = response.body?.string() ?: ""
-            val jsonRoot = JsonParser.parseString(rawBody).asJsonObject
-            val jsonContent = jsonRoot.getAsJsonArray("choices")
-                .get(0).asJsonObject
-                .getAsJsonObject("message")
-                .get("content").asString
-
-            val responseObj = gson.fromJson(jsonContent, PlanIAResponse::class.java)
-            if (responseObj?.dias == null || responseObj.dias.isEmpty()) {
-                return@withContext Result.failure(Exception("La IA no devolvió un plan de dieta estructurado."))
-            }
-
-            Result.success(responseObj.dias)
+            Result.failure(Exception("No se pudo generar el plan con los asistentes de IA. Detalle: $lastError"))
         } catch (e: Exception) {
             Log.e("PlanEmbarazoIA", "Exception generating plan", e)
             Result.failure(e)

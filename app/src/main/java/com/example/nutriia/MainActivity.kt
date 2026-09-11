@@ -374,6 +374,39 @@ fun NutriIAContent() {
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    // ─── Narración Espacial Contextual en Modo BLIND al Cambiar de Pantalla ─────
+    LaunchedEffect(currentScreen, accessibilityMode) {
+        if (accessibilityMode == AccessibilityMode.BLIND) {
+            delay(500)
+            val tts = accessibilityVm.ttsManager
+            if (tts != null && !isTalkBackActive(context)) {
+                val intro = when (currentScreen) {
+                    Screen.DASHBOARD_PARENT, Screen.DASHBOARD_NUTRITIONIST,
+                    Screen.DASHBOARD_MAMA_PRIMERIZA, Screen.DASHBOARD_GINECOLOGO -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.DASHBOARD_INTRO else Voz.DASHBOARD_INTRO
+                    Screen.CRECIMIENTO -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.CRECIMIENTO_INTRO else Voz.CRECIMIENTO_INTRO
+                    Screen.LACTANCIA -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.LACTANCIA_INTRO else Voz.LACTANCIA_INTRO
+                    Screen.SOLIDOS -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.SOLIDOS_INTRO else Voz.SOLIDOS_INTRO
+                    Screen.NUTRIENTES -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.NUTRIENTES_INTRO else Voz.NUTRIENTES_INTRO
+                    Screen.SUENO -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.SUENO_INTRO else Voz.SUENO_INTRO
+                    Screen.RECORDATORIOS -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.RECORDATORIOS_INTRO else Voz.RECORDATORIOS_INTRO
+                    Screen.PEDIATRA_DASHBOARD -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.PEDIATRA_INTRO else Voz.PEDIATRA_INTRO
+                    Screen.AYUDA -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.AYUDA_INTRO else Voz.AYUDA_INTRO
+                    Screen.CITAS_EMBARAZO -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.CITAS_EMBARAZO_INTRO else Voz.CITAS_EMBARAZO_INTRO
+                    Screen.NUTRICION_EMBARAZO -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.NUTRICION_EMBARAZO_INTRO else Voz.NUTRICION_EMBARAZO_INTRO
+                    Screen.DIARIO_VISUAL -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.DIARIO_VISUAL_INTRO else Voz.DIARIO_VISUAL_INTRO
+                    Screen.DIRECTORIO_GINECOLOGOS -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.CITAS_INTRO else Voz.CITAS_INTRO
+                    Screen.CHAT_IA -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.NUTRICAT_INTRO else Voz.NUTRICAT_INTRO
+                    Screen.CONFIGURACION -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.CONFIGURACION_INTRO else Voz.CONFIGURACION_INTRO
+                    Screen.LOGIN -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.LOGIN_INTRO else Voz.LOGIN_INTRO
+                    Screen.REGISTER_TYPE -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.REGISTRO_TIPO_INTRO else Voz.REGISTRO_TIPO_INTRO
+                    Screen.QUIZ, Screen.QUIZ_MAMA_PRIMERIZA -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.QUIZ_BIENVENIDA else Voz.QUIZ_BIENVENIDA
+                    else -> null
+                }
+                intro?.let { tts.hablar(it) }
+            }
+        }
+    }
+
     LaunchedEffect(accessibilityMode, currentScreen) {
         if (accessibilityMode == AccessibilityMode.BLIND) {
             if (currentScreen == Screen.ACCESIBILIDAD_INICIAL) {
@@ -568,10 +601,11 @@ fun NutriIAContent() {
             delay(120)
 
             // 3. Cambiar de pantalla mientras la pantalla está 100% cubierta por el SplashOverlay
-            val uid = loginViewModel.uidUsuario
-            val yaActivoHuella = SessionManager.obtenerUid(context) != null
+            val yaDecidioBiometrico = SessionManager.huellaYaConfirmada(context) || 
+                                     SessionManager.esBiometricoActivo(context) || 
+                                     SessionManager.yaSeMostroActivacionHuella(context)
 
-            if (!yaActivoHuella && BiometricHelper.isAvailable(context)) {
+            if (!yaDecidioBiometrico && BiometricHelper.isAvailable(context)) {
                 currentScreen = Screen.BIOMETRIC_ACTIVATION
             } else {
                 when (s.rol) {

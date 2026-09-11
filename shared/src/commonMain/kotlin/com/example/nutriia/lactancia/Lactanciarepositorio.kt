@@ -36,9 +36,8 @@ class LactanciaRepository {
 
             val id = if (log.id.isEmpty()) generateUUID() else log.id
             val ref = feedingCol(childId, ownerUid).document(id)
-
-            // FIX iOS: usar objeto @Serializable directo
-            ref.set(log.copy(id = id, userId = currentUid))
+            // FIX iOS: usar objeto @Serializable directo con Timestamp garantizado
+            ref.set(log.copy(id = id, userId = currentUid, createdAt = log.createdAt ?: com.example.nutriia.shared.Timestamp.now()))
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)

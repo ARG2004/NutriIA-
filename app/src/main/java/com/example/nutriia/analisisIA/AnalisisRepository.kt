@@ -75,13 +75,14 @@ class AnalisisRepository {
                 Eres un experto en nutrición, gastronomía Y visión por computadora.
                 Tu tarea es identificar con máxima precisión el contenido de la imagen.
 
-                REGLA CRÍTICA PARA OBJETOS NO COMESTIBLES:
-                - Si la foto contiene un objeto, mueble, electrónico, herramienta u artículo de escritorio (ejemplo: laptop, computadora, lámpara, organizador de escritorio con tijeras y regla, celular, juguete, libro, etc.) Y NO contiene comida:
-                - DEBES identificar el objeto REAL en `foodName` (ejemplo: 'Organizador de escritorio con tijeras y regla', 'Laptop / Computadora portátil', 'Lámpara de escritorio', 'Teléfono celular').
-                - En `foodType` escribe 'objeto_no_comestible'.
-                - En `ingredients` pon una lista vacía `[]` o los elementos visibles (ej: ['tijeras', 'regla', 'portalápices']).
-                - En `confidence` pon tu certeza real (ej: 0.90).
-                - NUNCA inventes que un objeto es comida ni devuelvas "Alimento detectado" o "Alimento desconocido". Escribe el nombre REAL del objeto.
+                REGLA CRÍTICA DE IDENTIFICACIÓN:
+                1. NUNCA devuelvas nombres genéricos como "Objeto detectado", "Alimento detectado", "Alimento desconocido" o "Cosa".
+                2. Si es comida o bebida: especifica con exactitud el platillo o ingrediente en español (ej: "Huevos revueltos con jamón", "Manzana picada", "Pechuga de pollo con verduras", "Taza de avena").
+                3. Si NO es comida (ejemplo: juguete, control remoto, laptop, libreta, tijeras, vaso vacío, mueble, calzado, etc.):
+                   - Escribe el nombre EXACTO y descriptivo del objeto en `foodName` (ej: "Control remoto de televisión", "Tijeras escolares", "Juguete de plástico", "Computadora portátil").
+                   - En `foodType` escribe obligatoriamente: 'objeto_no_comestible'.
+                   - En `ingredients` pon una lista vacía `[]`.
+                   - En `confidence` pon tu certeza real (ej: 0.95).
 
                 IMPORTANTE — Identificación de alimentos y errores comunes a evitar:
                 - ALIMENTOS ENTEROS Y CRUDOS: Las manzanas, naranjas, frutas enteras, verduras crudas y los huevos en cascarón SON COMIDA. NUNCA los clasifiques como "objeto_no_comestible". Su `foodType` debe ser "fruta", "verdura", "snack" o el que corresponda.
@@ -104,7 +105,9 @@ class AnalisisRepository {
             """.trimIndent()
 
             val visionModels = listOf(
+                "qwen/qwen3.8-27b",
                 "qwen/qwen3.6-27b",
+                "meta-llama/llama-4-scout-17b-16e-instruct",
                 "llama-3.2-11b-vision-preview",
                 "llama-3.2-90b-vision-preview",
                 "groq/compound"
@@ -399,6 +402,24 @@ class AnalisisRepository {
         food     : FoodDetectionResult,
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
+        // ── Si el objeto detectado no es comestible, evitar evaluación dietética ficticia ──
+        if (food.foodType.equals("objeto_no_comestible", ignoreCase = true) || 
+            food.foodName.contains("no comestible", ignoreCase = true) ||
+            food.foodName.contains("objeto no alimenticio", ignoreCase = true)) {
+            return Result.success(
+                PediatricAnalysis(
+                    recommended = false,
+                    recommendedPortion = "No aplica",
+                    benefits = emptyList(),
+                    warnings = listOf(
+                        "El elemento detectado '${food.foodName}' es un objeto no comestible.",
+                        "El analizador nutricional de NutrIA está diseñado exclusivamente para evaluar alimentos, platillos y bebidas."
+                    ),
+                    frequency = "No aplica"
+                )
+            )
+        }
+
         return try {
             val apiKey = KeyDeobfuscator.deobfuscate(BuildConfig.GROQ_API_KEY)
             if (apiKey.isBlank())
@@ -479,8 +500,10 @@ class AnalisisRepository {
             val textModels = listOf(
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
-                "groq/compound",
-                "qwen/qwen3.6-27b"
+                "qwen/qwen3.8-27b",
+                "qwen/qwen3.6-27b",
+                "llama-3.3-70b-versatile",
+                "groq/compound"
             )
 
             var rawBody: String? = null
@@ -551,6 +574,24 @@ class AnalisisRepository {
         food     : FoodDetectionResult,
         nutrition: NutritionInfo
     ): Result<PediatricAnalysis> {
+        // ── Si el objeto detectado no es comestible, evitar evaluación dietética ficticia ──
+        if (food.foodType.equals("objeto_no_comestible", ignoreCase = true) || 
+            food.foodName.contains("no comestible", ignoreCase = true) ||
+            food.foodName.contains("objeto no alimenticio", ignoreCase = true)) {
+            return Result.success(
+                PediatricAnalysis(
+                    recommended = false,
+                    recommendedPortion = "No aplica",
+                    benefits = emptyList(),
+                    warnings = listOf(
+                        "El elemento detectado '${food.foodName}' es un objeto no comestible.",
+                        "El analizador nutricional de NutrIA está diseñado exclusivamente para evaluar alimentos, platillos y bebidas."
+                    ),
+                    frequency = "No aplica"
+                )
+            )
+        }
+
         return try {
             val apiKey = KeyDeobfuscator.deobfuscate(BuildConfig.GROQ_API_KEY)
             if (apiKey.isBlank())
@@ -610,8 +651,10 @@ class AnalisisRepository {
             val textModels = listOf(
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
-                "groq/compound",
-                "qwen/qwen3.6-27b"
+                "qwen/qwen3.8-27b",
+                "qwen/qwen3.6-27b",
+                "llama-3.3-70b-versatile",
+                "groq/compound"
             )
 
             var rawBody: String? = null

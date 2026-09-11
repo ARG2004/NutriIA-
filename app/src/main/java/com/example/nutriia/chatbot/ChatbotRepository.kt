@@ -104,37 +104,55 @@ class ChatbotRepository {
             // Mensaje actual
             messages.add(mapOf("role" to "user", "content" to query))
 
-            val requestBodyJson = gson.toJson(
-                mapOf(
-                    "model"       to "openai/gpt-oss-120b",
-                    "messages"    to messages,
-                    "max_tokens"  to 500,
-                    "temperature" to 0.5
-                )
+            val candidateModels = listOf(
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
+                "qwen/qwen3.6-27b",
+                "llama-3.3-70b-versatile",
+                "llama-3.1-8b-instant"
             )
 
-            val request = Request.Builder()
-                .url("https://api.groq.com/openai/v1/chat/completions")
-                .addHeader("Authorization", "Bearer $apiKey")
-                .post(requestBodyJson.toRequestBody(jsonMediaType))
-                .build()
+            var lastError = "Hubo un error comunicándose con el asistente."
+            for (modelName in candidateModels) {
+                try {
+                    val requestBodyJson = gson.toJson(
+                        mapOf(
+                            "model"       to modelName,
+                            "messages"    to messages,
+                            "max_tokens"  to 500,
+                            "temperature" to 0.5
+                        )
+                    )
 
-            val response = http.newCall(request).execute()
+                    val request = Request.Builder()
+                        .url("https://api.groq.com/openai/v1/chat/completions")
+                        .addHeader("Authorization", "Bearer $apiKey")
+                        .post(requestBodyJson.toRequestBody(jsonMediaType))
+                        .build()
 
-            if (!response.isSuccessful) {
-                val errorBody = response.body?.string() ?: ""
-                Log.e(TAG, "Error from Groq: ${response.code} $errorBody")
-                return@withContext Result.failure(Exception("Hubo un error comunicándose con el asistente."))
+                    val response = http.newCall(request).execute()
+
+                    if (response.isSuccessful) {
+                        val rawBody = response.body?.string() ?: ""
+                        val json = JsonParser.parseString(rawBody).asJsonObject
+                        val content = json.getAsJsonArray("choices")
+                            .get(0).asJsonObject
+                            .getAsJsonObject("message")
+                            .get("content").asString
+                        return@withContext Result.success(content.trim())
+                    } else {
+                        val errorBody = response.body?.string() ?: ""
+                        lastError = "Error ($modelName): ${response.code} $errorBody"
+                        Log.w(TAG, lastError)
+                    }
+                } catch (err: Exception) {
+                    lastError = err.message ?: "Error en $modelName"
+                    Log.w(TAG, "Fallo modelo $modelName: $lastError")
+                }
             }
 
-            val rawBody = response.body?.string() ?: ""
-            val json = JsonParser.parseString(rawBody).asJsonObject
-            val content = json.getAsJsonArray("choices")
-                .get(0).asJsonObject
-                .getAsJsonObject("message")
-                .get("content").asString
-
-            Result.success(content.trim())
+            Result.failure(Exception("No se pudo conectar a los asistentes de inteligencia artificial. Detalle: $lastError"))
         } catch (e: Exception) {
             Log.e(TAG, "Exception in ChatbotRepository", e)
             Result.failure(Exception("Error de red o conexión: ${e.message}"))

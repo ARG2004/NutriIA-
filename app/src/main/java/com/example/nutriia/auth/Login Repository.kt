@@ -109,7 +109,7 @@ class RepositorioLogin(private val context: Context) {
                 "nombreHijo"        to nombreHijo,
                 "rol"               to "padre",
                 "modoAccesibilidad" to AccessibilityMode.NORMAL.name,
-                "creadoEn"          to FechaUtils.fechaHoraActual(),
+                "creadoEn"          to com.google.firebase.Timestamp.now(),
                 "fechaCreacion"     to FechaUtils.fechaActual(),
                 "horaCreacion"      to FechaUtils.horaActual()
             )
@@ -155,7 +155,7 @@ class RepositorioLogin(private val context: Context) {
                 "semanasEmbarazo"   to semanas,
                 "rol"               to "mama_primeriza",
                 "modoAccesibilidad" to AccessibilityMode.NORMAL.name,
-                "creadoEn"          to FechaUtils.fechaHoraActual(),
+                "creadoEn"          to com.google.firebase.Timestamp.now(),
                 "fechaCreacion"     to FechaUtils.fechaActual(),
                 "horaCreacion"      to FechaUtils.horaActual()
             )
@@ -246,7 +246,7 @@ class RepositorioLogin(private val context: Context) {
                 "needsReverification"   to false,
                 "rol"                   to "nutriologo",
                 "modoAccesibilidad"     to AccessibilityMode.NORMAL.name,
-                "creadoEn"              to FechaUtils.fechaHoraActual(),
+                "creadoEn"              to com.google.firebase.Timestamp.now(),
                 "fechaCreacion"         to FechaUtils.fechaActual(),
                 "horaCreacion"          to FechaUtils.horaActual()
             )
@@ -306,7 +306,7 @@ class RepositorioLogin(private val context: Context) {
                 "needsReverification"   to false,
                 "rol"                   to "ginecologo",
                 "modoAccesibilidad"     to AccessibilityMode.NORMAL.name,
-                "creadoEn"              to FechaUtils.fechaHoraActual(),
+                "creadoEn"              to com.google.firebase.Timestamp.now(),
                 "fechaCreacion"         to FechaUtils.fechaActual(),
                 "horaCreacion"          to FechaUtils.horaActual()
             )

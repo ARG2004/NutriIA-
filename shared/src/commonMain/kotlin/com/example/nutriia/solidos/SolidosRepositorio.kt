@@ -52,6 +52,7 @@ class SolidosRepository {
                 "reaccion" to a.reaccion.name,
                 "notas" to a.notas,
                 "notes" to a.notas,
+                "creadoEn" to com.example.nutriia.shared.Timestamp.now(),
                 "creadoEnMillis" to currentTimeMillis(),
                 "fechaCreacion" to FechaUtils.fechaActual(),
                 "horaCreacion" to FechaUtils.horaActual()
@@ -81,6 +82,7 @@ class SolidosRepository {
                 "reaccion" to a.reaccion.name,
                 "notas" to a.notas,
                 "notes" to a.notas,
+                "creadoEn" to com.example.nutriia.shared.Timestamp.now(),
                 "creadoEnMillis" to currentTimeMillis(),
                 "fechaCreacion" to FechaUtils.fechaActual(),
                 "horaCreacion" to FechaUtils.horaActual()

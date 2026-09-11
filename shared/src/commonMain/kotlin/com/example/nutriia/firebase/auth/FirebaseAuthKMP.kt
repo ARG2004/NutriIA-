@@ -42,6 +42,15 @@ class FirebaseUser(private val delegate: dev.gitlive.firebase.auth.FirebaseUser)
     val uid: String get() = delegate.uid
     val email: String? get() = delegate.email
     val displayName: String? get() = delegate.displayName
+    val isEmailVerified: Boolean get() = delegate.isEmailVerified
+
+    suspend fun sendEmailVerification() {
+        try {
+            delegate.sendEmailVerification()
+        } catch (e: Exception) {
+            // No bloquear el flujo si falla el envío
+        }
+    }
 
     suspend fun reload() {
         delegate.reload()

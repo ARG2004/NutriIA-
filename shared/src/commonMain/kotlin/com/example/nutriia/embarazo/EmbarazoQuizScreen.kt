@@ -46,7 +46,7 @@ fun EmbarazoQuizScreen(
     var perfil by remember { mutableStateOf(PerfilEmbarazo(semanas = semanasIniciales)) }
     
     var selectedA11yMode by remember(modoGuardado) {
-        mutableStateOf(if (false) AccessibilityMode.BLIND else modoGuardado)
+        mutableStateOf(if (isVoiceOverActive()) AccessibilityMode.BLIND else modoGuardado)
     }
     val ttsManager = accessibilityVm.ttsManager
 
@@ -54,6 +54,7 @@ fun EmbarazoQuizScreen(
 
     LaunchedEffect(currentStep, selectedA11yMode, idiomaActual) {
         if (selectedA11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
+        delay(350L) // Pausa suave para evitar colisiones de audio tras tocar el botón
         val texto = when (currentStep) {
             0 -> loc(Voz.ACCESIBILIDAD_INTRO + " " + Voz.IDIOMA_INTRO, VozEn.ACCESIBILIDAD_INTRO + " " + VozEn.IDIOMA_INTRO)
             1 -> loc("Tu embarazo, tu bienestar. Te acompañaremos en cada etapa de este camino.", "Your pregnancy, your well-being. We will accompany you in every stage of this journey.")
@@ -70,7 +71,7 @@ fun EmbarazoQuizScreen(
 
     Box(Modifier.fillMaxSize().background(Color(0xFFF8F9F3))) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier = Modifier.fillMaxSize().imePadding().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(48.dp))
@@ -112,7 +113,7 @@ fun EmbarazoQuizScreen(
                             0 -> StepAccesibilidad(
                                 selected = selectedA11yMode,
                                 idiomaActual = idiomaActual,
-                                talkBackActivo = false,
+                                voiceOverActivo = isVoiceOverActive(),
                                 onSelect = { modo ->
                                      selectedA11yMode = modo
                                      accessibilityVm.setMode(modo)

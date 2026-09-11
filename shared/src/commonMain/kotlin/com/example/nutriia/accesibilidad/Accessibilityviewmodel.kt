@@ -83,7 +83,8 @@ class AccessibilityViewModel : ViewModel() {
         hablar(texto)
     }
 
-    // ── Habla con cola si TTS no listo ────────────────────────────────────────
+    fun loc(es: String, en: String): String = idioma.value.loc(es, en)
+
     fun hablar(texto: String) {
         if (mode.value != AccessibilityMode.BLIND) return
         val tts = ttsManager

@@ -197,12 +197,12 @@ actual suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula {
                                                 }
                                             }
 
-                                            // 4. Polling con reintentos para extraer resultados
+                                            // 4. Polling con reintentos para extraer resultados (hasta 10 intentos x 2.5s = 25s)
                                             var intentos = 0;
-                                            var maxIntentos = 4;
+                                            var maxIntentos = 10;
                                             function intentarExtraer() {
                                                 intentos++;
-                                                postLog('Intento de extracción #' + intentos);
+                                                postLog('Intento de extracción #' + intentos + ' de ' + maxIntentos);
                                                 var tables = document.querySelectorAll('table');
                                                 var found = false;
 
@@ -247,7 +247,7 @@ actual suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula {
                                                 }
 
                                                 if (!found && intentos < maxIntentos) {
-                                                    setTimeout(intentarExtraer, 2000);
+                                                    setTimeout(intentarExtraer, 2500);
                                                 } else if (!found) {
                                                     postResultado({
                                                         valida: false,
@@ -257,14 +257,14 @@ actual suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula {
                                             }
 
                                             setTimeout(intentarExtraer, 2500);
-                                        }, 600);
+                                        }, 800);
                                     } else {
                                         postResultado({
                                             valida: false,
                                             mensaje: 'No se pudo encontrar el campo de búsqueda en el portal SEP.'
                                         });
                                     }
-                                }, 1500);
+                                }, 2500);
                             } catch (e) {
                                 postResultado({
                                     valida: false,
@@ -304,7 +304,7 @@ actual suspend fun verificarEnPortalSEP(cedula: String): ResultadoCedula {
         }
     }
 
-    return withTimeoutOrNull(30000L) { deferred.await() }
+    return withTimeoutOrNull(60000L) { deferred.await() }
         ?: ResultadoCedula(valida = false, mensaje = "Tiempo de espera agotado al verificar cédula.")
 }
 

@@ -11,15 +11,14 @@ actual fun currentTimeMillis(): Long = (NSDate().timeIntervalSince1970 * 1000).t
 
 actual fun openUrl(url: String) {
     val nsUrl = NSURL.URLWithString(url) ?: return
-    platformLog("Platform", "Intentando abrir URL: $url")
-    UIApplication.sharedApplication.openURL(nsUrl, emptyMap<Any?, Any?>()) { success ->
-        platformLog("Platform", "Resultado de abrir URL: $success")
-    }
+    platformLog("Platform", "Abriendo URL segura")
+    UIApplication.sharedApplication.openURL(nsUrl, emptyMap<Any?, Any?>()) { _ -> }
 }
 
 actual fun platformLog(tag: String, msg: String) {
-    platform.Foundation.NSLog("[NutriIA-%s] %s", tag, msg)
-    println("[NutriIA-$tag] $msg")
+    val safeMsg = sanitizePII(msg)
+    platform.Foundation.NSLog("[NutriIA-%s] %s", tag, safeMsg)
+    println("[NutriIA-$tag] $safeMsg")
 }
 
 actual fun isVoiceOverActive(): Boolean = platform.UIKit.UIAccessibilityIsVoiceOverRunning()

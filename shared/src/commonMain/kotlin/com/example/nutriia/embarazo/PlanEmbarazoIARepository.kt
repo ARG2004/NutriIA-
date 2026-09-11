@@ -100,38 +100,51 @@ class PlanEmbarazoIARepository {
                 }
             }
 
-            val requestBodyJson = buildJsonObject {
-                put("model", "openai/gpt-oss-120b")
-                put("messages", messagesArray)
-                put("max_tokens", 1800)
-                put("temperature", 0.3)
-                putJsonObject("response_format") {
-                    put("type", "json_object")
-                }
-            }.toString()
-
-            val responseResult = PlatformHttp.postJson(
-                url = "https://api.groq.com/openai/v1/chat/completions",
-                headers = mapOf(
-                    "Authorization" to "Bearer $apiKey",
-                    "Content-Type" to "application/json; charset=utf-8"
-                ),
-                jsonBody = requestBodyJson,
-                timeoutMs = 35000L
+            val candidateModels = listOf(
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
+                "qwen/qwen3.6-27b",
+                "llama-3.3-70b-versatile"
             )
 
-            if (responseResult.isFailure) {
-                Log.w(TAG, "Fallo al consultar Groq LLM (${responseResult.exceptionOrNull()?.message}), activando fallback.")
-                return@withContext generarPlanFallback(perfil)
+            var content = ""
+            for (modelName in candidateModels) {
+                val requestBodyJson = buildJsonObject {
+                    put("model", modelName)
+                    put("messages", messagesArray)
+                    put("max_tokens", 1800)
+                    put("temperature", 0.3)
+                    putJsonObject("response_format") {
+                        put("type", "json_object")
+                    }
+                }.toString()
+
+                val responseResult = PlatformHttp.postJson(
+                    url = "https://api.groq.com/openai/v1/chat/completions",
+                    headers = mapOf(
+                        "Authorization" to "Bearer $apiKey",
+                        "Content-Type" to "application/json; charset=utf-8"
+                    ),
+                    jsonBody = requestBodyJson,
+                    timeoutMs = 35000L
+                )
+
+                if (responseResult.isSuccess) {
+                    val rawBody = responseResult.getOrNull() ?: ""
+                    val jsonRoot = json.parseToJsonElement(rawBody).jsonObject
+                    val parsedContent = jsonRoot["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
+                        ?.get("message")?.jsonObject
+                        ?.get("content")?.jsonPrimitive?.contentOrNull ?: ""
+                    if (parsedContent.isNotBlank()) {
+                        content = parsedContent
+                        break
+                    }
+                }
             }
 
-            val rawBody = responseResult.getOrNull() ?: ""
-            val jsonRoot = json.parseToJsonElement(rawBody).jsonObject
-            val content = jsonRoot["choices"]?.jsonArray?.getOrNull(0)?.jsonObject
-                ?.get("message")?.jsonObject
-                ?.get("content")?.jsonPrimitive?.contentOrNull ?: ""
-
             if (content.isBlank()) {
+                Log.w(TAG, "No se pudo obtener respuesta de modelos de IA, activando fallback local.")
                 return@withContext generarPlanFallback(perfil)
             }
 

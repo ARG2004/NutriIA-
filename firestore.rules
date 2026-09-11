@@ -1,0 +1,253 @@
+rules_version = '2';
+
+/**
+ * Reglas de Seguridad de Cloud Firestore — NutrIA
+ * Cumplimiento Estricto ISO/IEC 27001 (A.8.1, A.8.20) & ISO/IEC 27701
+ * Control de Acceso Basado en Roles (RBAC), Vinculaciones Médicas Activas y Aislamiento por UID.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function esDueno(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function esNutriologo() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/nutriologos_publicos/$(request.auth.uid));
+    }
+
+    // ✅ Soporta tanto el ID nuevo (con childId) como el antiguo (retrocompatibilidad)
+    function estaVinculadoConPadre(padreUid, childId) {
+      return request.auth != null && (
+        (exists(/databases/$(database)/documents/vinculaciones/$(request.auth.uid + "_" + padreUid + "_" + childId)) &&
+         get(/databases/$(database)/documents/vinculaciones/$(request.auth.uid + "_" + padreUid + "_" + childId)).data.estado == "ACTIVO")
+        ||
+        (exists(/databases/$(database)/documents/vinculaciones/$(request.auth.uid + "_" + padreUid)) &&
+         get(/databases/$(database)/documents/vinculaciones/$(request.auth.uid + "_" + padreUid)).data.estado == "ACTIVO")
+      );
+    }
+
+    function esGinecologo() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/ginecologos_publicos/$(request.auth.uid));
+    }
+
+    function estaVinculadaConGinecologo(mamaUid) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/vinculaciones_embarazo/$(request.auth.uid + "_" + mamaUid)) &&
+        get(/databases/$(database)/documents/vinculaciones_embarazo/$(request.auth.uid + "_" + mamaUid)).data.estado == "ACTIVO";
+    }
+
+    function esParticipanteLlamada(llamadaId) {
+      return request.auth != null && (
+        get(/databases/$(database)/documents/teleconsultas/$(llamadaId)).data.nutriologoUid == request.auth.uid ||
+        get(/databases/$(database)/documents/teleconsultas/$(llamadaId)).data.padreUid == request.auth.uid
+      );
+    }
+
+    // ── usuarios ──────────────────────────────────────────────────────────
+    match /usuarios/{uid} {
+      allow read, write: if esDueno(uid);
+      allow read: if esGinecologo() && estaVinculadaConGinecologo(uid);
+
+      match /hijos/{childId} {
+        allow read, write: if esDueno(uid);
+        allow read: if esNutriologo() && estaVinculadoConPadre(uid, childId);
+
+        match /{subCol=**} {
+          allow read, write: if esDueno(uid);
+          allow read: if esNutriologo() && estaVinculadoConPadre(uid, childId);
+        }
+
+        // Reglas para el historial clínico del expediente
+        match /consultas/{docId} {
+          allow create: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && request.resource.data.autorUid == request.auth.uid
+            && request.resource.data.tipo in ["nota_nutriologo", "receta_nutriologo", "observacion_alimentacion"];
+          allow read: if request.auth != null && (
+            esDueno(uid) || 
+            (esNutriologo() && estaVinculadoConPadre(uid, childId))
+          );
+          allow update: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && resource.data.autorUid == request.auth.uid;
+          allow delete: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && resource.data.autorUid == request.auth.uid;
+        }
+
+        // Reglas para recetas personalizadas
+        match /recetas_nutriologo/{recetaId} {
+          allow read: if request.auth != null && (
+            esDueno(uid) || 
+            (esNutriologo() && estaVinculadoConPadre(uid, childId))
+          );
+          allow create, update: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && request.resource.data.autorUid == request.auth.uid;
+          allow delete: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && resource.data.autorUid == request.auth.uid;
+        }
+
+        // Reglas para planes alimentarios
+        match /planes_alimentarios/{planId} {
+          // Permite leer el plan alimentario al padre y al nutriólogo vinculado
+          allow read: if request.auth != null && (
+            esDueno(uid) || 
+            (esNutriologo() && estaVinculadoConPadre(uid, childId))
+          );
+          allow create, update: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && request.resource.data.nutriologoUid == request.auth.uid;
+          allow delete: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && request.resource.data.nutriologoUid == request.auth.uid;
+        }
+      }
+
+      match /nutrientes/{docId} {
+        allow read, write: if esDueno(uid);
+      }
+
+      match /alertas/{alertaId} {
+        allow read, write: if esDueno(uid);
+      }
+
+      // ── perfilEmbarazo (mamá primeriza) ─────────────────────────────────
+      match /perfilEmbarazo/{docId} {
+        allow read, write: if esDueno(uid);
+        allow read: if esGinecologo() && estaVinculadaConGinecologo(uid);
+
+        match /{subCol=**} {
+          allow read, write: if esDueno(uid);
+          allow read: if esGinecologo() && estaVinculadaConGinecologo(uid);
+        }
+      }
+    }
+
+    // ── vinculaciones ─────────────────────────────────────────────────────
+    match /vinculaciones/{vinculacionId} {
+      allow get: if request.auth != null && (
+        resource.data.nutriologoUid == request.auth.uid ||
+        resource.data.padreUid      == request.auth.uid
+      );
+      
+      // Mantenemos list abierto tal como estaba para consultas de la app
+      allow list: if request.auth != null;
+      
+      allow create: if request.auth != null
+        && request.resource.data.padreUid == request.auth.uid
+        && request.resource.data.estado   == "PENDIENTE";
+      
+      // Usa resource.data para validar el UID del actor del cambio
+      allow update: if request.auth != null && (
+        (resource.data.nutriologoUid == request.auth.uid && 
+         request.resource.data.estado in ["ACTIVO", "RECHAZADO"])
+        ||
+        (resource.data.padreUid == request.auth.uid
+         && request.resource.data.estado == "REVOCADO")
+      );
+      
+      allow delete: if request.auth != null && (
+        resource.data.nutriologoUid == request.auth.uid ||
+        resource.data.padreUid      == request.auth.uid
+      );
+    }
+
+    // ── ginecologos_publicos ──────────────────────────────────────────────
+    match /ginecologos_publicos/{ginecologoUid} {
+      allow read: if request.auth != null;
+      allow write: if esDueno(ginecologoUid);
+    }
+
+    // ── vinculaciones_embarazo ────────────────────────────────────────────
+    match /vinculaciones_embarazo/{vinculacionId} {
+      allow get: if request.auth != null && (
+        resource.data.ginecologoUid == request.auth.uid ||
+        resource.data.mamaUid       == request.auth.uid
+      );
+
+      allow list: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.mamaUid == request.auth.uid
+        && request.resource.data.estado  == "PENDIENTE";
+
+      // Usa resource.data para validar los UIDs de embarazo en la actualización
+      allow update: if request.auth != null && (
+        (resource.data.ginecologoUid == request.auth.uid &&
+         request.resource.data.estado in ["ACTIVO", "RECHAZADO"])
+        ||
+        (resource.data.mamaUid == request.auth.uid
+         && request.resource.data.estado == "REVOCADO")
+      );
+
+      allow delete: if request.auth != null && (
+        resource.data.ginecologoUid == request.auth.uid ||
+        resource.data.mamaUid       == request.auth.uid
+      );
+    }
+
+    // ── nutriologos_publicos ──────────────────────────────────────────────
+    match /nutriologos_publicos/{nutriologoUid} {
+      allow read: if request.auth != null;
+      allow write: if esDueno(nutriologoUid);
+    }
+
+    // ── nutriologos ───────────────────────────────────────────────────────
+    match /nutriologos/{nutriologoUid} {
+      allow read, write: if esDueno(nutriologoUid);
+
+      match /mensajes/{mensajeId} {
+        allow read, write: if esDueno(nutriologoUid);
+        allow create: if request.auth != null && (
+          (exists(/databases/$(database)/documents/vinculaciones/$(nutriologoUid + "_" + request.auth.uid)) &&
+           get(/databases/$(database)/documents/vinculaciones/$(nutriologoUid + "_" + request.auth.uid)).data.estado == "ACTIVO")
+          ||
+          ('childId' in request.resource.data && 
+           exists(/databases/$(database)/documents/vinculaciones/$(nutriologoUid + "_" + request.auth.uid + "_" + request.resource.data.childId)) &&
+           get(/databases/$(database)/documents/vinculaciones/$(nutriologoUid + "_" + request.auth.uid + "_" + request.resource.data.childId)).data.estado == "ACTIVO")
+        );
+      }
+    }
+
+    // ── teleconsultas ─────────────────────────────────────────────────────
+    match /teleconsultas/{llamadaId} {
+      allow read: if request.auth != null && (
+        resource.data.nutriologoUid == request.auth.uid ||
+        resource.data.padreUid == request.auth.uid
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.nutriologoUid == request.auth.uid ||
+        request.resource.data.padreUid == request.auth.uid
+      );
+      allow update: if request.auth != null && (
+        resource.data.nutriologoUid == request.auth.uid ||
+        resource.data.padreUid == request.auth.uid
+      );
+
+      match /iceCandidatesOffer/{candidateId} {
+        allow read: if esParticipanteLlamada(llamadaId);
+        allow create: if esParticipanteLlamada(llamadaId);
+        allow update, delete: if esParticipanteLlamada(llamadaId);
+      }
+
+      match /iceCandidatesAnswer/{candidateId} {
+        allow read: if esParticipanteLlamada(llamadaId);
+        allow create: if esParticipanteLlamada(llamadaId);
+        allow update, delete: if esParticipanteLlamada(llamadaId);
+      }
+    }
+
+    // ── pagos_teleconsulta ────────────────────────────────────────────────
+    match /pagos_teleconsulta/{pagoId} {
+      allow read: if request.auth != null && resource.data.padreUid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.padreUid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.padreUid == request.auth.uid;
+    }
+
+    // ── children ──────────────────────────────────────────────────────────
+    match /children/{childId} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(childId));
+      allow write: if false;
+    }
+
+  }
+}
