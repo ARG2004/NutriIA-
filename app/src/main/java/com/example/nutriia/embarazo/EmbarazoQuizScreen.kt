@@ -79,6 +79,7 @@ fun EmbarazoQuizScreen(
 
     Box(
         Modifier
+            .anuncioPantalla("Cuestionario de Embarazo, Paso ${currentStep + 1} de $totalSteps")
             .fillMaxSize()
             .background(Color(0xFFF8F9F3))
             .radarHapticoBlind(context, selectedA11yMode == AccessibilityMode.BLIND)

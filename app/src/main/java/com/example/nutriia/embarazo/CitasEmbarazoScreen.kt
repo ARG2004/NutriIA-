@@ -172,6 +172,7 @@ fun CitasEmbarazoScreen(
     }
 
     Scaffold(
+        modifier = Modifier.anuncioPantalla("Mis Citas Médicas de Embarazo"),
         containerColor = EmbFondo,
         topBar = {
             TopAppBar(

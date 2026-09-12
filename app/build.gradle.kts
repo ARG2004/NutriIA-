@@ -21,15 +21,17 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId             = "com.example.nutriia"
+        applicationId             = "com.nutriia.app"
         minSdk                    = 26
         targetSdk                 = 36
-        versionCode               = 161
-        versionName               = "2.4.4"
+        versionCode               = 165
+        versionName               = "2.4.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val encodeKey = { key: String ->
-            val raw = localProperties[key] as? String ?: ""
+            val raw = (localProperties[key] as? String)
+                ?: (if (key == "SPOONACULAR_API_KEY") localProperties["SPOONCULAR_API_KEY"] as? String else null)
+                ?: ""
             if (raw.isNotEmpty() && raw != "TU_CLAVE_GROQ_AQUI") {
                 val mask = byteArrayOf(0x57, 0x39, 0x41, 0x6E, 0x75, 0x74, 0x72, 0x49, 0x41, 0x21, 0x39, 0x38)
                 val rawBytes = raw.toByteArray(Charsets.UTF_8)

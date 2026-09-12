@@ -33,26 +33,25 @@ object DateMigrationHelper {
 
     private suspend fun migrarCreacion(
         ref: com.google.firebase.firestore.DocumentReference,
-        creadoEnRaw: Any?,
-        sobrescribirCreadoEn: Boolean = false
+        creadoEnRaw: Any?
     ) {
         try {
-            val date = when (creadoEnRaw) {
-                is com.google.firebase.Timestamp -> creadoEnRaw.toDate()
-                is Number -> java.util.Date(creadoEnRaw.toLong())
-                is String -> FechaUtils.parsearFechaHora(creadoEnRaw) ?: java.util.Date()
-                else -> java.util.Date()
+            val millis = when (creadoEnRaw) {
+                is com.google.firebase.Timestamp -> creadoEnRaw.toDate().time
+                is Number -> creadoEnRaw.toLong()
+                is String -> FechaUtils.parsearTextoAEpochMillis(creadoEnRaw) ?: System.currentTimeMillis()
+                else -> System.currentTimeMillis()
             }
-            val fecha = FechaUtils.formatearFecha(date)
-            val hora = FechaUtils.formatearHora(date)
+            val fecha = FechaUtils.formatearFecha(millis)
+            val hora = FechaUtils.formatearHora(millis)
             
             val updates = mutableMapOf<String, Any>(
                 "fechaCreacion" to fecha,
                 "horaCreacion"  to hora
             )
-            if (sobrescribirCreadoEn) {
-                val fechaHora = FechaUtils.formatearFechaHora(date)
-                updates["creadoEn"] = fechaHora
+            // Asegurar que creadoEn siempre sea un Timestamp nativo de Firestore
+            if (creadoEnRaw !is com.google.firebase.Timestamp) {
+                updates["creadoEn"] = com.google.firebase.Timestamp(java.util.Date(millis))
             }
             ref.update(updates).await()
         } catch (e: Exception) {
@@ -69,7 +68,7 @@ object DateMigrationHelper {
             val userSnap = userRef.get().await()
             if (userSnap.exists()) {
                 val creadoEnUser = userSnap.get("creadoEn")
-                migrarCreacion(userRef, creadoEnUser, sobrescribirCreadoEn = true)
+                migrarCreacion(userRef, creadoEnUser)
             }
 
             // 1. Migrar nutrientes (usuario nivel raíz)
@@ -98,7 +97,7 @@ object DateMigrationHelper {
             for (childDoc in hijosSnap.documents) {
                 val childId = childDoc.id
                 val creadoEnChild = childDoc.get("creadoEn")
-                migrarCreacion(childDoc.reference, creadoEnChild, sobrescribirCreadoEn = true)
+                migrarCreacion(childDoc.reference, creadoEnChild)
                 
                 // 2.1 Lactancia
                 val lactSnap = db.collection("usuarios")
@@ -205,7 +204,7 @@ object DateMigrationHelper {
                 
                 // 0. Migrar usuario mismo
                 val creadoEnUser = userDoc.get("creadoEn")
-                migrarCreacion(userDoc.reference, creadoEnUser, sobrescribirCreadoEn = true)
+                migrarCreacion(userDoc.reference, creadoEnUser)
 
                 // 1. Migrar nutrientes (raíz)
                 try {
@@ -232,7 +231,7 @@ object DateMigrationHelper {
                     for (childDoc in hijosSnap.documents) {
                         val childId = childDoc.id
                         val creadoEnChild = childDoc.get("creadoEn")
-                        migrarCreacion(childDoc.reference, creadoEnChild, sobrescribirCreadoEn = true)
+                        migrarCreacion(childDoc.reference, creadoEnChild)
                         
                         // 2.1 Lactancia
                         try {

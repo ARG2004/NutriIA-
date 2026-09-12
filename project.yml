@@ -37,7 +37,7 @@ targets:
         CFBundleName: NutriIA
         CFBundlePackageType: APPL
         CFBundleShortVersionString: '2.4.4'
-        CFBundleVersion: '200'
+        CFBundleVersion: '201'
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: com.arg.nutriia

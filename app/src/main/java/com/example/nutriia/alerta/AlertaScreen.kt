@@ -283,7 +283,9 @@ fun AlertasScreen(
     }
 
     Scaffold(
-        modifier       = Modifier.radarHapticoBlind(context, esBlind),
+        modifier       = Modifier
+            .anuncioPantalla("Centro de Alertas y Recordatorios Médicos")
+            .radarHapticoBlind(context, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {

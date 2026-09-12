@@ -341,7 +341,9 @@ fun PediatraScreen(
     }
 
     Scaffold(
-        modifier = Modifier.radarHapticoBlind(null, esBlind),
+        modifier = Modifier
+            .anuncioPantalla("Mi Pediatra y Nutriólogo")
+            .radarHapticoBlind(null, esBlind),
         containerColor = PBgCrema,
         snackbarHost   = { SnackbarHost(snackbarHostState) }
     ) { padding ->

@@ -114,7 +114,7 @@ private fun esFechaValida(value: String): Boolean {
         val p = value.split("/")
         val d = p[0].toInt(); val m = p[1].toInt(); val y = p[2].toInt()
         if (m !in 1..12 || d !in 1..31) return false
-        val currentYear = 2026
+        val currentYear = com.example.nutriia.utils.FechaUtils.hoyIso().take(4).toIntOrNull() ?: 2026
         y in (currentYear - 12)..currentYear
     }.getOrDefault(false)
 }
@@ -124,7 +124,8 @@ private fun edadSuperaLimite(value: String): Boolean {
     return runCatching {
         val p = value.split("/")
         val y = p[2].toInt()
-        y < (2026 - 12)
+        val currentYear = com.example.nutriia.utils.FechaUtils.hoyIso().take(4).toIntOrNull() ?: 2026
+        y < (currentYear - 12)
     }.getOrDefault(false)
 }
 
@@ -342,12 +343,17 @@ fun OnboardingQuizScreen(
     LaunchedEffect(currentStep, isNextEnabled) {
         if (selectedA11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
         if (soloAccesibilidad) return@LaunchedEffect
-        if (isNextEnabled) {
-            if (currentStep in listOf(2, 3, 4)) {
-                accessibilityVm.hablar(loc(
-                    "Paso listo. El botón verde para continuar está al final de la pantalla.",
-                    "Step ready. The green continue button is at the bottom of the screen."
-                ))
+        if (isNextEnabled && currentStep in listOf(2, 3, 4)) {
+            val valorCapturado = when (currentStep) {
+                2 -> profile.name
+                3 -> profile.birthDate
+                4 -> "${profile.weightKg} kilos y ${profile.heightCm} centímetros"
+                else -> ""
+            }
+            if (valorCapturado.isNotBlank()) {
+                val plantilla = loc(Voz.READBACK_CONFIRMAR, VozEn.READBACK_CONFIRMAR)
+                val msg = plantilla.replace("%s", valorCapturado)
+                accessibilityVm.hablar(msg)
             }
         }
     }
@@ -401,7 +407,13 @@ fun OnboardingQuizScreen(
         )
     }
 
-    Box(Modifier.fillMaxSize().background(NutriaBgCrema)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .anuncioPantalla("Cuestionario de Configuración y Registro Inicial")
+            .background(NutriaBgCrema)
+            .tapParaSilenciarBlind(selectedA11yMode == AccessibilityMode.BLIND, accessibilityVm)
+    ) {
         Column(
             modifier            = Modifier.fillMaxSize().imePadding().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -419,11 +431,15 @@ fun OnboardingQuizScreen(
                     enter   = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(200)),
                     exit    = scaleOut(tween(150)) + fadeOut(tween(150))
                 ) {
+                    val backSize = if (selectedA11yMode == AccessibilityMode.BLIND) 52.dp else 38.dp
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(backSize)
                             .clip(CircleShape)
                             .background(NutriaGreen.copy(0.10f))
+                            .semantics {
+                                contentDescription = orientacionEsquinaSuperiorIzquierda("paso anterior", idiomaActual)
+                            }
                             .clickable(onClickLabel = "Paso anterior") {
                                 vibrateTap(haptic)
                                 goingForward = false
@@ -431,7 +447,7 @@ fun OnboardingQuizScreen(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaGreen, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaGreen, modifier = Modifier.size(if (selectedA11yMode == AccessibilityMode.BLIND) 24.dp else 18.dp))
                     }
                 }
                 if (currentStep == 0) Spacer(Modifier.width(38.dp))
@@ -440,7 +456,9 @@ fun OnboardingQuizScreen(
 
                 TextButton(
                     onClick  = { showCancelDialog = true },
-                    modifier = Modifier.semantics { contentDescription = "Cancelar y salir del registro" }
+                    modifier = Modifier
+                        .heightIn(min = if (selectedA11yMode == AccessibilityMode.BLIND) 48.dp else 36.dp)
+                        .semantics { contentDescription = "Cancelar y salir del registro" }
                 ) {
                     Icon(Icons.Rounded.Close, null, tint = Color.Gray, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(4.dp))

@@ -151,7 +151,9 @@ fun LactanciaScreen(
     }
 
     Scaffold(
-        modifier = Modifier.radarHapticoBlind(null, esBlind),
+        modifier = Modifier
+            .anuncioPantalla("Registro y Cronómetro de Lactancia")
+            .radarHapticoBlind(null, esBlind),
         containerColor = LactBg,
         snackbarHost   = { SnackbarHost(snackbarHost) },
         floatingActionButton = {

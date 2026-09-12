@@ -84,6 +84,19 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
 
     func createPeerConnection(isOffer: Bool, isVideo: Bool) {
         self.isVideoCall = isVideo
+        
+        DispatchQueue.main.async {
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
+        
+        NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+
         let config = RTCConfiguration()
         config.iceServers = [
             RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"]),
@@ -258,7 +271,19 @@ class WebRtcProvider: NSObject, IOSWebRtcProvider {
     func getLocalVideoView() -> UIView? { return localView }
     func getRemoteVideoView() -> UIView? { return remoteView }
 
+    @objc private func handleAppDidBecomeActive() {
+        if isVideoCall, let capturer = videoCapturer as? RTCCameraVideoCapturer, peerConnection != nil {
+            NSLog("🔄 [WebRtcProvider] App reanudada — reiniciando captura de video para sincronización inmediata")
+            startCapture()
+            localVideoTrack?.isEnabled = true
+        }
+    }
+
     func dispose() {
+        DispatchQueue.main.async {
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        NotificationCenter.default.removeObserver(self)
         localVideoTrack?.remove(localView)
         remoteVideoTrack?.remove(remoteView)
         peerConnection?.close()

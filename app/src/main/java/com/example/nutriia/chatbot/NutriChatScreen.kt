@@ -159,7 +159,9 @@ fun NutriChatScreen(
     }
 
     Scaffold(
-        modifier = Modifier.radarHapticoBlind(context, esBlind),
+        modifier = Modifier
+            .anuncioPantalla("Asistente Nutricional NutriBot")
+            .radarHapticoBlind(context, esBlind),
         topBar = {
             TopAppBar(
                 title = {

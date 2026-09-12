@@ -50,6 +50,7 @@ import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.utils.FechaUtils
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Spa
@@ -215,6 +216,7 @@ fun EmbarazoDashboardScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.anuncioPantalla("Panel de Control de Embarazo"),
         containerColor = EmbFondo,
         floatingActionButton = {
             if (a11yMode == AccessibilityMode.BLIND) {

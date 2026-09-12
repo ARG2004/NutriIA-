@@ -40,6 +40,7 @@ import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.VoiceInputManager
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.TipoComida
 
@@ -154,6 +155,7 @@ fun EmbarazoNutricionScreen(
     }
 
     Scaffold(
+        modifier = Modifier.anuncioPantalla("Plan de Nutrición y Recetas para Embarazo"),
         containerColor = Emb.Fondo,
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {

@@ -294,14 +294,16 @@ fun SolidosScreen(
             )
             a11yVm.hablar(
                 loc(
-                    "Módulo de alimentación para $childName. " +
-                            "Aquí puedes registrar alimentos introducidos, ver el plan semanal y explorar recetas. " +
+                    "Módulo de alimentación complementaria y sólidos para $childName. " +
+                            "Aquí puedes consultar los alimentos introducidos, recetas por etapa, plan semanal y registro de alergias. " +
                             "$orientacionBoton " +
-                            "Las tres secciones son: Registrados, Plan semanal y Recetas.",
-                    "Food module for $childName. " +
-                            "Here you can log introduced foods, view the weekly plan, and browse recipes. " +
+                            "En la parte inferior central tienes el botón flotante naranja 'Registrar alimento'. Toca dos veces para registrar un nuevo alimento probado. " +
+                            "Las tres secciones disponibles son: Registrados, Plan semanal y Recetas.",
+                    "Complementary feeding and solids module for $childName. " +
+                            "Here you can view introduced foods, stage recipes, weekly plan, and allergy records. " +
                             "$orientacionBoton " +
-                            "The three sections are: Registered, Weekly plan, and Recipes."
+                            "In the bottom center is the orange floating button 'Register food'. Double tap to log a new tasted food. " +
+                            "The three sections available are: Registered, Weekly plan, and Recipes."
                 )
             )
         }
@@ -368,7 +370,9 @@ fun SolidosScreen(
     }
 
     Scaffold(
-        modifier       = Modifier.radarHapticoBlind(context, esBlind),
+        modifier       = Modifier
+            .anuncioPantalla("Alimentación Complementaria y Alérgenos")
+            .radarHapticoBlind(context, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {

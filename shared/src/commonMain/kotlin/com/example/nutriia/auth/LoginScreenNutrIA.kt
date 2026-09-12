@@ -26,8 +26,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.Voz
 import com.example.nutriia.accesibilidad.isVoiceOverActive
@@ -77,6 +76,7 @@ fun NutriaLoginScreen(
             }
             is LoginUiState.Error -> {
                 showError = s.mensaje
+                NutriEarcons.playError()
                 if (a11yMode == AccessibilityMode.BLIND)
                     a11yVm.hablar("Error al iniciar sesion. ${s.mensaje}. Verifica tus datos e intenta de nuevo.")
             }
@@ -89,7 +89,12 @@ fun NutriaLoginScreen(
     val entranceAlpha by animateFloatAsState(if (startAnimation) 1f else 0f, tween(1000), label = "alpha")
 
     com.example.nutriia.platform.Log.i("NutriaLoginScreen", "🟡 [NutriaLoginScreen] Componiendo Box y elementos UI...")
-    Box(modifier = Modifier.fillMaxSize().background(NutriaBgCrema)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .anuncioPantalla("Inicio de Sesión y Registro NutrIA")
+            .background(NutriaBgCrema)
+    ) {
         AnimatedMinimalistBackground()
         Column(
             modifier = Modifier
@@ -171,6 +176,7 @@ fun NutriaLoginScreen(
                             if (email.isBlank() || password.isBlank()) {
                                 val msg = if (email.isBlank()) "Falta ingresar tu correo electrónico."
                                           else "Falta ingresar tu contraseña."
+                                NutriEarcons.playError()
                                 if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(msg)
                                 showError = msg
                                 return@Button

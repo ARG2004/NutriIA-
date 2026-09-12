@@ -83,11 +83,12 @@ private val dashAvatarColors = listOf(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 private data class DashModule(
-    val title:   String,
-    val icon:    ImageVector,
-    val color:   Color,
-    val isReady: Boolean = true,
-    val onClick: () -> Unit = {}
+    val title:       String,
+    val icon:        ImageVector,
+    val color:       Color,
+    val description: String,
+    val isReady:     Boolean = true,
+    val onClick:     () -> Unit = {}
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -96,28 +97,37 @@ private data class DashModule(
 
 private object VozDash {
     fun bienvenidaPadre(nombre: String, etapa: String, edad: String) =
-        "Bienvenido. Entraste como padre o madre. " +
-                "Estás viendo el perfil de $nombre. " +
-                "Tu hijo está en etapa $etapa, con $edad de vida. " +
-                "Puedes deslizar hacia los lados en la parte superior para cambiar de hijo. " +
-                "Debajo hay tarjetas con información de crecimiento y módulos de seguimiento. " +
-                "El botón Consultar NutriBot está en la parte inferior central. " +
-                "Los botones Ajustes y Salir están en la esquina superior derecha."
+        "¡Hola! Qué gusto saludarte. Soy NutrIA, tu nutria asistente de nutrición y bienestar familiar. " +
+                "Te encuentras en tu Panel Principal, cuidando el perfil de tu pequeño $nombre. " +
+                "Actualmente está en su etapa de $etapa, con $edad de vida. " +
+                "Permíteme guiarte por toda tu pantalla: " +
+                "En la parte superior tienes el selector para cambiar entre tus hijos con solo deslizar a los lados. " +
+                "En la esquina superior derecha tienes los botones de Ayuda, Ajustes de accesibilidad y Cerrar Sesión. " +
+                "En la zona central tienes tu resumen de crecimiento y percentiles OMS con su peso y talla más recientes. " +
+                "Justo debajo, tienes la cuadrícula con tus ocho módulos de salud organizados: " +
+                "Primero: Lactancia Materna, para medir tomas con cronómetro. " +
+                "Segundo: Alimentación y Sólidos, para registrar papillas, recetas y alergias. " +
+                "Tercero: Curvas de Crecimiento OMS, con gráficas de peso y estatura. " +
+                "Cuarto: Micronutrientes y Vitaminas, con el semáforo diario de hierro, calcio y zinc. " +
+                "Quinto: Mi Pediatra y Nutriólogo, para chatear con especialistas o agendar citas. " +
+                "Sexto: Análisis NutriIA con Cámara, para escanear alimentos con inteligencia artificial. " +
+                "Séptimo: Registro de Sueño y Descanso Infantil. " +
+                "Octavo: Alertas y Recordatorios, para vacunas y tomas médicas. " +
+                "En la parte inferior tienes el botón flotante verde 'Consultar NutriBot' con inteligencia artificial y el botón de micrófono para navegar por voz diciendo cualquier módulo. " +
+                "¿Hacia qué módulo deseas que te acompañe hoy?"
 
-    fun moduloAbierto(nombre: String) = "Abriendo módulo $nombre."
+    fun moduloAbierto(nombre: String) = "Abriendo módulo $nombre. Por favor espera un momento."
 
     fun cambioHijo(nombre: String, etapa: String) =
-        "Ahora viendo el perfil de $nombre. Etapa: $etapa."
+        "Cambiando al perfil de $nombre. Se encuentra en etapa de $etapa."
 
     const val MODULOS_SECCION =
-        "Sección de módulos. " +
-                "Los módulos disponibles son: Lactancia, Alimentación, Crecimiento, Nutrientes, " +
-                "Análisis NutriIA, Alertas y Pediatra o Nutriólogo. " +
-                "El módulo próximamente disponible es: Sueño. " +
-                "Toca cualquier módulo disponible para abrirlo."
+        "Sección de módulos de seguimiento. " +
+                "Aquí tienes ocho herramientas: Lactancia, Alimentación, Crecimiento OMS, Micronutrientes, Pediatra o Nutriólogo, Análisis NutriIA con cámara, Sueño y Alertas. " +
+                "Toca dos veces sobre cualquier módulo para ingresar, o usa el micrófono abajo para dictarlo."
     
     const val COMANDOS_GUIA = 
-        "Te escucho. Puedes decir: Lactancia, Alimentación, Crecimiento, Nutrientes, Pediatra, Análisis, Alertas, NutriBot, Ajustes, Ayuda o Salir. ¿Hacia qué módulo se va a dirigir?"
+        "Micrófono activo, te escucho con gusto. Puedes decir el nombre de cualquier módulo: Lactancia, Alimentación, Crecimiento, Nutrientes, Pediatra, Análisis, Sueño, Alertas, NutriBot, Ajustes, Ayuda o Salir. ¿A dónde deseas ir?"
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -256,16 +266,14 @@ fun NutriIADashboardScreen(
 
     LaunchedEffect(Unit) {
         if (a11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
+        kotlinx.coroutines.delay(350L)
         val msg = if (esNutriologo)
-            "Bienvenido. Entraste como nutriólogo o nutrióloga. " +
-                    "Aquí puedes gestionar los perfiles de tus pacientes. " +
-                    "Los módulos disponibles son: Directorio de especialistas, Expediente, Teleconsulta, Ajustes y Salir. " +
-                    "¿A qué módulo te gustaría ir?"
+            "¡Hola! Bienvenido a tu portal profesional de NutriIA. " +
+                    "En la parte superior tienes la gestión de pacientes y en la esquina superior derecha los accesos a Ajustes, Ayuda y Salir. " +
+                    "Tus módulos principales son: Directorio de especialistas, Expediente clínico y Teleconsultas. " +
+                    "¿A qué módulo deseas ingresar?"
         else
-            VozDash.bienvenidaPadre(child.name, etapa.nombre, edadInfo) + " " +
-                    "Los módulos disponibles son: Lactancia, Alimentación, Crecimiento, Nutrientes, " +
-                    "Análisis NutriIA, Alertas, NutriBot, Pediatra o Nutriólogo, Ajustes, Ayuda y Salir. " +
-                    "¿A qué módulo te gustaría ir?"
+            VozDash.bienvenidaPadre(child.name, etapa.nombre, edadInfo)
 
         if (a11yVm.ttsManager != null) {
             a11yVm.ttsManager?.hablarYEsperar(msg, margenMs = 500L)
@@ -384,7 +392,9 @@ fun NutriIADashboardScreen(
     )
 
     Scaffold(
-        modifier = Modifier.radarHapticoBlind(null, a11yMode == AccessibilityMode.BLIND),
+        modifier = Modifier
+            .anuncioPantalla(if (esNutriologo) "Portal Profesional de Especialistas" else "Panel Principal de Salud NutrIA")
+            .radarHapticoBlind(null, a11yMode == AccessibilityMode.BLIND),
         containerColor = DashBgCrema,
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -535,35 +545,36 @@ private fun buildModuleList(
     onOpenDiario:          (Int) -> Unit,
     onOpenRecordatorios:   (Int) -> Unit
 ): List<DashModule> = listOf(
-    DashModule("Lactancia",            Icons.Rounded.ChildCare,              DashPink,        true)  {
-        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Lactancia"))
+    DashModule("Lactancia", Icons.Rounded.ChildCare, DashPink, "Registra tomas de pecho izquierdo y derecho con cronómetro", true) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Lactancia Materna"))
         onOpenLactancia(currentPage)
     },
-    DashModule("Alimentación",         Icons.Rounded.Restaurant,             DashOrange,      true)  {
-        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Alimentación"))
+    DashModule("Alimentación", Icons.Rounded.Restaurant, DashOrange, "Registro de nuevos alimentos probados, recetas mexicanas y alérgenos", true) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Alimentación y Sólidos"))
         onOpenSolidos(currentPage)
     },
-    DashModule("Crecimiento",          Icons.AutoMirrored.Rounded.ShowChart, DashNutriaGreen, true)  {
-        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Crecimiento"))
+    DashModule("Crecimiento", Icons.AutoMirrored.Rounded.ShowChart, DashNutriaGreen, "Gráficas de percentiles oficiales OMS de peso y estatura", true) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Crecimiento OMS"))
         onOpenCrecimiento(currentPage)
     },
-    DashModule("Sueño",                Icons.Rounded.Bedtime,                DashSoftPurple,  false) {
+    DashModule("Sueño", Icons.Rounded.Bedtime, DashSoftPurple, "Registro de siestas y horas de descanso infantil", true) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Registro de Sueño"))
         onOpenSueno(currentPage)
     },
-    DashModule("Nutrientes",           Icons.Rounded.Medication,             DashSoftTeal,    true)  {
-        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Nutrientes"))
+    DashModule("Nutrientes", Icons.Rounded.Medication, DashSoftTeal, "Semáforo nutricional diario de hierro, zinc, calcio y vitaminas", true) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Micronutrientes"))
         onOpenMicronutrientes(currentPage)
     },
-    DashModule("Pediatra /\nNutriólogo", Icons.Rounded.MedicalServices,     DashBlue,        true)  {
+    DashModule("Pediatra /\nNutriólogo", Icons.Rounded.MedicalServices, DashBlue, "Conexión directa con especialistas médicos, expediente y citas", true) {
         if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Pediatra o Nutriólogo"))
         onOpenPediatra(currentPage)
     },
-    DashModule("Análisis NutriIA",     Icons.Rounded.PhotoCamera,            DashSoftOrange,  true)  {
-        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Análisis NutriIA"))
+    DashModule("Análisis NutriIA", Icons.Rounded.PhotoCamera, DashSoftOrange, "Escaneo de alimentos con cámara e inteligencia artificial", true) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Análisis NutriIA con cámara"))
         onOpenDiario(currentPage)
     },
-    DashModule("Alertas",              Icons.Rounded.NotificationsActive,    DashBlue,        true)  {
-        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Alertas"))
+    DashModule("Alertas", Icons.Rounded.NotificationsActive, DashBlue, "Calendario de vacunas oficiales, tomas médicas y citas", true) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Alertas y Recordatorios"))
         onOpenRecordatorios(currentPage)
     }
 )
@@ -1281,9 +1292,9 @@ private fun ModuleCard(
                 .clickable(enabled = module.isReady) { pressed = true; module.onClick() }
                 .semantics {
                     contentDescription = if (module.isReady)
-                        "${module.title}. Disponible. Toca para abrir."
+                        "Módulo ${module.title}. ${module.description}. Toca dos veces para ingresar."
                     else
-                        "${module.title}. Próximamente disponible."
+                        "Módulo ${module.title}. ${module.description}. Próximamente disponible."
                 },
             shape     = RoundedCornerShape(22.dp),
             colors    = CardDefaults.cardColors(

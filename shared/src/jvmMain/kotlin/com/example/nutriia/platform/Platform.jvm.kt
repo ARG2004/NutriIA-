@@ -13,3 +13,7 @@ actual fun platformLog(tag: String, msg: String) {
 }
 
 actual fun isVoiceOverActive(): Boolean = false
+actual fun setKeepScreenOn(enabled: Boolean) {}
+
+@androidx.compose.runtime.Composable
+actual fun KeepScreenOn() {}

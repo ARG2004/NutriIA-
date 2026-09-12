@@ -76,32 +76,35 @@ class AnalisisRepository {
                 Tu tarea es identificar con máxima precisión el contenido de la imagen.
 
                 REGLA CRÍTICA DE IDENTIFICACIÓN:
-                1. NUNCA devuelvas nombres genéricos como "Objeto detectado", "Alimento detectado", "Alimento desconocido" o "Cosa".
-                2. Si es comida o bebida: especifica con exactitud el platillo o ingrediente en español (ej: "Huevos revueltos con jamón", "Manzana picada", "Pechuga de pollo con verduras", "Taza de avena").
-                3. Si NO es comida (ejemplo: juguete, control remoto, laptop, libreta, tijeras, vaso vacío, mueble, calzado, etc.):
-                   - Escribe el nombre EXACTO y descriptivo del objeto en `foodName` (ej: "Control remoto de televisión", "Tijeras escolares", "Juguete de plástico", "Computadora portátil").
-                   - En `foodType` escribe obligatoriamente: 'objeto_no_comestible'.
-                   - En `ingredients` pon una lista vacía `[]`.
-                   - En `confidence` pon tu certeza real (ej: 0.95).
+                1. EVALÚA PRIMERO SI LO QUE SE OBSERVA ES REALMENTE UN ALIMENTO O BEBIDA COMESTIBLE.
+                2. Si NO es comida (ejemplos: control remoto, llaves, celular, tijeras, libreta, juguete, lápices, vaso o plato vacío, herramientas, calzado, muebles, manos o personas solas, etc.):
+                   - `isEdible`: false
+                   - `foodType`: 'objeto_no_comestible'
+                   - En `foodName` describe EXACTAMENTE qué objetos se observan en la toma (ej: 'Control remoto y llaves sobre la mesa', 'Tijeras escolares y libreta', 'Plato vacío', 'Teléfono móvil').
+                   - En `nonEdibleReason` describe por qué no es comestible (ej: 'Son objetos inanimados de uso cotidiano, no alimentos.').
+                   - En `ingredients` pon `[]`.
+                3. Si SÍ es comida o bebida:
+                   - `isEdible`: true
+                   - En `foodName` especifica con exactitud el platillo o ingrediente en español (ej: 'Huevos revueltos con jamón', 'Manzana picada', 'Pechuga de pollo con verduras', 'Taza de avena').
+                   - En `foodType` selecciona uno de: 'desayuno'|'comida'|'cena'|'snack'|'bebida'|'fruta'|'verdura'|'cereal'|'lacteo'|'producto_empacado'.
+                   - En `ingredients` enumera los ingredientes reconocidos.
 
-                IMPORTANTE — Identificación de alimentos y errores comunes a evitar:
-                - ALIMENTOS ENTEROS Y CRUDOS: Las manzanas, naranjas, frutas enteras, verduras crudas y los huevos en cascarón SON COMIDA. NUNCA los clasifiques como "objeto_no_comestible". Su `foodType` debe ser "fruta", "verdura", "snack" o el que corresponda.
-                - HUEVO / HUEVOS: Identifica el huevo en todas sus presentaciones (en cascarón, huevo revuelto, huevo estrellado/frito, huevo cocido/duro, omelette, huevo a la mexicana con jitomate/cebolla). NUNCA confundas huevos revueltos o estrellados con puré de papa, papas fritas, queso derretido, mantequilla ni crepas.
-                - La LECHUGA NO es col/repollo.
-                - La PIÑA en cubos NO es puré de papa.
-                - La CARNE MOLIDA NO son tortitas de harina.
+                IMPORTANTE — Alimentos y no-alimentos:
+                - ALIMENTOS ENTEROS Y CRUDOS (manzanas, plátanos, naranjas, aguacate, huevos crudos en cascarón, zanahorias crudas) SÍ SON COMIDA (`isEdible`: true).
+                - HUEVOS: Identifícalos en todas sus variantes (revueltos, estrellados, cocidos, en cascarón).
+                - Vajilla vacía, manteles, monedas, cables o controles NUNCA deben catalogarse como alimentos.
 
-                Analiza esta imagen y responde ÚNICAMENTE con un JSON con este formato exacto:
+                Responde ÚNICAMENTE con un JSON con este formato exacto:
                 {
-                  "foodName": "nombre descriptivo exacto (ej: 'Huevo revuelto con verduras', 'Huevo estrellado', 'Huevo cocido', 'Laptop Lenovo negra', 'Lechuga romana')",
-                  "ingredients": ["ingrediente1", "ingrediente2"],
+                  "isEdible": true,
+                  "foodName": "nombre descriptivo exacto (ej: 'Huevo revuelto con jamón' o 'Control remoto y llaves')",
                   "foodType": "uno de: objeto_no_comestible|desayuno|comida|cena|snack|bebida|fruta|verdura|cereal|lacteo|producto_empacado",
+                  "ingredients": ["ingrediente1", "ingrediente2"],
                   "confidence": 0.95,
-                  "isProcessed": false,
-                  "origin": "uno de: mexicano|estadounidense|internacional|desconocido"
+                  "nonEdibleReason": "explicación si no es comestible o cadena vacía si es comida"
                 }
 
-                Devuelve SOLO el JSON, sin texto adicional ni markdown. NO incluyas etiquetas <think> ni explicaciones. Responde comenzando con '{'.
+                Devuelve SOLO el JSON, sin texto adicional ni markdown. Responde comenzando con '{'.
             """.trimIndent()
 
             val visionModels = listOf(
@@ -194,25 +197,34 @@ class AnalisisRepository {
             val detection = if (jsonElement.isJsonObject) {
                 val obj = jsonElement.asJsonObject
                 val ingArr = if (obj.has("ingredients") && obj.get("ingredients").isJsonArray) obj.getAsJsonArray("ingredients") else null
-                val rawName = if (obj.has("foodName") && !obj.get("foodName").isJsonNull) obj.get("foodName").asString else "Objeto detectado"
+                val rawName = if (obj.has("foodName") && !obj.get("foodName").isJsonNull) obj.get("foodName").asString else "Objeto no comestible"
                 val finalName = if (rawName.equals("Alimento detectado", ignoreCase = true) || rawName.equals("Alimento desconocido", ignoreCase = true)) "Objeto no alimenticio" else rawName
+                val parsedType = if (obj.has("foodType") && !obj.get("foodType").isJsonNull) obj.get("foodType").asString else "objeto_no_comestible"
+                val isEdibleVal = if (obj.has("isEdible") && !obj.get("isEdible").isJsonNull) obj.get("isEdible").asBoolean else (parsedType != "objeto_no_comestible")
+                val reasonVal = if (obj.has("nonEdibleReason") && !obj.get("nonEdibleReason").isJsonNull) obj.get("nonEdibleReason").asString else ""
+
+                val esRealmenteComestible = isEdibleVal && parsedType != "objeto_no_comestible"
 
                 FoodDetectionResult(
-                    foodName    = finalName,
-                    ingredients = if (ingArr != null) (0 until ingArr.size()).map { ingArr[it].asString } else emptyList(),
-                    foodType    = if (obj.has("foodType") && !obj.get("foodType").isJsonNull) obj.get("foodType").asString else "objeto_no_comestible",
-                    confidence  = if (obj.has("confidence") && !obj.get("confidence").isJsonNull) obj.get("confidence").asDouble else 0.90
+                    foodName        = finalName,
+                    ingredients     = if (ingArr != null) (0 until ingArr.size()).map { ingArr[it].asString } else emptyList(),
+                    foodType        = if (esRealmenteComestible) parsedType else "objeto_no_comestible",
+                    confidence      = if (obj.has("confidence") && !obj.get("confidence").isJsonNull) obj.get("confidence").asDouble else 0.90,
+                    isEdible        = esRealmenteComestible,
+                    nonEdibleReason = if (esRealmenteComestible) "" else (reasonVal.ifBlank { "No es un alimento comestible." })
                 )
             } else {
                 FoodDetectionResult(
-                    foodName    = cleaned.take(60).ifBlank { "Objeto no alimenticio" },
-                    ingredients = emptyList(),
-                    foodType    = "objeto_no_comestible",
-                    confidence  = 0.80
+                    foodName        = cleaned.take(60).ifBlank { "Objeto no alimenticio" },
+                    ingredients     = emptyList(),
+                    foodType        = "objeto_no_comestible",
+                    confidence      = 0.80,
+                    isEdible        = false,
+                    nonEdibleReason = "No se detectaron alimentos comestibles en la toma."
                 )
             }
 
-            Log.d(TAG, "[VISION] Detectado: ${detection.foodName} (${(detection.confidence * 100).toInt()}%)")
+            Log.d(TAG, "[VISION] Detectado: ${detection.foodName} (Comestible: ${detection.isEdible}, ${detection.foodType})")
             Result.success(detection)
 
         } catch (e: Exception) {

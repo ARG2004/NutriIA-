@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.embarazo.GananciaPesoCalculator
 import com.example.nutriia.embarazo.SintomasAnalyzer
 import com.example.nutriia.embarazo.NivelSintoma
@@ -71,6 +72,7 @@ fun PacienteExpedienteEmbarazoScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.anuncioPantalla("Expediente Prenatal de $mamaNombre"),
         containerColor = EmbFondo,
         topBar = {
             TopAppBar(

@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.sueldo.NivelIngreso
@@ -134,6 +135,7 @@ fun PacienteExpedienteScreen(
     ]
 
     Scaffold(
+        modifier       = Modifier.anuncioPantalla("Expediente Clínico de $childNombre"),
         containerColor = if (ui.tabSeleccionado == 0) EBgCrema else EBgAlim,
         snackbarHost   = { SnackbarHost(snackbar) }
     ) { padding ->

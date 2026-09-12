@@ -24,6 +24,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.utils.FechaUtils
+import com.example.nutriia.platform.KeepScreenOn
+import com.example.nutriia.accesibilidad.*
 
 // ─── Paleta de llamada ─────────────────────────────────────────────────────────
 private val CallBg        = Color(0xFF08111C)
@@ -119,11 +121,36 @@ fun TeleconsultaActiveScreen(
     onGirar:     () -> Unit,
     onColgar:    () -> Unit
 ) {
+    KeepScreenOn()
     val llamada = state.llamadaActual ?: return
     val isVideo  = llamada.tipo == TipoLlamada.VIDEO
 
+    val a11yVm: AccessibilityViewModel = viewModel()
+    val a11yMode by a11yVm.mode.collectAsState()
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
+    LaunchedEffect(llamada.estado) {
+        if (esBlind) {
+            when (llamada.estado) {
+                EstadoLlamada.INICIANDO, EstadoLlamada.SONANDO -> {
+                    a11yVm.hablar("Conectando consulta médica...")
+                }
+                EstadoLlamada.ACTIVA -> {
+                    NutriEarcons.playSuccess()
+                    a11yVm.hablar("Consulta conectada. El audio está activo.")
+                }
+                EstadoLlamada.FINALIZADA, EstadoLlamada.RECHAZADA -> {
+                    NutriEarcons.playButtonHover()
+                    a11yVm.hablar("Consulta médica finalizada.")
+                }
+                else -> {}
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
+            .anuncioPantalla("Teleconsulta Médica en Curso")
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(CallBg, CallBg2, CallBg3)))
     ) {

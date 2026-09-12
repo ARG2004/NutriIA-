@@ -22,3 +22,17 @@ actual fun platformLog(tag: String, msg: String) {
 }
 
 actual fun isVoiceOverActive(): Boolean = platform.UIKit.UIAccessibilityIsVoiceOverRunning()
+
+actual fun setKeepScreenOn(enabled: Boolean) {
+    UIApplication.sharedApplication.idleTimerDisabled = enabled
+}
+
+@androidx.compose.runtime.Composable
+actual fun KeepScreenOn() {
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        UIApplication.sharedApplication.idleTimerDisabled = true
+        onDispose {
+            UIApplication.sharedApplication.idleTimerDisabled = false
+        }
+    }
+}

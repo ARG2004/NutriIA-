@@ -95,6 +95,7 @@ fun ConfiguracionScreen(
     val a11yVm: AccessibilityViewModel = viewModel()
     val modoActual   by a11yVm.mode.collectAsState()
     val idiomaActual by a11yVm.idioma.collectAsState()
+    val velocidad    by a11yVm.speed.collectAsState()
     val ttsManager   = a11yVm.ttsManager
 
     var notifComidas          by remember { mutableStateOf(true) }
@@ -106,6 +107,7 @@ fun ConfiguracionScreen(
     var mostrarDialogoEliminar  by remember { mutableStateOf(false) }
     var mostrarDialogoA11y      by remember { mutableStateOf(false) }
     var mostrarPrivacidad       by remember { mutableStateOf(false) }
+    var mostrarLabLsm           by remember { mutableStateOf(false) }
 
     var mostrarDialogoArco      by remember { mutableStateOf(false) }
     var borrandoDatosArco       by remember { mutableStateOf(false) }
@@ -125,7 +127,9 @@ fun ConfiguracionScreen(
     }
 
     BackHandler {
-        if (mostrarPrivacidad) {
+        if (mostrarLabLsm) {
+            mostrarLabLsm = false
+        } else if (mostrarPrivacidad) {
             mostrarPrivacidad = false
         } else if (mostrarDialogoCerrar) {
             mostrarDialogoCerrar = false
@@ -142,18 +146,27 @@ fun ConfiguracionScreen(
         }
     }
 
+    // ── Laboratorio de Señas LSM (pantalla sobre) ──────────────────────────────
+    AnimatedVisibility(
+        visible = mostrarLabLsm,
+        enter   = slideInHorizontally(tween(320, easing = EaseOutCubic)) { it },
+        exit    = slideOutHorizontally(tween(260, easing = EaseInCubic)) { it }
+    ) {
+        SignLanguageLabScreen(onBack = { mostrarLabLsm = false })
+    }
+
     // ── Política de privacidad (pantalla sobre) ───────────────────────────────
     AnimatedVisibility(
-        visible = mostrarPrivacidad,
+        visible = mostrarPrivacidad && !mostrarLabLsm,
         enter   = slideInHorizontally(tween(320, easing = EaseOutCubic)) { it },
         exit    = slideOutHorizontally(tween(260, easing = EaseInCubic)) { it }
     ) {
         PrivacidadScreen(onBack = { mostrarPrivacidad = false })
     }
 
-    // ── Contenido principal (se oculta cuando privacidad está visible) ────────
+    // ── Contenido principal (se oculta cuando privacidad o lab están visibles) ─
     AnimatedVisibility(
-        visible = !mostrarPrivacidad,
+        visible = !mostrarPrivacidad && !mostrarLabLsm,
         enter   = fadeIn(tween(200)),
         exit    = fadeOut(tween(150))
     ) {
@@ -192,18 +205,21 @@ fun ConfiguracionScreen(
         // ── Diálogo accesibilidad ─────────────────────────────────────────────
         if (mostrarDialogoA11y) {
             CfgAccesibilidadDialog(
-                modoActual     = modoActual,
-                idiomaActual   = idiomaActual,
-                ttsManager     = ttsManager,
-                context        = context,
-                onModoChange   = { a11yVm.setMode(it) },
-                onIdiomaChange = { a11yVm.setIdioma(it) },
-                onDismiss      = { mostrarDialogoA11y = false }
+                modoActual        = modoActual,
+                idiomaActual      = idiomaActual,
+                velocidadActual   = velocidad,
+                ttsManager        = ttsManager,
+                context           = context,
+                onModoChange      = { a11yVm.setMode(it) },
+                onIdiomaChange    = { a11yVm.setIdioma(it) },
+                onVelocidadChange = { a11yVm.setSpeed(it) },
+                onDismiss         = { mostrarDialogoA11y = false }
             )
         }
 
         Box(
             modifier = Modifier
+                .anuncioPantalla("Ajustes y Configuración")
                 .fillMaxSize()
                 .background(CfgBg)
                 .radarHapticoBlind(context, modoActual == AccessibilityMode.BLIND)
@@ -319,8 +335,17 @@ fun ConfiguracionScreen(
                                     checked  = modoActual != AccessibilityMode.MUTE,
                                     onCheckedChange = { habilitada ->
                                         a11yVm.setMode(if (habilitada) AccessibilityMode.NORMAL else AccessibilityMode.MUTE)
-                                    },
-                                    isLast = true
+                                    }
+                                )
+                                CfgDividerLine()
+                                CfgRow(
+                                    icon     = Icons.Rounded.SignLanguage,
+                                    iconBg   = Color(0xFFE8F5E9),
+                                    iconTint = Color(0xFF2E7D32),
+                                    title    = "Laboratorio de Señas LSM",
+                                    subtitle = "Prueba en vivo con cámara frontal",
+                                    onClick  = { mostrarLabLsm = true },
+                                    isLast   = true
                                 )
                             }
                         }

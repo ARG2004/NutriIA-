@@ -381,7 +381,7 @@ fun NutriIAContent() {
             val tts = accessibilityVm.ttsManager
             if (tts != null && !isTalkBackActive(context)) {
                 val intro = when (currentScreen) {
-                    Screen.DASHBOARD_PARENT, Screen.DASHBOARD_NUTRITIONIST,
+                    Screen.DASHBOARD_NUTRITIONIST,
                     Screen.DASHBOARD_MAMA_PRIMERIZA, Screen.DASHBOARD_GINECOLOGO -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.DASHBOARD_INTRO else Voz.DASHBOARD_INTRO
                     Screen.CRECIMIENTO -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.CRECIMIENTO_INTRO else Voz.CRECIMIENTO_INTRO
                     Screen.LACTANCIA -> if (accessibilityVm.idioma.value == IdiomaVoz.INGLES) VozEn.LACTANCIA_INTRO else Voz.LACTANCIA_INTRO
@@ -684,20 +684,87 @@ fun NutriIAContent() {
 
             Screen.REGISTER_NUTRITIONIST -> {
                 BackHandler { currentScreen = Screen.REGISTER_TYPE }
-                NutritionistRegisterScreen(onNavigateBack = { currentScreen = Screen.REGISTER_TYPE }, onRegisterSuccess = { currentScreen = Screen.DASHBOARD_NUTRITIONIST })
+                NutritionistRegisterScreen(
+                    onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
+                    onRegisterSuccess = {
+                        val uid = loginViewModel.uidUsuario.ifBlank {
+                            FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        }
+                        if (uid.isNotBlank()) {
+                            SessionManager.guardarSesion(context, uid)
+                        }
+                        val yaDecidioBiometrico = SessionManager.huellaYaConfirmada(context) || 
+                                                 SessionManager.esBiometricoActivo(context) || 
+                                                 SessionManager.yaSeMostroActivacionHuella(context)
+                        if (!yaDecidioBiometrico && BiometricHelper.isAvailable(context)) {
+                            currentScreen = Screen.BIOMETRIC_ACTIVATION
+                        } else {
+                            currentScreen = Screen.DASHBOARD_NUTRITIONIST
+                        }
+                    }
+                )
             }
             
             Screen.REGISTER_GINECOLOGO -> {
                 BackHandler { currentScreen = Screen.REGISTER_TYPE }
                 GinecologistRegisterScreen(
                     onNavigateBack = { currentScreen = Screen.REGISTER_TYPE },
-                    onRegisterSuccess = { currentScreen = Screen.DASHBOARD_GINECOLOGO }
+                    onRegisterSuccess = {
+                        val uid = loginViewModel.uidUsuario.ifBlank {
+                            FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        }
+                        if (uid.isNotBlank()) {
+                            SessionManager.guardarSesion(context, uid)
+                        }
+                        val yaDecidioBiometrico = SessionManager.huellaYaConfirmada(context) || 
+                                                 SessionManager.esBiometricoActivo(context) || 
+                                                 SessionManager.yaSeMostroActivacionHuella(context)
+                        if (!yaDecidioBiometrico && BiometricHelper.isAvailable(context)) {
+                            currentScreen = Screen.BIOMETRIC_ACTIVATION
+                        } else {
+                            currentScreen = Screen.DASHBOARD_GINECOLOGO
+                        }
+                    }
                 )
             }
 
             Screen.QUIZ -> {
                 BackHandler { isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT }
-                OnboardingQuizScreen(isAddingChild = isAddingChild, prefilledChildName = prefilledChildName, saltarAccesibilidad = saltarAccesibilidadEnQuiz, onQuizComplete = { newProfile -> children = children + newProfile; isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; activeChildIndex = children.lastIndex; loginViewModel.guardarHijo(newProfile); currentScreen = Screen.DASHBOARD_PARENT }, onCancel = { isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT })
+                OnboardingQuizScreen(
+                    isAddingChild = isAddingChild,
+                    prefilledChildName = prefilledChildName,
+                    saltarAccesibilidad = saltarAccesibilidadEnQuiz,
+                    onQuizComplete = { newProfile ->
+                        val wasAdding = isAddingChild
+                        children = children + newProfile
+                        isAddingChild = false
+                        prefilledChildName = ""
+                        saltarAccesibilidadEnQuiz = false
+                        activeChildIndex = children.lastIndex
+                        loginViewModel.guardarHijo(newProfile)
+
+                        val uid = loginViewModel.uidUsuario.ifBlank {
+                            FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        }
+                        if (uid.isNotBlank()) {
+                            SessionManager.guardarSesion(context, uid)
+                        }
+
+                        if (wasAdding) {
+                            currentScreen = Screen.DASHBOARD_PARENT
+                        } else {
+                            val yaDecidioBiometrico = SessionManager.huellaYaConfirmada(context) || 
+                                                     SessionManager.esBiometricoActivo(context) || 
+                                                     SessionManager.yaSeMostroActivacionHuella(context)
+                            if (!yaDecidioBiometrico && BiometricHelper.isAvailable(context)) {
+                                currentScreen = Screen.BIOMETRIC_ACTIVATION
+                            } else {
+                                currentScreen = Screen.DASHBOARD_PARENT
+                            }
+                        }
+                    },
+                    onCancel = { isAddingChild = false; prefilledChildName = ""; saltarAccesibilidadEnQuiz = false; currentScreen = if (children.isEmpty()) Screen.LOGIN else Screen.DASHBOARD_PARENT }
+                )
             }
             
             Screen.QUIZ_MAMA_PRIMERIZA -> {
@@ -706,8 +773,21 @@ fun NutriIAContent() {
                     semanasIniciales = semanasEmbarazo,
                     onQuizComplete = { perfil ->
                         perfilEmbarazo = perfil
-                        currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
                         loginViewModel.guardarPerfilEmbarazo(perfil)
+                        val uid = loginViewModel.uidUsuario.ifBlank {
+                            FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        }
+                        if (uid.isNotBlank()) {
+                            SessionManager.guardarSesion(context, uid)
+                        }
+                        val yaDecidioBiometrico = SessionManager.huellaYaConfirmada(context) || 
+                                                 SessionManager.esBiometricoActivo(context) || 
+                                                 SessionManager.yaSeMostroActivacionHuella(context)
+                        if (!yaDecidioBiometrico && BiometricHelper.isAvailable(context)) {
+                            currentScreen = Screen.BIOMETRIC_ACTIVATION
+                        } else {
+                            currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA
+                        }
                     },
                     onCancel = { currentScreen = Screen.LOGIN }
                 )
@@ -1232,25 +1312,43 @@ fun NutriIAContent() {
             }
             
             Screen.BIOMETRIC_ACTIVATION -> {
+                val uidActiva = loginViewModel.uidUsuario.ifBlank {
+                    FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                }
+                val rolActivo = loginViewModel.rolUsuario.ifBlank { "padre" }
                 BiometricActivationScreen(
-                    uid = loginViewModel.uidUsuario,
-                    rol = loginViewModel.rolUsuario,
+                    uid = uidActiva,
+                    rol = rolActivo,
                     onActivado = {
-                        val rol = loginViewModel.rolUsuario
-                        currentScreen = when (rol) {
+                        val r = loginViewModel.rolUsuario.ifBlank { rolActivo }
+                        currentScreen = when (r) {
                             "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
                             "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
                             "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
-                            else -> if (children.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
+                            else -> {
+                                if (children.isEmpty() && vmChildren.isEmpty()) {
+                                    scope.launch {
+                                        loginViewModel.recargarHijos()
+                                    }
+                                }
+                                Screen.DASHBOARD_PARENT
+                            }
                         }
                     },
                     onOmitido = {
-                        val rol = loginViewModel.rolUsuario
-                        currentScreen = when (rol) {
+                        val r = loginViewModel.rolUsuario.ifBlank { rolActivo }
+                        currentScreen = when (r) {
                             "nutriologo" -> Screen.DASHBOARD_NUTRITIONIST
                             "ginecologo" -> Screen.DASHBOARD_GINECOLOGO
                             "mama_primeriza" -> Screen.DASHBOARD_MAMA_PRIMERIZA
-                            else -> if (children.isEmpty()) Screen.QUIZ else Screen.DASHBOARD_PARENT
+                            else -> {
+                                if (children.isEmpty() && vmChildren.isEmpty()) {
+                                    scope.launch {
+                                        loginViewModel.recargarHijos()
+                                    }
+                                }
+                                Screen.DASHBOARD_PARENT
+                            }
                         }
                     }
                 )

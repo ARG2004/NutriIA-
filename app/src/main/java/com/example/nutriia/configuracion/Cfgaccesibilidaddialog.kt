@@ -53,16 +53,19 @@ private val GreenConfig = Color(0xFF4CAF50)
 
 @Composable
 fun CfgAccesibilidadDialog(
-    modoActual:    AccessibilityMode,
-    idiomaActual:  IdiomaVoz,
-    ttsManager:    NutriTTS?,
-    context:       Context,
-    onModoChange:  (AccessibilityMode) -> Unit,
-    onIdiomaChange:(IdiomaVoz) -> Unit,
-    onDismiss:     () -> Unit
+    modoActual:       AccessibilityMode,
+    idiomaActual:     IdiomaVoz,
+    velocidadActual:  Float = 0.90f,
+    ttsManager:       NutriTTS?,
+    context:          Context,
+    onModoChange:     (AccessibilityMode) -> Unit,
+    onIdiomaChange:   (IdiomaVoz) -> Unit,
+    onVelocidadChange:(Float) -> Unit = {},
+    onDismiss:        () -> Unit
 ) {
-    var modoLocal   by remember(modoActual)  { mutableStateOf(modoActual)   }
-    var idiomaLocal by remember(idiomaActual){ mutableStateOf(idiomaActual) }
+    var modoLocal      by remember(modoActual)       { mutableStateOf(modoActual)       }
+    var idiomaLocal    by remember(idiomaActual)     { mutableStateOf(idiomaActual)     }
+    var velocidadLocal by remember(velocidadActual)  { mutableStateOf(velocidadActual)  }
     var mostrarTalkBackInfo by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -270,6 +273,40 @@ fun CfgAccesibilidadDialog(
                     }
                 }
 
+                HorizontalDivider(color = Color(0xFFEEEEEE))
+
+                // Selección de velocidad
+                Text("Velocidad de la voz", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1B5E20))
+
+                val velocidades = listOf(
+                    0.85f to "0.85x",
+                    1.00f to "1.0x",
+                    1.25f to "1.25x",
+                    1.50f to "1.5x"
+                )
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    velocidades.forEach { (vel, label) ->
+                        val selected = kotlin.math.abs(velocidadLocal - vel) < 0.05f
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (selected) GreenConfig else Color(0xFFEFEFEF))
+                                .clickable { velocidadLocal = vel }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                label,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selected) Color.White else Color(0xFF1B5E20)
+                            )
+                        }
+                    }
+                }
+
                 // Nota informativa
                 Row(
                     modifier = Modifier
@@ -308,6 +345,7 @@ fun CfgAccesibilidadDialog(
                         onClick = {
                             onModoChange(modoLocal)
                             onIdiomaChange(idiomaLocal)
+                            onVelocidadChange(velocidadLocal)
                             onDismiss()
                         },
                         modifier = Modifier.weight(1f),

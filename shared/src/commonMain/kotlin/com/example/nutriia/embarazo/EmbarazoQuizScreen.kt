@@ -69,7 +69,12 @@ fun EmbarazoQuizScreen(
         if (texto.isNotEmpty()) accessibilityVm.hablar(texto)
     }
 
-    Box(Modifier.fillMaxSize().background(Color(0xFFF8F9F3))) {
+    Box(
+        Modifier
+            .anuncioPantalla("Cuestionario de Embarazo, Paso ${currentStep + 1} de $totalSteps")
+            .fillMaxSize()
+            .background(Color(0xFFF8F9F3))
+    ) {
         Column(
             modifier = Modifier.fillMaxSize().imePadding().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally

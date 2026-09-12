@@ -281,6 +281,7 @@ fun NutriIAiOSApp() {
     var pagoTipoLlamada by remember { mutableStateOf<TipoLlamada?>(
         com.example.nutriia.auth.SessionManager.obtenerPagoTipo()?.let { runCatching { TipoLlamada.valueOf(it) }.getOrNull() }
     ) }
+    var iniciarLlamadaTrasExito by remember { mutableStateOf(false) }
 
     // Sincronizar estados de pago con persistencia local para sobrevivir a reinicios (Safari)
     LaunchedEffect(pagoNutriologoUid, pagoNutriologoNombre, pagoIdExitoso, pagoTipoLlamada) {
@@ -353,7 +354,7 @@ fun NutriIAiOSApp() {
             val tts = accessibilityVm.ttsManager
             if (tts != null && !tts.esLectorDelSistemaActivo()) {
                 val intro = when (currentScreen) {
-                    Screen.DASHBOARD_PARENT, Screen.DASHBOARD_NUTRITIONIST,
+                    Screen.DASHBOARD_NUTRITIONIST,
                     Screen.DASHBOARD_MAMA_PRIMERIZA, Screen.DASHBOARD_GINECOLOGO -> accessibilityVm.loc(Voz.DASHBOARD_INTRO, VozEn.DASHBOARD_INTRO)
                     Screen.CRECIMIENTO -> accessibilityVm.loc(Voz.CRECIMIENTO_INTRO, VozEn.CRECIMIENTO_INTRO)
                     Screen.LACTANCIA -> accessibilityVm.loc(Voz.LACTANCIA_INTRO, VozEn.LACTANCIA_INTRO)
@@ -888,16 +889,19 @@ fun NutriIAiOSApp() {
 
                     Screen.PEDIATRA_DASHBOARD -> activeChild?.let { child ->
                         PediatraScreen(
+                            teleconsultaViewModel = teleconsultaVm,
+                            a11yVm = accessibilityVm,
                             padreUid = loginViewModel.uidUsuario,
                             padreNombre = loginViewModel.nombreUsuario,
                             childId = child.id,
                             childNombre = child.name,
-                            a11yVm = accessibilityVm,
-                            iniciarLlamadaAlEntrar = pagoTipoLlamada,
+                            iniciarLlamadaAlEntrar = if (iniciarLlamadaTrasExito) pagoTipoLlamada else null,
                             pagoNutriologoUid = pagoNutriologoUid,
                             pagoNutriologoNombre = pagoNutriologoNombre,
                             pagoIdExitoso = pagoIdExitoso,
+                            padreNombreCompleto = loginViewModel.nombreUsuario,
                             onLlamadaIniciada = {
+                                iniciarLlamadaTrasExito = false
                                 pagoIdExitoso = ""
                                 pagoTipoLlamada = null
                             },
@@ -921,6 +925,13 @@ fun NutriIAiOSApp() {
                         teleconsultaViewModel = teleconsultaVm,
                         mamaUid = loginViewModel.uidUsuario,
                         mamaNombre = loginViewModel.nombreUsuario,
+                        iniciarLlamadaAlEntrar = if (iniciarLlamadaTrasExito) pagoTipoLlamada else null,
+                        pagoIdExitoso = pagoIdExitoso,
+                        onLlamadaIniciada = {
+                            iniciarLlamadaTrasExito = false
+                            pagoIdExitoso = ""
+                            pagoTipoLlamada = null
+                        },
                         onAbrirPago = { gineUid, gineNombre, tipo ->
                             pagoNutriologoUid = gineUid
                             pagoNutriologoNombre = gineNombre
@@ -931,21 +942,41 @@ fun NutriIAiOSApp() {
                         onBack = { currentScreen = Screen.DASHBOARD_MAMA_PRIMERIZA }
                     )
                     Screen.PAGO_TELECONSULTA -> {
-                        val childId = activeChild?.id ?: loginViewModel.uidUsuario
-                        val childName = activeChild?.name ?: loginViewModel.nombreUsuario
-                        PaymentGateScreen(
-                            nutriologoUid = pagoNutriologoUid,
-                            nutriologoNombre = pagoNutriologoNombre,
-                            childId = childId,
-                            childNombre = childName,
-                            onPagoConfirmado = {
-                                pagoIdExitoso = "PAGO_EXITOSO"
-                                currentScreen = pagoPantallaRetorno
-                            },
-                            onCancelar = {
-                                currentScreen = pagoPantallaRetorno
-                            }
-                        )
+                        val rol = loginViewModel.rolUsuario
+                        val destinoCancelar = if (rol == "mama_primeriza") Screen.CITAS_EMBARAZO else Screen.PEDIATRA_DASHBOARD
+                        if (rol == "mama_primeriza") {
+                            PaymentGateScreen(
+                                viewModel = paymentVm,
+                                nutriologoUid = pagoNutriologoUid,
+                                nutriologoNombre = pagoNutriologoNombre,
+                                childId = "embarazo",
+                                childNombre = "Embarazo",
+                                onPagoConfirmado = {
+                                    iniciarLlamadaTrasExito = true
+                                    pagoIdExitoso = paymentVm.state.value.pagoActual?.id ?: ""
+                                    paymentVm.resetPago()
+                                    currentScreen = Screen.CITAS_EMBARAZO
+                                },
+                                onCancelar = { currentScreen = Screen.CITAS_EMBARAZO }
+                            )
+                        } else {
+                            activeChild?.let { child ->
+                                PaymentGateScreen(
+                                    viewModel = paymentVm,
+                                    nutriologoUid = pagoNutriologoUid,
+                                    nutriologoNombre = pagoNutriologoNombre,
+                                    childId = child.id,
+                                    childNombre = child.name,
+                                    onPagoConfirmado = {
+                                        iniciarLlamadaTrasExito = true
+                                        pagoIdExitoso = paymentVm.state.value.pagoActual?.id ?: ""
+                                        paymentVm.resetPago()
+                                        currentScreen = Screen.PEDIATRA_DASHBOARD
+                                    },
+                                    onCancelar = { currentScreen = Screen.PEDIATRA_DASHBOARD }
+                                )
+                            } ?: run { currentScreen = Screen.DASHBOARD_PARENT }
+                        }
                     }
                     Screen.VINCULACION_GINECOLOGO -> VinculacionGinecologoScreen(
                         onNavigateToDirectorio = { currentScreen = Screen.DIRECTORIO_GINECOLOGOS },

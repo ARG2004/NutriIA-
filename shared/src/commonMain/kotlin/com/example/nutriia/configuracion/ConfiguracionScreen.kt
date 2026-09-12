@@ -92,6 +92,7 @@ fun ConfiguracionScreen(
         val a11yVm: AccessibilityViewModel = viewModel()
     val modoActual   by a11yVm.mode.collectAsState()
     val idiomaActual by a11yVm.idioma.collectAsState()
+    val velocidad    by a11yVm.speed.collectAsState()
     val ttsManager   = a11yVm.ttsManager
 
     var notifComidas          by remember { mutableStateOf(true) }
@@ -168,16 +169,23 @@ fun ConfiguracionScreen(
         // ── Diálogo accesibilidad ─────────────────────────────────────────────
         if (mostrarDialogoA11y) {
             CfgAccesibilidadDialog(
-                modoActual     = modoActual,
-                idiomaActual   = idiomaActual,
-                ttsManager     = ttsManager,
-                                onModoChange   = { a11yVm.setMode(it) },
-                onIdiomaChange = { a11yVm.setIdioma(it) },
-                onDismiss      = { mostrarDialogoA11y = false }
+                modoActual        = modoActual,
+                idiomaActual      = idiomaActual,
+                velocidadActual   = velocidad,
+                ttsManager        = ttsManager,
+                onModoChange      = { a11yVm.setMode(it) },
+                onIdiomaChange    = { a11yVm.setIdioma(it) },
+                onVelocidadChange = { a11yVm.setSpeed(it) },
+                onDismiss         = { mostrarDialogoA11y = false }
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize().background(CfgBg)) {
+        Box(
+            modifier = Modifier
+                .anuncioPantalla("Ajustes y Configuración")
+                .fillMaxSize()
+                .background(CfgBg)
+        ) {
             LazyColumn(
                 modifier       = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 56.dp)

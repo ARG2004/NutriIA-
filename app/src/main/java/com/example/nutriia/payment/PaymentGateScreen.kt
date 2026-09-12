@@ -14,10 +14,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nutriia.accesibilidad.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -37,6 +41,10 @@ fun PaymentGateScreen(
     onPagoConfirmado: () -> Unit,
     onCancelar:       () -> Unit
 ) {
+    val a11yVm: AccessibilityViewModel = viewModel()
+    val a11yMode by a11yVm.mode.collectAsState()
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     val state   by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -44,23 +52,33 @@ fun PaymentGateScreen(
 
     // Crear el pago pendiente al entrar a la pantalla
     LaunchedEffect(Unit) {
+        if (esBlind) a11yVm.hablar("Iniciando pasarela de pago seguro para teleconsulta con $nutriologoNombre.")
         viewModel.iniciarPago(nutriologoUid = nutriologoUid, childId = childId)
     }
 
     // Cuando el pago se confirma (deep link regresó exitoso)
     LaunchedEffect(state.pagoCompletado) {
-        if (state.pagoCompletado) onPagoConfirmado()
+        if (state.pagoCompletado) {
+            NutriEarcons.playSuccess()
+            if (esBlind) a11yVm.hablar("Pago confirmado exitosamente. Redirigiendo a tu teleconsulta médica.")
+            onPagoConfirmado()
+        }
     }
 
     // Errores
     LaunchedEffect(state.error) {
         state.error?.let {
+            NutriEarcons.playError()
+            if (esBlind) a11yVm.hablar("Error en el pago: $it")
             snackbarHostState.showSnackbar(it)
             viewModel.limpiarError()
         }
     }
 
     Scaffold(
+        modifier       = Modifier
+            .anuncioPantalla("Pasarela de Pago Seguro de Teleconsulta")
+            .radarHapticoBlind(context, esBlind),
         containerColor = PBgCrema,
         snackbarHost   = { SnackbarHost(snackbarHostState) }
     ) { padding ->

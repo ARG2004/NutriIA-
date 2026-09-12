@@ -203,7 +203,9 @@ fun HelpScreen(onNavigateBack: () -> Unit) {
     val modules = remember { buildModules() }
 
     Scaffold(
-        modifier = Modifier.radarHapticoBlind(context = context, esBlind = esBlind),
+        modifier = Modifier
+            .anuncioPantalla("Centro de Ayuda y Tutoriales")
+            .radarHapticoBlind(context = context, esBlind = esBlind),
         topBar = {
             TopAppBar(
                 title = {

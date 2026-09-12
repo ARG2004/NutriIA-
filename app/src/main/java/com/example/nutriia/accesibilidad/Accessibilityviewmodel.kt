@@ -31,6 +31,10 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope, SharingStarted.Eagerly, IdiomaVoz.ESPANOL_MX
     )
 
+    val speed = repo.speedFlow.stateIn(
+        viewModelScope, SharingStarted.Eagerly, 0.90f
+    )
+
     val primeraVez = repo.primeraVezFlow.stateIn(
         viewModelScope, SharingStarted.Eagerly, true
     )
@@ -79,6 +83,13 @@ class AccessibilityViewModel(app: Application) : AndroidViewModel(app) {
             IdiomaVoz.INGLES     -> "Language changed to English."
         }
         hablar(texto)
+    }
+
+    // ── Cambia velocidad de habla ─────────────────────────────────────────────
+    fun setSpeed(nuevaVelocidad: Float) {
+        viewModelScope.launch { repo.saveSpeed(nuevaVelocidad) }
+        ttsManager?.setSpeechRate(nuevaVelocidad)
+        hablar("Velocidad de voz ajustada.")
     }
 
     // ── Habla con cola si TTS no listo ────────────────────────────────────────

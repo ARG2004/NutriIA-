@@ -55,8 +55,25 @@ object SessionManager {
         }
     }
 
+    private const val KEY_ULTIMO_UID_BIOMETRICO = "ultimo_uid_biometrico"
+
     fun guardarSesion(context: Context, uid: String) {
-        getSharedPrefs(context).edit().putString(KEY_UID, uid).apply()
+        if (uid.isBlank()) return
+        getSharedPrefs(context).edit()
+            .putString(KEY_UID, uid)
+            .putString(KEY_ULTIMO_UID_BIOMETRICO, uid)
+            .apply()
+    }
+
+    fun guardarUltimoUid(context: Context, uid: String) {
+        if (uid.isBlank()) return
+        getSharedPrefs(context).edit().putString(KEY_ULTIMO_UID_BIOMETRICO, uid).apply()
+    }
+
+    fun obtenerUltimoUid(context: Context): String? {
+        val uid = getSharedPrefs(context).getString(KEY_ULTIMO_UID_BIOMETRICO, null)
+            ?: getSharedPrefs(context).getString(KEY_UID, null)
+        return if (uid.isNullOrBlank()) null else uid
     }
 
     fun obtenerUid(context: Context): String? {
@@ -98,7 +115,17 @@ object SessionManager {
     fun limpiarSesion(context: Context) {
         getSharedPrefs(context).edit()
             .remove(KEY_UID)
+            .remove(KEY_ULTIMA_PANTALLA)
+            .apply()
+    }
+
+    fun olvidarBiometriaCompleta(context: Context) {
+        getSharedPrefs(context).edit()
+            .remove(KEY_UID)
+            .remove(KEY_ULTIMO_UID_BIOMETRICO)
             .remove(KEY_BIOMETRIC_ACTIVO)
+            .remove(KEY_ACTIVACION_HUELLA_MOSTRADA)
+            .remove(KEY_HUELLA_CONFIRMADA)
             .remove(KEY_ULTIMA_PANTALLA)
             .apply()
     }

@@ -155,6 +155,9 @@ fun NutriChatScreen(
     }
 
     Scaffold(
+        modifier = Modifier
+            .anuncioPantalla("Asistente Nutricional NutriBot")
+            .radarHapticoBlind(null, esBlind),
         topBar = {
             TopAppBar(
                 title = {
@@ -215,7 +218,6 @@ fun NutriChatScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = NutriaBgCrema)
             )
         },
-        modifier = Modifier.radarHapticoBlind(null, esBlind),
         containerColor = NutriaBgCrema
     ) { innerPadding ->
         Column(

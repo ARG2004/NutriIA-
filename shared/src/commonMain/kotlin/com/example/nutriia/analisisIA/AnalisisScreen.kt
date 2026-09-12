@@ -1,10 +1,12 @@
 package com.example.nutriia.analisisIA
 
 import androidx.compose.ui.layout.ContentScale
+import com.example.nutriia.accesibilidad.*
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -186,27 +188,33 @@ fun AnalisisScreen(
 
         val targetNombre = if (esModoEmbarazo) "tu embarazo" else (child?.name ?: "tu bebé")
 
-        LaunchedEffect(uiState) {
+        // Usar uiState::class como key para que solo se dispare cuando
+        // CAMBIA EL TIPO de estado (no cuando cambia el mensaje interno de Analizando)
+        LaunchedEffect(uiState::class) {
             if (esBlind) {
                 when (val state = uiState) {
                     is AnalisisUiState.Idle -> {
-                        a11yVm.hablar("Módulo de Análisis de Alimento con Inteligencia Artificial para $targetNombre. Coloca el alimento frente a la cámara y presiona el botón inferior para escanear e iniciar el análisis.")
+                        a11yVm.hablar("Módulo de Análisis de Alimentos con Inteligencia Artificial para $targetNombre. Presiona el botón Escanear Alimento en la parte inferior para abrir la cámara con asistente de posición.")
                     }
                     is AnalisisUiState.Capturando -> {
-                        a11yVm.hablar("Cámara activa. Alinea el alimento al centro de la pantalla y presiona el botón central inferior de captura.")
+                        a11yVm.hablar("Cámara inteligente activa. Apunta el teléfono hacia la mesa. Te iré guiando para centrar tu plato.")
                     }
                     is AnalisisUiState.Analizando -> {
-                        a11yVm.hablar("Analizando alimento con Inteligencia Artificial para $targetNombre. Por favor, espera unos segundos.")
+                        a11yVm.hablar("Analizando alimento con Inteligencia Artificial para $targetNombre. Por favor, espera unos segundos. Te avisaré cuando termine.")
                     }
                     is AnalisisUiState.Exito -> {
                         val food = state.resultado.foodDetection
                         val nutrition = state.resultado.nutrition
                         val analysis = state.resultado.analysis
-                        val recomText = if (analysis.recommended) "Recomendado para $targetNombre" else "No recomendado para $targetNombre"
-                        a11yVm.hablar("Análisis completado con éxito. Se detectó ${food.foodName}. ${recomText}. Calorías estimadas: ${nutrition.calories.toInt()} kilocalorías. Proteínas: ${((nutrition.protein * 10).toInt() / 10.0)} gramos, Carbohidratos: ${((nutrition.carbohydrates * 10).toInt() / 10.0)} gramos, Grasas: ${((nutrition.fat * 10).toInt() / 10.0)} gramos.")
+                        if (!food.isEdible || food.foodType == "objeto_no_comestible") {
+                            a11yVm.hablar("Atención: El objeto detectado es ${food.foodName} y no es un alimento comestible. No contiene calorías ni nutrientes. Por favor, coloca tu comida o plato frente a la cámara e intenta de nuevo.")
+                        } else {
+                            val recomText = if (analysis.recommended) "Recomendado para $targetNombre" else "No recomendado para $targetNombre"
+                            a11yVm.hablar("Análisis completado con éxito. Se detectó ${food.foodName}. ${recomText}. Calorías estimadas: ${nutrition.calories.toInt()} kilocalorías. Proteínas: ${((nutrition.protein * 10).toInt() / 10.0)} gramos, Carbohidratos: ${((nutrition.carbohydrates * 10).toInt() / 10.0)} gramos, Grasas: ${((nutrition.fat * 10).toInt() / 10.0)} gramos.")
+                        }
                     }
                     is AnalisisUiState.Guardado -> {
-                        a11yVm.hablar("Análisis guardado exitosamente en el diario nutricional.")
+                        a11yVm.hablar("Análisis guardado exitosamente.")
                     }
                     is AnalisisUiState.Error -> {
                         a11yVm.hablar("Ocurrió un error en el análisis. Detalle: ${state.mensaje}. Presiona el botón de abajo para reintentar.")
@@ -222,6 +230,7 @@ fun AnalisisScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .anuncioPantalla("Análisis Nutricional con Inteligencia Artificial")
                 .background(BgBase)
         ) {
             AnimatedContent(
@@ -446,10 +455,14 @@ private fun PantallaInicial(
     var mostrarGuia by remember { mutableStateOf(false) }
 
     val a11yMode = LocalAccessibilityMode.current
-    val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+    val esAccesible = esBlind || a11yMode == AccessibilityMode.MUTE
 
     if (mostrarGuia) {
-        PantallaGuiaFoto(onListo = { mostrarGuia = false; onTomarFoto() })
+        PantallaGuiaFoto(
+            onListo = { mostrarGuia = false; onTomarFoto() },
+            esBlind = esBlind
+        )
         return
     }
 
@@ -768,7 +781,11 @@ private fun PasoItem(numero: Int, icon: ImageVector, texto: String, color: Color
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PantallaGuiaFoto(onListo: () -> Unit) {
+private fun PantallaGuiaFoto(
+    onListo: () -> Unit,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel = viewModel()
+) {
     Column(
         modifier            = Modifier
             .fillMaxSize()
@@ -777,6 +794,15 @@ private fun PantallaGuiaFoto(onListo: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(56.dp))
+
+        // Narrar guía de posición al entrar (solo modo ciego)
+        LaunchedEffect(Unit) {
+            if (esBlind) {
+                a11yVm.hablar(
+                    "Guía para colocar tu plato y teléfono: Coloca tu plato sobre la mesa frente a ti. Sostén el teléfono a la altura del pecho apuntando hacia abajo en un ángulo de 45 grados. Cuando abras la cámara, el asistente te irá indicando si debes moverlo a la derecha, izquierda, acercarte o alejarte. Cuando esté centrado, vibrará de forma continua y podrás decir 'Foto' o dar un toque en la pantalla. Toca el botón Entendido en la parte inferior para abrir la cámara."
+                )
+            }
+        }
 
         Box(
             modifier         = Modifier
@@ -993,16 +1019,31 @@ private fun MarcoEsquinas(color: Color) {
 
 @Composable
 private fun PantallaCaptura(
-        onIniciarCamara : () -> Unit = {},
+    onIniciarCamara : () -> Unit = {},
     onCapturar      : () -> Unit,
     onCancelar      : () -> Unit
 ) {
     val a11yMode = LocalAccessibilityMode.current
-    val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+    val esAccesible = esBlind || a11yMode == AccessibilityMode.MUTE
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .then(
+                if (esBlind) {
+                    Modifier.clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        onCapturar()
+                    }
+                } else Modifier
+            )
+    ) {
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            Text("Cámara no disponible", color = Color.White)
+            Text(if (esBlind) "Toca cualquier parte de la pantalla para capturar" else "Cámara activa", color = Color.White)
         }
 
         // Overlays
@@ -1026,7 +1067,7 @@ private fun PantallaCaptura(
                 contentColor   = Color.White
             )
         ) {
-            Icon(Icons.Rounded.Close, null, modifier = Modifier.size(if (esAccesible) 30.dp else 20.dp))
+            Icon(Icons.Rounded.Close, contentDescription = "Cerrar", modifier = Modifier.size(if (esAccesible) 30.dp else 20.dp))
         }
 
         // Marco de enfoque con pulso suave
@@ -1046,7 +1087,7 @@ private fun PantallaCaptura(
             MarcoEsquinas(color = Color.White)
         }
         Text(
-            "Centra el alimento aquí",
+            if (esBlind) "Toca cualquier parte de la pantalla o di 'Foto'" else "Centra el alimento aquí",
             fontSize  = 12.sp,
             color     = Color.White.copy(0.8f),
             modifier  = Modifier.align(Alignment.Center).padding(top = 220.dp)
@@ -1059,7 +1100,7 @@ private fun PantallaCaptura(
                 .padding(bottom = 44.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Toca para escanear", color = Color.White.copy(0.7f), fontSize = 12.sp)
+            Text(if (esBlind) "Disparador Háptico (O toca la pantalla)" else "Toca para escanear", color = Color.White.copy(0.7f), fontSize = 12.sp)
             Spacer(Modifier.height(14.dp))
             Box(
                 modifier         = Modifier
@@ -1077,7 +1118,7 @@ private fun PantallaCaptura(
                 ) {
                     Icon(
                         Icons.Outlined.CameraAlt,
-                        null,
+                        contentDescription = "Tomar foto",
                         modifier = Modifier.size(if (esAccesible) 36.dp else 28.dp)
                     )
                 }
@@ -1371,36 +1412,55 @@ private fun PantallaResultado(
 
         Spacer(Modifier.height(14.dp))
 
-        // ── Tarjeta de Resumen de Macronutrientes (Fila estilo Imagen de referencia) ──
-        Card(
-            modifier  = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape     = RoundedCornerShape(20.dp),
-            colors    = CardDefaults.cardColors(containerColor = BgCard),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier              = Modifier
+        val esNoComestible = !food.isEdible || food.foodType == "objeto_no_comestible"
+
+        if (esNoComestible) {
+            // ── Tarjeta Destacada de Advertencia para Objetos No Comestibles ──
+            Card(
+                modifier  = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp, horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment     = Alignment.CenterVertically
+                    .padding(horizontal = 16.dp),
+                shape     = RoundedCornerShape(20.dp),
+                colors    = CardDefaults.cardColors(containerColor = RedLight),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                MacroStatColumn("${nutrition.calories.toInt()} kcal", "Calorías", AmberWarm)
-                DividerVertical()
-                MacroStatColumn("${((nutrition.carbohydrates * 10).toInt() / 10.0)} g", "Carbohidratos", Color(0xFF7B68EE))
-                DividerVertical()
-                MacroStatColumn("${((nutrition.protein * 10).toInt() / 10.0)} g", "Proteína", Color(0xFF20B2AA))
-                DividerVertical()
-                MacroStatColumn("${((nutrition.fat * 10).toInt() / 10.0)} g", "Grasas", RedSoft)
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Rounded.WarningAmber,
+                            contentDescription = null,
+                            tint = RedSoft,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "Objeto No Comestible",
+                            fontWeight = FontWeight.Bold,
+                            color = RedSoft,
+                            fontSize = 17.sp
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = food.nonEdibleReason.ifBlank {
+                            "La Inteligencia Artificial detectó '${food.foodName}'. No se identificaron alimentos comestibles en la toma, por lo que no se calculan nutrientes."
+                        },
+                        fontSize = 14.sp,
+                        color = TextPrimary,
+                        lineHeight = 20.sp
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Tip: Asegúrate de enfocar tu comida, plato o ingrediente frente a la cámara con buena iluminación.",
+                        fontSize = 13.sp,
+                        color = TextSecond,
+                        lineHeight = 18.sp
+                    )
+                }
             }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // ── Lista de Ingredientes / Desglose de Alimentos (Estilo Imagen de referencia) ──
-        if (food.ingredients.isNotEmpty()) {
+            Spacer(Modifier.height(20.dp))
+        } else {
+            // ── Tarjeta de Resumen de Macronutrientes (Fila estilo Imagen de referencia) ──
             Card(
                 modifier  = Modifier
                     .fillMaxWidth()
@@ -1409,160 +1469,190 @@ private fun PantallaResultado(
                 colors    = CardDefaults.cardColors(containerColor = BgCard),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text       = "Ingredientes y componentes",
-                        fontSize   = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color      = TextPrimary
-                    )
-                    Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier              = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp, horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    MacroStatColumn("${nutrition.calories.toInt()} kcal", "Calorías", AmberWarm)
+                    DividerVertical()
+                    MacroStatColumn("${((nutrition.carbohydrates * 10).toInt() / 10.0)} g", "Carbohidratos", Color(0xFF7B68EE))
+                    DividerVertical()
+                    MacroStatColumn("${((nutrition.protein * 10).toInt() / 10.0)} g", "Proteína", Color(0xFF20B2AA))
+                    DividerVertical()
+                    MacroStatColumn("${((nutrition.fat * 10).toInt() / 10.0)} g", "Grasas", RedSoft)
+                }
+            }
 
-                    val approxCalPerItem = if (food.ingredients.isNotEmpty()) (nutrition.calories / food.ingredients.size).toInt() else 0
+            Spacer(Modifier.height(14.dp))
 
-                    for ((index, ing) in food.ingredients.withIndex()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+            // ── Lista de Ingredientes / Desglose de Alimentos (Estilo Imagen de referencia) ──
+            if (food.ingredients.isNotEmpty()) {
+                Card(
+                    modifier  = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape     = RoundedCornerShape(20.dp),
+                    colors    = CardDefaults.cardColors(containerColor = BgCard),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text       = "Ingredientes y componentes",
+                            fontSize   = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = TextPrimary
+                        )
+                        Spacer(Modifier.height(12.dp))
+
+                        val approxCalPerItem = if (food.ingredients.isNotEmpty()) (nutrition.calories / food.ingredients.size).toInt() else 0
+
+                        for ((index, ing) in food.ingredients.withIndex()) {
                             Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(GreenLight),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
                                 ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(GreenLight),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text     = "${index + 1}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color    = GreenPrimary
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
                                     Text(
-                                        text     = "${index + 1}",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color    = GreenPrimary
+                                        text       = ing.replaceFirstChar { it.uppercase() },
+                                        fontSize   = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color      = TextPrimary
                                     )
                                 }
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    text       = ing.replaceFirstChar { it.uppercase() },
-                                    fontSize   = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color      = TextPrimary
-                                )
-                            }
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (approxCalPerItem > 0) {
-                                    Text(
-                                        text     = "~$approxCalPerItem kcal",
-                                        fontSize = 13.sp,
-                                        color    = TextSecond,
-                                        fontWeight = FontWeight.SemiBold
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (approxCalPerItem > 0) {
+                                        Text(
+                                            text     = "~$approxCalPerItem kcal",
+                                            fontSize = 13.sp,
+                                            color    = TextSecond,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    Icon(
+                                        Icons.Rounded.ChevronRight,
+                                        contentDescription = null,
+                                        tint               = TextHint,
+                                        modifier           = Modifier.size(18.dp)
                                     )
-                                    Spacer(Modifier.width(8.dp))
                                 }
-                                Icon(
-                                    Icons.Rounded.ChevronRight,
-                                    contentDescription = null,
-                                    tint               = TextHint,
-                                    modifier           = Modifier.size(18.dp)
-                                )
                             }
-                        }
-                        if (index < food.ingredients.size - 1) {
-                            HorizontalDivider(color = DividerColor, thickness = 0.8.dp)
+                            if (index < food.ingredients.size - 1) {
+                                HorizontalDivider(color = DividerColor, thickness = 0.8.dp)
+                            }
                         }
                     }
                 }
+                Spacer(Modifier.height(14.dp))
             }
-            Spacer(Modifier.height(14.dp))
-        }
 
-        // ── Análisis Pediátrico ──
-        Card(
-            modifier  = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape     = RoundedCornerShape(20.dp),
-            colors    = CardDefaults.cardColors(containerColor = recomBg as Color),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Outlined.ChildCare,
-                        null,
-                        tint     = recomColor as Color,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Recomendación para $targetNombre",
-                        fontWeight = FontWeight.Bold,
-                        color      = recomColor,
-                        fontSize   = 14.sp
-                    )
-                }
-
-                val portionToDisplay = if (analysis.recommendedPortion.isNotBlank()) analysis.recommendedPortion else if (analysis.recommended) "Porción pequeña adaptada para su edad" else "0g / No recomendado"
-                Spacer(Modifier.height(10.dp))
-                InfoRow(Icons.Outlined.DinnerDining, "Porción recomendada", portionToDisplay, recomColor as Color)
-                if (analysis.frequency.isNotBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    InfoRow(Icons.Outlined.EventRepeat, "Frecuencia sugerida", analysis.frequency, recomColor as Color)
-                }
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // ── Beneficios y Advertencias ──
-        if (analysis.benefits.isNotEmpty()) {
+            // ── Análisis Pediátrico ──
             Card(
-                modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                shape     = RoundedCornerShape(18.dp),
-                colors    = CardDefaults.cardColors(containerColor = BgCard),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Beneficios principales", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                    Spacer(Modifier.height(10.dp))
-                    for (b in analysis.benefits) {
-                        Row(modifier = Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
-                            Box(modifier = Modifier.padding(top = 6.dp).size(6.dp).clip(CircleShape).background(GreenMedium))
-                            Spacer(Modifier.width(10.dp))
-                            Text(b, fontSize = 13.sp, color = TextSecond, lineHeight = 18.sp)
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-        }
-
-        if (analysis.warnings.isNotEmpty()) {
-            Card(
-                modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                shape     = RoundedCornerShape(18.dp),
-                colors    = CardDefaults.cardColors(containerColor = RedLight),
+                modifier  = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape     = RoundedCornerShape(20.dp),
+                colors    = CardDefaults.cardColors(containerColor = recomBg as Color),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Advertencias de salud", fontWeight = FontWeight.Bold, color = RedSoft, fontSize = 14.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Outlined.ChildCare,
+                            null,
+                            tint     = recomColor as Color,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Recomendación para $targetNombre",
+                            fontWeight = FontWeight.Bold,
+                            color      = recomColor,
+                            fontSize   = 14.sp
+                        )
+                    }
+
+                    val portionToDisplay = if (analysis.recommendedPortion.isNotBlank()) analysis.recommendedPortion else if (analysis.recommended) "Porción pequeña adaptada para su edad" else "0g / No recomendado"
                     Spacer(Modifier.height(10.dp))
-                    for (w in analysis.warnings) {
-                        Row(modifier = Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
-                            Box(modifier = Modifier.padding(top = 6.dp).size(6.dp).clip(CircleShape).background(RedSoft))
-                            Spacer(Modifier.width(10.dp))
-                            Text(w, fontSize = 13.sp, color = TextSecond, lineHeight = 18.sp)
-                        }
+                    InfoRow(Icons.Outlined.DinnerDining, "Porción recomendada", portionToDisplay, recomColor as Color)
+                    if (analysis.frequency.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        InfoRow(Icons.Outlined.EventRepeat, "Frecuencia sugerida", analysis.frequency, recomColor as Color)
                     }
                 }
             }
+
             Spacer(Modifier.height(14.dp))
+
+            // ── Beneficios y Advertencias ──
+            if (analysis.benefits.isNotEmpty()) {
+                Card(
+                    modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape     = RoundedCornerShape(18.dp),
+                    colors    = CardDefaults.cardColors(containerColor = BgCard),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Beneficios principales", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                        Spacer(Modifier.height(10.dp))
+                        for (b in analysis.benefits) {
+                            Row(modifier = Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
+                                Box(modifier = Modifier.padding(top = 6.dp).size(6.dp).clip(CircleShape).background(GreenMedium))
+                                Spacer(Modifier.width(10.dp))
+                                Text(b, fontSize = 13.sp, color = TextSecond, lineHeight = 18.sp)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+            }
+
+            if (analysis.warnings.isNotEmpty()) {
+                Card(
+                    modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape     = RoundedCornerShape(18.dp),
+                    colors    = CardDefaults.cardColors(containerColor = RedLight),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Advertencias de salud", fontWeight = FontWeight.Bold, color = RedSoft, fontSize = 14.sp)
+                        Spacer(Modifier.height(10.dp))
+                        for (w in analysis.warnings) {
+                            Row(modifier = Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
+                                Box(modifier = Modifier.padding(top = 6.dp).size(6.dp).clip(CircleShape).background(RedSoft))
+                                Spacer(Modifier.width(10.dp))
+                                Text(w, fontSize = 13.sp, color = TextSecond, lineHeight = 18.sp)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+            }
         }
 
         // ── Botones de Acción ──
@@ -1570,28 +1660,36 @@ private fun PantallaResultado(
         val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
 
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Button(
-                onClick  = onGuardar,
-                modifier = Modifier.fillMaxWidth().height(if (esAccesible) 70.dp else 52.dp),
-                shape    = RoundedCornerShape(16.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
-            ) {
-                Icon(Icons.Outlined.BookmarkAdd, null, tint = Color.White, modifier = Modifier.size(if (esAccesible) 24.dp else 19.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Guardar en diario nutricional", fontWeight = FontWeight.Bold, fontSize = if (esAccesible) 16.sp else 15.sp, color = Color.White)
+            if (!esNoComestible) {
+                Button(
+                    onClick  = onGuardar,
+                    modifier = Modifier.fillMaxWidth().height(if (esAccesible) 70.dp else 52.dp),
+                    shape    = RoundedCornerShape(16.dp),
+                    colors   = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
+                ) {
+                    Icon(Icons.Outlined.BookmarkAdd, null, tint = Color.White, modifier = Modifier.size(if (esAccesible) 24.dp else 19.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Guardar en diario nutricional", fontWeight = FontWeight.Bold, fontSize = if (esAccesible) 16.sp else 15.sp, color = Color.White)
+                }
+                Spacer(Modifier.height(10.dp))
             }
-            Spacer(Modifier.height(10.dp))
-            OutlinedButton(
+
+            Button(
                 onClick  = onNuevo,
                 modifier = Modifier.fillMaxWidth().height(if (esAccesible) 70.dp else 50.dp),
                 shape    = RoundedCornerShape(16.dp),
-                colors   = ButtonDefaults.outlinedButtonColors(contentColor = GreenPrimary),
-                border   = androidx.compose.foundation.BorderStroke(1.5.dp, GreenPrimary.copy(alpha = 0.4f))
+                colors   = if (esNoComestible) ButtonDefaults.buttonColors(containerColor = GreenPrimary) else ButtonDefaults.buttonColors(containerColor = BgCard),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
-                Icon(Icons.Outlined.CameraAlt, null, modifier = Modifier.size(if (esAccesible) 22.dp else 18.dp))
+                Icon(Icons.Outlined.CameraAlt, null, tint = if (esNoComestible) Color.White else GreenPrimary, modifier = Modifier.size(if (esAccesible) 22.dp else 18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Analizar otro platillo", fontWeight = FontWeight.SemiBold, fontSize = if (esAccesible) 16.sp else 14.sp)
+                Text(
+                    if (esNoComestible) "Escanear alimento de nuevo" else "Escanear otro alimento",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (esAccesible) 16.sp else 14.sp,
+                    color = if (esNoComestible) Color.White else GreenPrimary
+                )
             }
         }
         Spacer(Modifier.height(36.dp))

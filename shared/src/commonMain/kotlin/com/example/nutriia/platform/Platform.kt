@@ -10,6 +10,11 @@ expect fun platformLog(tag: String, msg: String)
 
 expect fun isVoiceOverActive(): Boolean
 
+expect fun setKeepScreenOn(enabled: Boolean)
+
+@androidx.compose.runtime.Composable
+expect fun KeepScreenOn()
+
 fun generateUUID(): String {
     val chars = "0123456789abcdef"
     val time = currentTimeMillis().toString(16)

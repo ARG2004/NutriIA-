@@ -152,7 +152,9 @@ fun CrecimientoScreen(
     }
 
     Scaffold(
-        modifier = Modifier.radarHapticoBlind(null, esBlind),
+        modifier = Modifier
+            .anuncioPantalla("Curvas y Percentiles de Crecimiento OMS")
+            .radarHapticoBlind(null, esBlind),
         containerColor = C_Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {

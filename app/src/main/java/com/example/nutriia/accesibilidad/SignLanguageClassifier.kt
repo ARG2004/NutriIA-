@@ -20,6 +20,27 @@ data class ResultadoClasificacion(
 )
 
 @Keep
+enum class CategoriaSena {
+    ALIMENTACION, SALUD_ALERTA, CLINICA, CONTROL
+}
+
+@Keep
+data class SenaLSMInfo(
+    val id: String,
+    val nombre: String,
+    val emoji: String,
+    val descripcionLSM: String,
+    val sugerenciaFrase: String,
+    val categoria: CategoriaSena
+)
+
+@Keep
+data class ResultadoSenaComunicativa(
+    val sena: SenaLSMInfo,
+    val confianza: Float
+)
+
+@Keep
 data class LsmSample(
     val label: String,
     val vector: List<Float>
@@ -31,13 +52,51 @@ data class LsmDataset(
 )
 
 /**
- * Clasificador Anatómico Relacional 3D Riguroso LSM (Abecedario Completo A-Z + Gestos Dinámicos UTT/SEP).
- * Incorpora orientación vectorial (arriba vs abajo/caído) para distinguir perfectamente M, N, Ñ de L o H,
- * y clasificación 3D para la seña C y todo el abecedario.
+ * Catálogo Oficial de Señas Léxicas LSM para NutrIA (DIELSEME / CONADIS / SEP).
+ */
+val CATALOGO_SENAS_COMUNICATIVAS = listOf(
+    SenaLSMInfo("LECHE", "Leche / Lactancia", "🍼", "Mano en 'S'/'C' con movimiento rítmico de ordeño frente al pecho.", "Registrar toma de leche materna", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("COMIDA", "Comida / Papilla", "🥣", "Mano en 'O' aplanada (yemas unidas) llevada repetidamente hacia la boca.", "Registrar comida de sólidos", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("AGUA", "Agua", "💧", "Letra 'W' tocando suavemente la barbilla dos veces con el costado del índice.", "Registrar toma de agua", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("BEBE", "Bebé / Hijo", "👶", "Brazos cruzados al pecho con balanceo de vaivén meciendo al bebé.", "Seleccionar perfil de mi bebé", CategoriaSena.CLINICA),
+    SenaLSMInfo("FIEBRE", "Fiebre / Temperatura", "🤒", "Letra 'F' (variante formal) o palma/dorso colocados sobre la frente.", "Alerta: Mi bebé tiene fiebre", CategoriaSena.SALUD_ALERTA),
+    SenaLSMInfo("DOCTOR", "Doctor / Pediatra", "🩺", "Letra 'D' o 'M' tocando el pulso radial en la muñeca opuesta.", "Contactar pediatra de guardia", CategoriaSena.CLINICA),
+    SenaLSMInfo("MEDICINA", "Medicina / Tratamiento", "💊", "Dedo medio frotando en círculo el centro de la palma contraria.", "Registrar dosis de medicamento", CategoriaSena.SALUD_ALERTA),
+    SenaLSMInfo("PESO", "Peso / Medición", "⚖️", "Ambas manos palmas arriba alternando movimiento vertical de balanza.", "Registrar nuevo peso y talla", CategoriaSena.CLINICA),
+    SenaLSMInfo("SI_CONFIRMAR", "Sí / Guardar", "👍", "Puño cerrado con pulgar hacia arriba en movimiento afirmativo.", "Confirmar y Guardar", CategoriaSena.CONTROL),
+    SenaLSMInfo("NO_CANCELAR", "No / Cancelar", "👎", "Dedo índice oscilando lateralmente o pulgar hacia abajo.", "Cancelar / Borrar", CategoriaSena.CONTROL),
+    SenaLSMInfo("AYUDA", "Ayuda / Tutorial", "✋", "Pulgar arriba apoyado sobre palma opuesta elevándose hacia adelante.", "Abrir centro de ayuda", CategoriaSena.CONTROL),
+    SenaLSMInfo("GRACIAS", "Gracias", "🙏", "Dedo medio tocando barbilla y proyectándose hacia el frente.", "Muchas gracias", CategoriaSena.CONTROL)
+)
+
+/**
+ * Clasificador Anatómico Relacional 3D Riguroso LSM (Abecedario Completo A-Z + Señas Comunicativas Oficiales).
+ * Basado en las fuentes oficiales de CONADIS, DIELSEME, SEP y la Dra. Miroslava Cruz-Aldrete.
  */
 object SignLanguageClassifier {
 
     var datasetStatic: List<LsmSample>? = null
+
+    /**
+     * Calcula el ángulo 3D articular entre 3 puntos óseos (A -> B -> C) usando el producto punto de vectores.
+     * Es 100% inmune a la inclinación de la mano hacia la cámara (evita obligar a hiperextender los dedos).
+     */
+    fun anguloArticular3D(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark): Float {
+        val v1x = a.x() - b.x()
+        val v1y = a.y() - b.y()
+        val v1z = a.z() - b.z()
+
+        val v2x = c.x() - b.x()
+        val v2y = c.y() - b.y()
+        val v2z = c.z() - b.z()
+
+        val dot = v1x * v2x + v1y * v2y + v1z * v2z
+        val mag1 = sqrt(v1x * v1x + v1y * v1y + v1z * v1z).coerceAtLeast(0.0001f)
+        val mag2 = sqrt(v2x * v2x + v2y * v2y + v2z * v2z).coerceAtLeast(0.0001f)
+
+        val cosTheta = (dot / (mag1 * mag2)).coerceIn(-1.0f, 1.0f)
+        return Math.toDegrees(kotlin.math.acos(cosTheta.toDouble())).toFloat()
+    }
 
     fun d3D(p1: NormalizedLandmark, p2: NormalizedLandmark): Float {
         val dx = p1.x() - p2.x()
@@ -218,20 +277,25 @@ object SignLanguageClassifier {
         fun nDist(idx1: Int, idx2: Int): Float = d3D(idx1, idx2) / palmSize
         fun ratioExt(tipIdx: Int, mcpIdx: Int): Float = d3D(tipIdx, 0) / d3D(mcpIdx, 0).coerceAtLeast(0.001f)
 
-        // Ratios de Extensión 3D por Dedo
-        val thumbExt = nDist(4, 5) > 0.38f || ratioExt(4, 2) > 1.25f
+        // Ratios y Ángulos de Extensión 3D Relajados (inmunes a hiperextensión forzada)
+        val anguloIndex  = anguloArticular3D(landmarks2D[5], landmarks2D[6], landmarks2D[8])
+        val anguloMiddle = anguloArticular3D(landmarks2D[9], landmarks2D[10], landmarks2D[12])
+        val anguloRing   = anguloArticular3D(landmarks2D[13], landmarks2D[14], landmarks2D[16])
+        val anguloPinky  = anguloArticular3D(landmarks2D[17], landmarks2D[18], landmarks2D[20])
 
-        // Detección direccional: Extendido hacia ARRIBA (Y_tip < Y_pip)
-        val indexExtUp  = ratioExt(8, 5) > 1.22f && iTip2d.y() < iPip2d.y() + 0.05f
-        val middleExtUp = ratioExt(12, 9) > 1.22f && mTip2d.y() < mPip2d.y() + 0.05f
-        val ringExtUp   = ratioExt(16, 13) > 1.22f && rTip2d.y() < rPip2d.y() + 0.05f
-        val pinkyExtUp  = ratioExt(20, 17) > 1.22f && pTip2d.y() < pPip2d.y() + 0.05f
+        val thumbExt = nDist(4, 5) > 0.32f || ratioExt(4, 2) > 1.15f
+
+        // Detección direccional natural: Extendido hacia ARRIBA o con ángulo articular > 135°
+        val indexExtUp  = (anguloIndex > 135f || ratioExt(8, 5) > 1.10f) && iTip2d.y() < iPip2d.y() + 0.08f
+        val middleExtUp = (anguloMiddle > 135f || ratioExt(12, 9) > 1.10f) && mTip2d.y() < mPip2d.y() + 0.08f
+        val ringExtUp   = (anguloRing > 135f || ratioExt(16, 13) > 1.10f) && rTip2d.y() < rPip2d.y() + 0.08f
+        val pinkyExtUp  = (anguloPinky > 135f || ratioExt(20, 17) > 1.10f) && pTip2d.y() < pPip2d.y() + 0.08f
 
         // Detección direccional: Dedos caídos hacia ABAJO (drapeados sobre el pulgar: M, N, Ñ)
-        val indexDrapedDown = iTip2d.y() > iPip2d.y() + 0.06f || iTip2d.y() > iMcp2d.y() + 0.14f
-        val middleDrapedDown = mTip2d.y() > mPip2d.y() + 0.06f || mTip2d.y() > mMcp2d.y() + 0.14f
-        val ringDrapedDown = rTip2d.y() > rPip2d.y() + 0.06f || rTip2d.y() > rMcp2d.y() + 0.14f
-        val pinkyDrapedDown  = ratioExt(20, 17) > 1.10f && pTip2d.y() > pMcp2d.y() + 0.06f
+        val indexDrapedDown = iTip2d.y() > iPip2d.y() + 0.03f || iTip2d.y() > iMcp2d.y() + 0.10f
+        val middleDrapedDown = mTip2d.y() > mPip2d.y() + 0.03f || mTip2d.y() > mMcp2d.y() + 0.10f
+        val ringDrapedDown = rTip2d.y() > rPip2d.y() + 0.03f || rTip2d.y() > rMcp2d.y() + 0.10f
+        val pinkyDrapedDown  = ratioExt(20, 17) > 1.05f && pTip2d.y() > pMcp2d.y() + 0.04f
 
         // Orientación de la mano en espacio de cámara 2D
         val dirY = mMcp2d.y() - w2d.y()
@@ -831,6 +895,148 @@ object SignLanguageClassifier {
         }
 
         // Si la seña no coincide estrictamente con ningún patrón, NO adivinar ni devolver nada
+        return null
+    }
+
+    /**
+     * Clasificador de Señas Comunicativas / Conceptos Léxicos LSM (DIELSEME / CONADIS / SEP).
+     * Reconoce palabras y acciones completas mediante análisis cinemático y patrones articulares 3D.
+     */
+    fun clasificarSenaComunicativa(
+        landmarks2D: List<NormalizedLandmark>,
+        landmarks3D: List<Landmark>? = null,
+        historialPuntos: List<List<NormalizedLandmark>> = emptyList()
+    ): ResultadoSenaComunicativa? {
+        if (landmarks2D.size < 21) return null
+
+        val w2d = landmarks2D[0]
+        val tTip2d = landmarks2D[4]
+        val iMcp2d = landmarks2D[5]
+        val iPip2d = landmarks2D[6]
+        val iTip2d = landmarks2D[8]
+        val mMcp2d = landmarks2D[9]
+        val mPip2d = landmarks2D[10]
+        val mTip2d = landmarks2D[12]
+        val rMcp2d = landmarks2D[13]
+        val rPip2d = landmarks2D[14]
+        val rTip2d = landmarks2D[16]
+        val pMcp2d = landmarks2D[17]
+        val pPip2d = landmarks2D[18]
+        val pTip2d = landmarks2D[20]
+
+        val tiene3D = landmarks3D != null && landmarks3D.size >= 21
+        fun getX(idx: Int) = if (tiene3D) landmarks3D!![idx].x() else landmarks2D[idx].x()
+        fun getY(idx: Int) = if (tiene3D) landmarks3D!![idx].y() else landmarks2D[idx].y()
+        fun getZ(idx: Int) = if (tiene3D) landmarks3D!![idx].z() else landmarks2D[idx].z()
+
+        fun d3D(idx1: Int, idx2: Int): Float {
+            val dx = getX(idx1) - getX(idx2)
+            val dy = getY(idx1) - getY(idx2)
+            val dz = getZ(idx1) - getZ(idx2)
+            return sqrt(dx * dx + dy * dy + dz * dz)
+        }
+
+        val palmSize = d3D(0, 9).coerceAtLeast(0.001f)
+        fun nDist(idx1: Int, idx2: Int): Float = d3D(idx1, idx2) / palmSize
+        fun ratioExt(tipIdx: Int, mcpIdx: Int): Float = d3D(tipIdx, 0) / d3D(mcpIdx, 0).coerceAtLeast(0.001f)
+
+        val anguloIndex  = anguloArticular3D(landmarks2D[5], landmarks2D[6], landmarks2D[8])
+        val anguloMiddle = anguloArticular3D(landmarks2D[9], landmarks2D[10], landmarks2D[12])
+        val anguloRing   = anguloArticular3D(landmarks2D[13], landmarks2D[14], landmarks2D[16])
+        val anguloPinky  = anguloArticular3D(landmarks2D[17], landmarks2D[18], landmarks2D[20])
+
+        val thumbExt = nDist(4, 5) > 0.32f || ratioExt(4, 2) > 1.15f
+        val indexExtUp  = (anguloIndex > 135f || ratioExt(8, 5) > 1.10f) && iTip2d.y() < iPip2d.y() + 0.08f
+        val middleExtUp = (anguloMiddle > 135f || ratioExt(12, 9) > 1.10f) && mTip2d.y() < mPip2d.y() + 0.08f
+        val ringExtUp   = (anguloRing > 135f || ratioExt(16, 13) > 1.10f) && rTip2d.y() < rPip2d.y() + 0.08f
+        val pinkyExtUp  = (anguloPinky > 135f || ratioExt(20, 17) > 1.10f) && pTip2d.y() < pPip2d.y() + 0.08f
+
+        val thumbIndexDist = nDist(4, 8)
+        val thumbMiddleDist = nDist(4, 12)
+
+        val movY = if (historialPuntos.size >= 3) calcularMovimientoVertical(historialPuntos, 0) else 0f
+        val movLat = if (historialPuntos.size >= 3) calcularMovimientoLateral(historialPuntos, 0) else 0f
+        val movTray = if (historialPuntos.size >= 3) calcularLongitudTrayectoria(historialPuntos, 0) else 0f
+        val ratioOsc = if (historialPuntos.size >= 3) calcularRatioOscilacion(historialPuntos, 0) else 0f
+        val movLatIndex = if (historialPuntos.size >= 3) calcularMovimientoLateral(historialPuntos, 8) else 0f
+        val ratioOscIndex = if (historialPuntos.size >= 3) calcularRatioOscilacion(historialPuntos, 8) else 0f
+
+        fun getSena(id: String): SenaLSMInfo = CATALOGO_SENAS_COMUNICATIVAS.first { it.id == id }
+
+        // 1. LECHE (Mano en S/puño con movimiento rítmico de ordeño/bombeo vertical)
+        val esPuño = !indexExtUp && !middleExtUp && !ringExtUp && !pinkyExtUp
+        if (esPuño && (movY > 0.06f || movTray > 0.10f) && ratioOsc > 1.15f) {
+            return ResultadoSenaComunicativa(getSena("LECHE"), 0.94f)
+        }
+
+        // 2. COMIDA (Mano en O aplanada con yemas unidas que sube hacia la boca)
+        val yemasUnidasComida = thumbIndexDist < 0.28f && thumbMiddleDist < 0.28f && nDist(4, 16) < 0.35f
+        val yemasApuntandoArriba = iTip2d.y() < w2d.y()
+        if (yemasUnidasComida && yemasApuntandoArriba && iTip2d.y() < 0.55f && (movY > 0.04f || iTip2d.y() < 0.40f)) {
+            return ResultadoSenaComunicativa(getSena("COMIDA"), 0.95f)
+        }
+
+        // 3. AGUA (Forma W tocando o cerca de la barbilla / zona facial con toquecitos)
+        val esFormaW = indexExtUp && middleExtUp && ringExtUp && !pinkyExtUp
+        if (esFormaW && iTip2d.y() < 0.48f) {
+            return ResultadoSenaComunicativa(getSena("AGUA"), 0.96f)
+        }
+
+        // 4. BEBE (Balanceo oscilante lateral tipo cuna con ambos brazos o antebrazo en vaivén)
+        if (movLat > 0.10f && ratioOsc > 1.25f && w2d.y() > 0.40f) {
+            return ResultadoSenaComunicativa(getSena("BEBE"), 0.93f)
+        }
+
+        // 5. FIEBRE / TEMPERATURA (LSM Oficial: Variante Formal letra 'F' en frente + Variante Icónica dorso/palma en frente)
+        val esFormaF = thumbIndexDist < 0.30f && middleExtUp && ringExtUp && pinkyExtUp
+        val manoEnFrente = (iTip2d.y() < 0.28f || w2d.y() < 0.35f) && (indexExtUp || middleExtUp || esPuño || esFormaF)
+        if (manoEnFrente) {
+            return ResultadoSenaComunicativa(getSena("FIEBRE"), 0.96f)
+        }
+
+        // 6. DOCTOR (Dedo índice extendido o mano D/M orientada a la muñeca)
+        val esD_o_M = (indexExtUp && !middleExtUp && !ringExtUp && !pinkyExtUp) || (!indexExtUp && !pinkyExtUp && nDist(8, 0) < 0.50f)
+        val manoBajaOrientada = w2d.y() > 0.55f && (movY > 0.04f || movTray > 0.06f)
+        if (esD_o_M && manoBajaOrientada) {
+            return ResultadoSenaComunicativa(getSena("DOCTOR"), 0.92f)
+        }
+
+        // 7. MEDICINA (Dedo medio extendido hacia abajo o frotamiento circular)
+        val medioHaciaAbajo = mTip2d.y() > mPip2d.y() && !ringExtUp && !pinkyExtUp
+        if ((medioHaciaAbajo || (middleExtUp && ratioOsc > 1.35f)) && movTray > 0.08f) {
+            return ResultadoSenaComunicativa(getSena("MEDICINA"), 0.92f)
+        }
+
+        // 8. PESO (Movimiento vertical de sube y baja con 4 dedos extendidos)
+        val cuatroExtendidos = indexExtUp && middleExtUp && ringExtUp && pinkyExtUp
+        if (cuatroExtendidos && movY > 0.08f && ratioOsc > 1.20f) {
+            return ResultadoSenaComunicativa(getSena("PESO"), 0.93f)
+        }
+
+        // 9. SI_CONFIRMAR (Pulgar hacia arriba / Thumbs Up con 4 dedos cerrados en puño)
+        val pulgarArriba = tTip2d.y() < landmarks2D[2].y() - 0.04f && tTip2d.y() < iMcp2d.y()
+        val cuatroCerrados = !indexExtUp && !middleExtUp && !ringExtUp && !pinkyExtUp && nDist(8, 5) < 0.50f
+        if (pulgarArriba && cuatroCerrados) {
+            return ResultadoSenaComunicativa(getSena("SI_CONFIRMAR"), 0.97f)
+        }
+
+        // 10. NO_CANCELAR (Dedo índice extendido oscilando lateralmente de izquierda a derecha)
+        val soloIndiceArriba = indexExtUp && !middleExtUp && !ringExtUp && !pinkyExtUp
+        if (soloIndiceArriba && movLatIndex > 0.06f && ratioOscIndex > 1.20f) {
+            return ResultadoSenaComunicativa(getSena("NO_CANCELAR"), 0.96f)
+        }
+
+        // 11. AYUDA (Pulgar arriba proyectado hacia el frente o elevándose)
+        if (pulgarArriba && movY > 0.05f && ratioOsc < 1.15f) {
+            return ResultadoSenaComunicativa(getSena("AYUDA"), 0.93f)
+        }
+
+        // 12. GRACIAS (Dedo medio o palma que sale de la barbilla/boca hacia el frente y abajo)
+        val saleDeBarbilla = iTip2d.y() > 0.35f && (indexExtUp || middleExtUp) && movY > 0.06f && ratioOsc < 1.15f
+        if (saleDeBarbilla && cuatroExtendidos) {
+            return ResultadoSenaComunicativa(getSena("GRACIAS"), 0.94f)
+        }
+
         return null
     }
 

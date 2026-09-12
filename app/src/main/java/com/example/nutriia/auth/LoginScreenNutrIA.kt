@@ -31,8 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.R
-import com.example.nutriia.accesibilidad.AccessibilityMode
-import com.example.nutriia.accesibilidad.AccessibilityViewModel
+import com.example.nutriia.accesibilidad.*
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.Voz
 import com.example.nutriia.accesibilidad.MotorHapticoNutriIA
@@ -79,6 +78,7 @@ fun NutriaLoginScreen(
                 // Nota: La navegación y el resetEstado se delegan a MainActivity.
             }
             is LoginUiState.Error -> {
+                NutriEarcons.playError()
                 showError = s.mensaje
                 if (a11yMode == AccessibilityMode.BLIND)
                     a11yVm.hablar("Error al iniciar sesion. ${s.mensaje}. Verifica tus datos e intenta de nuevo.")
@@ -94,6 +94,7 @@ fun NutriaLoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .anuncioPantalla("Inicio de Sesión y Registro NutrIA")
             .background(NutriaBgCrema)
             .radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND)
     ) {
@@ -176,6 +177,7 @@ fun NutriaLoginScreen(
                         onClick = {
                             MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
                             if (email.isBlank() || password.isBlank()) {
+                                NutriEarcons.playError()
                                 val msg = if (email.isBlank()) "Falta ingresar tu correo electrónico."
                                           else "Falta ingresar tu contraseña."
                                 if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(msg)

@@ -56,41 +56,61 @@ class AnalisisViewModel : ViewModel() {
                 }
                 val foodDetection = detectionResult.getOrThrow()
 
-                // Paso 2: Información nutricional
-                _uiState.value = AnalisisUiState.Analizando("🥗 Obteniendo balance nutricional...")
-                val foodHash = repo.hashAlimento(foodDetection.foodName)
-                val cached = repo.buscarEnCache(foodHash)
-
                 val nutrition: NutritionInfo
                 val analysis: PediatricAnalysis
 
-                if (cached != null) {
-                    _uiState.value = AnalisisUiState.Analizando("⚡ Recuperando análisis optimizado...")
-                    nutrition = cached.first
-                    analysis = cached.second
+                // Si NO es comestible (objetos inanimados, llaves, controles, etc.)
+                if (!foodDetection.isEdible || foodDetection.foodType == "objeto_no_comestible") {
+                    nutrition = NutritionInfo(
+                        calories = 0.0,
+                        protein = 0.0,
+                        carbohydrates = 0.0,
+                        fat = 0.0,
+                        sugar = 0.0,
+                        fiber = 0.0,
+                        sodium = 0.0
+                    )
+                    analysis = PediatricAnalysis(
+                        recommended = false,
+                        recommendedPortion = "No aplicable",
+                        benefits = emptyList(),
+                        warnings = listOf(foodDetection.nonEdibleReason.ifBlank { "El objeto detectado (${foodDetection.foodName}) no es un alimento comestible." }),
+                        frequency = "No consumir"
+                    )
                 } else {
-                    val nutritionRes = repo.obtenerNutricion(foodDetection.foodName)
-                    nutrition = nutritionRes.getOrDefault(NutritionInfo())
+                    // Paso 2: Información nutricional
+                    _uiState.value = AnalisisUiState.Analizando("🥗 Obteniendo balance nutricional...")
+                    val foodHash = repo.hashAlimento(foodDetection.foodName)
+                    val cached = repo.buscarEnCache(foodHash)
 
-                    val targetNombre = if (isEmbarazo || perfilEmbarazo != null) "tu embarazo" else (child?.name ?: "tu bebé")
-                    _uiState.value = AnalisisUiState.Analizando("🤖 Generando recomendaciones médicas para $targetNombre...")
-
-                    val analysisRes = if (isEmbarazo || perfilEmbarazo != null) {
-                        repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
-                    } else if (child != null) {
-                        repo.analizarParaNino(child, foodDetection, nutrition)
+                    if (cached != null) {
+                        _uiState.value = AnalisisUiState.Analizando("⚡ Recuperando análisis optimizado...")
+                        nutrition = cached.first
+                        analysis = cached.second
                     } else {
-                        repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
-                    }
+                        val nutritionRes = repo.obtenerNutricion(foodDetection.foodName)
+                        nutrition = nutritionRes.getOrDefault(NutritionInfo())
 
-                    if (analysisRes.isFailure) {
-                        _uiState.value = AnalisisUiState.Error(
-                            analysisRes.exceptionOrNull()?.message ?: "Error en análisis nutricional"
-                        )
-                        return@launch
+                        val targetNombre = if (isEmbarazo || perfilEmbarazo != null) "tu embarazo" else (child?.name ?: "tu bebé")
+                        _uiState.value = AnalisisUiState.Analizando("🤖 Generando recomendaciones médicas para $targetNombre...")
+
+                        val analysisRes = if (isEmbarazo || perfilEmbarazo != null) {
+                            repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
+                        } else if (child != null) {
+                            repo.analizarParaNino(child, foodDetection, nutrition)
+                        } else {
+                            repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
+                        }
+
+                        if (analysisRes.isFailure) {
+                            _uiState.value = AnalisisUiState.Error(
+                                analysisRes.exceptionOrNull()?.message ?: "Error en análisis nutricional"
+                            )
+                            return@launch
+                        }
+                        analysis = analysisRes.getOrThrow()
+                        repo.guardarEnCache(foodHash, nutrition, analysis)
                     }
-                    analysis = analysisRes.getOrThrow()
-                    repo.guardarEnCache(foodHash, nutrition, analysis)
                 }
 
                 // Paso 3: Consolidación de resultado

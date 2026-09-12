@@ -394,7 +394,7 @@ class RepositorioLogin(private val context: Context) {
                     "sexo"             to (child.sexo?.name ?: ""),
                     "nivelIngreso"     to child.nivelIngreso.name,
                     "region"           to child.region.name,
-                    "creadoEn"         to FechaUtils.fechaHoraActual(),
+                    "creadoEn"         to com.google.firebase.Timestamp.now(),
                     "fechaCreacion"    to FechaUtils.fechaActual(),
                     "horaCreacion"     to FechaUtils.horaActual()
                 )).await()

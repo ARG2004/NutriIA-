@@ -109,11 +109,17 @@ class VoiceInputManager(private val context: Context) {
         }
  
         recognizer?.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(p: Bundle?)    { estado.value = VoiceInputState.LISTENING }
+            override fun onReadyForSpeech(p: Bundle?)    {
+                estado.value = VoiceInputState.LISTENING
+                NutriEarcons.playMicStart()
+            }
             override fun onBeginningOfSpeech()           { estado.value = VoiceInputState.LISTENING }
             override fun onRmsChanged(rms: Float)        {}
             override fun onBufferReceived(b: ByteArray?) {}
-            override fun onEndOfSpeech()                 { estado.value = VoiceInputState.PROCESSING }
+            override fun onEndOfSpeech()                 {
+                estado.value = VoiceInputState.PROCESSING
+                NutriEarcons.playMicStop()
+            }
             override fun onEvent(t: Int, p: Bundle?)     {}
  
             override fun onPartialResults(bundle: Bundle?) {
@@ -127,6 +133,7 @@ class VoiceInputManager(private val context: Context) {
                 estado.value = VoiceInputState.IDLE
                 errorMsg.value = ""
                 errorCodigo.value = -1
+                NutriEarcons.playMicStop()
                 // Toma el primer resultado no vacío del top-3
                 val texto = bundle
                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -152,6 +159,7 @@ class VoiceInputManager(private val context: Context) {
                 estado.value      = VoiceInputState.IDLE
                 errorCodigo.value = code
                 errorMsg.value    = traducirError(code)
+                NutriEarcons.playError()
                 android.util.Log.w("VoiceInput", "onError code=$code: ${traducirError(code)}")
             }
         })

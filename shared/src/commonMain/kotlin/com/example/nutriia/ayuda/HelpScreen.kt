@@ -37,6 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.IdiomaVoz
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.accesibilidad.loc
 import com.example.nutriia.resources.*
 import kotlinx.coroutines.delay
@@ -201,6 +202,7 @@ fun HelpScreen(onNavigateBack: () -> Unit) {
     val modules = remember { buildModules() }
 
     Scaffold(
+        modifier = Modifier.anuncioPantalla("Centro de Ayuda y Tutoriales"),
         topBar = {
             TopAppBar(
                 title = {

@@ -2,8 +2,10 @@ package com.example.nutriia.analisisIA
 
 import android.content.Context
 import android.os.Build
+import android.util.Size
 import androidx.annotation.RequiresApi
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -78,50 +80,70 @@ class AnalisisViewModel : ViewModel() {
                 }
                 val foodDetection = detectionResult.getOrThrow()
 
-                // Paso 2: Nutrición (caché o Spoonacular/OpenFoodFacts/LLM)
-                _uiState.value = AnalisisUiState.Analizando("🥗 Obteniendo información nutricional...")
-                val foodHash     = repo.hashAlimento(foodDetection.foodName)
-                val cachedResult = withContext(Dispatchers.IO) {
-                    withTimeout(TIMEOUT_MS) { repo.buscarEnCache(foodHash) }
-                }
-
+                val targetNombre = if (isEmbarazo || perfilEmbarazo != null) "tu embarazo" else (child?.name ?: "tu bebé")
                 val nutrition: NutritionInfo
                 val analysis: PediatricAnalysis
 
-                if (cachedResult != null) {
-                    _uiState.value = AnalisisUiState.Analizando("⚡ Usando análisis guardado previamente...")
-                    nutrition = cachedResult.first
-                    analysis  = cachedResult.second
+                // ── Si NO es comestible (objetos inanimados, controles, llaves, etc.) ──
+                if (!foodDetection.isEdible || foodDetection.foodType == "objeto_no_comestible") {
+                    nutrition = NutritionInfo(
+                        calories = 0.0,
+                        protein = 0.0,
+                        carbohydrates = 0.0,
+                        fat = 0.0,
+                        sugar = 0.0,
+                        fiber = 0.0,
+                        sodium = 0.0
+                    )
+                    analysis = PediatricAnalysis(
+                        recommended = false,
+                        recommendedPortion = "No aplicable",
+                        benefits = emptyList(),
+                        warnings = listOf(foodDetection.nonEdibleReason.ifBlank { "El objeto detectado (${foodDetection.foodName}) no es un alimento comestible." }),
+                        frequency = "No consumir"
+                    )
                 } else {
-                    val nutritionResult = withContext(Dispatchers.IO) {
-                        withTimeout(TIMEOUT_MS) { repo.obtenerNutricion(foodDetection.foodName) }
+                    // Paso 2: Nutrición para alimentos reales (caché o Spoonacular/OpenFoodFacts/LLM)
+                    _uiState.value = AnalisisUiState.Analizando("🥗 Obteniendo información nutricional...")
+                    val foodHash     = repo.hashAlimento(foodDetection.foodName)
+                    val cachedResult = withContext(Dispatchers.IO) {
+                        withTimeout(TIMEOUT_MS) { repo.buscarEnCache(foodHash) }
                     }
-                    nutrition = nutritionResult.getOrDefault(NutritionInfo())
 
-                    val targetNombre = if (isEmbarazo || perfilEmbarazo != null) "tu embarazo" else (child?.name ?: "tu bebé")
-                    _uiState.value = AnalisisUiState.Analizando("🤖 Analizando para $targetNombre...")
-                    
-                    val analysisResult = withContext(Dispatchers.IO) {
-                        withTimeout(TIMEOUT_MS) {
-                            if (isEmbarazo || perfilEmbarazo != null) {
-                                repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
-                            } else if (child != null) {
-                                repo.analizarParaNino(child, foodDetection, nutrition)
-                            } else {
-                                repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
+                    if (cachedResult != null) {
+                        _uiState.value = AnalisisUiState.Analizando("⚡ Usando análisis guardado previamente...")
+                        nutrition = cachedResult.first
+                        analysis  = cachedResult.second
+                    } else {
+                        val nutritionResult = withContext(Dispatchers.IO) {
+                            withTimeout(TIMEOUT_MS) { repo.obtenerNutricion(foodDetection.foodName) }
+                        }
+                        nutrition = nutritionResult.getOrDefault(NutritionInfo())
+
+                        _uiState.value = AnalisisUiState.Analizando("🤖 Analizando para $targetNombre...")
+                        
+                        val analysisResult = withContext(Dispatchers.IO) {
+                            withTimeout(TIMEOUT_MS) {
+                                if (isEmbarazo || perfilEmbarazo != null) {
+                                    repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
+                                } else if (child != null) {
+                                    repo.analizarParaNino(child, foodDetection, nutrition)
+                                } else {
+                                    repo.analizarParaEmbarazo(perfilEmbarazo, foodDetection, nutrition)
+                                }
                             }
                         }
-                    }
-                    if (analysisResult.isFailure) {
-                        _uiState.value = AnalisisUiState.Error(
-                            analysisResult.exceptionOrNull()?.message ?: "Error en análisis nutricional"
-                        )
-                        return@launch
-                    }
-                    analysis = analysisResult.getOrThrow()
+                        if (analysisResult.isFailure) {
+                            _uiState.value = AnalisisUiState.Error(
+                                analysisResult.exceptionOrNull()?.message ?: "Error en análisis nutricional"
+                            )
+                            return@launch
+                        }
+                        analysis = analysisResult.getOrThrow()
 
-                    withContext(Dispatchers.IO) {
-                        withTimeout(TIMEOUT_MS) { repo.guardarEnCache(foodHash, nutrition, analysis) }
+                        withContext(Dispatchers.IO) {
+                            withTimeout(TIMEOUT_MS) { repo.guardarEnCache(foodHash, nutrition, analysis) }
+                        }
                     }
                 }
 
@@ -177,7 +199,8 @@ class AnalisisViewModel : ViewModel() {
     fun configurarCamara(
         context: Context,
         lifecycleOwner: LifecycleOwner,
-        previewSurfaceProvider: Preview.SurfaceProvider
+        previewSurfaceProvider: Preview.SurfaceProvider,
+        analyzer: ImageAnalysis.Analyzer? = null
     ) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
@@ -188,13 +211,24 @@ class AnalisisViewModel : ViewModel() {
             imageCapture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
+
+            val useCases = mutableListOf<androidx.camera.core.UseCase>(preview, imageCapture!!)
+
+            if (analyzer != null) {
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setTargetResolution(Size(320, 240))
+                    .build()
+                    .also { it.setAnalyzer(ContextCompat.getMainExecutor(context), analyzer) }
+                useCases.add(imageAnalysis)
+            }
+
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    imageCapture
+                    *useCases.toTypedArray()
                 )
             } catch (e: Exception) {
                 _uiState.value = AnalisisUiState.Error("Error iniciando cámara: ${e.message}")

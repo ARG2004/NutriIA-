@@ -34,6 +34,10 @@ class AccessibilityViewModel : ViewModel() {
         viewModelScope, SharingStarted.WhileSubscribed(5_000), true
     )
 
+    val speed = repo.speedFlow.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5_000), 0.90f
+    )
+
     private val _primeraVezCargada = MutableStateFlow(false)
     val primeraVezCargada = _primeraVezCargada.asStateFlow()
 
@@ -81,6 +85,13 @@ class AccessibilityViewModel : ViewModel() {
             IdiomaVoz.INGLES     -> "Language changed to English."
         }
         hablar(texto)
+    }
+
+    // ── Cambia velocidad de habla ─────────────────────────────────────────────
+    fun setSpeed(nuevaVelocidad: Float) {
+        viewModelScope.launch { repo.saveSpeed(nuevaVelocidad) }
+        ttsManager?.setSpeechRate(nuevaVelocidad)
+        hablar("Velocidad de voz ajustada.")
     }
 
     fun loc(es: String, en: String): String = idioma.value.loc(es, en)

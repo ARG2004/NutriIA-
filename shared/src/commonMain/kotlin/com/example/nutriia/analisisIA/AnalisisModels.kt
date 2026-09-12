@@ -9,10 +9,12 @@ import kotlinx.serialization.Serializable
 // ─── 1. Resultado de detección de alimento ──────────────────────────────────
 @Serializable
 data class FoodDetectionResult(
-    val foodName    : String  = "",
-    val ingredients : List<String> = emptyList(),
-    val foodType    : String  = "",
-    val confidence  : Double  = 0.0
+    val foodName        : String  = "",
+    val ingredients     : List<String> = emptyList(),
+    val foodType        : String  = "",
+    val confidence      : Double  = 0.0,
+    val isEdible        : Boolean = true,
+    val nonEdibleReason : String  = ""
 )
 
 // ─── 2. Información nutricional ─────────────────────────────────────────────

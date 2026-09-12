@@ -239,7 +239,9 @@ fun NutrientesScreen(
     }
 
     Scaffold(
-        modifier = Modifier.radarHapticoBlind(null, esBlind),
+        modifier = Modifier
+            .anuncioPantalla("Micronutrientes y Semáforo Diario")
+            .radarHapticoBlind(null, esBlind),
         containerColor = Sol.Bg,
         snackbarHost   = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -595,7 +597,16 @@ private fun MacroTarjeta(
         animationSpec = tween(800, easing = EaseOutCubic),
         label         = "mt_$etiqueta"
     )
-    Box(modifier.clip(RoundedCornerShape(14.dp)).background(color.copy(.08f)).padding(10.dp)) {
+    val porcentaje = if (meta > 0) ((valor / meta) * 100).toInt() else 0
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(color.copy(.08f))
+            .padding(10.dp)
+            .semantics {
+                contentDescription = "$etiqueta: ${valor.toInt()} $unidad de ${meta.toInt()} $unidad meta diaria. $porcentaje por ciento alcanzado."
+            }
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
             Spacer(Modifier.height(5.dp))
@@ -619,7 +630,18 @@ private fun MicroCirculo(label: String, valor: Double, meta: Double, unidad: Str
         animationSpec = tween(900, easing = EaseOutCubic),
         label         = "mc_$label"
     )
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val porcentaje = if (meta > 0) ((valor / meta) * 100).toInt() else 0
+    val estado = when {
+        porcentaje < 50 -> "Nivel bajo"
+        porcentaje <= 100 -> "Nivel óptimo"
+        else -> "Meta superada"
+    }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.semantics {
+            contentDescription = "$label: ${valor.toInt()} $unidad de ${meta.toInt()} $unidad diaria. $estado, $porcentaje por ciento alcanzado."
+        }
+    ) {
         Box(Modifier.size(60.dp), Alignment.Center) {
             CircularProgressIndicator(
                 progress    = { prog },

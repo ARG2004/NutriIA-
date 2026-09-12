@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
+import com.example.nutriia.accesibilidad.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 
@@ -47,6 +48,10 @@ fun DirectorioNutriologosScreen(
     onBack: () -> Unit = {},
     onVinculado: () -> Unit = {}
 ) {
+    val a11yVm: AccessibilityViewModel = viewModel()
+    val a11yMode by a11yVm.mode.collectAsState()
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     val directorio by viewModel.directorio.collectAsState()
     val cargando by viewModel.cargandoDirectorio.collectAsState()
     val cargandoAccion by viewModel.cargando.collectAsState()
@@ -70,9 +75,22 @@ fun DirectorioNutriologosScreen(
         viewModel.buscarEnDirectorio(queryTexto)
     }
 
+    // Feedback auditivo de resultados de búsqueda
+    LaunchedEffect(directorio, cargando) {
+        if (!cargando && esBlind) {
+            if (directorio.isEmpty()) {
+                a11yVm.hablar("No encontramos especialistas con ese criterio de búsqueda.")
+            } else {
+                a11yVm.hablar("Se encontraron ${directorio.size} especialistas en el directorio. Desliza para explorar la lista.")
+            }
+        }
+    }
+
     // 3. Gestión de mensajes (Snackbar)
     LaunchedEffect(error) {
         error?.let {
+            NutriEarcons.playError()
+            if (esBlind) a11yVm.hablar("Error: $it")
             snackbarHostState.showSnackbar(it)
             viewModel.limpiarError()
         }
@@ -81,6 +99,8 @@ fun DirectorioNutriologosScreen(
     // 4. Navegación tras éxito
     LaunchedEffect(exito) {
         exito?.let {
+            NutriEarcons.playSuccess()
+            if (esBlind) a11yVm.hablar("Solicitud enviada correctamente.")
             snackbarHostState.showSnackbar(it)
             viewModel.limpiarExito()
             onVinculado()
@@ -88,6 +108,7 @@ fun DirectorioNutriologosScreen(
     }
 
     Scaffold(
+        modifier = Modifier.anuncioPantalla("Directorio de Especialistas y Nutriólogos"),
         containerColor = DBgCrema,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = { DirectorioTopBar(onBack = onBack) }

@@ -376,7 +376,9 @@ fun NutriIADashboardScreen(
     )
 
     Scaffold(
-        modifier       = Modifier.radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND),
+        modifier       = Modifier
+            .anuncioPantalla(if (esNutriologo) "Portal Profesional de Especialistas" else "Panel Principal de Salud NutrIA")
+            .radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND),
         containerColor = DashBgCrema,
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

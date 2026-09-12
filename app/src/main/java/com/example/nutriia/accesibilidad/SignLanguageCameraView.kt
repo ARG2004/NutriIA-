@@ -21,6 +21,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -71,6 +72,14 @@ private const val MODEL_FILENAME = "hand_landmarker.task"
  * Permite escribir texto en el campo del formulario sin cerrarse nunca automáticamente ante pausas o errores.
  * El campo solo se confirma y avanza cuando el usuario presiona explícitamente el botón "Confirmar y Continuar".
  */
+enum class ModoSeñaLSM {
+    ABECEDARIO, COMUNICATIVO
+}
+
+/**
+ * Vista de Cámara para Señas LSM con soporte Dual (Abecedario y Señas Comunicativas).
+ * Incorpora ciclo de detección rápida (300ms), 340dp de encuadre ergonómico y sugerencias predictivas estilo Pixel Live Sign.
+ */
 @Composable
 fun SignLanguageCameraView(
     textoActual:   String,
@@ -79,11 +88,14 @@ fun SignLanguageCameraView(
     soloNumeros:   Boolean  = false,
     esCampoFecha:  Boolean  = false,
     onCompletado:  (() -> Unit)? = null,
+    onSenaComunicativaDetectada: ((SenaLSMInfo) -> Unit)? = null,
     modifier:      Modifier = Modifier
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
+
+    var modoSeleccionado by remember { mutableStateOf(ModoSeñaLSM.ABECEDARIO) }
 
     var modeloDescargado by remember { mutableStateOf(false) }
     var progresoDescarga by remember { mutableFloatStateOf(0f) }
@@ -97,6 +109,7 @@ fun SignLanguageCameraView(
     }
 
     var letraDetectada by remember { mutableStateOf<String?>(null) }
+    var senaComunicativaDetectada by remember { mutableStateOf<ResultadoSenaComunicativa?>(null) }
     var confianzaDetectada by remember { mutableFloatStateOf(0f) }
     var progresoConfirmacion by remember { mutableFloatStateOf(0f) }
     var ultimaLetraConfirmada by remember { mutableStateOf("") }
@@ -172,7 +185,7 @@ fun SignLanguageCameraView(
     }
 
     // ── 2. Inicialización de MediaPipe HandLandmarker ──────
-    LaunchedEffect(modeloDescargado, camaraPermisoConcedido) {
+    LaunchedEffect(modeloDescargado, camaraPermisoConcedido, modoSeleccionado) {
         if (!modeloDescargado || !camaraPermisoConcedido) return@LaunchedEffect
         val modelFile = File(context.filesDir, MODEL_FILENAME)
         if (!modelFile.exists()) return@LaunchedEffect
@@ -205,50 +218,67 @@ fun SignLanguageCameraView(
                         if (smoothedHand.size >= 21) {
                             indexTrail = (indexTrail + smoothedHand[8]).takeLast(35)
                         }
-                        val res = SignLanguageClassifier.clasificarConConfianza(
-                            landmarks2D = smoothedHand,
-                            landmarks3D = worldHand,
-                            soloNumeros = soloNumeros,
-                            esCampoFecha = esCampoFecha,
-                            historialPuntos = landmarksHistory,
-                            debug = true,
-                            context = context
-                        )
-                        val rawLetra = if (res != null && res.confianza >= 0.65f) res.letra else ""
-                        val esLetraDinamica = rawLetra in setOf("j", "ll", "rr", "ñ", "x", "q", "z")
 
-                        if (esLetraDinamica) {
-                            classificationBuffer = emptyList()
-                            letraDetectada = rawLetra
-                            confianzaDetectada = res?.confianza ?: 0.65f
+                        if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) {
+                            val resCom = SignLanguageClassifier.clasificarSenaComunicativa(
+                                landmarks2D = smoothedHand,
+                                landmarks3D = worldHand,
+                                historialPuntos = landmarksHistory
+                            )
+                            if (resCom != null && resCom.confianza >= 0.70f) {
+                                senaComunicativaDetectada = resCom
+                                confianzaDetectada = resCom.confianza
+                            } else {
+                                senaComunicativaDetectada = null
+                                confianzaDetectada = 0f
+                            }
                         } else {
-                            classificationBuffer = (classificationBuffer + rawLetra).takeLast(4)
+                            val res = SignLanguageClassifier.clasificarConConfianza(
+                                landmarks2D = smoothedHand,
+                                landmarks3D = worldHand,
+                                soloNumeros = soloNumeros,
+                                esCampoFecha = esCampoFecha,
+                                historialPuntos = landmarksHistory,
+                                debug = true,
+                                context = context
+                            )
+                            val rawLetra = if (res != null && res.confianza >= 0.65f) res.letra else ""
+                            val esLetraDinamica = rawLetra in setOf("j", "ll", "rr", "ñ", "x", "q", "z")
 
-                            val counts = classificationBuffer.groupingBy { it }.eachCount()
-                            val dominant = counts.maxByOrNull { it.value }
-
-                            if (dominant != null && dominant.value >= 3 && dominant.key.isNotEmpty()) {
-                                letraDetectada = dominant.key
+                            if (esLetraDinamica) {
+                                classificationBuffer = emptyList()
+                                letraDetectada = rawLetra
                                 confianzaDetectada = res?.confianza ?: 0.65f
                             } else {
-                                letraDetectada = null
-                                confianzaDetectada = 0f
+                                classificationBuffer = (classificationBuffer + rawLetra).takeLast(4)
+
+                                val counts = classificationBuffer.groupingBy { it }.eachCount()
+                                val dominant = counts.maxByOrNull { it.value }
+
+                                if (dominant != null && dominant.value >= 3 && dominant.key.isNotEmpty()) {
+                                    letraDetectada = dominant.key
+                                    confianzaDetectada = res?.confianza ?: 0.65f
+                                } else {
+                                    letraDetectada = null
+                                    confianzaDetectada = 0f
+                                }
                             }
                         }
                     } else {
                         classificationBuffer = emptyList()
                         letraDetectada = null
+                        senaComunicativaDetectada = null
                         confianzaDetectada = 0f
                         landmarksDibujo = emptyList()
                         landmarksHistory = emptyList()
                         indexTrail = emptyList()
 
-                        // Auto-espacio a los 3.0s de retirar la mano (sin cerrar jamás el campo)
+                        // Auto-espacio a los 3.0s de retirar la mano en modo Abecedario
                         val ahora = SystemClock.uptimeMillis()
                         if (sinManoInicio == 0L) {
                             sinManoInicio = ahora
                         } else if (!espacioInsertado && (ahora - sinManoInicio) > 3000L) {
-                            if (textoActual.isNotEmpty() && !textoActual.endsWith(" ")) {
+                            if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO && textoActual.isNotEmpty() && !textoActual.endsWith(" ")) {
                                 vibrateTap(haptic)
                                 onTextoChange(textoActual + " ")
                                 espacioInsertado = true
@@ -290,22 +320,22 @@ fun SignLanguageCameraView(
         }
     }
 
-    // ── 4. Escritura Automática al Sostener la Seña (350ms) ──────
-    LaunchedEffect(letraDetectada) {
-        if (letraDetectada == null) {
+    // ── 4. Escritura Automática al Sostener la Seña Dactilológica (300ms) ──────
+    LaunchedEffect(letraDetectada, modoSeleccionado) {
+        if (modoSeleccionado != ModoSeñaLSM.ABECEDARIO || letraDetectada == null) {
             progresoConfirmacion = 0f
             return@LaunchedEffect
         }
 
         val ahora = SystemClock.uptimeMillis()
-        if (letraDetectada == ultimaLetraConfirmada && (ahora - ultimoTiempoEscritura) < 400L) {
+        if (letraDetectada == ultimaLetraConfirmada && (ahora - ultimoTiempoEscritura) < 350L) {
             progresoConfirmacion = 0f
             return@LaunchedEffect
         }
 
         val letraOriginal = letraDetectada
-        val duracionMs = 500L
-        val intervaloMs = 20L
+        val duracionMs = 300L
+        val intervaloMs = 15L
         val pasos = (duracionMs / intervaloMs).toInt()
         var errores = 0
 
@@ -313,7 +343,7 @@ fun SignLanguageCameraView(
             delay(intervaloMs)
             if (letraDetectada != letraOriginal) {
                 errores++
-                if (errores > 10) {
+                if (errores > 8) {
                     progresoConfirmacion = 0f
                     return@LaunchedEffect
                 }
@@ -338,6 +368,58 @@ fun SignLanguageCameraView(
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Selector de Modo: 🔤 Abecedario vs 💬 Señas Comunicativas
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF151525))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) colorPrimario else Color.Transparent)
+                    .clickable {
+                        vibrateTap(haptic)
+                        modoSeleccionado = ModoSeñaLSM.ABECEDARIO
+                    }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🔤 Abecedario (A-Z)",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) colorPrimario else Color.Transparent)
+                    .clickable {
+                        vibrateTap(haptic)
+                        modoSeleccionado = ModoSeñaLSM.COMUNICATIVO
+                    }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "💬 Señas LSM",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
         // Display del Texto Escrito en el Formulario
         Box(
             modifier = Modifier
@@ -349,9 +431,12 @@ fun SignLanguageCameraView(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = textoActual.ifEmpty { "Haz señas para escribir..." },
+                    text = textoActual.ifEmpty {
+                        if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) "Haz señas para escribir letra por letra..."
+                        else "Haz una seña comunicativa (ej. 🍼 Leche, 🥣 Comida, 💧 Agua)..."
+                    },
                     color = if (textoActual.isEmpty()) Color.Gray else Color.White,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.weight(1f)
                 )
@@ -371,12 +456,12 @@ fun SignLanguageCameraView(
 
         Spacer(Modifier.height(10.dp))
 
-        // Contenedor de la Cámara con Overlay del Esqueleto
+        // Contenedor de la Cámara con Visor Ergonómico 340dp y Overlay del Esqueleto
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .height(340.dp)
+                .clip(RoundedCornerShape(20.dp))
                 .background(Color(0xFF10101C)),
             contentAlignment = Alignment.Center
         ) {
@@ -398,7 +483,7 @@ fun SignLanguageCameraView(
                         Icon(Icons.Rounded.Videocam, null, tint = Color.Gray, modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(8.dp))
                         Text("Permiso de cámara requerido", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("Necesitamos la cámara para ver tus señas.", color = Color.Gray, fontSize = 11.sp)
+                        Text("Necesitamos la cámara para ver tus señas LSM.", color = Color.Gray, fontSize = 11.sp)
                         Spacer(Modifier.height(12.dp))
                         Button(
                             onClick = { launcherPermiso.launch(Manifest.permission.CAMERA) },
@@ -432,12 +517,10 @@ fun SignLanguageCameraView(
                                                 if (currentLandmarker != null && !cameraExecutor.isShutdown) {
                                                     val rotationDegrees = imageProxy.imageInfo.rotationDegrees
                                                     val bitmap = imageProxy.toBitmap()
-                                                    // Paso 1: Rotar alrededor del CENTRO del bitmap (no del origen)
                                                     val rotMatrix = Matrix().apply {
                                                         if (rotationDegrees != 0) postRotate(rotationDegrees.toFloat(), bitmap.width / 2f, bitmap.height / 2f)
                                                     }
                                                     val rotBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, rotMatrix, true)
-                                                    // Paso 2: Espejar horizontalmente con el centro del bitmap YA ROTADO
                                                     val mirrorMatrix = Matrix().apply {
                                                         postScale(-1f, 1f, rotBitmap.width / 2f, rotBitmap.height / 2f)
                                                     }
@@ -531,57 +614,135 @@ fun SignLanguageCameraView(
                         }
                     }
 
-                    // Banner de Vista Previa con Anillo Radial de Confirmación
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp),
-                        contentAlignment = Alignment.BottomCenter
-                    ) {
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = letraDetectada != null,
-                            enter = fadeIn() + scaleIn(),
-                            exit = fadeOut() + scaleOut()
+                    // Banner de Vista Previa (Modo Abecedario)
+                    if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp),
+                            contentAlignment = Alignment.BottomCenter
                         ) {
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.85f),
-                                shape = RoundedCornerShape(16.dp),
-                                border = BorderStroke(1.dp, colorPrimario)
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = letraDetectada != null,
+                                enter = fadeIn() + scaleIn(),
+                                exit = fadeOut() + scaleOut()
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.85f),
+                                    shape = RoundedCornerShape(16.dp),
+                                    border = BorderStroke(1.dp, colorPrimario)
                                 ) {
-                                    Box(
-                                        modifier = Modifier.size(36.dp),
-                                        contentAlignment = Alignment.Center
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        CircularProgressIndicator(
-                                            progress = { progresoConfirmacion },
-                                            color = colorPrimario,
-                                            strokeWidth = 3.dp,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                        Text(
-                                            text = letraDetectada?.uppercase() ?: "",
-                                            color = Color.White,
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Black
-                                        )
+                                        Box(
+                                            modifier = Modifier.size(36.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                progress = { progresoConfirmacion },
+                                                color = colorPrimario,
+                                                strokeWidth = 3.dp,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                            Text(
+                                                text = letraDetectada?.uppercase() ?: "",
+                                                color = Color.White,
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Black
+                                            )
+                                        }
+                                        Spacer(Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = "Seña ${letraDetectada?.uppercase() ?: ""} (${(confianzaDetectada * 100).toInt()}%)",
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = "Mantén la seña para escribir...",
+                                                color = Color.LightGray,
+                                                fontSize = 10.sp
+                                            )
+                                        }
                                     }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = "Seña ${letraDetectada?.uppercase() ?: ""} (${(confianzaDetectada * 100).toInt()}%)",
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = "Mantén la seña para escribir...",
-                                            color = Color.LightGray,
-                                            fontSize = 10.sp
-                                        )
+                                }
+                            }
+                        }
+                    }
+
+                    // Banner de Vista Previa y Sugerencia Inteligente (Modo Comunicativo / Pixel Live Sign)
+                    if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = senaComunicativaDetectada != null,
+                                enter = fadeIn() + scaleIn(),
+                                exit = fadeOut() + scaleOut()
+                            ) {
+                                senaComunicativaDetectada?.let { resCom ->
+                                    Surface(
+                                        color = Color(0xFF151525).copy(alpha = 0.95f),
+                                        shape = RoundedCornerShape(18.dp),
+                                        border = BorderStroke(1.5.dp, colorPrimario)
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(resCom.sena.emoji, fontSize = 24.sp)
+                                                Spacer(Modifier.width(8.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = resCom.sena.nombre,
+                                                        color = Color.White,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 14.sp
+                                                    )
+                                                    Text(
+                                                        text = resCom.sena.descripcionLSM,
+                                                        color = Color.LightGray,
+                                                        fontSize = 11.sp,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                                Surface(
+                                                    color = colorPrimario.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(8.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "${(resCom.confianza * 100).toInt()}%",
+                                                        color = colorPrimario,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 11.sp,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                            Spacer(Modifier.height(8.dp))
+                                            Button(
+                                                onClick = {
+                                                    vibrateSuccess(haptic)
+                                                    onSenaComunicativaDetectada?.invoke(resCom.sena)
+                                                    val espacio = if (textoActual.isNotEmpty() && !textoActual.endsWith(" ")) " " else ""
+                                                    onTextoChange(textoActual + espacio + resCom.sena.nombre)
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = colorPrimario),
+                                                shape = RoundedCornerShape(10.dp),
+                                                modifier = Modifier.fillMaxWidth().height(36.dp)
+                                            ) {
+                                                Text(
+                                                    text = "✨ Insertar: ${resCom.sena.sugerenciaFrase}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

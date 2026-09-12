@@ -26,6 +26,7 @@ import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 import com.example.nutriia.teleconsulta.TeleconsultaButtons
 import com.example.nutriia.teleconsulta.TipoLlamada
@@ -61,6 +62,7 @@ fun GinecologoDashboardScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.anuncioPantalla("Panel de Control del Ginecólogo"),
         containerColor = EmbFondo
     ) { padding ->
         if (uiState.cargando) {

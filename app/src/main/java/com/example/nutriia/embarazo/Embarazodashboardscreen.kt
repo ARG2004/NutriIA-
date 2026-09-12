@@ -50,6 +50,7 @@ import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.VoiceInputState
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.NutriTTS
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.utils.FechaUtils
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -219,6 +220,7 @@ fun EmbarazoDashboardScreen(
     }
 
     Scaffold(
+        modifier       = Modifier.anuncioPantalla("Panel de Control de Embarazo"),
         containerColor = EmbFondo,
         floatingActionButton = {
             if (a11yMode == AccessibilityMode.BLIND) {

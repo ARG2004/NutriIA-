@@ -60,18 +60,46 @@ fun orientacionBotonInferior(
     return if (idioma == IdiomaVoz.INGLES) {
         "The button to $accion is located at the bottom center, just above the charging port. Double tap to activate."
     } else {
-        "El botón para $accion se encuentra en la parte inferior central, justo arriba del puerto de carga. Toca dos veces para activar."
+        "El botón para $accion se encuentra en la parte inferior central, un centímetro arriba del puerto de carga. Toca dos veces para activar."
     }
 }
 
 /**
- * Genera el mensaje de orientación para la barra de entrada del chatbot.
+ * Genera el mensaje de orientación para la esquina superior izquierda (Botón Atrás).
+ */
+fun orientacionEsquinaSuperiorIzquierda(
+    accion: String = "regresar",
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX
+): String {
+    return if (idioma == IdiomaVoz.INGLES) {
+        "In the top left corner, next to the front camera and call speaker, is the button to $accion. Double tap to go back."
+    } else {
+        "En la esquina superior izquierda, junto al altavoz de llamadas y la cámara frontal, encuentras el botón para $accion. Toca dos veces para volver."
+    }
+}
+
+/**
+ * Genera el mensaje de orientación para la esquina superior derecha (Configuración / Ayuda / Salir).
+ */
+fun orientacionEsquinaSuperiorDerecha(
+    accion: String,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX
+): String {
+    return if (idioma == IdiomaVoz.INGLES) {
+        "In the top right corner, towards the side volume and power buttons, is the button for $accion."
+    } else {
+        "En la esquina superior derecha, orientada hacia los botones laterales de volumen y encendido, encuentras el botón para $accion."
+    }
+}
+
+/**
+ * Genera el mensaje de orientación para la barra de entrada con micrófono y enviar.
  */
 fun orientacionChatbot(idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX): String {
     return if (idioma == IdiomaVoz.INGLES) {
-        "The message field is at the bottom, just above the charging port. To the right is the Send button, and to the left is the Voice dictation button."
+        "The message field is at the bottom, just above the charging port. To the right of the charging port is the Send button, and to the left is the Voice dictation button."
     } else {
-        "El campo para escribir o dictar tu mensaje está en la parte inferior, justo arriba del puerto de carga. A la derecha está el botón Enviar y a la izquierda el botón de Dictado por voz."
+        "El campo para escribir o dictar tu mensaje está en la parte inferior, justo arriba del puerto de carga. A la izquierda del puerto de carga está el botón de Dictado por voz y a la derecha el botón Enviar."
     }
 }
 
@@ -83,6 +111,7 @@ fun triggerFeedbackAccesible(haptic: HapticFeedback?, view: Any? = null) {
         haptic?.performHapticFeedback(HapticFeedbackType.LongPress)
     } catch (_: Throwable) {}
     MotorHapticoNutriIA.vibrarLlegadaBoton()
+    NutriEarcons.playSuccess()
 }
 
 /**
@@ -90,6 +119,24 @@ fun triggerFeedbackAccesible(haptic: HapticFeedback?, view: Any? = null) {
  */
 fun triggerFeedbackAccesible(context: Any? = null, view: Any? = null) {
     MotorHapticoNutriIA.vibrarLlegadaBoton(context, view)
+    NutriEarcons.playSuccess()
+}
+
+/**
+ * Modificador para silenciar instantáneamente la narración de TTS al tocar la pantalla.
+ * Permite al usuario interrumpir una guía larga si ya conoce la acción.
+ */
+fun Modifier.tapParaSilenciarBlind(
+    esBlind: Boolean,
+    a11yVm: AccessibilityViewModel? = null
+): Modifier {
+    if (!esBlind) return this
+    return this.pointerInput(esBlind) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            a11yVm?.silenciar()
+        }
+    }
 }
 
 /**

@@ -128,13 +128,18 @@ private fun esFechaValida(value: String): Boolean {
             it.set(Calendar.MILLISECOND, 0)
             it.time   // lanza si la fecha no existe (ej. 31/02)
         }
-        val hoy = Calendar.getInstance()
+        val hoy = Calendar.getInstance().also {
+            it.set(Calendar.HOUR_OF_DAY, 23)
+            it.set(Calendar.MINUTE, 59)
+            it.set(Calendar.SECOND, 59)
+            it.set(Calendar.MILLISECOND, 999)
+        }
         // No puede ser fecha futura
         if (nacimiento.after(hoy)) return false
         // Edad máxima: 12 años cumplidos
         val limite = Calendar.getInstance().also {
             it.add(Calendar.YEAR, -12)
-            it.add(Calendar.DAY_OF_MONTH, -1)   // día anterior al cumpleaños 12 hace 12 años = sigue siendo válido
+            it.add(Calendar.DAY_OF_MONTH, -1)
         }
         nacimiento.after(limite)   // nacimiento > (hoy - 12 años) → tiene menos de 12 años
     }.getOrDefault(false)
@@ -152,7 +157,7 @@ private fun edadSuperaLimite(value: String): Boolean {
             it.time
         }
         val limite = Calendar.getInstance().also { it.add(Calendar.YEAR, -12); it.add(Calendar.DAY_OF_MONTH, -1) }
-        !nacimiento.after(Calendar.getInstance()) || nacimiento.before(limite) || nacimiento == limite
+        nacimiento.before(limite) || nacimiento == limite
     }.getOrDefault(false)
 }
 
@@ -371,12 +376,17 @@ fun OnboardingQuizScreen(
     LaunchedEffect(currentStep, isNextEnabled) {
         if (selectedA11yMode != AccessibilityMode.BLIND) return@LaunchedEffect
         if (soloAccesibilidad) return@LaunchedEffect
-        if (isNextEnabled) {
-            if (currentStep in listOf(2, 3, 4)) {
-                accessibilityVm.hablar(loc(
-                    "Paso listo. El botón verde para continuar está al final de la pantalla.",
-                    "Step ready. The green continue button is at the bottom of the screen."
-                ))
+        if (isNextEnabled && currentStep in listOf(2, 3, 4)) {
+            val valorCapturado = when (currentStep) {
+                2 -> profile.name
+                3 -> profile.birthDate
+                4 -> "${profile.weightKg} kilos y ${profile.heightCm} centímetros"
+                else -> ""
+            }
+            if (valorCapturado.isNotBlank()) {
+                val plantilla = loc(Voz.READBACK_CONFIRMAR, VozEn.READBACK_CONFIRMAR)
+                val msg = plantilla.replace("%s", valorCapturado)
+                accessibilityVm.hablar(msg)
             }
         }
     }
@@ -433,7 +443,9 @@ fun OnboardingQuizScreen(
     Box(
         Modifier
             .fillMaxSize()
+            .anuncioPantalla("Cuestionario de Configuración y Registro Inicial")
             .background(NutriaBgCrema)
+            .tapParaSilenciarBlind(selectedA11yMode == AccessibilityMode.BLIND, accessibilityVm, ttsManager)
     ) {
         Column(
             modifier            = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -452,11 +464,15 @@ fun OnboardingQuizScreen(
                     enter   = scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn(tween(200)),
                     exit    = scaleOut(tween(150)) + fadeOut(tween(150))
                 ) {
+                    val backSize = if (selectedA11yMode == AccessibilityMode.BLIND) 52.dp else 38.dp
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(backSize)
                             .clip(CircleShape)
                             .background(NutriaGreen.copy(0.10f))
+                            .semantics {
+                                contentDescription = orientacionEsquinaSuperiorIzquierda("paso anterior", idiomaActual)
+                            }
                             .clickable(onClickLabel = "Paso anterior") {
                                 vibrateTap(haptic)
                                 goingForward = false
@@ -464,7 +480,7 @@ fun OnboardingQuizScreen(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaGreen, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = NutriaGreen, modifier = Modifier.size(if (selectedA11yMode == AccessibilityMode.BLIND) 24.dp else 18.dp))
                     }
                 }
                 if (currentStep == 0) Spacer(Modifier.width(38.dp))
@@ -473,7 +489,9 @@ fun OnboardingQuizScreen(
 
                 TextButton(
                     onClick  = { showCancelDialog = true },
-                    modifier = Modifier.semantics { contentDescription = "Cancelar y salir del registro" }
+                    modifier = Modifier
+                        .heightIn(min = if (selectedA11yMode == AccessibilityMode.BLIND) 48.dp else 36.dp)
+                        .semantics { contentDescription = "Cancelar y salir del registro" }
                 ) {
                     Icon(Icons.Rounded.Close, null, tint = Color.Gray, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(4.dp))
