@@ -94,7 +94,7 @@ fun PaymentGateScreen(
                     ) {
                         Icon(Icons.Rounded.Lock, null, tint = PGreen, modifier = Modifier.size(12.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("SSL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = PDarkGreen)
+                        Text("TLS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = PDarkGreen)
                     }
                 }
             }
