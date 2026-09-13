@@ -234,17 +234,25 @@ class AnalisisRepository {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // NUTRICIÓN — Open Food Facts primero, luego LLM con datos USDA/INSP
+    // NUTRICIÓN — Open Food Facts primero, luego LLM con datos USDA/INSP, y fallback local exacto
     // ══════════════════════════════════════════════════════════════════════════
 
     suspend fun obtenerNutricion(foodName: String): Result<NutritionInfo> {
         val offResult = buscarEnOpenFoodFacts(foodName)
-        if (offResult != null) {
-            Log.d(TAG, "[NUTRITION] Encontrado en Open Food Facts: $foodName")
+        if (offResult != null && offResult.calories > 0) {
+            Log.d(TAG, "[NUTRITION] Encontrado en Open Food Facts: $foodName (${offResult.calories} kcal)")
             return Result.success(offResult)
         }
-        Log.d(TAG, "[NUTRITION] No encontrado en OFF, estimando con LLM: $foodName")
-        return estimarNutricionConLLM(foodName)
+        Log.d(TAG, "[NUTRITION] Estimando con LLM o base local para: $foodName")
+        val llmResult = estimarNutricionConLLM(foodName)
+        val info = llmResult.getOrNull()
+        if (info != null && info.calories > 0) {
+            return Result.success(info)
+        }
+        // Fallback local robusto para que JAMÁS devuelva ceros
+        val fallback = DiccionarioNutricionalUniversal.obtenerNutricion(foodName)
+        Log.d(TAG, "[NUTRITION] Usando fallback local exacto para $foodName: ${fallback.calories} kcal")
+        return Result.success(fallback)
     }
 
     private suspend fun buscarEnOpenFoodFacts(foodName: String): NutritionInfo? {
@@ -310,55 +318,48 @@ class AnalisisRepository {
                 Eres un nutriólogo experto en composición de alimentos con acceso a:
                 - Tablas nutricionales de México: INSP, INCMNSZ, NOM-043-SSA2
                 - Tablas de EE.UU.: USDA FoodData Central, FDA
-                - Datos de marcas comerciales mexicanas y estadounidenses
+                - Datos de marcas comerciales mexicanas y comida tradicional (tacos, pozole, tamales, enchiladas, etc.) y comida rápida (hamburguesas, pizzas, papas fritas).
 
-                REFERENCIA DE VALORES CORRECTOS (úsalos como guía de precisión):
-                - Lechuga orejona/romana cruda: ~17 kcal, 1.2g prot, 2.9g carbs, 0.3g grasa
-                - Lechuga iceberg cruda: ~14 kcal, 0.9g prot, 2.9g carbs, 0.1g grasa
-                - Piña fresca cruda: ~50 kcal, 0.5g prot, 13g carbs, 0.1g grasa, 9.8g azúcar, 1.4g fibra
-                - Papa cocida sin cáscara: ~86 kcal, 1.9g prot, 20g carbs, 0.1g grasa
-                - Zanahoria cruda rallada: ~41 kcal, 0.9g prot, 10g carbs, 0.2g grasa, 4.7g azúcar
-                - Col/repollo crudo: ~25 kcal, 1.3g prot, 5.8g carbs, 0.1g grasa
-                - Carne molida res 80/20 cocida: ~254 kcal, 26g prot, 0g carbs, 17g grasa
-                - Tortilla de maíz (25g c/u): ~52 kcal, 1.4g prot, 11g carbs, 0.7g grasa
-                - Tortilla de harina (Tia Rosa): ~305 kcal, 7.7g prot, 44.8g carbs, 10.5g grasa (por 100g)
-                - Aguacate Hass: ~160 kcal, 2g prot, 9g carbs, 15g grasa, 1.8g azúcar
-                - Mango Ataulfo: ~60 kcal, 0.8g prot, 15g carbs, 0.4g grasa, 13g azúcar
-                - Leche Alpura deslactosada: ~48 kcal, 3.1g prot, 4.8g carbs, 1.8g grasa (por 100ml)
-                - Coca-Cola 600ml: ~240 kcal, 0g prot, 62g carbs, 0g grasa, 62g azúcar (por 100ml: 40 kcal)
-                - Huevo entero cocido (100g): ~155 kcal, 12.6g prot, 1.1g carbs, 10.6g grasa
-                - Huevo revuelto / estrellado (100g): ~148 kcal, 10g prot, 1g carbs, 11g grasa
-                - Manzana: ~52 kcal, 0.3g prot, 14g carbs, 0.2g grasa, 10.4g azúcar
+                REFERENCIA DE VALORES POR 100g:
+                - Hamburguesa con carne, queso y pan: ~275 kcal, 14.5g prot, 27g carbs, 13g grasa, 520mg sodio
+                - Pizza de pepperoni / queso: ~266 kcal, 11g prot, 31g carbs, 10.5g grasa, 590mg sodio
+                - Papas fritas / a la francesa: ~312 kcal, 3.4g prot, 41g carbs, 15g grasa, 480mg sodio
+                - Hot dog con salchicha: ~290 kcal, 10.5g prot, 24g carbs, 17g grasa, 680mg sodio
+                - Tacos al pastor: ~215 kcal, 13.5g prot, 18g carbs, 9.8g grasa, 380mg sodio
+                - Quesadilla de queso: ~245 kcal, 12g prot, 24g carbs, 11.5g grasa, 390mg sodio
+                - Pozole: ~115 kcal, 7.5g prot, 11.5g carbs, 4.5g grasa, 360mg sodio
+                - Manzana fresca: ~52 kcal, 0.3g prot, 14g carbs, 0.2g grasa, 10g azúcar, 2.4g fibra
+                - Plátano fresco: ~89 kcal, 1.1g prot, 23g carbs, 0.3g grasa, 12g azúcar, 2.6g fibra
+                - Zanahoria cruda: ~41 kcal, 0.9g prot, 10g carbs, 0.2g grasa, 4.7g azúcar, 2.8g fibra
+                - Frijoles cocidos: ~127 kcal, 8.7g prot, 23g carbs, 0.5g grasa, 6.4g fibra
+                - Pechuga de pollo cocida: ~165 kcal, 31g prot, 0g carbs, 3.6g grasa, 74mg sodio
+                - Huevo revuelto: ~148 kcal, 10g prot, 1g carbs, 11g grasa, 140mg sodio
+                - Leche entera (100ml): ~61 kcal, 3.2g prot, 4.8g carbs, 3.3g grasa, 5g azúcar
 
                 Proporciona los valores nutricionales por 100g de: "$foodName"
 
                 Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
                 {
-                  "calories": 0.0,
-                  "protein": 0.0,
-                  "carbohydrates": 0.0,
-                  "fat": 0.0,
-                  "sugar": 0.0,
-                  "fiber": 0.0,
-                  "sodium": 0.0
+                  "calories": 275.0,
+                  "protein": 14.5,
+                  "carbohydrates": 27.0,
+                  "fat": 13.0,
+                  "sugar": 4.5,
+                  "fiber": 1.5,
+                  "sodium": 520.0
                 }
 
                 REGLAS CRÍTICAS:
-                - USA los valores de referencia de arriba cuando el alimento coincida
-                - Para verduras frescas: calorias suelen ser bajas (10-50 kcal/100g)
-                - Para frutas frescas: calorías 40-80 kcal/100g, azúcar 5-15g
-                - Para carnes cocidas: proteína alta (20-30g), grasa variable
-                - Para productos empacados de marca: usa los datos del empaque si los conoces
-                - sodium en miligramos, todo lo demás en gramos o kcal
-                - Si el alimento es variable, usa el valor promedio más común
-                - NO inflés ni deflés los valores: la precisión es crítica para niños
+                - NUNCA devuelvas ceros para calorías, proteínas o carbohidratos si es un alimento real.
+                - Si es comida rápida o platillo compuesto, estima los macronutrientes promedio precisos por 100g.
             """.trimIndent()
 
             val textModels = listOf(
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
                 "groq/compound",
-                "qwen/qwen3.6-27b"
+                "qwen/qwen3.6-27b",
+                "llama-3.3-70b-versatile"
             )
 
             var rawBody: String? = null
@@ -388,20 +389,23 @@ class AnalisisRepository {
             }
 
             if (rawBody.isNullOrEmpty()) {
-                Log.w(TAG, "[LLM-NUTRITION] Fallaron todos los modelos: $lastError")
-                return Result.success(NutritionInfo())
+                Log.w(TAG, "[LLM-NUTRITION] Fallaron todos los modelos, usando fallback local: $lastError")
+                return Result.success(DiccionarioNutricionalUniversal.obtenerNutricion(foodName))
             }
 
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
 
             val result = gson.fromJson(cleaned, NutritionInfo::class.java)
+            if (result == null || result.calories <= 0) {
+                return Result.success(DiccionarioNutricionalUniversal.obtenerNutricion(foodName))
+            }
             Log.d(TAG, "[LLM-NUTRITION] Estimado para $foodName: ${result.calories} kcal")
             Result.success(result)
 
         } catch (e: Exception) {
-            Log.w(TAG, "[LLM-NUTRITION] Error: ${e.message}")
-            Result.success(NutritionInfo())
+            Log.w(TAG, "[LLM-NUTRITION] Error: ${e.message}, usando fallback local")
+            Result.success(DiccionarioNutricionalUniversal.obtenerNutricion(foodName))
         }
     }
 
@@ -432,29 +436,28 @@ class AnalisisRepository {
             )
         }
 
+        val ageMonths = calcAgeMonths(child.birthDate)
+        val ageText   = if (ageMonths >= 12) "${ageMonths / 12} años y ${ageMonths % 12} meses"
+        else "$ageMonths meses"
+
+        // ── FILTRO PREVENTIVO ESTRICTO DE COMIDA CHATARRA / ULTRAPROCESADOS ──
+        val esChatarra = DiccionarioNutricionalUniversal.esComidaChatarra(food.foodName, food.ingredients)
+
         return try {
             val apiKey = KeyDeobfuscator.deobfuscate(BuildConfig.GROQ_API_KEY)
             if (apiKey.isBlank())
                 return Result.failure(Exception("GROQ_API_KEY no configurada en local.properties"))
-
-            val ageMonths = calcAgeMonths(child.birthDate)
-            val ageText   = if (ageMonths >= 12) "${ageMonths / 12} años y ${ageMonths % 12} meses"
-            else "$ageMonths meses"
 
             val allergiesText  = if (child.hasAllergies) child.allergiesDetail else "ninguna conocida"
             val conditionsText = if (child.hasConditions) child.conditionsDetail else "ninguna"
 
             val prompt = """
                 Eres un pediatra nutriólogo con experiencia clínica en México, experto en
-                alimentación infantil y conocimiento de las guías internacionales de nutrición.
-
-                Guías de referencia:
-                - México: NOM-043-SSA2, Secretaría de Salud, INSP, INCMNSZ
-                - Internacional: AAP (American Academy of Pediatrics), USDA MyPlate,
-                  OMS/OPS guías de alimentación complementaria y escolar
+                alimentación infantil y conocimiento de las guías internacionales de nutrición (AAP, OMS, NOM-043-SSA2).
 
                 INFORMACIÓN DEL NIÑO:
-                - Edad: $ageText
+                - Nombre: ${child.name}
+                - Edad: $ageText ($ageMonths meses)
                 - Peso: ${child.weightKg} kg
                 - Alergias conocidas: $allergiesText
                 - Condiciones médicas: $conditionsText
@@ -463,7 +466,7 @@ class AnalisisRepository {
                 - Nombre: ${food.foodName}
                 - Tipo de alimento: ${food.foodType}
                 - Ingredientes detectados: ${food.ingredients.joinToString(", ")}
-                - ¿Es producto procesado?: ${if (food.ingredients.isEmpty()) "no determinado" else "basado en ingredientes"}
+                - ¿Es comida rápida / ultraprocesada / chatarra?: ${if (esChatarra) "SÍ (ALTO RIESGO PEDIÁTRICO)" else "No"}
 
                 VALORES NUTRICIONALES (por 100g o 100ml):
                 - Calorías: ${nutrition.calories} kcal
@@ -474,39 +477,21 @@ class AnalisisRepository {
                 - Fibra: ${nutrition.fiber} g
                 - Sodio: ${nutrition.sodium} mg
 
-                CRITERIOS DE ANÁLISIS según edad:
-                
-                LACTANTES (< 6 meses): Solo leche materna o fórmula.
-                INICIO COMPLEMENTARIA (6-8 meses): Purés suaves, sin sal ni azúcar añadida.
-                  Evitar: miel, mariscos, lácteos como bebida, frutos secos enteros.
-                BEBÉS (9-11 meses): Trozos pequeños blandos, variedad.
-                NIÑOS 1-3 años: Porciones pequeñas, evitar sodio >700mg/día, azúcar añadida.
-                  Evitar: bebidas azucaradas, comida muy picante, embutidos en exceso.
-                PREESCOLARES 3-5 años: Porciones adaptadas. Límite sodio <900mg/día.
-                ESCOLARES 6-12 años: Porciones normales. Límite sodio <1200mg/día.
+                REGLA CRÍTICA DE COMIDA CHATARRA Y ULTRAPROCESADOS:
+                - Si el alimento es comida chatarra, comida rápida (hamburguesas comerciales, pizzas, papas fritas, hot dogs, nuggets industriales, botanas fritas, refrescos, pasteles industriales):
+                  * Para niños pequeños (< 6 años) NUNCA debe recomendarse: "recommended": false.
+                  * En warnings explica el exceso de sodio, grasas saturadas y aditivos.
+                  * En recommended_portion escribe: "Evitar en la alimentación habitual o máximo 1/4 de porción casera sin sal".
+                  * En frequency: "Ocasional o Evitar".
 
-                ALERTAS AUTOMÁTICAS que debes considerar:
-                - Sodio > 300mg por porción típica → advertencia
-                - Azúcar añadida > 6g por porción → advertencia
-                - Grasas saturadas altas → mencionar moderación
-                - Alimentos ultra-procesados → mencionar frecuencia baja
-                - Bebidas azucaradas (refrescos, jugos) → advertencia en menores
-
-                REGLAS OBLIGATORIAS:
-                - DEBES calcular y especificar una porción sugerida adaptada de forma estricta a un niño de $ageText (${child.weightKg} kg).
-                - recommended_portion NUNCA debe estar vacío. Si se recomienda, indica la cantidad exacta (ej: '1/2 taza (70g)', '1 pieza pequeña'). Si NO se recomienda, escribe 'Evitar o 0g (No recomendado a esta edad)'.
-                - Devuelve ÚNICAMENTE este JSON (sin markdown ni etiquetas <think>):
+                Responde ÚNICAMENTE con este JSON (sin markdown ni etiquetas <think>):
                 {
-                  "recommended": true,
-                  "recommended_portion": "porción calculada para la edad de $ageText",
+                  "recommended": ${if (esChatarra) "false" else "true"},
+                  "recommended_portion": "${if (esChatarra) "Evitar en la alimentación diaria (0g) o máximo 1/4 pieza casera" else "porción calculada para la edad de $ageText"}",
                   "benefits": ["beneficio específico para edad de $ageText 1", "beneficio 2"],
-                  "warnings": ["advertencia si aplica"],
-                  "frequency": "frecuencia adaptada para $ageText"
+                  "warnings": ["advertencia sobre sodio, grasas o consistencia si aplica"],
+                  "frequency": "${if (esChatarra) "Evitar o sólo consumo esporádico extraordinario" else "frecuencia adaptada para $ageText"}"
                 }
-
-                - Si no hay advertencias, deja el arreglo warnings vacío: []
-                - Máximo 3 benefits y 3 warnings
-                - Devuelve SOLO el JSON, sin texto adicional ni <think>.
             """.trimIndent()
 
             val textModels = listOf(
@@ -549,7 +534,16 @@ class AnalisisRepository {
             }
 
             if (rawBody.isNullOrEmpty()) {
-                return Result.failure(Exception("Error Groq LLM: $lastErrorCode - $lastErrorMsg"))
+                // Generar evaluación pediátrica de seguridad local
+                val localAnalysis = DiccionarioNutricionalUniversal.analisisPediatricoFallback(
+                    childName = child.name,
+                    ageText = ageText,
+                    foodName = food.foodName,
+                    ingredients = food.ingredients,
+                    nutrition = nutrition,
+                    esChatarra = esChatarra
+                )
+                return Result.success(localAnalysis)
             }
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
@@ -560,24 +554,48 @@ class AnalisisRepository {
             val benefitsArr = if (result.has("benefits") && result.get("benefits").isJsonArray) result.getAsJsonArray("benefits") else null
             val warningsArr = if (result.has("warnings") && result.get("warnings").isJsonArray) result.getAsJsonArray("warnings") else null
 
-            val rawPortion = result.get("recommended_portion")?.asString ?: ""
-            val isRec = result.get("recommended")?.asBoolean ?: false
+            var isRec = result.get("recommended")?.asBoolean ?: (!esChatarra)
+            var rawPortion = result.get("recommended_portion")?.asString ?: ""
+            var freq = result.get("frequency")?.asString ?: if (isRec) "2-3 veces por semana" else "Evitar"
+
+            val finalWarnings = (0 until (warningsArr?.size() ?: 0)).map { warningsArr!![it].asString }.toMutableList()
+
+            // ── PROTECCIÓN FINAL ESTRICTA PARA COMIDA CHATARRA ──
+            if (esChatarra) {
+                isRec = false
+                if (!rawPortion.contains("Evitar", ignoreCase = true) && !rawPortion.contains("0g", ignoreCase = true)) {
+                    rawPortion = "Evitar en la alimentación diaria infantil (máximo 1/4 de porción casera esporádica sin sal)"
+                }
+                freq = "Evitar o consumo ocasional extraordinario"
+                if (finalWarnings.isEmpty() || finalWarnings.none { it.contains("ultraprocesad", ignoreCase = true) || it.contains("sodio", ignoreCase = true) }) {
+                    finalWarnings.add(0, "Alimento ultraprocesado/chatarra: No recomendado para ${child.name}. Exceso de sodio, grasas saturadas y aditivos perjudiciales para la salud renal e infantil.")
+                }
+            }
+
             val portionText = if (rawPortion.isNotBlank()) rawPortion else if (isRec) "Porción pequeña adaptada para $ageText" else "0g / Evitar en esta etapa"
 
             val analysis = PediatricAnalysis(
                 recommended        = isRec,
                 recommendedPortion = portionText,
                 benefits           = (0 until (benefitsArr?.size() ?: 0)).map { benefitsArr!![it].asString },
-                warnings           = (0 until (warningsArr?.size() ?: 0)).map { warningsArr!![it].asString },
-                frequency          = result.get("frequency")?.asString ?: if (isRec) "2-3 veces por semana" else "Evitar"
+                warnings           = finalWarnings,
+                frequency          = freq
             )
 
             Log.d(TAG, "[LLM] Análisis listo para $ageText. Recomendado: ${analysis.recommended}, Porción: ${analysis.recommendedPortion}")
             Result.success(analysis)
 
         } catch (e: Exception) {
-            Log.e(TAG, "[LLM] Excepción: ${e.message}", e)
-            Result.failure(Exception("Error en análisis pediátrico: ${e.message}"))
+            Log.e(TAG, "[LLM] Excepción: ${e.message}, usando fallback pediátrico local", e)
+            val localAnalysis = DiccionarioNutricionalUniversal.analisisPediatricoFallback(
+                childName = child.name,
+                ageText = ageText,
+                foodName = food.foodName,
+                ingredients = food.ingredients,
+                nutrition = nutrition,
+                esChatarra = esChatarra
+            )
+            Result.success(localAnalysis)
         }
     }
 

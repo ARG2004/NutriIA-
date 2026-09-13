@@ -24,7 +24,7 @@ android {
         applicationId             = "com.nutriia.app"
         minSdk                    = 26
         targetSdk                 = 36
-        versionCode               = 165
+        versionCode               = 168
         versionName               = "2.4.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

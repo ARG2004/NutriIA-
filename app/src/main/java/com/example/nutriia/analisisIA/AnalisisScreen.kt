@@ -1301,6 +1301,12 @@ private fun PantallaResultado(
         } else null
     }
 
+    val context = LocalContext.current
+    val a11yMode = LocalAccessibilityMode.current
+    val a11yVm: AccessibilityViewModel = viewModel()
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+    val esAccesible = esBlind || a11yMode == AccessibilityMode.MUTE
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1315,14 +1321,19 @@ private fun PantallaResultado(
                 .padding(horizontal = 16.dp)
                 .padding(top = 48.dp, bottom = 12.dp)
         ) {
-            val a11yMode = LocalAccessibilityMode.current
-            val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
-
             FilledTonalIconButton(
                 onClick  = onVolver,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .size(if (esAccesible) 64.dp else 40.dp),
+                    .size(if (esAccesible) 64.dp else 40.dp)
+                    .exploracionTactil(
+                        elemento = "Botón Volver a la pantalla principal",
+                        ubicacion = "la esquina superior izquierda",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    ),
                 colors   = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = BgCard,
                     contentColor   = GreenPrimary
@@ -1338,6 +1349,14 @@ private fun PantallaResultado(
                     .clip(RoundedCornerShape(20.dp))
                     .background(BgCard)
                     .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .exploracionTactil(
+                        elemento = "Tipo de alimento: $mealChipText",
+                        ubicacion = "la parte superior central",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    )
             ) {
                 Text(
                     text       = mealChipText,
@@ -1354,7 +1373,15 @@ private fun PantallaResultado(
         Card(
             modifier  = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .exploracionTactil(
+                    elemento = "Fotografía y platillo identificado: ${food.foodName}, certeza del ${"%.0f".format(food.confidence * 100)}%",
+                    ubicacion = "la parte superior de la pantalla",
+                    modulo = "Análisis Nutricional IA",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    context = context
+                ),
             shape     = RoundedCornerShape(22.dp),
             colors    = CardDefaults.cardColors(containerColor = BgCard),
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
@@ -1407,6 +1434,14 @@ private fun PantallaResultado(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(recomBg as Color)
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .exploracionTactil(
+                                    elemento = "Estado de recomendación: $recomLabel",
+                                    ubicacion = "la parte superior derecha de la tarjeta",
+                                    modulo = "Análisis Nutricional IA",
+                                    esBlind = esBlind,
+                                    a11yVm = a11yVm,
+                                    context = context
+                                )
                         ) {
                             Text(
                                 text       = recomLabel as String,
@@ -1436,7 +1471,15 @@ private fun PantallaResultado(
             Card(
                 modifier  = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .exploracionTactil(
+                        elemento = "Advertencia de Objeto No Comestible. ${food.nonEdibleReason}",
+                        ubicacion = "el centro de la pantalla",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    ),
                 shape     = RoundedCornerShape(20.dp),
                 colors    = CardDefaults.cardColors(containerColor = RedLight),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -1481,7 +1524,15 @@ private fun PantallaResultado(
             Card(
                 modifier  = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .exploracionTactil(
+                        elemento = "Resumen de Macronutrientes: ${nutrition.calories.toInt()} calorías, ${"%.1f".format(nutrition.carbohydrates)} gramos de carbohidratos, ${"%.1f".format(nutrition.protein)} gramos de proteína, y ${"%.1f".format(nutrition.fat)} gramos de grasas",
+                        ubicacion = "el centro de la pantalla",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    ),
                 shape     = RoundedCornerShape(20.dp),
                 colors    = CardDefaults.cardColors(containerColor = BgCard),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -1493,13 +1544,13 @@ private fun PantallaResultado(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    MacroStatColumn("${nutrition.calories.toInt()} kcal", "Calorías", AmberWarm)
+                    MacroStatColumn("${nutrition.calories.toInt()} kcal", "Calorías", AmberWarm, esBlind, a11yVm, "la primera columna a la izquierda", context)
                     DividerVertical()
-                    MacroStatColumn("${"%.1f".format(nutrition.carbohydrates)} g", "Carbohidratos", Color(0xFF7B68EE))
+                    MacroStatColumn("${"%.1f".format(nutrition.carbohydrates)} g", "Carbohidratos", Color(0xFF7B68EE), esBlind, a11yVm, "la segunda columna", context)
                     DividerVertical()
-                    MacroStatColumn("${"%.1f".format(nutrition.protein)} g", "Proteína", Color(0xFF20B2AA))
+                    MacroStatColumn("${"%.1f".format(nutrition.protein)} g", "Proteína", Color(0xFF20B2AA), esBlind, a11yVm, "la tercera columna", context)
                     DividerVertical()
-                    MacroStatColumn("${"%.1f".format(nutrition.fat)} g", "Grasas", RedSoft)
+                    MacroStatColumn("${"%.1f".format(nutrition.fat)} g", "Grasas", RedSoft, esBlind, a11yVm, "la cuarta columna a la derecha", context)
                 }
             }
 
@@ -1510,7 +1561,15 @@ private fun PantallaResultado(
                 Card(
                     modifier  = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 16.dp)
+                        .exploracionTactil(
+                            elemento = "Desglose de ${food.ingredients.size} ingredientes: ${food.ingredients.joinToString(", ")}",
+                            ubicacion = "el centro de la pantalla",
+                            modulo = "Análisis Nutricional IA",
+                            esBlind = esBlind,
+                            a11yVm = a11yVm,
+                            context = context
+                        ),
                     shape     = RoundedCornerShape(20.dp),
                     colors    = CardDefaults.cardColors(containerColor = BgCard),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -1530,7 +1589,15 @@ private fun PantallaResultado(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
+                                    .padding(vertical = 8.dp)
+                                    .exploracionTactil(
+                                        elemento = "Ingrediente ${index + 1}: $ing, aproximadamente $approxCalPerItem calorías",
+                                        ubicacion = "la lista de ingredientes en el centro",
+                                        modulo = "Análisis Nutricional IA",
+                                        esBlind = esBlind,
+                                        a11yVm = a11yVm,
+                                        context = context
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -1589,10 +1656,19 @@ private fun PantallaResultado(
             }
 
             // ── Análisis Pediátrico / Recomendación ──
+            val portionToDisplay = if (analysis.recommendedPortion.isNotBlank()) analysis.recommendedPortion else if (analysis.recommended) "Porción pequeña adaptada para su edad" else "0g / No recomendado"
             Card(
                 modifier  = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp)
+                    .exploracionTactil(
+                        elemento = "Recomendación para $targetNombre: $recomLabel. Porción: $portionToDisplay. Frecuencia: ${analysis.frequency.ifBlank { "Ocasional" }}",
+                        ubicacion = "la parte media inferior de la pantalla",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    ),
                 shape     = RoundedCornerShape(20.dp),
                 colors    = CardDefaults.cardColors(containerColor = recomBg as Color),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -1614,7 +1690,6 @@ private fun PantallaResultado(
                         )
                     }
 
-                    val portionToDisplay = if (analysis.recommendedPortion.isNotBlank()) analysis.recommendedPortion else if (analysis.recommended) "Porción pequeña adaptada para su edad" else "0g / No recomendado"
                     Spacer(Modifier.height(10.dp))
                     InfoRow(Icons.Outlined.DinnerDining, "Porción recomendada", portionToDisplay, recomColor as Color)
                     if (analysis.frequency.isNotBlank()) {
@@ -1629,7 +1704,14 @@ private fun PantallaResultado(
             // ── Beneficios y Advertencias ──
             if (analysis.benefits.isNotEmpty()) {
                 Card(
-                    modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp).exploracionTactil(
+                        elemento = "Beneficios nutricionales: ${analysis.benefits.joinToString(". ")}",
+                        ubicacion = "la parte inferior de la lista",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    ),
                     shape     = RoundedCornerShape(18.dp),
                     colors    = CardDefaults.cardColors(containerColor = BgCard),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -1651,7 +1733,14 @@ private fun PantallaResultado(
 
             if (analysis.warnings.isNotEmpty()) {
                 Card(
-                    modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    modifier  = Modifier.fillMaxWidth().padding(horizontal = 16.dp).exploracionTactil(
+                        elemento = "Advertencias de salud: ${analysis.warnings.joinToString(". ")}",
+                        ubicacion = "la parte inferior",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    ),
                     shape     = RoundedCornerShape(18.dp),
                     colors    = CardDefaults.cardColors(containerColor = RedLight),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -1673,14 +1762,18 @@ private fun PantallaResultado(
         }
 
         // ── Botones de Acción ──
-        val a11yMode = LocalAccessibilityMode.current
-        val esAccesible = a11yMode == AccessibilityMode.BLIND || a11yMode == AccessibilityMode.MUTE
-
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             if (!esNoComestible) {
                 Button(
                     onClick  = onGuardar,
-                    modifier = Modifier.fillMaxWidth().height(if (esAccesible) 70.dp else 52.dp),
+                    modifier = Modifier.fillMaxWidth().height(if (esAccesible) 70.dp else 52.dp).exploracionTactil(
+                        elemento = "Botón Guardar en diario nutricional",
+                        ubicacion = "la parte inferior central, arriba del puerto de carga",
+                        modulo = "Análisis Nutricional IA",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    ),
                     shape    = RoundedCornerShape(16.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
@@ -1694,7 +1787,14 @@ private fun PantallaResultado(
 
             Button(
                 onClick  = onNuevo,
-                modifier = Modifier.fillMaxWidth().height(if (esAccesible) 70.dp else 50.dp),
+                modifier = Modifier.fillMaxWidth().height(if (esAccesible) 70.dp else 50.dp).exploracionTactil(
+                    elemento = if (esNoComestible) "Botón Escanear alimento de nuevo" else "Botón Escanear otro alimento",
+                    ubicacion = "la parte inferior central, en la base de la pantalla",
+                    modulo = "Análisis Nutricional IA",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    context = context
+                ),
                 shape    = RoundedCornerShape(16.dp),
                 colors   = if (esNoComestible) ButtonDefaults.buttonColors(containerColor = GreenPrimary) else ButtonDefaults.buttonColors(containerColor = BgCard),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
@@ -1714,8 +1814,26 @@ private fun PantallaResultado(
 }
 
 @Composable
-private fun MacroStatColumn(valor: String, label: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun MacroStatColumn(
+    valor: String,
+    label: String,
+    color: Color,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    ubicacion: String = "el centro de la pantalla",
+    context: android.content.Context? = null
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.exploracionTactil(
+            elemento = "$label: $valor",
+            ubicacion = ubicacion,
+            modulo = "Macronutrientes",
+            esBlind = esBlind,
+            a11yVm = a11yVm,
+            context = context
+        )
+    ) {
         Text(
             text       = valor,
             fontSize   = 16.sp,

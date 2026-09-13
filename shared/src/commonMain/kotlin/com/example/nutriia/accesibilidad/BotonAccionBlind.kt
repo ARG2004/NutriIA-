@@ -140,6 +140,42 @@ fun Modifier.tapParaSilenciarBlind(
 }
 
 /**
+ * Modificador de Exploración Táctil Interactiva (Touch-to-Explore) con Háptica y TTS.
+ * Al tocar o arrastrar el dedo sobre cualquier elemento, el motor háptico emite un
+ * micro-pulso y el TTS anuncia espacialmente:
+ * "Estás en [ubicación de la pantalla], [Módulo X]: [Elemento / Valor]"
+ */
+fun Modifier.exploracionTactil(
+    elemento: String,
+    ubicacion: String = "el centro de la pantalla",
+    modulo: String? = null,
+    esBlind: Boolean,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    context: Any? = null
+): Modifier {
+    if (!esBlind) return this
+
+    val anuncio = if (idioma == IdiomaVoz.INGLES) {
+        "You are in $ubicacion${if (!modulo.isNullOrBlank()) ", $modulo Module" else ""}: $elemento"
+    } else {
+        "Estás en $ubicacion${if (!modulo.isNullOrBlank()) ", Módulo $modulo" else ""}: $elemento"
+    }
+
+    return this
+        .semantics {
+            contentDescription = anuncio
+        }
+        .pointerInput(esBlind, anuncio) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                MotorHapticoNutriIA.vibrarBordeOEsquina(context)
+                a11yVm?.hablar(anuncio)
+            }
+        }
+}
+
+/**
  * Modificador de Radar Háptico de Guía Espacial exclusivo para el modo BLIND.
  * Permite al usuario tocar o deslizar el dedo desde esquinas/bordes hacia los botones
  * recibiendo pulsos de radar progresivos sin bloquear ni consumir los clics normales.

@@ -29,6 +29,7 @@ import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.anuncioPantalla
+import com.example.nutriia.accesibilidad.exploracionTactil
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 import com.example.nutriia.teleconsulta.TeleconsultaButtons
 import com.example.nutriia.teleconsulta.TipoLlamada
@@ -55,6 +56,7 @@ fun GinecologoDashboardScreen(
     val a11yMode = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
     val esBlind = a11yMode == AccessibilityMode.BLIND
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         if (esBlind) {
@@ -83,6 +85,9 @@ fun GinecologoDashboardScreen(
                 GinecologoTopBar(
                     nombre = uiState.miPerfil?.nombre ?: "Ginecólogo/a",
                     especialidad = uiState.miPerfil?.especialidad ?: "Ginecología y Obstetricia",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    context = context,
                     onLogout = onLogout,
                     onConfiguracion = onConfiguracion
                 )
@@ -92,7 +97,10 @@ fun GinecologoDashboardScreen(
             item {
                 GinecologoStatsRow(
                     totalMamas = uiState.vinculacionesActivas.size,
-                    totalPendientes = uiState.solicitudesPendientes.size
+                    totalPendientes = uiState.solicitudesPendientes.size,
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    context = context
                 )
             }
 
@@ -129,6 +137,9 @@ fun GinecologoDashboardScreen(
                         vinculacion = vinculacion,
                         miNombre = uiState.miPerfil?.nombre ?: "Ginecólogo/a",
                         teleconsultaViewModel = teleconsultaViewModel,
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context,
                         onAgendarClick = { pacienteParaCita = vinculacion },
                         onCancelarCitaClick = { viewModel.cancelarCita(vinculacion.id) },
                         onPatientClick = onPatientClick
@@ -151,7 +162,15 @@ fun GinecologoDashboardScreen(
 }
 
 @Composable
-private fun GinecologoTopBar(nombre: String, especialidad: String, onLogout: () -> Unit, onConfiguracion: () -> Unit) {
+private fun GinecologoTopBar(
+    nombre: String,
+    especialidad: String,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    context: android.content.Context? = null,
+    onLogout: () -> Unit,
+    onConfiguracion: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,20 +183,52 @@ private fun GinecologoTopBar(nombre: String, especialidad: String, onLogout: () 
             Text(especialidad.ifBlank { "Ginecología" }, fontSize = 13.sp, color = Color.Gray)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TopBarCircleButton(Icons.Rounded.Settings, onClick = onConfiguracion)
-            TopBarCircleButton(Icons.AutoMirrored.Rounded.ExitToApp, isLogout = true, onClick = onLogout)
+            TopBarCircleButton(
+                icon = Icons.Rounded.Settings,
+                elemento = "Botón de Ajustes del Ginecólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context,
+                onClick = onConfiguracion
+            )
+            TopBarCircleButton(
+                icon = Icons.AutoMirrored.Rounded.ExitToApp,
+                isLogout = true,
+                elemento = "Botón Cerrar Sesión",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context,
+                onClick = onLogout
+            )
         }
     }
 }
 
 @Composable
-private fun TopBarCircleButton(icon: ImageVector, isLogout: Boolean = false, onClick: () -> Unit) {
+private fun TopBarCircleButton(
+    icon: ImageVector,
+    isLogout: Boolean = false,
+    elemento: String = "Botón de acción",
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    context: android.content.Context? = null,
+    onClick: () -> Unit
+) {
     Surface(
         onClick = onClick,
         shape = CircleShape,
         color = Color.White,
         shadowElevation = 1.dp,
-        modifier = Modifier.size(44.dp)
+        modifier = Modifier
+            .size(44.dp)
+            .exploracionTactil(
+                elemento = elemento,
+                ubicacion = "la esquina superior derecha",
+                modulo = "Dashboard del Ginecólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            )
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = if (isLogout) Color(0xFFE57373) else EmbRosa, modifier = Modifier.size(22.dp))
@@ -186,9 +237,25 @@ private fun TopBarCircleButton(icon: ImageVector, isLogout: Boolean = false, onC
 }
 
 @Composable
-private fun GinecologoStatsRow(totalMamas: Int, totalPendientes: Int) {
+private fun GinecologoStatsRow(
+    totalMamas: Int,
+    totalPendientes: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    context: android.content.Context? = null
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .exploracionTactil(
+                elemento = "Estadísticas: $totalMamas mamás vinculadas, $totalPendientes solicitudes pendientes",
+                ubicacion = "el centro de la pantalla",
+                modulo = "Dashboard del Ginecólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            ),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         StatCard(Modifier.weight(1f), "$totalMamas", "Mamás vinculadas", Icons.Rounded.People, EmbMorado)
@@ -258,6 +325,9 @@ private fun PacienteEmbarazoCard(
     vinculacion: VinculacionEmbarazo,
     miNombre: String,
     teleconsultaViewModel: TeleconsultaViewModel,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    context: android.content.Context? = null,
     onAgendarClick: () -> Unit,
     onCancelarCitaClick: () -> Unit,
     onPatientClick: (VinculacionEmbarazo) -> Unit
@@ -268,7 +338,15 @@ private fun PacienteEmbarazoCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp)
-            .clickable { expanded = !expanded },
+            .clickable { expanded = !expanded }
+            .exploracionTactil(
+                elemento = "Paciente: ${vinculacion.mamaNombre}, vínculo activo",
+                ubicacion = "la lista de pacientes en el centro de la pantalla",
+                modulo = "Dashboard del Ginecólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            ),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = CardWhite),
         elevation = CardDefaults.cardElevation(1.dp)

@@ -344,6 +344,9 @@ fun NutriIADashboardScreen(
                         a11yVm.hablar(VozDash.moduloAbierto("Análisis NutriIA"))
                         onOpenDiario(currentPage)
                     }
+                    cmd.contains("sueño") || cmd.contains("sueno") || cmd.contains("dormir") || cmd.contains("siesta") -> {
+                        a11yVm.hablar("El módulo de sueño estará disponible muy pronto.")
+                    }
                     cmd.contains("alarmas") || cmd.contains("alertas") || cmd.contains("alerta") || cmd.contains("alarma") || cmd.contains("recordatorio") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Alertas"))
                         onOpenRecordatorios(currentPage)
@@ -496,7 +499,7 @@ fun NutriIADashboardScreen(
                 }
                 item {
                     EntranceAnimatedSection(delayMs = 260) {
-                        ModulesSection(modules)
+                        ModulesSection(modules, a11yMode, a11yVm)
                     }
                 }
             }
@@ -557,8 +560,8 @@ private fun buildModuleList(
         if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Crecimiento OMS"))
         onOpenCrecimiento(currentPage)
     },
-    DashModule("Sueño", Icons.Rounded.Bedtime, DashSoftPurple, "Registro de siestas y horas de descanso infantil", true) {
-        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar(VozDash.moduloAbierto("Registro de Sueño"))
+    DashModule("Sueño", Icons.Rounded.Bedtime, DashSoftPurple, "Registro de siestas y descanso infantil (Próximamente)", false) {
+        if (a11yMode == AccessibilityMode.BLIND) a11yVm.hablar("El módulo de sueño estará disponible muy pronto.")
         onOpenSueno(currentPage)
     },
     DashModule("Nutrientes", Icons.Rounded.Medication, DashSoftTeal, "Semáforo nutricional diario de hierro, zinc, calcio y vitaminas", true) {
@@ -592,6 +595,8 @@ fun DashboardTopBar(
     a11yMode:        AccessibilityMode       = AccessibilityMode.NORMAL,
     a11yVm:          AccessibilityViewModel? = null
 ) {
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     // ── Punto pulsante "Seguimiento activo" ───────────────────────────────────
     val dotInf = rememberInfiniteTransition(label = "dotPulse")
     val dotAlpha by dotInf.animateFloat(
@@ -638,6 +643,8 @@ fun DashboardTopBar(
                 icon     = Icons.AutoMirrored.Rounded.HelpOutline,
                 label    = "Ayuda",
                 a11yDesc = "Botón Ayuda. Esquina superior derecha.",
+                esBlind  = esBlind,
+                a11yVm   = a11yVm,
                 onClick  = {
                     if (a11yMode == AccessibilityMode.BLIND) a11yVm?.hablar("Abriendo centro de ayuda.")
                     onAyuda()
@@ -647,6 +654,8 @@ fun DashboardTopBar(
                 icon     = Icons.Rounded.Settings,
                 label    = "Ajustes",
                 a11yDesc = "Botón Ajustes. Esquina superior derecha.",
+                esBlind  = esBlind,
+                a11yVm   = a11yVm,
                 onClick  = {
                     if (a11yMode == AccessibilityMode.BLIND) a11yVm?.hablar("Abriendo ajustes.")
                     onConfiguracion()
@@ -656,6 +665,8 @@ fun DashboardTopBar(
                 icon     = Icons.AutoMirrored.Rounded.ExitToApp,
                 label    = "Salir",
                 a11yDesc = "Botón cerrar sesión. Esquina superior derecha.",
+                esBlind  = esBlind,
+                a11yVm   = a11yVm,
                 onClick  = {
                     if (a11yMode == AccessibilityMode.BLIND) a11yVm?.hablar("Cerrando sesión.")
                     onLogout()
@@ -671,6 +682,8 @@ private fun TopBarIconButton(
     icon:     ImageVector,
     label:    String,
     a11yDesc: String,
+    esBlind:  Boolean = false,
+    a11yVm:   AccessibilityViewModel? = null,
     onClick:  () -> Unit
 ) {
     var pressed by remember { mutableStateOf(false) }
@@ -684,7 +697,15 @@ private fun TopBarIconButton(
     }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier            = Modifier.semantics { contentDescription = a11yDesc }
+        modifier            = Modifier
+            .semantics { contentDescription = a11yDesc }
+            .exploracionTactil(
+                elemento = "Botón $label",
+                ubicacion = "la esquina superior derecha",
+                modulo = "Dashboard de Padres",
+                esBlind = esBlind,
+                a11yVm = a11yVm
+            )
     ) {
         Box(
             modifier = Modifier
@@ -712,8 +733,11 @@ fun ChildSelectorPager(
     children:   List<ChildProfile>,
     pagerState: PagerState,
     onAddChild: () -> Unit,
-    a11yMode:   AccessibilityMode = AccessibilityMode.NORMAL
+    a11yMode:   AccessibilityMode = AccessibilityMode.NORMAL,
+    a11yVm:     AccessibilityViewModel? = null
 ) {
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     Column {
         HorizontalPager(
             state          = pagerState,
@@ -727,7 +751,14 @@ fun ChildSelectorPager(
                 animationSpec = spring(Spring.DampingRatioMediumBouncy),
                 label         = "childCardScale_$page"
             )
-            ChildProfileSmallCard(children[page], page, isSelected, scale)
+            ChildProfileSmallCard(
+                child = children[page],
+                index = page,
+                isSelected = isSelected,
+                scale = scale,
+                esBlind = esBlind,
+                a11yVm = a11yVm
+            )
         }
         Row(
             modifier              = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -763,6 +794,13 @@ fun ChildSelectorPager(
                 modifier           = Modifier
                     .size(addIconSize)
                     .clickable(onClickLabel = "Registrar otro niño") { onAddChild() }
+                    .exploracionTactil(
+                        elemento = "Botón Añadir otro niño o paciente",
+                        ubicacion = "la parte superior central, junto al selector de perfiles",
+                        modulo = "Dashboard de Padres",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm
+                    )
             )
         }
     }
@@ -774,7 +812,9 @@ fun ChildProfileSmallCard(
     child:      ChildProfile,
     index:      Int,
     isSelected: Boolean,
-    scale:      Float
+    scale:      Float,
+    esBlind:    Boolean = false,
+    a11yVm:     AccessibilityViewModel? = null
 ) {
     val color = dashAvatarColors[index % dashAvatarColors.size]
     val sexoLabel = when (child.sexo) {
@@ -791,7 +831,14 @@ fun ChildProfileSmallCard(
                 contentDescription =
                     "${child.name}. $sexoLabel. " +
                             if (isSelected) "Perfil activo." else "Desliza para seleccionar."
-            },
+            }
+            .exploracionTactil(
+                elemento = "Perfil de ${child.name}, $sexoLabel. ${if (isSelected) "Actualmente seleccionado" else "Toca o desliza para seleccionar"}",
+                ubicacion = "la parte superior central",
+                modulo = "Dashboard de Padres",
+                esBlind = esBlind,
+                a11yVm = a11yVm
+            ),
         shape     = RoundedCornerShape(24.dp),
         colors    = CardDefaults.cardColors(
             containerColor = if (isSelected) DashCardWhite else Color(0xFFE0E0E0)
@@ -1218,7 +1265,13 @@ private fun GrowthStatItem(icon: ImageVector, value: String, label: String, colo
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun ModulesSection(modules: List<DashModule>) {
+private fun ModulesSection(
+    modules:  List<DashModule>,
+    a11yMode: AccessibilityMode = AccessibilityMode.NORMAL,
+    a11yVm:   AccessibilityViewModel? = null
+) {
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     Column {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.GridView, contentDescription = null, tint = DashNutriaGreen, modifier = Modifier.size(18.dp))
@@ -1239,9 +1292,11 @@ private fun ModulesSection(modules: List<DashModule>) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { module ->
                     ModuleCard(
-                        module      = module,
+                        module       = module,
                         staggerIndex = globalIndex,
-                        modifier    = Modifier.weight(1f)
+                        esBlind      = esBlind,
+                        a11yVm       = a11yVm,
+                        modifier     = Modifier.weight(1f)
                     )
                     globalIndex++
                 }
@@ -1257,6 +1312,8 @@ private fun ModulesSection(modules: List<DashModule>) {
 private fun ModuleCard(
     module:       DashModule,
     staggerIndex: Int = 0,
+    esBlind:      Boolean = false,
+    a11yVm:       AccessibilityViewModel? = null,
     modifier:     Modifier = Modifier
 ) {
     // ── Entrada escalonada ────────────────────────────────────────────────────
@@ -1295,7 +1352,14 @@ private fun ModuleCard(
                         "Módulo ${module.title}. ${module.description}. Toca dos veces para ingresar."
                     else
                         "Módulo ${module.title}. ${module.description}. Próximamente disponible."
-                },
+                }
+                .exploracionTactil(
+                    elemento = "Módulo ${module.title}. ${module.description}",
+                    ubicacion = "el centro de la pantalla",
+                    modulo = "Dashboard de Padres",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm
+                ),
             shape     = RoundedCornerShape(22.dp),
             colors    = CardDefaults.cardColors(
                 containerColor = if (module.isReady) DashCardWhite else Color(0xFFF5F5F5)

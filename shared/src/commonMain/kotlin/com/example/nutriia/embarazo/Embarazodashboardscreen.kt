@@ -51,6 +51,7 @@ import com.example.nutriia.accesibilidad.VoiceInputState
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.anuncioPantalla
+import com.example.nutriia.accesibilidad.exploracionTactil
 import com.example.nutriia.utils.FechaUtils
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Spa
@@ -323,16 +324,22 @@ fun EmbarazoDashboardScreen(
                     HeaderActionButton(
                         icon = Icons.AutoMirrored.Rounded.HelpOutline,
                         label = loc("Ayuda", "Help"),
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
                         onClick = {}
                     )
                     HeaderActionButton(
                         icon = Icons.Rounded.Settings,
                         label = loc("Ajustes", "Settings"),
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
                         onClick = onConfiguracion
                     )
                     HeaderActionButton(
                         icon = Icons.AutoMirrored.Rounded.Logout,
                         label = loc("Salir", "Exit"),
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
                         onClick = onLogout
                     )
                 }
@@ -954,6 +961,8 @@ fun EmbarazoDashboardScreen(
                         color    = EmbMorado,
                         badge    = gineEstado.badge,
                         subtitle = if (idiomaActual == IdiomaVoz.INGLES) gineEstado.subtituloEn else gineEstado.subtituloEs,
+                        esBlind  = esBlind,
+                        a11yVm   = a11yVm,
                         onClick  = {
                             if (esBlind) a11yVm.hablar(loc("Abriendo vinculación y expediente con ginecólogo.", "Opening gynecologist pairing and clinical records."))
                             onOpenVinculacionGinecologo()
@@ -967,6 +976,8 @@ fun EmbarazoDashboardScreen(
                         color    = EmbRosa,
                         badge    = nutriEstado.badge,
                         subtitle = if (idiomaActual == IdiomaVoz.INGLES) nutriEstado.subtituloEn else nutriEstado.subtituloEs,
+                        esBlind  = esBlind,
+                        a11yVm   = a11yVm,
                         onClick  = {
                             if (esBlind) a11yVm.hablar(loc("Abriendo alimentación y plan de dieta de embarazo.", "Opening pregnancy nutrition and meal plan."))
                             onOpenNutricion()
@@ -982,6 +993,8 @@ fun EmbarazoDashboardScreen(
                         color    = EmbMorado,
                         badge    = pesoEstado.badge,
                         subtitle = if (idiomaActual == IdiomaVoz.INGLES) pesoEstado.subtituloEn else pesoEstado.subtituloEs,
+                        esBlind  = esBlind,
+                        a11yVm   = a11yVm,
                         onClick  = {
                             if (esBlind) a11yVm.hablar(loc("Abriendo bitácora y registro de ganancia de peso.", "Opening weight gain log and record."))
                             showPesoSheet = true
@@ -995,6 +1008,8 @@ fun EmbarazoDashboardScreen(
                         color    = EmbTeal,
                         badge    = sintEstado.badge,
                         subtitle = if (idiomaActual == IdiomaVoz.INGLES) sintEstado.subtituloEn else sintEstado.subtituloEs,
+                        esBlind  = esBlind,
+                        a11yVm   = a11yVm,
                         onClick  = {
                             if (esBlind) a11yVm.hablar(loc("Abriendo registro de síntomas de embarazo.", "Opening pregnancy symptoms log."))
                             showSintomasSheet = true
@@ -1011,6 +1026,8 @@ fun EmbarazoDashboardScreen(
                         color    = Color(0xFFFFB74D),
                         badge    = citasEstado.badge,
                         subtitle = if (idiomaActual == IdiomaVoz.INGLES) citasEstado.subtituloEn else citasEstado.subtituloEs,
+                        esBlind  = esBlind,
+                        a11yVm   = a11yVm,
                         onClick  = {
                             if (esBlind) a11yVm.hablar(loc("Abriendo agenda y citas médicas.", "Opening calendar and medical appointments."))
                             onOpenCitas()
@@ -1024,6 +1041,8 @@ fun EmbarazoDashboardScreen(
                         color    = EmbTeal,
                         badge    = pregEstado.badge,
                         subtitle = if (idiomaActual == IdiomaVoz.INGLES) pregEstado.subtituloEn else pregEstado.subtituloEs,
+                        esBlind  = esBlind,
+                        a11yVm   = a11yVm,
                         onClick  = {
                             if (esBlind) a11yVm.hablar(loc("Abriendo chat con NutriBot inteligencia artificial.", "Opening chat with NutriBot AI."))
                             onOpenChatBot()
@@ -1039,6 +1058,8 @@ fun EmbarazoDashboardScreen(
                         color    = EmbRosa,
                         badge    = null,
                         subtitle = loc("Alarmas de comidas y citas", "Meal and appointment alarms"),
+                        esBlind  = esBlind,
+                        a11yVm   = a11yVm,
                         onClick  = {
                             if (esBlind) a11yVm.hablar(loc("Abriendo recordatorios y alarmas de embarazo.", "Opening pregnancy reminders and alarms."))
                             onOpenRecordatorios()
@@ -1799,6 +1820,8 @@ fun ModuloCard(
     color: Color,
     badge: String? = null,
     subtitle: String? = null,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
     onClick: () -> Unit = {}
 ) {
     var pressed by remember { mutableStateOf(false) }
@@ -1809,7 +1832,17 @@ fun ModuloCard(
     )
     
     Card(
-        modifier = modifier.aspectRatio(1f).scale(scale).clickable { pressed = true; onClick() },
+        modifier = modifier
+            .aspectRatio(1f)
+            .scale(scale)
+            .clickable { pressed = true; onClick() }
+            .exploracionTactil(
+                elemento = "Módulo $title${if (!subtitle.isNullOrBlank()) ", $subtitle" else ""}",
+                ubicacion = "la cuadrícula de módulos en el centro de la pantalla",
+                modulo = "Dashboard de Embarazo",
+                esBlind = esBlind,
+                a11yVm = a11yVm
+            ),
         shape    = RoundedCornerShape(20.dp),
         colors   = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -2875,11 +2908,21 @@ fun obtenerInfoSintomas(semana: Int): InfoSintomasSemana {
 private fun HeaderActionButton(
     icon: ImageVector,
     label: String,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
     onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .exploracionTactil(
+                elemento = "Botón de acción $label",
+                ubicacion = "la barra superior, esquina superior derecha",
+                modulo = "Dashboard de Embarazo",
+                esBlind = esBlind,
+                a11yVm = a11yVm
+            )
     ) {
         Box(
             modifier = Modifier

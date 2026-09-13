@@ -90,28 +90,37 @@ private data class DashModule(
 
 private object VozDash {
     fun bienvenidaPadre(nombre: String, etapa: String, edad: String) =
-        "Bienvenido. Entraste como padre o madre. " +
-                "Estás viendo el perfil de $nombre. " +
-                "Tu hijo está en etapa $etapa, con $edad de vida. " +
-                "Puedes deslizar hacia los lados en la parte superior para cambiar de hijo. " +
-                "Debajo hay tarjetas con información de crecimiento y módulos de seguimiento. " +
-                "El botón Consultar NutriBot está en la parte inferior central. " +
-                "Los botones Ajustes y Salir están en la esquina superior derecha."
+        "¡Hola! Qué gusto saludarte. Soy NutrIA, tu nutria asistente de nutrición y bienestar familiar. " +
+                "Te encuentras en tu Panel Principal, cuidando el perfil de tu pequeño $nombre. " +
+                "Actualmente está en su etapa de $etapa, con $edad de vida. " +
+                "Permíteme guiarte por toda tu pantalla: " +
+                "En la parte superior tienes el selector para cambiar entre tus hijos con solo deslizar a los lados. " +
+                "En la esquina superior derecha tienes los botones de Ayuda, Ajustes de accesibilidad y Cerrar Sesión. " +
+                "En la zona central tienes tu resumen de crecimiento y percentiles OMS con su peso y talla más recientes. " +
+                "Justo debajo, tienes la cuadrícula con tus ocho módulos de salud organizados: " +
+                "Primero: Lactancia Materna, para medir tomas con cronómetro. " +
+                "Segundo: Alimentación y Sólidos, para registrar papillas, recetas y alergias. " +
+                "Tercero: Curvas de Crecimiento OMS, con gráficas de peso y estatura. " +
+                "Cuarto: Micronutrientes y Vitaminas, con el semáforo diario de hierro, calcio y zinc. " +
+                "Quinto: Mi Pediatra y Nutriólogo, para chatear con especialistas o agendar citas. " +
+                "Sexto: Análisis NutriIA con Cámara, para escanear alimentos con inteligencia artificial. " +
+                "Séptimo: Registro de Sueño y Descanso Infantil. " +
+                "Octavo: Alertas y Recordatorios, para vacunas y tomas médicas. " +
+                "En la parte inferior tienes el botón flotante verde 'Consultar NutriBot' con inteligencia artificial y el botón de micrófono para navegar por voz diciendo cualquier módulo. " +
+                "¿Hacia qué módulo deseas que te acompañe hoy?"
 
-    fun moduloAbierto(nombre: String) = "Abriendo módulo $nombre."
+    fun moduloAbierto(nombre: String) = "Abriendo módulo $nombre. Por favor espera un momento."
 
     fun cambioHijo(nombre: String, etapa: String) =
-        "Ahora viendo el perfil de $nombre. Etapa: $etapa."
+        "Cambiando al perfil de $nombre. Se encuentra en etapa de $etapa."
 
     const val MODULOS_SECCION =
-        "Sección de módulos. " +
-                "Los módulos disponibles son: Lactancia, Alimentación, Crecimiento, Nutrientes, " +
-                "Análisis NutriIA, Alertas y Pediatra o Nutriólogo. " +
-                "El módulo próximamente disponible es: Sueño. " +
-                "Toca cualquier módulo disponible para abrirlo."
+        "Sección de módulos de seguimiento. " +
+                "Aquí tienes ocho herramientas: Lactancia, Alimentación, Crecimiento OMS, Micronutrientes, Pediatra o Nutriólogo, Análisis NutriIA con cámara, Sueño y Alertas. " +
+                "Toca dos veces sobre cualquier módulo para ingresar, o usa el micrófono abajo para dictarlo."
     
     const val COMANDOS_GUIA = 
-        "Te escucho. Puedes decir: Lactancia, Alimentación, Crecimiento, Nutrientes, Pediatra, Análisis, Alertas, NutriBot, Ajustes, Ayuda o Salir. ¿Hacia qué módulo se va a dirigir?"
+        "Micrófono activo, te escucho con gusto. Puedes decir el nombre de cualquier módulo: Lactancia, Alimentación, Crecimiento, Nutrientes, Pediatra, Análisis, Sueño, Alertas, NutriBot, Ajustes, Ayuda o Salir. ¿A dónde deseas ir?"
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -334,6 +343,9 @@ fun NutriIADashboardScreen(
                         a11yVm.hablar(VozDash.moduloAbierto("Análisis NutriIA"))
                         onOpenDiario(currentPage)
                     }
+                    cmd.contains("sueño") || cmd.contains("sueno") || cmd.contains("dormir") || cmd.contains("siesta") -> {
+                        a11yVm.hablar("El módulo de sueño estará disponible muy pronto.")
+                    }
                     cmd.contains("alarmas") || cmd.contains("alertas") || cmd.contains("alerta") || cmd.contains("alarma") -> {
                         a11yVm.hablar(VozDash.moduloAbierto("Alertas"))
                         onOpenRecordatorios(currentPage)
@@ -396,6 +408,14 @@ fun NutriIADashboardScreen(
                                 spotColor = DashSoftPurple.copy(alpha = 0.5f)
                             )
                             .semantics { contentDescription = if (voiceState == VoiceInputState.LISTENING) "Detener comandos de voz" else "Activar comandos de voz para navegación. Al presionar, escucha la lista de comandos disponibles." }
+                            .exploracionTactil(
+                                elemento = if (voiceState == VoiceInputState.LISTENING) "Botón Detener comandos de voz" else "Botón Activar comandos de voz",
+                                ubicacion = "la parte inferior central de la pantalla",
+                                modulo = "Dashboard de Padres",
+                                esBlind = a11yMode == AccessibilityMode.BLIND,
+                                a11yVm = a11yVm,
+                                context = context
+                            )
                     ) {
                         Icon(if (voiceState == VoiceInputState.LISTENING) Icons.Rounded.Stop else Icons.Rounded.Mic, contentDescription = null, modifier = Modifier.size(34.dp))
                     }
@@ -419,6 +439,14 @@ fun NutriIADashboardScreen(
                             spotColor    = DashNutriaGreen.copy(fabShadowAlpha)
                         )
                         .semantics { contentDescription = "Botón Consultar NutriBot. Parte inferior central." }
+                        .exploracionTactil(
+                            elemento = "Botón Consultar NutriBot",
+                            ubicacion = "la parte inferior central, arriba del puerto de carga",
+                            modulo = "Dashboard de Padres",
+                            esBlind = a11yMode == AccessibilityMode.BLIND,
+                            a11yVm = a11yVm,
+                            context = context
+                        )
                 ) {
                     Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -486,7 +514,7 @@ fun NutriIADashboardScreen(
                 }
                 item {
                     EntranceAnimatedSection(delayMs = 260) {
-                        ModulesSection(modules)
+                        ModulesSection(modules, a11yMode, a11yVm, context)
                     }
                 }
             }
@@ -581,6 +609,9 @@ fun DashboardTopBar(
     a11yMode:        AccessibilityMode       = AccessibilityMode.NORMAL,
     a11yVm:          AccessibilityViewModel? = null
 ) {
+    val context = LocalContext.current
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     // ── Punto pulsante "Seguimiento activo" ───────────────────────────────────
     val dotInf = rememberInfiniteTransition(label = "dotPulse")
     val dotAlpha by dotInf.animateFloat(
@@ -627,6 +658,9 @@ fun DashboardTopBar(
                 icon     = Icons.AutoMirrored.Rounded.HelpOutline,
                 label    = "Ayuda",
                 a11yDesc = "Botón Ayuda. Esquina superior derecha.",
+                esBlind  = esBlind,
+                a11yVm   = a11yVm,
+                context  = context,
                 onClick  = {
                     if (a11yMode == AccessibilityMode.BLIND) a11yVm?.hablar("Abriendo centro de ayuda.")
                     onAyuda()
@@ -636,6 +670,9 @@ fun DashboardTopBar(
                 icon     = Icons.Rounded.Settings,
                 label    = "Ajustes",
                 a11yDesc = "Botón Ajustes. Esquina superior derecha.",
+                esBlind  = esBlind,
+                a11yVm   = a11yVm,
+                context  = context,
                 onClick  = {
                     if (a11yMode == AccessibilityMode.BLIND) a11yVm?.hablar("Abriendo ajustes.")
                     onConfiguracion()
@@ -645,6 +682,9 @@ fun DashboardTopBar(
                 icon     = Icons.AutoMirrored.Rounded.ExitToApp,
                 label    = "Salir",
                 a11yDesc = "Botón cerrar sesión. Esquina superior derecha.",
+                esBlind  = esBlind,
+                a11yVm   = a11yVm,
+                context  = context,
                 onClick  = {
                     if (a11yMode == AccessibilityMode.BLIND) a11yVm?.hablar("Cerrando sesión.")
                     onLogout()
@@ -660,6 +700,9 @@ private fun TopBarIconButton(
     icon:     ImageVector,
     label:    String,
     a11yDesc: String,
+    esBlind:  Boolean = false,
+    a11yVm:   AccessibilityViewModel? = null,
+    context:  android.content.Context? = null,
     onClick:  () -> Unit
 ) {
     var pressed by remember { mutableStateOf(false) }
@@ -673,7 +716,16 @@ private fun TopBarIconButton(
     }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier            = Modifier.semantics { contentDescription = a11yDesc }
+        modifier            = Modifier
+            .semantics { contentDescription = a11yDesc }
+            .exploracionTactil(
+                elemento = "Botón $label",
+                ubicacion = "la esquina superior derecha",
+                modulo = "Dashboard de Padres",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            )
     ) {
         Box(
             modifier = Modifier
@@ -701,8 +753,12 @@ fun ChildSelectorPager(
     children:   List<ChildProfile>,
     pagerState: PagerState,
     onAddChild: () -> Unit,
-    a11yMode:   AccessibilityMode = AccessibilityMode.NORMAL
+    a11yMode:   AccessibilityMode = AccessibilityMode.NORMAL,
+    a11yVm:     AccessibilityViewModel? = null
 ) {
+    val context = LocalContext.current
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     Column {
         HorizontalPager(
             state          = pagerState,
@@ -716,7 +772,15 @@ fun ChildSelectorPager(
                 animationSpec = spring(Spring.DampingRatioMediumBouncy),
                 label         = "childCardScale_$page"
             )
-            ChildProfileSmallCard(children[page], page, isSelected, scale)
+            ChildProfileSmallCard(
+                child = children[page],
+                index = page,
+                isSelected = isSelected,
+                scale = scale,
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            )
         }
         Row(
             modifier              = Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -752,6 +816,14 @@ fun ChildSelectorPager(
                 modifier           = Modifier
                     .size(addIconSize)
                     .clickable(onClickLabel = "Registrar otro niño") { onAddChild() }
+                    .exploracionTactil(
+                        elemento = "Botón Añadir otro niño o paciente",
+                        ubicacion = "la parte superior central, junto al selector de perfiles",
+                        modulo = "Dashboard de Padres",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        context = context
+                    )
             )
         }
     }
@@ -763,7 +835,10 @@ fun ChildProfileSmallCard(
     child:      ChildProfile,
     index:      Int,
     isSelected: Boolean,
-    scale:      Float
+    scale:      Float,
+    esBlind:    Boolean = false,
+    a11yVm:     AccessibilityViewModel? = null,
+    context:    android.content.Context? = null
 ) {
     val color = dashAvatarColors[index % dashAvatarColors.size]
     val sexoLabel = when (child.sexo) {
@@ -780,7 +855,15 @@ fun ChildProfileSmallCard(
                 contentDescription =
                     "${child.name}. $sexoLabel. " +
                             if (isSelected) "Perfil activo." else "Desliza para seleccionar."
-            },
+            }
+            .exploracionTactil(
+                elemento = "Perfil de ${child.name}, $sexoLabel. ${if (isSelected) "Actualmente seleccionado" else "Toca o desliza para seleccionar"}",
+                ubicacion = "la parte superior central",
+                modulo = "Dashboard de Padres",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            ),
         shape     = RoundedCornerShape(24.dp),
         colors    = CardDefaults.cardColors(
             containerColor = if (isSelected) DashCardWhite else Color(0xFFE0E0E0)
@@ -1207,7 +1290,14 @@ private fun GrowthStatItem(icon: ImageVector, value: String, label: String, colo
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun ModulesSection(modules: List<DashModule>) {
+private fun ModulesSection(
+    modules:  List<DashModule>,
+    a11yMode: AccessibilityMode = AccessibilityMode.NORMAL,
+    a11yVm:   AccessibilityViewModel? = null,
+    context:  android.content.Context? = null
+) {
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+
     Column {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.GridView, contentDescription = null, tint = DashNutriaGreen, modifier = Modifier.size(18.dp))
@@ -1228,9 +1318,12 @@ private fun ModulesSection(modules: List<DashModule>) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { module ->
                     ModuleCard(
-                        module      = module,
+                        module       = module,
                         staggerIndex = globalIndex,
-                        modifier    = Modifier.weight(1f)
+                        esBlind      = esBlind,
+                        a11yVm       = a11yVm,
+                        context      = context,
+                        modifier     = Modifier.weight(1f)
                     )
                     globalIndex++
                 }
@@ -1246,6 +1339,9 @@ private fun ModulesSection(modules: List<DashModule>) {
 private fun ModuleCard(
     module:       DashModule,
     staggerIndex: Int = 0,
+    esBlind:      Boolean = false,
+    a11yVm:       AccessibilityViewModel? = null,
+    context:      android.content.Context? = null,
     modifier:     Modifier = Modifier
 ) {
     // ── Entrada escalonada ────────────────────────────────────────────────────
@@ -1284,7 +1380,15 @@ private fun ModuleCard(
                         "${module.title}. Disponible. Toca para abrir."
                     else
                         "${module.title}. Próximamente disponible."
-                },
+                }
+                .exploracionTactil(
+                    elemento = "Módulo ${module.title}. ${if (module.isReady) "Disponible. Toca para abrir." else "Próximamente disponible."}",
+                    ubicacion = "el centro de la pantalla",
+                    modulo = "Dashboard de Padres",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    context = context
+                ),
             shape     = RoundedCornerShape(22.dp),
             colors    = CardDefaults.cardColors(
                 containerColor = if (module.isReady) DashCardWhite else Color(0xFFF5F5F5)

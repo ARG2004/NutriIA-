@@ -201,34 +201,50 @@ class AnalisisRepository {
         return try {
             val prompt = """
                 Eres un nutriólogo experto en composición de alimentos con acceso a tablas nutricionales INSP, USDA y NOM-043.
-                Proporciona los valores nutricionales por 100g de: "$foodName"
+                Proporciona los valores nutricionales precisos por 100g de: "$foodName"
 
                 Responde ÚNICAMENTE con este JSON (sin texto adicional, sin markdown):
                 {
-                  "calories": 0.0,
-                  "protein": 0.0,
-                  "carbohydrates": 0.0,
-                  "fat": 0.0,
-                  "sugar": 0.0,
-                  "fiber": 0.0,
-                  "sodium": 0.0
+                  "calories": 275.0,
+                  "protein": 14.5,
+                  "carbohydrates": 27.0,
+                  "fat": 13.0,
+                  "sugar": 4.5,
+                  "fiber": 1.5,
+                  "sodium": 520.0
                 }
+
+                REGLA: NUNCA devuelvas ceros para calorías si es un alimento real.
             """.trimIndent()
 
-            val rawBody = queryGroqText(prompt, 250) ?: return Result.success(NutritionInfo())
+            val rawBody = queryGroqText(prompt, 250)
+            if (rawBody.isNullOrBlank()) {
+                val fallback = DiccionarioNutricionalUniversal.obtenerNutricion(foodName)
+                return Result.success(fallback)
+            }
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
             val obj = runCatching { json.parseToJsonElement(cleaned).jsonObject }.getOrElse {
+                val fallback = DiccionarioNutricionalUniversal.obtenerNutricion(foodName)
                 buildJsonObject {
-                    put("calories", 100.0)
-                    put("protein", 2.0)
-                    put("carbohydrates", 15.0)
-                    put("fat", 1.0)
+                    put("calories", fallback.calories)
+                    put("protein", fallback.protein)
+                    put("carbohydrates", fallback.carbohydrates)
+                    put("fat", fallback.fat)
+                    put("sugar", fallback.sugar)
+                    put("fiber", fallback.fiber)
+                    put("sodium", fallback.sodium)
                 }
             }
 
+            var cal = obj["calories"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+            if (cal <= 0) {
+                val fallback = DiccionarioNutricionalUniversal.obtenerNutricion(foodName)
+                return Result.success(fallback)
+            }
+
             val info = NutritionInfo(
-                calories = obj["calories"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                calories = cal,
                 protein = obj["protein"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
                 carbohydrates = obj["carbohydrates"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
                 fat = obj["fat"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
@@ -238,8 +254,8 @@ class AnalisisRepository {
             )
             Result.success(info)
         } catch (e: Exception) {
-            Log.w(TAG, "[LLM-NUTRITION] Error: ${e.message}")
-            Result.success(NutritionInfo())
+            Log.w(TAG, "[LLM-NUTRITION] Error: ${e.message}, usando fallback")
+            Result.success(DiccionarioNutricionalUniversal.obtenerNutricion(foodName))
         }
     }
 
@@ -270,10 +286,11 @@ class AnalisisRepository {
             )
         }
 
+        val esChatarra = DiccionarioNutricionalUniversal.esComidaChatarra(food.foodName, food.ingredients)
+
         return try {
             val prompt = """
-                Eres un pediatra nutriólogo con experiencia clínica en México.
-                Guías de referencia: NOM-043-SSA2, AAP, OMS.
+                Eres un pediatra nutriólogo experto en nutrición infantil (AAP, OMS, NOM-043-SSA2).
 
                 INFORMACIÓN DEL NIÑO:
                 - Nombre: ${child.name}
@@ -282,38 +299,70 @@ class AnalisisRepository {
 
                 ALIMENTO IDENTIFICADO:
                 - Nombre: ${food.foodName} (${food.foodType})
-                - Calorías: ${nutrition.calories} kcal, Proteína: ${nutrition.protein}g, Azúcar: ${nutrition.sugar}g
+                - ¿Es comida chatarra / ultraprocesada?: ${if (esChatarra) "SÍ (ALTO RIESGO)" else "No"}
+                - Calorías: ${nutrition.calories} kcal, Proteína: ${nutrition.protein}g, Sodio: ${nutrition.sodium}mg
+
+                REGLA: Comida chatarra/ultraprocesada (hamburguesas comerciales, pizzas, papas fritas, refrescos) NUNCA debe recomendarse para niños pequeños: "recommended": false.
 
                 Devuelve ÚNICAMENTE este JSON:
                 {
-                  "recommended": true,
-                  "recommended_portion": "porción calculada para la edad",
+                  "recommended": ${if (esChatarra) "false" else "true"},
+                  "recommended_portion": "${if (esChatarra) "Evitar en la alimentación diaria (0g)" else "porción calculada"}",
                   "benefits": ["beneficio 1", "beneficio 2"],
-                  "warnings": ["advertencia si aplica"],
-                  "frequency": "2 a 3 veces por semana"
+                  "warnings": ["advertencia sobre sodio o grasas si aplica"],
+                  "frequency": "${if (esChatarra) "Evitar o consumo ocasional extraordinario" else "2 a 3 veces por semana"}"
                 }
             """.trimIndent()
 
             val rawBody = queryGroqText(prompt, 600)
-                ?: return Result.failure(Exception("Error al comunicarse con el asistente de análisis pediátrico"))
+            if (rawBody.isNullOrBlank()) {
+                val fallback = DiccionarioNutricionalUniversal.analisisPediatricoFallback(
+                    childName = child.name,
+                    ageText = "edad infantil",
+                    foodName = food.foodName,
+                    ingredients = food.ingredients,
+                    nutrition = nutrition,
+                    esChatarra = esChatarra
+                )
+                return Result.success(fallback)
+            }
 
             val content = extractGroqContent(rawBody)
             val cleaned = extractJsonSubstring(content)
             val obj = runCatching { json.parseToJsonElement(cleaned).jsonObject }.getOrElse {
+                val fallback = DiccionarioNutricionalUniversal.analisisPediatricoFallback(
+                    childName = child.name,
+                    ageText = "edad infantil",
+                    foodName = food.foodName,
+                    ingredients = food.ingredients,
+                    nutrition = nutrition,
+                    esChatarra = esChatarra
+                )
                 buildJsonObject {
-                    put("recommended", true)
-                    put("recommended_portion", "Porción moderada infantil")
-                    putJsonArray("benefits") { add("Aporte de nutrientes esenciales") }
-                    putJsonArray("warnings") {}
-                    put("frequency", "2 a 3 veces por semana")
+                    put("recommended", fallback.recommended)
+                    put("recommended_portion", fallback.recommendedPortion)
+                    putJsonArray("benefits") { fallback.benefits.forEach { b -> add(b) } }
+                    putJsonArray("warnings") { fallback.warnings.forEach { w -> add(w) } }
+                    put("frequency", fallback.frequency)
                 }
             }
 
-            val isRec = obj["recommended"]?.jsonPrimitive?.booleanOrNull ?: false
-            val portion = obj["recommended_portion"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "Porción moderada infantil" else "Evitar"
+            var isRec = obj["recommended"]?.jsonPrimitive?.booleanOrNull ?: (!esChatarra)
+            var portion = obj["recommended_portion"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "Porción moderada infantil" else "Evitar"
             val benefits = obj["benefits"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
-            val warnings = obj["warnings"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
-            val freq = obj["frequency"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "2 a 3 veces por semana" else "Evitar"
+            val warnings = (obj["warnings"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()).toMutableList()
+            var freq = obj["frequency"]?.jsonPrimitive?.contentOrNull ?: if (isRec) "2 a 3 veces por semana" else "Evitar"
+
+            if (esChatarra) {
+                isRec = false
+                if (!portion.contains("Evitar", ignoreCase = true) && !portion.contains("0g", ignoreCase = true)) {
+                    portion = "Evitar en la alimentación diaria infantil"
+                }
+                freq = "Evitar o consumo ocasional extraordinario"
+                if (warnings.isEmpty() || warnings.none { it.contains("ultraprocesad", ignoreCase = true) || it.contains("sodio", ignoreCase = true) }) {
+                    warnings.add(0, "Alimento ultraprocesado/chatarra: No recomendado para ${child.name}. Exceso de sodio y grasas perjudiciales para la salud renal.")
+                }
+            }
 
             val analysis = PediatricAnalysis(
                 recommended = isRec,
@@ -324,7 +373,15 @@ class AnalisisRepository {
             )
             Result.success(analysis)
         } catch (e: Exception) {
-            Result.failure(Exception("Error en análisis pediátrico: ${e.message}"))
+            val fallback = DiccionarioNutricionalUniversal.analisisPediatricoFallback(
+                childName = child.name,
+                ageText = "edad infantil",
+                foodName = food.foodName,
+                ingredients = food.ingredients,
+                nutrition = nutrition,
+                esChatarra = esChatarra
+            )
+            Result.success(fallback)
         }
     }
 

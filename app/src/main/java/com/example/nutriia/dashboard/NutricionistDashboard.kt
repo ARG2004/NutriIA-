@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.nutriia.accesibilidad.AccessibilityMode
+import com.example.nutriia.accesibilidad.AccessibilityViewModel
+import com.example.nutriia.accesibilidad.exploracionTactil
 import com.example.nutriia.teleconsulta.TeleconsultaButtons
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 import com.example.nutriia.teleconsulta.TipoLlamada
@@ -61,6 +64,11 @@ fun NutritionistDashboardScreen(
     onNewPlan:         () -> Unit                    = {},
     onViewAllPatients: () -> Unit                    = {}
 ) {
+    val a11yVm: AccessibilityViewModel = viewModel()
+    val a11yMode by a11yVm.mode.collectAsStateWithLifecycle()
+    val esBlind = a11yMode == AccessibilityMode.BLIND
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -72,9 +80,6 @@ fun NutritionistDashboardScreen(
             teleconsultaViewModel.iniciarObservacionEntrantesNutriologo(uid)
         }
     }
-
-    // ELIMINADO: TeleconsultaHostOverlay(viewModel = teleconsultaViewModel)
-    // El overlay ahora vive en MainActivity para ser global.
 
     Scaffold(
         containerColor = NutriBgCrema,
@@ -90,7 +95,17 @@ fun NutritionistDashboardScreen(
                     containerColor = NutriGreen,
                     contentColor   = Color.White,
                     shape          = RoundedCornerShape(24.dp),
-                    modifier       = Modifier.padding(bottom = 16.dp).shadow(12.dp, RoundedCornerShape(24.dp))
+                    modifier       = Modifier
+                        .padding(bottom = 16.dp)
+                        .shadow(12.dp, RoundedCornerShape(24.dp))
+                        .exploracionTactil(
+                            elemento = "Botón Nuevo Plan Nutricional",
+                            ubicacion = "la parte inferior central, arriba del puerto de carga",
+                            modulo = "Dashboard de Nutriólogo",
+                            esBlind = esBlind,
+                            a11yVm = a11yVm,
+                            context = context
+                        )
                 ) {
                     Icon(Icons.Rounded.PostAdd, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -117,6 +132,9 @@ fun NutritionistDashboardScreen(
                 NutritionistTopBar(
                     nombre          = uiState.miPerfil?.nombre ?: "Nutriólogo/a",
                     especialidad    = uiState.miPerfil?.especialidad ?: "Seguimiento activo",
+                    esBlind         = esBlind,
+                    a11yVm          = a11yVm,
+                    context         = context,
                     onLogout        = onLogout,
                     onConfiguracion = onConfiguracion
                 )
@@ -127,7 +145,10 @@ fun NutritionistDashboardScreen(
                     NutritionistProfileCard(
                         nombre       = perfil.nombre,
                         especialidad = perfil.especialidad,
-                        codigo       = perfil.codigo
+                        codigo       = perfil.codigo,
+                        esBlind      = esBlind,
+                        a11yVm       = a11yVm,
+                        context      = context
                     )
                 }
             }
@@ -156,7 +177,10 @@ fun NutritionistDashboardScreen(
                 NutritionistStatsRow(
                     totalPatients = uiState.pacientes.size,
                     totalPlans    = uiState.planesActivos.size,
-                    activeToday   = uiState.pacientes.count { it.ultimaActualizacion == "Hoy" }
+                    activeToday   = uiState.pacientes.count { it.ultimaActualizacion == "Hoy" },
+                    esBlind       = esBlind,
+                    a11yVm        = a11yVm,
+                    context       = context
                 )
             }
 
@@ -188,7 +212,10 @@ fun NutritionistDashboardScreen(
                         patient                = paciente,
                         onClick                = onPatientClick,
                         nutriologoNombre       = uiState.miPerfil?.nombre ?: "",
-                        teleconsultaViewModel  = teleconsultaViewModel
+                        teleconsultaViewModel  = teleconsultaViewModel,
+                        esBlind                = esBlind,
+                        a11yVm                 = a11yVm,
+                        context                = context
                     )
                 }
             }
@@ -200,6 +227,9 @@ fun NutritionistDashboardScreen(
 private fun NutritionistTopBar(
     nombre:          String,
     especialidad:    String,
+    esBlind:         Boolean = false,
+    a11yVm:          AccessibilityViewModel? = null,
+    context:         android.content.Context? = null,
     onLogout:        () -> Unit,
     onConfiguracion: () -> Unit = {}
 ) {
@@ -215,20 +245,52 @@ private fun NutritionistTopBar(
             Text(especialidad.ifBlank { "Nutriólogo/a" }, fontSize = 13.sp, color = Color.Gray)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TopBarCircleButton(Icons.Rounded.Settings, onClick = onConfiguracion)
-            TopBarCircleButton(Icons.AutoMirrored.Rounded.ExitToApp, isLogout = true, onClick = onLogout)
+            TopBarCircleButton(
+                icon = Icons.Rounded.Settings,
+                elemento = "Botón de Ajustes de Especialista",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context,
+                onClick = onConfiguracion
+            )
+            TopBarCircleButton(
+                icon = Icons.AutoMirrored.Rounded.ExitToApp,
+                isLogout = true,
+                elemento = "Botón Cerrar Sesión",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context,
+                onClick = onLogout
+            )
         }
     }
 }
 
 @Composable
-private fun TopBarCircleButton(icon: ImageVector, isLogout: Boolean = false, onClick: () -> Unit) {
+private fun TopBarCircleButton(
+    icon: ImageVector,
+    isLogout: Boolean = false,
+    elemento: String = "Botón de acción",
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    context: android.content.Context? = null,
+    onClick: () -> Unit
+) {
     Surface(
         onClick = onClick,
         shape = CircleShape,
         color = Color.White,
         shadowElevation = 1.dp,
-        modifier = Modifier.size(44.dp)
+        modifier = Modifier
+            .size(44.dp)
+            .exploracionTactil(
+                elemento = elemento,
+                ubicacion = "la esquina superior derecha",
+                modulo = "Dashboard de Nutriólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            )
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = if (isLogout) Color(0xFFE57373) else NutriGreen, modifier = Modifier.size(22.dp))
@@ -237,7 +299,14 @@ private fun TopBarCircleButton(icon: ImageVector, isLogout: Boolean = false, onC
 }
 
 @Composable
-private fun NutritionistProfileCard(nombre: String, especialidad: String, codigo: String) {
+private fun NutritionistProfileCard(
+    nombre: String,
+    especialidad: String,
+    codigo: String,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    context: android.content.Context? = null
+) {
     val qrPainter = rememberQrCodePainter(data = "nutriia://vincular/$codigo") {
         shapes {
             ball = QrBallShape.circle()
@@ -246,7 +315,17 @@ private fun NutritionistProfileCard(nombre: String, especialidad: String, codigo
     }
 
     Card(
-        modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        modifier  = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .exploracionTactil(
+                elemento = "Perfil: $nombre, $especialidad, Código de vinculación: $codigo",
+                ubicacion = "la parte superior de la pantalla",
+                modulo = "Dashboard de Nutriólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            ),
         shape     = RoundedCornerShape(35.dp),
         colors    = CardDefaults.cardColors(containerColor = NutriCardWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -291,7 +370,10 @@ private fun PatientCard(
     patient:               PacienteResumen,
     onClick:               (PacienteResumen) -> Unit,
     nutriologoNombre:      String,
-    teleconsultaViewModel: TeleconsultaViewModel
+    teleconsultaViewModel: TeleconsultaViewModel,
+    esBlind:               Boolean = false,
+    a11yVm:                AccessibilityViewModel? = null,
+    context:               android.content.Context? = null
 ) {
     val avatarColor = remember { nutri_avatarColors[patient.childId.hashCode().let { if (it < 0) -it else it } % nutri_avatarColors.size] }
 
@@ -319,7 +401,18 @@ private fun PatientCard(
     }
 
     Card(
-        modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).clickable { onClick(patient) },
+        modifier  = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clickable { onClick(patient) }
+            .exploracionTactil(
+                elemento = "Paciente: ${patient.childNombre}, peso ${patient.weightKg} kilos, talla ${patient.heightCm} centímetros",
+                ubicacion = "la lista de pacientes en el centro de la pantalla",
+                modulo = "Dashboard de Nutriólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            ),
         shape     = RoundedCornerShape(32.dp),
         colors    = CardDefaults.cardColors(containerColor = NutriCardWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -370,9 +463,26 @@ private fun PatientCard(
 }
 
 @Composable
-private fun NutritionistStatsRow(totalPatients: Int, totalPlans: Int, activeToday: Int) {
+private fun NutritionistStatsRow(
+    totalPatients: Int,
+    totalPlans: Int,
+    activeToday: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    context: android.content.Context? = null
+) {
     Row(
-        modifier              = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        modifier              = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .exploracionTactil(
+                elemento = "Estadísticas: $totalPatients pacientes, $totalPlans planes activos, $activeToday activos hoy",
+                ubicacion = "el centro de la pantalla",
+                modulo = "Dashboard de Nutriólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                context = context
+            ),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         StatCard(Modifier.weight(1f), "$totalPatients", "Pacientes", Icons.Rounded.People, NutriPurple)
