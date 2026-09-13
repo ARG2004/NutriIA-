@@ -1,16 +1,11 @@
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
-
 package com.example.nutriia.accesibilidad
 
-import kotlinx.cinterop.useContents
-import platform.Foundation.NSLog
-import platform.Vision.*
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 
 /**
  * Detector Nativo de Señas LSM para iOS impulsado por Apple Vision Framework y Neural Engine.
- * Extrae los 21 puntos óseos de la mano y los alimenta directamente al SignLanguageClassifier.
+ * Recibe los puntos de la mano detectados por Vision en Swift o Kotlin/Native y los clasifica.
  */
 class IosSignLanguageDetector(
     private val onLetraDetectada: (ResultadoClasificacion?) -> Unit,
@@ -39,6 +34,43 @@ class IosSignLanguageDetector(
             points.add(NormalizedPoint3D(x, y, z))
         }
 
+        evaluarPuntos(points)
+    }
+
+    /**
+     * Procesa una lista directa de NormalizedPoint3D.
+     */
+    fun procesarPuntos(puntos: List<NormalizedPoint3D>) {
+        if (puntos.size != 21) {
+            if (historialFrames.isNotEmpty()) historialFrames.clear()
+            dispatch_async(dispatch_get_main_queue()) {
+                onLetraDetectada(null)
+            }
+            return
+        }
+        evaluarPuntos(puntos)
+    }
+
+    /**
+     * Procesa las coordenadas X e Y (listas de tamaño 21) normalizadas (0.0 a 1.0).
+     */
+    fun procesarPuntosXY(xList: List<Float>, yList: List<Float>) {
+        if (xList.size != 21 || yList.size != 21) {
+            if (historialFrames.isNotEmpty()) historialFrames.clear()
+            dispatch_async(dispatch_get_main_queue()) {
+                onLetraDetectada(null)
+            }
+            return
+        }
+
+        val points = ArrayList<NormalizedPoint3D>(21)
+        for (i in 0 until 21) {
+            points.add(NormalizedPoint3D(xList[i], yList[i], 0f))
+        }
+        evaluarPuntos(points)
+    }
+
+    private fun evaluarPuntos(points: List<NormalizedPoint3D>) {
         historialFrames.add(points)
         if (historialFrames.size > 30) {
             historialFrames.removeAt(0)
@@ -58,76 +90,6 @@ class IosSignLanguageDetector(
             onLetraDetectada(resultadoLetra)
             if (resultadoSena != null) {
                 onSenaDetectada?.invoke(resultadoSena)
-            }
-        }
-    }
-
-    /**
-     * Procesa una observación directa de Apple Vision (VNRecognizedPointsObservation).
-     */
-    fun procesarObservacionVision(observation: VNRecognizedPointsObservation?) {
-        if (observation == null) {
-            if (historialFrames.isNotEmpty()) historialFrames.clear()
-            dispatch_async(dispatch_get_main_queue()) {
-                onLetraDetectada(null)
-            }
-            return
-        }
-
-        val jointKeys = listOf(
-            VNHumanHandPoseObservationJointNameWrist,
-            VNHumanHandPoseObservationJointNameThumbCMC,
-            VNHumanHandPoseObservationJointNameThumbMP,
-            VNHumanHandPoseObservationJointNameThumbIP,
-            VNHumanHandPoseObservationJointNameThumbTip,
-            VNHumanHandPoseObservationJointNameIndexMCP,
-            VNHumanHandPoseObservationJointNameIndexPIP,
-            VNHumanHandPoseObservationJointNameIndexDIP,
-            VNHumanHandPoseObservationJointNameIndexTip,
-            VNHumanHandPoseObservationJointNameMiddleMCP,
-            VNHumanHandPoseObservationJointNameMiddlePIP,
-            VNHumanHandPoseObservationJointNameMiddleDIP,
-            VNHumanHandPoseObservationJointNameMiddleTip,
-            VNHumanHandPoseObservationJointNameRingMCP,
-            VNHumanHandPoseObservationJointNameRingPIP,
-            VNHumanHandPoseObservationJointNameRingDIP,
-            VNHumanHandPoseObservationJointNameRingTip,
-            VNHumanHandPoseObservationJointNameLittleMCP,
-            VNHumanHandPoseObservationJointNameLittlePIP,
-            VNHumanHandPoseObservationJointNameLittleDIP,
-            VNHumanHandPoseObservationJointNameLittleTip
-        )
-
-        val points = mutableListOf<NormalizedPoint3D>()
-        for (key in jointKeys) {
-            val point = observation.recognizedPointForJointName(key, error = null)
-            if (point != null && point.confidence > 0.3) {
-                val (nx, ny) = point.location.useContents { x.toFloat() to (1.0 - y).toFloat() }
-                points.add(NormalizedPoint3D(nx, ny, 0f))
-            } else {
-                points.add(NormalizedPoint3D(0f, 0f, 0f))
-            }
-        }
-
-        if (points.size == 21) {
-            historialFrames.add(points)
-            if (historialFrames.size > 30) historialFrames.removeAt(0)
-
-            val resultadoLetra = SignLanguageClassifier.clasificarConConfianza(
-                landmarks = points,
-                historialPuntos = historialFrames
-            )
-
-            val resultadoSena = SignLanguageClassifier.clasificarSenaComunicativa(
-                landmarks = points,
-                historialPuntos = historialFrames
-            )
-
-            dispatch_async(dispatch_get_main_queue()) {
-                onLetraDetectada(resultadoLetra)
-                if (resultadoSena != null) {
-                    onSenaDetectada?.invoke(resultadoSena)
-                }
             }
         }
     }
