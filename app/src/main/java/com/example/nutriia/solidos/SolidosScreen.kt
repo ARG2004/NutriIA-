@@ -462,7 +462,7 @@ fun SolidosScreen(
 
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(360, 80))) {
-                    TabsSolidos(tab) { nuevoTab ->
+                    TabsSolidos(tab, esBlind = esBlind, a11yVm = a11yVm, idioma = idiomaActual) { nuevoTab ->
                         tab = nuevoTab
                         if (esBlind) {
                             val nombreTab = when (nuevoTab) {
@@ -644,7 +644,13 @@ private fun AlertaBanner(
 // TABS — sin cambios
 // ═══════════════════════════════════════════════════════════════════════════════
 @Composable
-private fun TabsSolidos(selected: Int, onSelect: (Int) -> Unit) {
+private fun TabsSolidos(
+    selected: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onSelect: (Int) -> Unit
+) {
     val tabs = listOf(
         Triple("Registrados",  Icons.Rounded.CheckCircle,           0),
         Triple("Plan semanal", Icons.Rounded.CalendarMonth,         1),
@@ -655,12 +661,31 @@ private fun TabsSolidos(selected: Int, onSelect: (Int) -> Unit) {
             val sel = selected == i
             val bg  by animateColorAsState(if (sel) Sol.Orange else Sol.White, tween(200), label = "tb$i")
             val fg  by animateColorAsState(if (sel) Sol.White  else Sol.Orange, tween(200), label = "tf$i")
+            val ubicacion = when (i) {
+                0 -> if (idioma == IdiomaVoz.INGLES) "top left area" else "la barra superior izquierda"
+                1 -> if (idioma == IdiomaVoz.INGLES) "top center area" else "la barra superior central"
+                2 -> if (idioma == IdiomaVoz.INGLES) "top right area" else "la barra superior derecha"
+                else -> "la barra superior"
+            }
+            val desc = if (sel) {
+                if (idioma == IdiomaVoz.INGLES) "Tab $label, currently selected" else "Pestaña $label, actualmente seleccionada"
+            } else {
+                if (idioma == IdiomaVoz.INGLES) "Tab $label, unselected. Double tap to open" else "Pestaña $label, no seleccionada. Toca dos veces para abrir"
+            }
             Box(
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
                     .background(bg)
                     .border(if (sel) 0.dp else 1.dp, Sol.OrangeLight, RoundedCornerShape(14.dp))
+                    .exploracionTactil(
+                        elemento = desc,
+                        ubicacion = ubicacion,
+                        modulo = "Sólidos",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idioma
+                    )
                     .clickable { onSelect(i) }
                     .padding(vertical = 10.dp),
                 Alignment.Center

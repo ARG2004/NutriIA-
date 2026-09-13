@@ -23,6 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
+import com.example.nutriia.alerta.AlertaPreventivaEngine
+import com.example.nutriia.alerta.AlertaPreventivaNutriologo
+import com.example.nutriia.alerta.CategoriaAlertaPreventiva
+import com.example.nutriia.alerta.DiagnosticoPreventivoPaciente
+import com.example.nutriia.alerta.NivelSeveridadAlerta
 import com.example.nutriia.crecimiento.MedicionCrecimiento
 import com.example.nutriia.crecimiento.interpretarIMC
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +36,7 @@ import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.accesibilidad.CampoTextoAccesible
+import com.example.nutriia.accesibilidad.exploracionTactil
 import com.example.nutriia.shared.NutriSharedViewModel
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RecetaMexicana
@@ -163,6 +169,8 @@ fun PacienteExpedienteScreen(
                     avatarColor  = avatarColor,
                     birthDate    = ui.birthDate,
                     nivelIngreso = ui.nivelIngreso,
+                    esBlind      = esBlind,
+                    a11yVm       = a11yVm,
                     onBack       = onBack
                 )
             }
@@ -172,6 +180,8 @@ fun PacienteExpedienteScreen(
                 Spacer(Modifier.height(16.dp))
                 ExpedienteTabs(
                     selected = ui.tabSeleccionado,
+                    esBlind  = esBlind,
+                    a11yVm   = a11yVm,
                     onSelect = { viewModel.seleccionarTab(it) }
                 )
                 Spacer(Modifier.height(8.dp))
@@ -184,8 +194,23 @@ fun PacienteExpedienteScreen(
                 // ║       TAB 0 — RESUMEN        ║
                 // ╚══════════════════════════════╝
 
+                // ── Diagnóstico Preventivo & Telemetría OMS ──
                 item {
                     Spacer(Modifier.height(12.dp))
+                    SeccionTitulo(Icons.Rounded.HealthAndSafety, "Telemetría y Diagnóstico Preventivo")
+                    Spacer(Modifier.height(12.dp))
+                    DiagnosticoPreventivoCard(
+                        diagnostico = ui.diagnosticoPreventivo,
+                        guardando = ui.guardandoAlertaPreventiva,
+                        esBlind = esBlind,
+                        esMute = a11yMode == AccessibilityMode.MUTE,
+                        a11yVm = a11yVm,
+                        onEmitirAlerta = { alerta -> viewModel.emitirAlertaPreventiva(alerta) }
+                    )
+                }
+
+                item {
+                    Spacer(Modifier.height(20.dp))
                     SeccionTitulo(Icons.Rounded.Assessment, "Biometría")
                     Spacer(Modifier.height(12.dp))
                     BiometriaCard(
@@ -399,8 +424,10 @@ private fun ExpedienteHeader(
     etapaLabel:   String,
     hasAllergies: Boolean,
     avatarColor:  Color,
-    birthDate:    String,        // ← NUEVO
-    nivelIngreso: NivelIngreso,  // ← NUEVO
+    birthDate:    String,
+    nivelIngreso: NivelIngreso,
+    esBlind:      Boolean = false,
+    a11yVm:       AccessibilityViewModel? = null,
     onBack:       () -> Unit
 ) {
     // Etiqueta amigable para nivel de ingreso
@@ -452,6 +479,13 @@ private fun ExpedienteHeader(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.15f))
+                    .exploracionTactil(
+                        elemento = "Botón Regresar",
+                        ubicacion = "la barra superior izquierda",
+                        modulo = "Expediente del Paciente",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm
+                    )
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
@@ -534,7 +568,12 @@ private fun ExpedienteHeader(
 }
 
 @Composable
-private fun ExpedienteTabs(selected: Int, onSelect: (Int) -> Unit) {
+private fun ExpedienteTabs(
+    selected: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    onSelect: (Int) -> Unit
+) {
     val tabs = listOf(
         Triple("Resumen",      Icons.Rounded.Person,         0),
         Triple("Alimentación", Icons.Rounded.RestaurantMenu, 1)
@@ -555,6 +594,12 @@ private fun ExpedienteTabs(selected: Int, onSelect: (Int) -> Unit) {
             )
             val isFirst = i == 0
             val shape = RoundedCornerShape(20.dp)
+            val ubicacion = if (i == 0) "la barra superior izquierda" else "la barra superior derecha"
+            val desc = if (sel) {
+                "Pestaña $label, actualmente seleccionada"
+            } else {
+                "Pestaña $label, no seleccionada. Toca dos veces para abrir"
+            }
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -566,6 +611,13 @@ private fun ExpedienteTabs(selected: Int, onSelect: (Int) -> Unit) {
                         if (sel) Color.Transparent
                         else if (isFirst) EDarkGreen.copy(.25f) else EOrange.copy(.25f),
                         shape
+                    )
+                    .exploracionTactil(
+                        elemento = desc,
+                        ubicacion = ubicacion,
+                        modulo = "Expediente del Paciente",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm
                     )
                     .clickable { onSelect(i) }
                     .padding(vertical = 14.dp),
@@ -1805,6 +1857,324 @@ private fun MiniChip(icon: ImageVector, label: String, color: Color) {
     ) {
         Icon(icon, null, tint = color, modifier = Modifier.size(9.dp))
         Text(label, fontSize = 9.sp, color = color, fontWeight = FontWeight.Bold)
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPONENTES DE DIAGNÓSTICO PREVENTIVO & TELEMETRÍA (ROL NUTRIÓLOGO)
+// ════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun DiagnosticoPreventivoCard(
+    diagnostico: DiagnosticoPreventivoPaciente?,
+    guardando: Boolean,
+    esBlind: Boolean,
+    esMute: Boolean,
+    a11yVm: AccessibilityViewModel?,
+    onEmitirAlerta: (AlertaPreventivaNutriologo) -> Unit
+) {
+    if (diagnostico == null) return
+
+    val headerColor = when (diagnostico.estadoGeneral) {
+        NivelSeveridadAlerta.ESTABLE -> Color(0xFF2E7D32)
+        NivelSeveridadAlerta.OBSERVACION -> Color(0xFFF57F17)
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Color(0xFFC62828)
+    }
+
+    val headerBg = when (diagnostico.estadoGeneral) {
+        NivelSeveridadAlerta.ESTABLE -> Color(0xFFE8F5E9)
+        NivelSeveridadAlerta.OBSERVACION -> Color(0xFFFFF8E1)
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Color(0xFFFFEBEE)
+    }
+
+    val statusIcon = when (diagnostico.estadoGeneral) {
+        NivelSeveridadAlerta.ESTABLE -> Icons.Rounded.Verified
+        NivelSeveridadAlerta.OBSERVACION -> Icons.Rounded.Info
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Icons.Rounded.WarningAmber
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .exploracionTactil(
+                elemento = "Diagnóstico Preventivo Clínico: Estado ${diagnostico.estadoGeneral.label}. ${diagnostico.resumenClinico}. ${diagnostico.alertas.size} observaciones activas.",
+                ubicacion = "sección superior del expediente clínico",
+                modulo = "Expediente de Nutriólogo",
+                esBlind = esBlind,
+                a11yVm = a11yVm
+            ),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = ECardWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            // Header con Status Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(headerBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = statusIcon,
+                            contentDescription = null,
+                            tint = headerColor,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "Telemetría Preventiva",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = EDarkGreen
+                        )
+                        Text(
+                            "Estándares OMS & Balance Pediátrico",
+                            fontSize = 11.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = headerBg
+                ) {
+                    Text(
+                        text = diagnostico.estadoGeneral.label.uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = headerColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = diagnostico.resumenClinico,
+                fontSize = 13.sp,
+                color = Color(0xFF37474F),
+                lineHeight = 18.sp
+            )
+
+            if (diagnostico.alertas.isNotEmpty()) {
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 1.dp)
+                Spacer(Modifier.height(14.dp))
+
+                diagnostico.alertas.forEachIndexed { idx, alerta ->
+                    if (idx > 0) Spacer(Modifier.height(12.dp))
+                    AlertaPreventivaItemCard(
+                        alerta = alerta,
+                        guardando = guardando,
+                        esBlind = esBlind,
+                        esMute = esMute,
+                        a11yVm = a11yVm,
+                        onEmitirAlerta = onEmitirAlerta
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlertaPreventivaItemCard(
+    alerta: AlertaPreventivaNutriologo,
+    guardando: Boolean,
+    esBlind: Boolean,
+    esMute: Boolean,
+    a11yVm: AccessibilityViewModel?,
+    onEmitirAlerta: (AlertaPreventivaNutriologo) -> Unit
+) {
+    val chipColor = when (alerta.severidad) {
+        NivelSeveridadAlerta.ESTABLE -> Color(0xFF2E7D32)
+        NivelSeveridadAlerta.OBSERVACION -> Color(0xFFF57F17)
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Color(0xFFC62828)
+    }
+
+    val chipBg = when (alerta.severidad) {
+        NivelSeveridadAlerta.ESTABLE -> Color(0xFFE8F5E9)
+        NivelSeveridadAlerta.OBSERVACION -> Color(0xFFFFF8E1)
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Color(0xFFFFEBEE)
+    }
+
+    var mostrarLSM by remember { mutableStateOf(esMute) }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFFFAFAFA),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            // Categoria + Metrica Clave
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = alerta.icon,
+                        contentDescription = null,
+                        tint = chipColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = alerta.categoria.label,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = chipColor
+                    )
+                }
+
+                if (alerta.metricaClave.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = chipBg
+                    ) {
+                        Text(
+                            text = alerta.metricaClave,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = chipColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = alerta.titulo,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = Color(0xFF212121)
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            // Hallazgo clínico
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(14.dp).padding(top = 2.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = alerta.hallazgoClinico,
+                    fontSize = 12.sp,
+                    color = Color(0xFF616161),
+                    lineHeight = 16.sp
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // Recomendación padres
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Icon(
+                    imageVector = Icons.Rounded.Lightbulb,
+                    contentDescription = null,
+                    tint = EGreen,
+                    modifier = Modifier.size(14.dp).padding(top = 2.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = alerta.recomendacionPadres,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = EDarkGreen,
+                    lineHeight = 16.sp
+                )
+            }
+
+            // LSM Section (Accessible for Mute or expandable)
+            if (alerta.glosaLSM.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                if (!mostrarLSM) {
+                    TextButton(
+                        onClick = { mostrarLSM = true },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(Icons.Rounded.SignLanguage, contentDescription = null, modifier = Modifier.size(14.dp), tint = EPurple)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Ver glosa en Lengua de Señas Mexicana (LSM)", fontSize = 11.sp, color = EPurple)
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E1E2E),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Rounded.SignLanguage, contentDescription = null, tint = Color(0xFF80D8FF), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("LSM (GLOSA ESTRUCTURADA):", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF80D8FF))
+                                Text(alerta.glosaLSM, fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Action button: Emit recommendation to parents
+            Button(
+                onClick = {
+                    onEmitirAlerta(alerta)
+                    if (esBlind) {
+                        a11yVm?.hablar("Recomendación preventiva enviada al expediente familiar.")
+                    }
+                },
+                enabled = !guardando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .exploracionTactil(
+                        elemento = "Botón: Emitir recomendación preventiva a padres para ${alerta.titulo}",
+                        ubicacion = "tarjeta de alerta preventiva",
+                        modulo = "Expediente de Nutriólogo",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm
+                    ),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EGreen,
+                    contentColor = Color.White
+                )
+            ) {
+                if (guardando) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Rounded.Send, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Emitir Recomendación a Padres", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 

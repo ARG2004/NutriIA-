@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+import com.example.nutriia.ui.theme.responsiveContent
+
 private val PGreen     = Color(0xFF689F38)
 private val PDarkGreen = Color(0xFF33691E)
 private val PBgCrema   = Color(0xFFF8F9F3)
@@ -61,11 +63,17 @@ fun PaymentGateScreen(
         containerColor = PBgCrema,
         snackbarHost   = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .responsiveContent(maxWidth = 600.dp)
+                    .fillMaxHeight()
+            ) {
 
             // ── Header ────────────────────────────────────────────────────────
             Row(
@@ -294,4 +302,5 @@ fun PaymentGateScreen(
             }
         }
     }
+}
 }

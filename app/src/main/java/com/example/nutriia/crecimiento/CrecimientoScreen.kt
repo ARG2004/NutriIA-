@@ -196,7 +196,17 @@ fun CrecimientoScreen(
                     visible = visible,
                     enter   = slideInVertically(tween(380)) { -it / 2 } + fadeIn(tween(380)),
                     exit    = slideOutVertically() + fadeOut()
-                ) { TopBar(childName, historial.size, ageMonths, onNavigateBack) }
+                ) {
+                    TopBar(
+                        nombre = childName,
+                        total = historial.size,
+                        ageMonths = ageMonths,
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idiomaActual,
+                        onBack = onNavigateBack
+                    )
+                }
             }
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(400, 60)), exit = fadeOut()) {
@@ -217,7 +227,12 @@ fun CrecimientoScreen(
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(400, 140)), exit = fadeOut()) {
                     Spacer(Modifier.height(20.dp))
-                    Tabs(tab) { 
+                    Tabs(
+                        selected = tab,
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idiomaActual
+                    ) { 
                         tab = it 
                         if (esBlind) {
                             val nombreTab = when (it) {
@@ -245,9 +260,9 @@ fun CrecimientoScreen(
                             else TimelineHistorial(historial, ageMonths) { eliminar = it }
                         }
                         2 -> Column {
-                            GraficaPeso(historial, viewModel.puntosOmsPeso, sexoRegistrado)
+                            GraficaPeso(historial, viewModel.puntosOmsPeso, sexoRegistrado, ageMonths)
                             Spacer(Modifier.height(16.dp))
-                            GraficaTalla(historial, viewModel.puntosOmsTalla, sexoRegistrado)
+                            GraficaTalla(historial, viewModel.puntosOmsTalla, sexoRegistrado, ageMonths)
                         }
                     }
                 }
@@ -312,7 +327,15 @@ fun CrecimientoScreen(
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun TopBar(nombre: String, total: Int, ageMonths: Int, onBack: () -> Unit) {
+private fun TopBar(
+    nombre: String,
+    total: Int,
+    ageMonths: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onBack: () -> Unit
+) {
     val gradient = Brush.verticalGradient(listOf(C_GreenLight, C_Bg))
     Box(
         Modifier
@@ -324,6 +347,14 @@ private fun TopBar(nombre: String, total: Int, ageMonths: Int, onBack: () -> Uni
             onClick  = onBack,
             modifier = Modifier.size(40.dp).clip(CircleShape)
                 .background(Color.White.copy(0.7f)).align(Alignment.CenterStart)
+                .exploracionTactil(
+                    elemento = if (idioma == IdiomaVoz.INGLES) "Back button" else "Botón regresar",
+                    ubicacion = if (idioma == IdiomaVoz.INGLES) "top left corner" else "la esquina superior izquierda",
+                    modulo = "Crecimiento",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    idioma = idioma
+                )
         ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = C_Green) }
 
         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -487,7 +518,13 @@ private fun StatCol(icon: ImageVector, color: Color, bg: Color, value: String, l
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun Tabs(selected: Int, onSelect: (Int) -> Unit) {
+private fun Tabs(
+    selected: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onSelect: (Int) -> Unit
+) {
     val items = listOf(
         Icons.Rounded.Analytics to "IMC",
         Icons.Rounded.Timeline  to "Historial",
@@ -498,9 +535,28 @@ private fun Tabs(selected: Int, onSelect: (Int) -> Unit) {
             val sel = selected == i
             val bg  by animateColorAsState(if (sel) C_Green else C_Card,   tween(220), label = "bg$i")
             val fg  by animateColorAsState(if (sel) Color.White else C_TextSub, tween(220), label = "fg$i")
+            val ubicacion = when (i) {
+                0 -> if (idioma == IdiomaVoz.INGLES) "top left area" else "la barra superior izquierda"
+                1 -> if (idioma == IdiomaVoz.INGLES) "top center area" else "la barra superior central"
+                2 -> if (idioma == IdiomaVoz.INGLES) "top right area" else "la barra superior derecha"
+                else -> "la barra superior"
+            }
+            val desc = if (sel) {
+                if (idioma == IdiomaVoz.INGLES) "Tab $label, currently selected" else "Pestaña $label, actualmente seleccionada"
+            } else {
+                if (idioma == IdiomaVoz.INGLES) "Tab $label, unselected. Double tap to switch" else "Pestaña $label, no seleccionada. Toca dos veces para cambiar"
+            }
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(50.dp)).background(bg)
                     .border(1.dp, if (sel) C_Green else C_Divider, RoundedCornerShape(50.dp))
+                    .exploracionTactil(
+                        elemento = desc,
+                        ubicacion = ubicacion,
+                        modulo = "Crecimiento",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idioma
+                    )
                     .clickable { onSelect(i) }.padding(vertical = 9.dp),
                 Alignment.Center
             ) {
@@ -533,7 +589,12 @@ private fun GraficaHeader(titulo: String, subtitulo: String, icon: ImageVector, 
 }
 
 @Composable
-private fun GraficaPeso(historial: List<MedicionCrecimiento>, omsData: List<PuntoOMS>, sexo: Sexo?) {
+private fun GraficaPeso(
+    historial: List<MedicionCrecimiento>,
+    omsData: List<PuntoOMS>,
+    sexo: Sexo?,
+    edadActualMeses: Int = 0
+) {
     var animate by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { animate = true }
     val prog by animateFloatAsState(
@@ -556,19 +617,20 @@ private fun GraficaPeso(historial: List<MedicionCrecimiento>, omsData: List<Punt
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), CardDefaults.cardColors(C_Card), CardDefaults.cardElevation(1.dp)) {
             Column(Modifier.padding(16.dp)) {
                 GraficaCanvas(
-                    historial    = historial,
-                    omsData      = omsData,
-                    minVal       = 2f,
-                    maxVal       = 50f,
-                    yLabels      = listOf("2","10","18","26","34","42","50"),
-                    yValues      = listOf(2f, 10f, 18f, 26f, 34f, 42f, 50f),
-                    maxMeses     = 120,
-                    xLabels      = listOf("0m","12m","24m","36m","48m","60m","72m","84m","96m","108m","120m"),
-                    xTicks       = listOf(0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120),
-                    lineProgress = prog,
-                    bebeColor    = C_Amber,
-                    getValue     = { it.pesoKg },
-                    leftPad      = 36.dp
+                    historial       = historial,
+                    omsData         = omsData,
+                    minVal          = 2f,
+                    maxVal          = 50f,
+                    yLabels         = listOf("2","10","18","26","34","42","50"),
+                    yValues         = listOf(2f, 10f, 18f, 26f, 34f, 42f, 50f),
+                    maxMeses        = 120,
+                    xLabels         = listOf("0m","12m","24m","36m","48m","60m","72m","84m","96m","108m","120m"),
+                    xTicks          = listOf(0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120),
+                    lineProgress    = prog,
+                    bebeColor       = C_Amber,
+                    getValue        = { it.pesoKg },
+                    leftPad         = 36.dp,
+                    edadActualMeses = edadActualMeses
                 )
                 Spacer(Modifier.height(10.dp))
                 LeyendaFila(C_Amber)
@@ -583,7 +645,12 @@ private fun GraficaPeso(historial: List<MedicionCrecimiento>, omsData: List<Punt
 }
 
 @Composable
-private fun GraficaTalla(historial: List<MedicionCrecimiento>, omsData: List<PuntoOMS>, sexo: Sexo?) {
+private fun GraficaTalla(
+    historial: List<MedicionCrecimiento>,
+    omsData: List<PuntoOMS>,
+    sexo: Sexo?,
+    edadActualMeses: Int = 0
+) {
     var animate by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { animate = true }
     val prog by animateFloatAsState(
@@ -607,19 +674,20 @@ private fun GraficaTalla(historial: List<MedicionCrecimiento>, omsData: List<Pun
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), CardDefaults.cardColors(C_Card), CardDefaults.cardElevation(1.dp)) {
             Column(Modifier.padding(16.dp)) {
                 GraficaCanvas(
-                    historial    = historial,
-                    omsData      = omsData,
-                    minVal       = 45f,
-                    maxVal       = 170f,
-                    yLabels      = listOf("45","65","85","105","125","145","165"),
-                    yValues      = listOf(45f, 65f, 85f, 105f, 125f, 145f, 165f),
-                    maxMeses     = 144,
-                    xLabels      = listOf("0m","24m","48m","72m","96m","120m","144m"),
-                    xTicks       = listOf(0, 24, 48, 72, 96, 120, 144),
-                    lineProgress = prog,
-                    bebeColor    = C_Teal,
-                    getValue     = { it.tallaCm },
-                    leftPad      = 40.dp
+                    historial       = historial,
+                    omsData         = omsData,
+                    minVal          = 45f,
+                    maxVal          = 170f,
+                    yLabels         = listOf("45","65","85","105","125","145","165"),
+                    yValues         = listOf(45f, 65f, 85f, 105f, 125f, 145f, 165f),
+                    maxMeses        = 144,
+                    xLabels         = listOf("0m","24m","48m","72m","96m","120m","144m"),
+                    xTicks          = listOf(0, 24, 48, 72, 96, 120, 144),
+                    lineProgress    = prog,
+                    bebeColor       = C_Teal,
+                    getValue        = { it.tallaCm },
+                    leftPad         = 40.dp,
+                    edadActualMeses = edadActualMeses
                 )
                 Spacer(Modifier.height(10.dp))
                 LeyendaFila(C_Teal)
@@ -635,19 +703,20 @@ private fun GraficaTalla(historial: List<MedicionCrecimiento>, omsData: List<Pun
 
 @Composable
 private fun GraficaCanvas(
-    historial:    List<MedicionCrecimiento>,
-    omsData:      List<PuntoOMS>,
-    minVal:       Float,
-    maxVal:       Float,
-    yLabels:      List<String>,
-    yValues:      List<Float>,
-    maxMeses:     Int,
-    xLabels:      List<String>,
-    xTicks:       List<Int>,
-    lineProgress: Float,
-    bebeColor:    Color,
-    getValue:     (MedicionCrecimiento) -> Double,
-    leftPad:      Dp
+    historial:       List<MedicionCrecimiento>,
+    omsData:         List<PuntoOMS>,
+    minVal:          Float,
+    maxVal:          Float,
+    yLabels:         List<String>,
+    yValues:         List<Float>,
+    maxMeses:        Int,
+    xLabels:         List<String>,
+    xTicks:          List<Int>,
+    lineProgress:    Float,
+    bebeColor:       Color,
+    getValue:        (MedicionCrecimiento) -> Double,
+    leftPad:         Dp,
+    edadActualMeses: Int = 0
 ) {
     val chartH = 240.dp
     val botPad = 28.dp
@@ -696,7 +765,7 @@ private fun GraficaCanvas(
                         }
                     }
 
-                    val sorted = historial.sortedBy { it.fecha }
+                    val sorted = historial.sortedBy { it.fechaEpoch() }
                     val total  = sorted.size
                     if (total >= 2) {
                         val upTo = (lineProgress * (total - 1)).toInt().coerceAtMost(total - 2)
@@ -705,14 +774,14 @@ private fun GraficaCanvas(
                             val alpha = if (i == upTo) lineProgress * (total - 1) - upTo else 1f
                             drawLine(
                                 bebeColor.copy(alpha),
-                                Offset(xFor(calcMeses(a.fecha)), yFor(getValue(a))),
-                                Offset(xFor(calcMeses(b.fecha)), yFor(getValue(b))),
+                                Offset(xFor(calcMesesMedicion(a.fecha, edadActualMeses)), yFor(getValue(a))),
+                                Offset(xFor(calcMesesMedicion(b.fecha, edadActualMeses)), yFor(getValue(b))),
                                 2.5.dp.toPx(), cap = StrokeCap.Round
                             )
                         }
                     }
                     sorted.forEach { m ->
-                        val mx = calcMeses(m.fecha)
+                        val mx = calcMesesMedicion(m.fecha, edadActualMeses)
                         drawCircle(bebeColor.copy(lineProgress),   5.dp.toPx(), Offset(xFor(mx), yFor(getValue(m))))
                         drawCircle(Color.White.copy(lineProgress),  3.dp.toPx(), Offset(xFor(mx), yFor(getValue(m))))
                     }
@@ -1565,7 +1634,14 @@ private fun LinkRow(
 // HELPER
 // ═══════════════════════════════════════════════════════════════════════════
 
-private fun calcMeses(fecha: String): Int = try {
-    val d = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(fecha) ?: return 0
-    ((Date().time - d.time) / (1000L * 60 * 60 * 24 * 30.44)).toInt()
-} catch (e: Exception) { 0 }
+private fun calcMesesMedicion(fecha: String, edadActualMeses: Int): Int = try {
+    if (edadActualMeses <= 0) 0
+    else {
+        val d = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(fecha)
+        if (d != null) {
+            val mesesDesdeMedicion = ((Date().time - d.time) / (1000L * 60 * 60 * 24 * 30.44)).toInt()
+            (edadActualMeses - mesesDesdeMedicion).coerceIn(0, 144)
+        } else edadActualMeses
+    }
+} catch (e: Exception) { edadActualMeses }
+

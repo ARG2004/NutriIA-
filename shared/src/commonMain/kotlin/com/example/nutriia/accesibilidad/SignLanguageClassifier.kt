@@ -275,9 +275,14 @@ object SignLanguageClassifier {
             }
         }
 
-        // 3. ESTÁTICAS A-Z
+        // 3. ESTÁTICAS A-Z CON AUDITORÍA OFICIAL LSM (UTT / SEP / DIELSEME)
+        val deltaY_Indice = iTip2d.y - iMcp2d.y
+        val deltaX_Indice = iTip2d.x - iMcp2d.x
+        val deltaY_Medio  = mTip2d.y - mMcp2d.y
+
         val pulgarAbiertoL = (thumbExt || ratioExt(4, 2) > 1.20f) && abs(tTip2d.x - iMcp2d.x) > 0.14f
 
+        // I (Meñique vertical, puño cerrado)
         val tresDedosCerradosI = !indexExtUp && !middleExtUp && !ringExtUp &&
                                  nDist(8, 5) < 0.48f && nDist(12, 9) < 0.48f &&
                                  (nDist(16, 13) < 0.48f || nDist(20, 17) > nDist(16, 13) + 0.10f)
@@ -287,72 +292,82 @@ object SignLanguageClassifier {
         val meñiqueExtendidoI = meñiqueRealmenteExtendido && pTip2d.y < pPip2d.y + 0.06f
         val esFormaY = ratioExt(4, 2) > 1.25f && nDist(4, 20) > 0.52f && ratioExt(20, 17) > 1.25f && abs(tTip2d.x - iMcp2d.x) > 0.16f
         val esI = meñiqueExtendidoI && tresDedosCerradosI && !esFormaY
-
         if (esI) return ResultadoClasificacion("i", 0.96f)
 
+        // T (Puño cerrado con pulgar asomando entre índice y medio)
         val dedosCerradosT = ratioExt(8, 5) < 1.20f && ratioExt(12, 9) < 1.20f && ratioExt(16, 13) < 1.20f && ratioExt(20, 17) < 1.20f
-        val pulgarCercaIndex_T = nDist(4, 5) < 0.30f || nDist(4, 6) < 0.30f
-        val pulgarCercaMiddle_T = nDist(4, 9) < 0.24f || nDist(4, 10) < 0.24f
+        val pulgarCercaIndex_T = nDist(4, 5) < 0.32f || nDist(4, 6) < 0.32f
+        val pulgarCercaMiddle_T = nDist(4, 9) < 0.28f || nDist(4, 10) < 0.28f
         val pulgarEntreAmbos_T = pulgarCercaIndex_T && pulgarCercaMiddle_T
-        val pulgarLejosDAnularT = nDist(4, 14) > 0.24f
+        val pulgarLejosDAnularT = nDist(4, 14) > 0.22f
         val noEsDrapedM_N = !indexDrapedDown && iTip2d.y <= iPip2d.y + 0.06f
         val esT = dedosCerradosT && pulgarEntreAmbos_T && pulgarLejosDAnularT && noEsDrapedM_N && !manoApuntaAbajo
         if (esT) return ResultadoClasificacion("t", 0.95f)
 
+        // E (Dedos curvados en garra mostrando uñas, pulgar abajo)
         val dedosCerradosE = ratioExt(8, 5) < 1.25f && ratioExt(12, 9) < 1.25f && ratioExt(16, 13) < 1.25f && ratioExt(20, 17) < 1.25f
         val dedosGarraE = nDist(8, 5) < 0.42f && nDist(12, 9) < 0.42f && nDist(16, 13) < 0.42f
-        val pulgarDebajoYemasE = tTip2d.y >= iTip2d.y - 0.01f &&
+        val pulgarDebajoYemasE = tTip2d.y >= iTip2d.y - 0.02f &&
                                  (nDist(4, 8) < 0.48f || nDist(4, 6) < 0.48f || thumbIndexDist < 0.48f) &&
-                                 abs(tTip2d.x - iMcp2d.x) < 0.14f
+                                 abs(tTip2d.x - iMcp2d.x) < 0.16f
         val esE = dedosCerradosE && dedosGarraE && pulgarDebajoYemasE && !manoApuntaAbajo
         if (esE) return ResultadoClasificacion("e", 0.96f)
 
-        val dedosCerradosS = ratioExt(8, 5) < 1.20f && ratioExt(12, 9) < 1.20f && ratioExt(16, 13) < 1.20f && ratioExt(20, 17) < 1.20f
-        val pulgarSobreIndex_S = nDist(4, 6) < 0.42f || nDist(4, 8) < 0.42f || nDist(4, 5) < 0.38f
-        val pulgarMasCercaDeIndex = nDist(4, 6) < nDist(4, 10) + 0.08f || nDist(4, 5) < nDist(4, 9) + 0.08f
-        val esS = dedosCerradosS && pulgarSobreIndex_S && pulgarMasCercaDeIndex && !indexDrapedDown && !middleDrapedDown && !manoApuntaAbajo
+        // S (Puño cerrado con pulgar cruzado al frente sobre los dedos)
+        val dedosCerradosPuño = ratioExt(8, 5) < 1.20f && ratioExt(12, 9) < 1.20f && ratioExt(16, 13) < 1.20f && ratioExt(20, 17) < 1.20f
+        val pulgarCruzadoAlFrenteS = (nDist(4, 6) < 0.38f || nDist(4, 10) < 0.38f || nDist(4, 9) < 0.36f) &&
+                                     abs(tTip2d.x - mMcp2d.x) < 0.14f
+        val esS = dedosCerradosPuño && pulgarCruzadoAlFrenteS && !indexDrapedDown && !middleDrapedDown && !manoApuntaAbajo
         if (esS) return ResultadoClasificacion("s", 0.95f)
 
-        val dedosCerradosA = ratioExt(8, 5) < 1.20f && ratioExt(12, 9) < 1.20f && ratioExt(16, 13) < 1.20f && ratioExt(20, 17) < 1.20f
-        val puñoCerradoA = nDist(8, 5) < 0.52f
-        val pulgarAlLadoA = abs(tTip2d.x - iMcp2d.x) >= 0.08f && (thumbExt || nDist(4, 5) > 0.14f)
-        val esA = dedosCerradosA && puñoCerradoA && pulgarAlLadoA && !manoApuntaAbajo
+        // A (Puño cerrado con pulgar apoyado al costado lateral del índice)
+        val pulgarAlLadoA = (abs(tTip2d.x - iMcp2d.x) >= 0.07f || thumbExt || nDist(4, 5) > 0.13f) &&
+                            tTip2d.y < iMcp2d.y + 0.12f
+        val esA = dedosCerradosPuño && pulgarAlLadoA && !manoApuntaAbajo && !pulgarCruzadoAlFrenteS
         if (esA) return ResultadoClasificacion("a", 0.96f)
 
+        // O (Círculo cerrado de yemas con pulgar)
         val yemasUnidasO = thumbIndexDist < 0.38f && thumbMiddleDist < 0.38f && nDist(4, 16) < 0.45f
         val anularMeñiqueNoEstiradosO = (!ringExtUp || ratioExt(16, 13) < 1.30f) && (!pinkyExtUp || ratioExt(20, 17) < 1.30f)
         val noEsPuñoCerradoO = nDist(8, 5) > 0.15f || nDist(12, 9) > 0.15f
         val esFormaO = yemasUnidasO && anularMeñiqueNoEstiradosO && noEsPuñoCerradoO && !manoApuntaAbajo
         if (esFormaO) return ResultadoClasificacion("o", 0.96f)
 
-        val indiceExtendidoG = nDist(8, 5) > 0.35f
-        val esG = indiceExtendidoG && thumbExt && indexHorizontal && !pinkyExtUp && !ringExtUp &&
-                  (nDist(8, 5) > nDist(12, 9) + 0.12f || nDist(12, 9) < 0.45f)
+        // G (Escuadra / pistola horizontal: índice al frente, pulgar abierto)
+        val indiceExtendidoG = nDist(8, 5) > 0.35f || ratioExt(8, 5) > 1.15f
+        val esG = indiceExtendidoG && (thumbExt || nDist(4, 5) > 0.20f) &&
+                  (indexHorizontal || abs(deltaX_Indice) > abs(deltaY_Indice) + 0.04f) &&
+                  !pinkyExtUp && !ringExtUp && (!middleExtUp || ratioExt(12, 9) < 1.25f)
         if (esG) return ResultadoClasificacion("g", 0.96f)
 
-        val dosDedosExtendidosH = nDist(8, 5) > 0.35f && nDist(12, 9) > 0.28f
+        // H (Dos dedos índice y medio extendidos horizontales juntos)
+        val dosDedosExtendidosH = nDist(8, 5) > 0.32f && nDist(12, 9) > 0.26f
         val dosDedosJuntosH = indexMiddleDist < 0.32f
-        val esH = dosDedosExtendidosH && dosDedosJuntosH && indexHorizontal && !pinkyExtUp &&
-                  (nDist(12, 9) > nDist(16, 13) + 0.12f || nDist(16, 13) < 0.45f) &&
-                  abs(nDist(8, 5) - nDist(12, 9)) < 0.20f
+        val esH = dosDedosExtendidosH && dosDedosJuntosH &&
+                  (indexHorizontal || abs(deltaX_Indice) > abs(deltaY_Indice) + 0.04f) &&
+                  !pinkyExtUp && (nDist(12, 9) > nDist(16, 13) + 0.10f || nDist(16, 13) < 0.45f)
         if (esH) return ResultadoClasificacion("h", 0.96f)
 
-        val anularCaidoM = ringDrapedDown || (rTip2d.y > rPip2d.y + 0.04f && nDist(16, 13) > 0.30f)
-        val tresDedosAbajoM = (indexDrapedDown || iTip2d.y > iPip2d.y - 0.04f) &&
-                              (middleDrapedDown || mTip2d.y > mPip2d.y - 0.04f) &&
-                              anularCaidoM && nDist(16, 13) > 0.30f
+        // M (3 dedos índice, medio, anular doblados colgando hacia abajo sobre el pulgar)
+        val anularCaidoM = ringDrapedDown || (rTip2d.y > rPip2d.y + 0.02f && nDist(16, 13) > 0.24f)
+        val tresDedosAbajoM = (indexDrapedDown || deltaY_Indice > 0.02f) &&
+                              (middleDrapedDown || deltaY_Medio > 0.02f) &&
+                              anularCaidoM && nDist(16, 13) > 0.24f
         val meñiquePlegadoM = !pinkyExtUp && (pTip2d.y < rTip2d.y + 0.10f || nDist(20, 17) < 0.48f)
         val esM = tresDedosAbajoM && meñiquePlegadoM && !indexHorizontal
         if (esM) return ResultadoClasificacion("m", 0.96f)
 
+        // L (Índice vertical y pulgar a 90° formando L)
         val esL = pulgarAbiertoL && indexExtUp && cCurvatureIndex > 0.93f && !indexHorizontal && !ringExtUp && !pinkyExtUp
         if (esL) return ResultadoClasificacion("l", 0.97f)
 
-        val dosDedosAbajoN = indexDrapedDown && middleDrapedDown
-        val anularMeñiquePlegadosN = !ringExtUp && !pinkyExtUp && (!anularCaidoM || nDist(16, 13) <= 0.30f) && (rTip2d.y < mTip2d.y + 0.08f || nDist(16, 13) < 0.48f)
+        // N (2 dedos índice y medio doblados colgando hacia abajo sobre el pulgar)
+        val dosDedosAbajoN = (indexDrapedDown || deltaY_Indice > 0.02f) && (middleDrapedDown || deltaY_Medio > 0.02f)
+        val anularMeñiquePlegadosN = !ringExtUp && !pinkyExtUp && (!anularCaidoM || nDist(16, 13) <= 0.24f)
         val esN = dosDedosAbajoN && anularMeñiquePlegadosN && indexMiddleDist < 0.38f && !indexHorizontal
         if (esN) return ResultadoClasificacion("n", 0.96f)
 
+        // C (Mano curvada en arco 'C' de perfil)
         val aperturaC = thumbIndexDist in 0.18f..0.95f && thumbMiddleDist in 0.18f..0.95f
         val dedosCurvadosC = cCurvatureIndex < 0.98f || mCurvatureIndex < 0.98f || (ratioExt(8, 5) < 1.45f && ratioExt(12, 9) < 1.45f)
         val noEsPuñoCerrado = nDist(8, 0) > 0.38f && nDist(12, 0) > 0.38f && nDist(8, 5) > 0.22f && nDist(12, 9) > 0.42f
@@ -362,25 +377,30 @@ object SignLanguageClassifier {
                        !indexDrapedDown && !manoApuntaAbajo && !pinkyExtUp
         if (esCurvaC) return ResultadoClasificacion("c", 0.96f)
 
+        // D (Índice vertical arriba, pulgar cerrando círculo con medio y anular)
+        val pulgarCierraCirculoD = thumbMiddleDist < 0.38f || nDist(4, 14) < 0.40f || nDist(4, 10) < 0.38f
         val esD = indexExtUp && cCurvatureIndex > 0.93f && !middleExtUp && !ringExtUp && !pinkyExtUp &&
-                  !manoHorizontal && !manoApuntaAbajo && !pulgarAbiertoL
+                  !manoHorizontal && !manoApuntaAbajo && !pulgarAbiertoL && pulgarCierraCirculoD
         if (esD) return ResultadoClasificacion("d", 0.97f)
 
-        if (thumbIndexDist < 0.26f && middleExtUp && ringExtUp && pinkyExtUp) {
+        // F (Índice y pulgar en pinza/círculo, 3 dedos medio/anular/meñique extendidos)
+        val pinzaIndexThumbF = thumbIndexDist < 0.28f || nDist(4, 6) < 0.28f
+        if (pinzaIndexThumbF && middleExtUp && ringExtUp && pinkyExtUp) {
             return ResultadoClasificacion("f", 0.95f)
         }
 
-        val cuatroDedosRectos3D = ratioExt(8, 5) > 1.35f &&
-                                  ratioExt(12, 9) > 1.35f &&
-                                  ratioExt(16, 13) > 1.35f &&
-                                  ratioExt(20, 17) > 1.35f &&
-                                  cCurvatureIndex > 0.90f &&
-                                  nDist(8, 12) < 0.42f &&
-                                  nDist(12, 16) < 0.42f
-        if (indexExtUp && middleExtUp && ringExtUp && pinkyExtUp && cuatroDedosRectos3D) {
-            return ResultadoClasificacion("b", 0.94f)
+        // B (4 dedos extendidos verticalmente juntos, pulgar sobre la palma)
+        val cuatroDedosRectosB = (ratioExt(8, 5) > 1.18f || indexExtUp) &&
+                                 (ratioExt(12, 9) > 1.18f || middleExtUp) &&
+                                 (ratioExt(16, 13) > 1.18f || ringExtUp) &&
+                                 (ratioExt(20, 17) > 1.18f || pinkyExtUp) &&
+                                 nDist(8, 12) < 0.45f && nDist(12, 16) < 0.45f
+        val pulgarEnPalmaB = nDist(4, 9) < 0.50f || nDist(4, 5) < 0.45f || !thumbExt
+        if (cuatroDedosRectosB && pulgarEnPalmaB && !manoApuntaAbajo) {
+            return ResultadoClasificacion("b", 0.95f)
         }
 
+        // W (3 dedos índice, medio, anular extendidos y separados en 'W')
         val indexExtendedW = ratioExt(8, 5) > 1.15f
         val middleExtendedW = ratioExt(12, 9) > 1.15f
         val ringExtendedW = ratioExt(16, 13) > 1.15f
@@ -389,6 +409,7 @@ object SignLanguageClassifier {
             return ResultadoClasificacion("w", 0.95f)
         }
 
+        // Y (Pulgar y meñique abiertos, tres dedos centrales cerrados)
         val indexClosedY = ratioExt(8, 5) < 1.15f
         val middleClosedY = ratioExt(12, 9) < 1.15f
         val ringClosedY = ratioExt(16, 13) < 1.15f
@@ -399,19 +420,24 @@ object SignLanguageClassifier {
             return ResultadoClasificacion("y", 0.95f)
         }
 
-        val indiceAbajoP = (iTip2d.y > iMcp2d.y + 0.04f || dirY > 0.12f) && ratioExt(8, 5) > 1.05f
-        val pulgarAlLadoP = thumbExt || abs(tTip2d.x - iMcp2d.x) > 0.06f || thumbIndexDist < 0.50f || nDist(4, 5) < 0.48f
-        val tresDedosRecogidosP = ratioExt(12, 9) < 1.20f && ratioExt(16, 13) < 1.20f && ratioExt(20, 17) < 1.20f
-        val esP = (indiceAbajoP || indexDrapedDown) && pulgarAlLadoP && tresDedosRecogidosP && !ringExtUp && !pinkyExtUp && !anularCaidoM
-        if (esP) return ResultadoClasificacion("p", 0.95f)
+        // ── P vs K: Configuración V con pulgar en medio ──
+        val indiceExtK_P = ratioExt(8, 5) > 1.08f || nDist(8, 5) > 0.30f
+        val medioExtK_P  = ratioExt(12, 9) > 1.05f || nDist(12, 9) > 0.28f
+        val dosDedosV_K_P = indiceExtK_P && medioExtK_P && !ringExtUp && !pinkyExtUp &&
+                            indexMiddleDist > 0.12f && pulgarEntreDedosK
 
+        // P (Apuntando hacia abajo / deltaY positivo y deltaX lateral)
+        val esP = dosDedosV_K_P && (deltaY_Indice > 0.04f || dirY > 0.10f) && !anularCaidoM
+        if (esP) return ResultadoClasificacion("p", 0.96f)
+
+        // R (Dedos índice y medio cruzados arriba)
         if (esPoseRBase) return ResultadoClasificacion("r", 0.96f)
 
-        val indiceExtenddoK = indexExtUp || (ratioExt(8, 5) > 1.20f && iTip2d.y < iMcp2d.y + 0.05f)
-        val esK = indiceExtenddoK && (middleExtUp || ratioExt(12, 9) > 1.05f) && !ringExtUp && !pinkyExtUp &&
-                  pulgarEntreDedosK && indexMiddleDist > 0.12f
+        // K (Apuntando hacia arriba / deltaY negativo)
+        val esK = dosDedosV_K_P && (deltaY_Indice < -0.02f || (iTip2d.y < iPip2d.y + 0.06f && dirY <= 0.10f))
         if (esK) return ResultadoClasificacion("k", 0.96f)
 
+        // U (Índice y medio juntos y paralelos arriba)
         val indexExtendedU = ratioExt(8, 5) > 1.15f
         val middleExtendedU = ratioExt(12, 9) > 1.15f
         val ringClosedU = ratioExt(16, 13) < 1.15f
@@ -422,15 +448,17 @@ object SignLanguageClassifier {
                   dedosJuntosU && dedosParalelosSinCruzar && !pulgarEntreDedosK
         if (esU) return ResultadoClasificacion("u", 0.95f)
 
+        // V (Índice y medio separados en 'V' arriba sin pulgar en medio)
         val indexExtendedV = ratioExt(8, 5) > 1.15f
         val middleExtendedV = ratioExt(12, 9) > 1.15f
         val ringClosedV = ratioExt(16, 13) < 1.15f
         val pinkyClosedV = ratioExt(20, 17) < 1.15f
-        val dedosSeparadosV = indexMiddleDist >= 0.22f
+        val dedosSeparadosV = indexMiddleDist >= 0.20f
         val esV = indexExtendedV && middleExtendedV && ringClosedV && pinkyClosedV &&
                   dedosSeparadosV && !indexMiddleCrossed && !pulgarEntreDedosK
         if (esV) return ResultadoClasificacion("v", 0.95f)
 
+        // X (Índice en gancho / anzuelo)
         val indexHookX = (nDist(8, 5) < 0.52f || ratioExt(8, 5) > 1.05f) && (ratioExt(8, 5) > ratioExt(12, 9) + 0.03f || nDist(8, 5) > nDist(12, 9) + 0.03f)
         val tresDedosPlegadosX = ratioExt(12, 9) < 1.18f && ratioExt(16, 13) < 1.18f && ratioExt(20, 17) < 1.18f
         val esX = indexHookX && tresDedosPlegadosX && thumbIndexDist > 0.18f && !manoApuntaAbajo

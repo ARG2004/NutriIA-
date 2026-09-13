@@ -480,7 +480,7 @@ fun CampoTextoAccesible(
                 ) {
                     Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text("Confirmar y Continuar", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
         } else {

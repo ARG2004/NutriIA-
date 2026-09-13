@@ -178,7 +178,17 @@ fun CitasEmbarazoScreen(
             TopAppBar(
                 title = { Text("Mis Citas Médicas", fontWeight = FontWeight.Bold, color = EmbRosaOscuro) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.exploracionTactil(
+                            elemento = if (idiomaActual == IdiomaVoz.INGLES) "Back button" else "Botón Regresar",
+                            ubicacion = if (idiomaActual == IdiomaVoz.INGLES) "top left bar" else "la barra superior izquierda",
+                            modulo = if (idiomaActual == IdiomaVoz.INGLES) "Appointments" else "Citas",
+                            esBlind = esBlind,
+                            a11yVm = a11yVm,
+                            idioma = idiomaActual
+                        )
+                    ) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Volver", tint = EmbRosaOscuro)
                     }
                 },

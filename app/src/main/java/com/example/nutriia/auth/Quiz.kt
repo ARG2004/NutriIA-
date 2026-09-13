@@ -445,13 +445,17 @@ fun OnboardingQuizScreen(
             .fillMaxSize()
             .anuncioPantalla("Cuestionario de Configuración y Registro Inicial")
             .background(NutriaBgCrema)
-            .tapParaSilenciarBlind(selectedA11yMode == AccessibilityMode.BLIND, accessibilityVm, ttsManager)
+            .tapParaSilenciarBlind(selectedA11yMode == AccessibilityMode.BLIND, accessibilityVm, ttsManager),
+        contentAlignment = Alignment.TopCenter
     ) {
         Column(
-            modifier            = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier            = Modifier
+                .widthIn(max = 600.dp)
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(12.dp))
 
             // ── Fila back / cancel ─────────────────────────────────────────────
             Row(

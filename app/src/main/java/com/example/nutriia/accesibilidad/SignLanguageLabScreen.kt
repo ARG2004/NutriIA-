@@ -79,13 +79,19 @@ fun SignLanguageLabScreen(
         containerColor = LabBg,
         modifier = modifier
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(paddingValues),
+            contentAlignment = Alignment.TopCenter
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
             // Banner Informativo
             item {
                 Surface(
@@ -314,4 +320,5 @@ fun SignLanguageLabScreen(
             }
         }
     }
+}
 }

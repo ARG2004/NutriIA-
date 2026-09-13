@@ -196,7 +196,13 @@ fun LactanciaScreen(
                     visible = screenVisible,
                     enter   = slideInVertically(tween(420, easing = EaseOutCubic)) { -it / 2 } + fadeIn(tween(420))
                 ) {
-                    LactanciaTopBar(childName, onNavigateBack) {
+                    LactanciaTopBar(
+                        childName = childName,
+                        esBlind   = esBlind,
+                        a11yVm    = a11yVm,
+                        idioma    = idiomaActual,
+                        onBack    = onNavigateBack
+                    ) {
                         if (esBlind) a11yVm.hablar(loc("Mostrando consejos y recomendaciones de la OMS.", "Showing WHO tips and recommendations."))
                         showTipsSheet = true
                     }
@@ -350,21 +356,54 @@ fun LactanciaScreen(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun LactanciaTopBar(childName: String, onBack: () -> Unit, onTips: () -> Unit) {
+private fun LactanciaTopBar(
+    childName: String,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onBack: () -> Unit,
+    onTips: () -> Unit
+) {
     Box(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(LactPinkLight, LactBg)))) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 48.dp, bottom = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.clip(CircleShape).background(LactCardWhite)) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(LactCardWhite)
+                    .exploracionTactil(
+                        elemento = if (idioma == IdiomaVoz.INGLES) "Back button" else "Botón regresar",
+                        ubicacion = if (idioma == IdiomaVoz.INGLES) "top left corner" else "la esquina superior izquierda",
+                        modulo = "Lactancia",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idioma
+                    )
+            ) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = LactPink)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Lactancia", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = LactPinkDark)
                 Text(childName, fontSize = 13.sp, color = Color.Gray)
             }
-            IconButton(onClick = onTips, modifier = Modifier.clip(CircleShape).background(LactCardWhite)) {
+            IconButton(
+                onClick = onTips,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(LactCardWhite)
+                    .exploracionTactil(
+                        elemento = if (idioma == IdiomaVoz.INGLES) "WHO Tips and Recommendations" else "Consejos y Recomendaciones OMS",
+                        ubicacion = if (idioma == IdiomaVoz.INGLES) "top right corner" else "la esquina superior derecha",
+                        modulo = "Lactancia",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idioma
+                    )
+            ) {
                 Icon(Icons.Rounded.Lightbulb, null, tint = LactOrange)
             }
         }
@@ -854,12 +893,26 @@ fun AddFeedingDialog(
                             BreastSide.BOTH    -> Icons.Rounded.SwapHoriz
                             BreastSide.FORMULA -> Icons.Rounded.LocalDrink
                         }
+                        val sideUbicacion = when(side) {
+                            BreastSide.LEFT -> if (idioma == IdiomaVoz.INGLES) "left option" else "opción izquierda"
+                            BreastSide.RIGHT -> if (idioma == IdiomaVoz.INGLES) "right option" else "opción derecha"
+                            BreastSide.BOTH -> if (idioma == IdiomaVoz.INGLES) "center option" else "opción central"
+                            BreastSide.FORMULA -> if (idioma == IdiomaVoz.INGLES) "far right option" else "opción extremo derecho"
+                        }
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(bgColor)
                                 .border(1.5.dp, if (selected) LactPinkDark else LactPink.copy(0.3f), RoundedCornerShape(12.dp))
+                                .exploracionTactil(
+                                    elemento = "Opción ${side.label}, ${if (selected) "Seleccionada" else "No seleccionada. Toca dos veces para seleccionar"}",
+                                    ubicacion = sideUbicacion,
+                                    modulo = "Lactancia",
+                                    esBlind = esBlind,
+                                    a11yVm = null,
+                                    idioma = idioma
+                                )
                                 .clickable { 
                                     selectedSide = side
                                     if (campoActivo > 1) campoActivo = 1

@@ -31,6 +31,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.exploracionTactil
+import com.example.nutriia.alerta.AlertaPreventivaEngine
+import com.example.nutriia.alerta.NivelSeveridadAlerta
 import com.example.nutriia.teleconsulta.TeleconsultaButtons
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 import com.example.nutriia.teleconsulta.TipoLlamada
@@ -400,13 +402,54 @@ private fun PatientCard(
         } catch (_: Exception) { null }
     }
 
+    val diagnostico = remember(patient.birthDate, patient.weightKg, patient.heightCm) {
+        val meses = try {
+            val (anio, mes, dia) = if (patient.birthDate.contains("/")) {
+                val p = patient.birthDate.split("/").map { it.toInt() }
+                Triple(p[2], p[1], p[0])
+            } else {
+                val p = patient.birthDate.split("-").map { it.toInt() }
+                Triple(p[0], p[1], p[2])
+            }
+            val calNac = java.util.Calendar.getInstance().apply { set(anio, mes - 1, dia) }
+            val calHoy = java.util.Calendar.getInstance()
+            val diffYears = calHoy.get(java.util.Calendar.YEAR) - calNac.get(java.util.Calendar.YEAR)
+            val diffMonths = calHoy.get(java.util.Calendar.MONTH) - calNac.get(java.util.Calendar.MONTH)
+            (diffYears * 12 + diffMonths).coerceAtLeast(0)
+        } catch (_: Exception) { 0 }
+
+        AlertaPreventivaEngine.evaluarPaciente(
+            meses = meses,
+            pesoActualKg = patient.weightKg.toDoubleOrNull() ?: 0.0,
+            tallaActualCm = patient.heightCm.toDoubleOrNull() ?: 0.0,
+            historialCrecimiento = emptyList(),
+            alimentos = emptyList()
+        )
+    }
+
+    val badgeColor = when (diagnostico.estadoGeneral) {
+        NivelSeveridadAlerta.ESTABLE -> Color(0xFF2E7D32)
+        NivelSeveridadAlerta.OBSERVACION -> Color(0xFFF57F17)
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Color(0xFFC62828)
+    }
+    val badgeBg = when (diagnostico.estadoGeneral) {
+        NivelSeveridadAlerta.ESTABLE -> Color(0xFFE8F5E9)
+        NivelSeveridadAlerta.OBSERVACION -> Color(0xFFFFF8E1)
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Color(0xFFFFEBEE)
+    }
+    val badgeIcon = when (diagnostico.estadoGeneral) {
+        NivelSeveridadAlerta.ESTABLE -> Icons.Rounded.Verified
+        NivelSeveridadAlerta.OBSERVACION -> Icons.Rounded.Info
+        NivelSeveridadAlerta.ATENCION_REQUERIDA -> Icons.Rounded.WarningAmber
+    }
+
     Card(
         modifier  = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 8.dp)
             .clickable { onClick(patient) }
             .exploracionTactil(
-                elemento = "Paciente: ${patient.childNombre}, peso ${patient.weightKg} kilos, talla ${patient.heightCm} centímetros",
+                elemento = "Paciente: ${patient.childNombre}, telemetría: ${diagnostico.estadoGeneral.label}, peso ${patient.weightKg} kilos, talla ${patient.heightCm} centímetros",
                 ubicacion = "la lista de pacientes en el centro de la pantalla",
                 modulo = "Dashboard de Nutriólogo",
                 esBlind = esBlind,
@@ -428,8 +471,29 @@ private fun PatientCard(
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(patient.childNombre, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = NutriDarkGreen)
-                    etapa?.let {
-                        Text(it.nombre, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        etapa?.let {
+                            Text(it.nombre, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = badgeBg
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(badgeIcon, contentDescription = null, tint = badgeColor, modifier = Modifier.size(10.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    text = diagnostico.estadoGeneral.label,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = badgeColor
+                                )
+                            }
+                        }
                     }
                 }
                 Icon(Icons.Rounded.ChevronRight, null, tint = Color.LightGray)

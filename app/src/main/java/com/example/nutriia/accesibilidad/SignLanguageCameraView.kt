@@ -360,14 +360,28 @@ fun SignLanguageCameraView(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF1E1E2F))
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
     ) {
+        val width = maxWidth
+        val isSmallScreen = width < 360.dp
+        val cameraHeight = when {
+            width < 360.dp -> 220.dp
+            width >= 600.dp -> 360.dp
+            else -> 300.dp
+        }
+        val cardPadding = if (isSmallScreen) 8.dp else 12.dp
+
+        Column(
+            modifier = Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFF1E1E2F))
+                .padding(cardPadding),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         // Selector de Modo: 🔤 Abecedario vs 💬 Señas Comunicativas
         Row(
             modifier = Modifier
@@ -456,11 +470,11 @@ fun SignLanguageCameraView(
 
         Spacer(Modifier.height(10.dp))
 
-        // Contenedor de la Cámara con Visor Ergonómico 340dp y Overlay del Esqueleto
+        // Contenedor de la Cámara con Visor Ergonómico Adaptativo y Overlay del Esqueleto
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(340.dp)
+                .height(cameraHeight)
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color(0xFF10101C)),
             contentAlignment = Alignment.Center
@@ -812,10 +826,11 @@ fun SignLanguageCameraView(
             ) {
                 Icon(Icons.Rounded.CheckCircle, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Confirmar y Continuar al Siguiente Campo", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text("Confirmar y Continuar", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
     }
+}
 }
 
 // ─── Helper: Filtro EMA (Exponential Moving Average) para suavizar temblor en landmarks ───

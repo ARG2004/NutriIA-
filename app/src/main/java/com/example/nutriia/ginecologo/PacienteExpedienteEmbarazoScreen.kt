@@ -30,6 +30,7 @@ import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
 import com.example.nutriia.accesibilidad.anuncioPantalla
+import com.example.nutriia.accesibilidad.exploracionTactil
 import com.example.nutriia.embarazo.GananciaPesoCalculator
 import com.example.nutriia.embarazo.SintomasAnalyzer
 import com.example.nutriia.embarazo.NivelSintoma
@@ -85,7 +86,16 @@ fun PacienteExpedienteEmbarazoScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.exploracionTactil(
+                            elemento = "Botón regresar",
+                            ubicacion = "la esquina superior izquierda",
+                            modulo = "Expediente Obstétrico",
+                            esBlind = esBlind,
+                            a11yVm = a11yVm
+                        )
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -304,9 +314,28 @@ fun PacienteExpedienteEmbarazoScreen(
                 ) {
                     tabs.forEachIndexed { idx, label ->
                         val selected = tabSeleccionado == idx
+                        val ubicacion = when(idx) {
+                            0 -> "la barra superior izquierda"
+                            1 -> "la barra superior central"
+                            2 -> "la barra superior derecha"
+                            else -> "la barra superior"
+                        }
+                        val desc = if (selected) {
+                            "Pestaña $label, actualmente seleccionada"
+                        } else {
+                            "Pestaña $label, no seleccionada. Toca dos veces para cambiar"
+                        }
                         Surface(
                             onClick = { tabSeleccionado = idx },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .exploracionTactil(
+                                    elemento = desc,
+                                    ubicacion = ubicacion,
+                                    modulo = "Expediente Obstétrico",
+                                    esBlind = esBlind,
+                                    a11yVm = a11yVm
+                                ),
                             shape = RoundedCornerShape(14.dp),
                             color = if (selected) EmbRosaOscuro else Color.Transparent
                         ) {

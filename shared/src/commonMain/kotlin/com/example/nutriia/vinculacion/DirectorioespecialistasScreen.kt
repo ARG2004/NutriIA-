@@ -110,23 +110,28 @@ fun DirectorioNutriologosScreen(
     Scaffold(
         modifier = Modifier.anuncioPantalla("Directorio de Especialistas y Nutriólogos"),
         containerColor = DBgCrema,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = { DirectorioTopBar(onBack = onBack) }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
+            // Header
+            item { DirectorioTopBar(esBlind, a11yVm, onBack) }
+
             // Buscador
             item {
-                Spacer(Modifier.height(12.dp))
                 BuscadorDirectorio(
                     query = queryTexto,
                     onChange = { queryTexto = it },
-                    onClear = { queryTexto = ""; viewModel.cargarDirectorio() }
+                    onClear = { queryTexto = "" }
                 )
                 Spacer(Modifier.height(12.dp))
-                PacienteChip(childNombre = childNombre)
+            }
+
+            // Chip paciente
+            item {
+                PacienteChip(childNombre)
                 Spacer(Modifier.height(16.dp))
             }
 
@@ -164,6 +169,8 @@ fun DirectorioNutriologosScreen(
                 items(directorio, key = { it.uid }) { nutriologo ->
                     NutriologoDirectorioCard(
                         nutriologo = nutriologo,
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
                         onSolicitar = { viewModel.seleccionarNutriologoDelDirectorio(nutriologo) }
                     )
                 }
@@ -190,14 +197,27 @@ fun DirectorioNutriologosScreen(
 }
 
 @Composable
-private fun DirectorioTopBar(onBack: () -> Unit) {
+private fun DirectorioTopBar(
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    onBack: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 12.dp, end = 20.dp, top = 48.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.exploracionTactil(
+                elemento = "Botón Regresar",
+                ubicacion = "la barra superior izquierda",
+                modulo = "Especialistas",
+                esBlind = esBlind,
+                a11yVm = a11yVm
+            )
+        ) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Volver", tint = DDarkGreen)
         }
         Spacer(Modifier.width(4.dp))
@@ -249,7 +269,12 @@ private fun PacienteChip(childNombre: String) {
 }
 
 @Composable
-private fun NutriologoDirectorioCard(nutriologo: NutriologoPublico, onSolicitar: () -> Unit) {
+private fun NutriologoDirectorioCard(
+    nutriologo: NutriologoPublico,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    onSolicitar: () -> Unit
+) {
     val avatarColor = avatarPool[nutriologo.uid.hashCode().let { if (it < 0) -it else it } % avatarPool.size]
 
     Card(
@@ -294,6 +319,13 @@ private fun NutriologoDirectorioCard(nutriologo: NutriologoPublico, onSolicitar:
                 // Botón "+ Solicitar" con texto, igual que Android
                 Button(
                     onClick = onSolicitar,
+                    modifier = Modifier.exploracionTactil(
+                        elemento = "Botón Solicitar vinculación con ${nutriologo.nombre}",
+                        ubicacion = "la tarjeta del especialista a la derecha",
+                        modulo = "Especialistas",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm
+                    ),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DGreen.copy(0.1f),
                         contentColor = DGreen

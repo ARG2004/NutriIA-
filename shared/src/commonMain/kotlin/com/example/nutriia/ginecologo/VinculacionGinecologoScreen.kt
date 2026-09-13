@@ -27,6 +27,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityMode
 import com.example.nutriia.accesibilidad.AccessibilityViewModel
+import com.example.nutriia.accesibilidad.IdiomaVoz
+import com.example.nutriia.accesibilidad.exploracionTactil
+import com.example.nutriia.accesibilidad.anuncioPantalla
 import com.example.nutriia.teleconsulta.TeleconsultaViewModel
 
 // ─── Colores Embarazo ────────────────────────────────────────────────────────
@@ -50,13 +53,19 @@ fun VinculacionGinecologoScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val a11yMode = LocalAccessibilityMode.current
     val a11yVm: AccessibilityViewModel = viewModel()
-    val esBlind = a11yMode == AccessibilityMode.BLIND
+    val a11yMode     by a11yVm.mode.collectAsState()
+    val idiomaActual by a11yVm.idioma.collectAsState()
+    val esBlind      = a11yMode == AccessibilityMode.BLIND
+
+    fun loc(es: String, en: String) = if (idiomaActual == IdiomaVoz.INGLES) en else es
 
     LaunchedEffect(Unit) {
         if (esBlind) {
-            a11yVm.hablar("Módulo de vinculación con ginecólogo. Aquí puedes ver tu ginecólogo vinculado o buscar uno nuevo en el directorio.")
+            a11yVm.hablar(loc(
+                "Módulo de vinculación con ginecólogo. Aquí puedes ver tu ginecólogo vinculado o buscar uno nuevo en el directorio.",
+                "Gynecologist linking module. Here you can view your linked gynecologist or search for a new one in the directory."
+            ))
         }
         viewModel.initComoMama()
     }
@@ -76,13 +85,24 @@ fun VinculacionGinecologoScreen(
     }
 
     Scaffold(
+        modifier = Modifier.anuncioPantalla("Vinculación con Ginecólogo"),
         containerColor = EmbFondo,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Mi Ginecólogo/a", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.exploracionTactil(
+                            elemento = if (idiomaActual == IdiomaVoz.INGLES) "Back button" else "Botón Regresar",
+                            ubicacion = if (idiomaActual == IdiomaVoz.INGLES) "top left bar" else "la barra superior izquierda",
+                            modulo = if (idiomaActual == IdiomaVoz.INGLES) "Gynecologist" else "Ginecólogo",
+                            esBlind = esBlind,
+                            a11yVm = a11yVm,
+                            idioma = idiomaActual
+                        )
+                    ) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Volver")
                     }
                 },

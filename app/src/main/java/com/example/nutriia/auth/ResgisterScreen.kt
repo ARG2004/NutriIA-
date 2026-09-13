@@ -244,16 +244,18 @@ fun RegisterTypeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(RegBgCrema)
-            .radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND)
+            .radarHapticoBlind(context, a11yMode == AccessibilityMode.BLIND),
+        contentAlignment = Alignment.TopCenter
     ) {
         Column(
             modifier            = Modifier
+                .widthIn(max = 600.dp)
                 .fillMaxSize()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(52.dp))
+            Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth()) {
                 IconButton(
                     onClick  = {
@@ -273,7 +275,7 @@ fun RegisterTypeScreen(
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Volver", tint = RegGreen)
                 }
             }
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(16.dp))
 
             Column(
                 modifier            = Modifier
@@ -283,7 +285,7 @@ fun RegisterTypeScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
+                        .size(64.dp)
                         .clip(CircleShape)
                         .background(RegGreen.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
@@ -292,32 +294,32 @@ fun RegisterTypeScreen(
                         Icons.Rounded.PersonAdd,
                         contentDescription = null,
                         tint     = RegGreen,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     )
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
                     loc("Crear cuenta", "Create account"),
-                    fontSize   = 28.sp,
+                    fontSize   = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color      = RegDarkGreen
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
                     loc("¿Cómo vas a usar NutriIA?", "How will you use NutriIA?"),
-                    fontSize  = 15.sp,
+                    fontSize  = 14.sp,
                     color     = Color.Gray,
                     textAlign = TextAlign.Center
                 )
             }
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(24.dp))
 
             Column(
                 modifier            = Modifier
                     .fillMaxWidth()
                     .alpha(alpha),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 AccountTypeCard(
                     title       = loc("Soy Padre / Madre", "I'm a Parent"),
@@ -462,35 +464,53 @@ private fun AccountTypeCard(
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .background(iconColor.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(30.dp))
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(28.dp))
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = RegDarkGreen)
-                    Spacer(Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        color = RegDarkGreen,
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1
+                    )
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(tagColor.copy(alpha = 0.12f))
                             .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Text(tag, fontSize = 10.sp, color = tagColor, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = tag,
+                            fontSize = 10.sp,
+                            color = tagColor,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(description, fontSize = 13.sp, color = Color.Gray, lineHeight = 18.sp)
+                Text(description, fontSize = 12.sp, color = Color.Gray, lineHeight = 16.sp)
             }
+            Spacer(Modifier.width(8.dp))
             Icon(
                 Icons.AutoMirrored.Rounded.ArrowForward,
                 contentDescription = null,

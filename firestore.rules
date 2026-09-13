@@ -64,7 +64,7 @@ service cloud.firestore {
         match /consultas/{docId} {
           allow create: if esNutriologo() && estaVinculadoConPadre(uid, childId)
             && request.resource.data.autorUid == request.auth.uid
-            && request.resource.data.tipo in ["nota_nutriologo", "receta_nutriologo", "observacion_alimentacion"];
+            && request.resource.data.tipo in ["nota_nutriologo", "receta_nutriologo", "observacion_alimentacion", "alerta_preventiva"];
           allow read: if request.auth != null && (
             esDueno(uid) || 
             (esNutriologo() && estaVinculadoConPadre(uid, childId))

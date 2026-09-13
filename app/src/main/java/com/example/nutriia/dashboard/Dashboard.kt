@@ -456,11 +456,17 @@ fun NutriIADashboardScreen(
         },
         floatingActionButtonPosition = FabPosition.Center
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 840.dp)
+                    .fillMaxSize()
+            ) {
             DashboardTopBar(
                 onLogout        = onLogout,
                 onConfiguracion = onConfiguracion,
@@ -520,6 +526,7 @@ fun NutriIADashboardScreen(
             }
         }
     }
+}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

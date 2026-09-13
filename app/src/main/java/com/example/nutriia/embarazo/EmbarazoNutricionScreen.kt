@@ -40,6 +40,7 @@ import com.example.nutriia.accesibilidad.LocalAccessibilityMode
 import com.example.nutriia.accesibilidad.NutriTTS
 import com.example.nutriia.accesibilidad.VoiceInputManager
 import com.example.nutriia.accesibilidad.anuncioPantalla
+import com.example.nutriia.accesibilidad.exploracionTactil
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.TipoComida
 
@@ -188,7 +189,7 @@ fun EmbarazoNutricionScreen(
                 .padding(padding),
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
-            item { NutricionEmbarazoTopBar(resumen.trimestreLabel, perfil.semanas, onBack) }
+            item { NutricionEmbarazoTopBar(resumen.trimestreLabel, perfil.semanas, esBlind, a11yVm, idiomaActual, onBack) }
             item { Spacer(Modifier.height(14.dp)) }
 
             if (resumen.alertasCondicion.isNotEmpty()) {
@@ -204,7 +205,7 @@ fun EmbarazoNutricionScreen(
             }
             item { Spacer(Modifier.height(16.dp)) }
 
-            item { TabsNutricionEmbarazo(tab) { tab = it } }
+            item { TabsNutricionEmbarazo(tab, esBlind, a11yVm, idiomaActual) { tab = it } }
             item { Spacer(Modifier.height(16.dp)) }
 
             when (tab) {
@@ -352,7 +353,14 @@ fun EmbarazoNutricionScreen(
 }
 
 @Composable
-private fun NutricionEmbarazoTopBar(trimestreLabel: String, semanas: Int, onBack: () -> Unit) {
+private fun NutricionEmbarazoTopBar(
+    trimestreLabel: String,
+    semanas: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onBack: () -> Unit
+) {
     val gradient = Brush.verticalGradient(listOf(Emb.RosaClaro, Emb.Fondo))
     Box(
         Modifier
@@ -367,6 +375,14 @@ private fun NutricionEmbarazoTopBar(trimestreLabel: String, semanas: Int, onBack
                 .clip(CircleShape)
                 .background(Emb.White.copy(0.8f))
                 .align(Alignment.CenterStart)
+                .exploracionTactil(
+                    elemento = if (idioma == IdiomaVoz.INGLES) "Back button" else "Botón Regresar",
+                    ubicacion = if (idioma == IdiomaVoz.INGLES) "top left bar" else "la barra superior izquierda",
+                    modulo = if (idioma == IdiomaVoz.INGLES) "Nutrition" else "Nutrición",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    idioma = idioma
+                )
         ) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = Emb.RosaOscuro)
         }
@@ -416,7 +432,13 @@ private fun AlertaBannerEmbarazo(
 }
 
 @Composable
-private fun TabsNutricionEmbarazo(selected: Int, onSelect: (Int) -> Unit) {
+private fun TabsNutricionEmbarazo(
+    selected: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onSelect: (Int) -> Unit
+) {
     val tabs = listOf(
         Triple("Resumen",      Icons.Rounded.Insights,              0),
         Triple("Disponibles",  Icons.Rounded.Kitchen,               1),
@@ -434,6 +456,14 @@ private fun TabsNutricionEmbarazo(selected: Int, onSelect: (Int) -> Unit) {
                     .clip(RoundedCornerShape(12.dp))
                     .background(bg)
                     .border(if (sel) 0.dp else 1.dp, Emb.RosaClaro, RoundedCornerShape(12.dp))
+                    .exploracionTactil(
+                        elemento = if (idioma == IdiomaVoz.INGLES) "Tab $label, ${if (sel) "selected" else "not selected"}" else "Pestaña $label, ${if (sel) "seleccionada" else "no seleccionada"}",
+                        ubicacion = if (idioma == IdiomaVoz.INGLES) "navigation tabs below header" else "barra de navegación de pestañas debajo del encabezado",
+                        modulo = if (idioma == IdiomaVoz.INGLES) "Nutrition" else "Nutrición",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idioma
+                    )
                     .clickable { onSelect(i) }
                     .padding(vertical = 8.dp),
                 Alignment.Center

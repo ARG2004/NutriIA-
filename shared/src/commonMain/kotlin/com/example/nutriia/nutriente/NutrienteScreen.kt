@@ -289,7 +289,15 @@ fun NutrientesScreen(
                     visible = visible,
                     enter   = slideInVertically(tween(420, easing = EaseOutCubic)) { -it / 2 } + fadeIn(tween(420))
                 ) {
-                    NutrientesTopBar(childName, mesesEdad, onBack, registros.size)
+                    NutrientesTopBar(
+                        childName = childName,
+                        meses = mesesEdad,
+                        onBack = onBack,
+                        totalRegistros = registros.size,
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idiomaActual
+                    )
                 }
             }
             item { Spacer(Modifier.height(14.dp)) }
@@ -306,7 +314,15 @@ fun NutrientesScreen(
             }
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(320, 60))) {
-                    FechaSelectorCard(fecha, loc("Día de hoy", "Today"), loc("Día de ayer", "Yesterday"), loc("Día de mañana", "Tomorrow")) { 
+                    FechaSelectorCard(
+                        fecha = fecha,
+                        labelHoy = loc("Día de hoy", "Today"),
+                        labelAyer = loc("Día de ayer", "Yesterday"),
+                        labelManana = loc("Día de mañana", "Tomorrow"),
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idiomaActual
+                    ) { 
                         vm.cambiarFecha(it)
                     }
                 }
@@ -373,7 +389,15 @@ fun NutrientesScreen(
 }
 
 @Composable
-private fun NutrientesTopBar(childName: String, meses: Int, onBack: () -> Unit, totalRegistros: Int = 0) {
+private fun NutrientesTopBar(
+    childName: String,
+    meses: Int,
+    onBack: () -> Unit,
+    totalRegistros: Int = 0,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX
+) {
     val etapa = when {
         meses < 6  -> "Lactancia"
         meses < 12 -> "Primeros sólidos"
@@ -396,6 +420,14 @@ private fun NutrientesTopBar(childName: String, meses: Int, onBack: () -> Unit, 
         IconButton(
             onClick  = onBack,
             modifier = Modifier.size(40.dp).clip(CircleShape).background(Sol.White.copy(.8f)).align(Alignment.CenterStart)
+                .exploracionTactil(
+                    elemento = if (idioma == IdiomaVoz.INGLES) "Back button" else "Botón regresar",
+                    ubicacion = if (idioma == IdiomaVoz.INGLES) "top left corner" else "la esquina superior izquierda",
+                    modulo = "Nutrientes",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    idioma = idioma
+                )
         ) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = Sol.Purple)
         }
@@ -430,6 +462,9 @@ private fun FechaSelectorCard(
     labelHoy: String = "Hoy",
     labelAyer: String = "Ayer",
     labelManana: String = "Mañana",
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
     onCambiar: (String) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -450,17 +485,36 @@ private fun FechaSelectorCard(
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(labelAyer to ayer, labelHoy to hoy, labelManana to manana).forEach { (label, valor) ->
+                listOf(labelAyer to ayer, labelHoy to hoy, labelManana to manana).forEachIndexed { i, (label, valor) ->
                     val sel = fecha == valor
                     val bg  by animateColorAsState(if (sel) Sol.Purple else Sol.PurpleLight, tween(200), label = "fd_$label")
                     val fg  by animateColorAsState(if (sel) Sol.White  else Sol.PurpleDark,  tween(200), label = "ft_$label")
+                    val ubicacion = when(i) {
+                        0 -> if (idioma == IdiomaVoz.INGLES) "left date selector" else "selector de fecha izquierda"
+                        1 -> if (idioma == IdiomaVoz.INGLES) "center date selector" else "selector de fecha central"
+                        2 -> if (idioma == IdiomaVoz.INGLES) "right date selector" else "selector de fecha derecha"
+                        else -> "selector de fecha"
+                    }
+                    val desc = if (sel) {
+                        if (idioma == IdiomaVoz.INGLES) "$label, currently selected" else "$label, actualmente seleccionado"
+                    } else {
+                        if (idioma == IdiomaVoz.INGLES) "$label. Double tap to select" else "$label. Toca dos veces para seleccionar"
+                    }
                     Box(
                         Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(bg)
+                            .exploracionTactil(
+                                elemento = desc,
+                                ubicacion = ubicacion,
+                                modulo = "Nutrientes",
+                                esBlind = esBlind,
+                                a11yVm = a11yVm,
+                                idioma = idioma
+                            )
                             .clickable { 
                                 vibrateTap(haptic)
                                 onCambiar(valor) 
                             }
-                            .semantics { contentDescription = "$label. ${if (sel) "Seleccionado" else "Toca para cambiar"}" }
+                            .semantics { contentDescription = desc }
                             .padding(vertical = 12.dp),
                         Alignment.Center
                     ) { Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = fg) }

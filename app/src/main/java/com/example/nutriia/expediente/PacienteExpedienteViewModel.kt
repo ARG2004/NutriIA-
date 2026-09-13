@@ -9,6 +9,9 @@ import com.example.nutriia.sueldo.DietaEngine
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.sueldo.TipoComida
+import com.example.nutriia.alerta.AlertaPreventivaEngine
+import com.example.nutriia.alerta.AlertaPreventivaNutriologo
+import com.example.nutriia.alerta.DiagnosticoPreventivoPaciente
 import com.example.nutriia.crecimiento.MedicionCrecimiento
 import com.example.nutriia.crecimiento.Sexo
 import com.example.nutriia.crecimiento.interpretarIMC
@@ -80,6 +83,7 @@ data class ExpedienteUiState(
     val exito:                 String?                   = null,
     val edadMeses:             Int                       = 0,
     val ultimaMedicionCrec:    String                    = "",
+    val sexo:                  Sexo?                     = null,
 
     // ── NUEVO: clasificación socioeconómica y región ───────────────────────
     val nivelIngreso:          NivelIngreso              = NivelIngreso.BASICO,
@@ -94,6 +98,10 @@ data class ExpedienteUiState(
     val tipoEntradaAlim:       String                    = "receta_nutriologo",
     val guardandoEntradaAlim:  Boolean                   = false,
     val historialCrecimiento:  List<MedicionCrecimiento> = emptyList(),
+
+    // ── Telemetría & Alertas Preventivas (Rol Nutriólogo / Pediatra) ──────
+    val diagnosticoPreventivo: DiagnosticoPreventivoPaciente? = null,
+    val guardandoAlertaPreventiva: Boolean = false
 )
 
 // Modelo ligero para mostrar el plan en el expediente
@@ -156,6 +164,7 @@ class PacienteExpedienteViewModel : ViewModel() {
             var hasAllergiesVal = false
             var allergiesDetailVal = ""
             var conditionsDetailVal = ""
+            var sexoVal: Sexo? = null
 
             try {
                 val hijoDoc = db.collection("usuarios")
@@ -179,6 +188,12 @@ class PacienteExpedienteViewModel : ViewModel() {
                     hasAllergiesVal = hijoDoc.getBoolean("hasAllergies") ?: false
                     allergiesDetailVal = hijoDoc.getString("allergiesDetail") ?: ""
                     conditionsDetailVal = hijoDoc.getString("conditionsDetail") ?: ""
+                    val sexoStr = hijoDoc.getString("sexo") ?: ""
+                    sexoVal = when (sexoStr.uppercase()) {
+                        "NINO", "NIÑO", "BOY", "VARON", "VARÓN", "MASCULINO", "M" -> Sexo.NINO
+                        "NINA", "NIÑA", "GIRL", "FEMENINO", "MUJER", "F" -> Sexo.NINA
+                        else -> runCatching { Sexo.valueOf(sexoStr) }.getOrNull()
+                    }
                 }
             } catch (e: Exception) {
                 Log.w("Expediente", "Fallo al obtener perfil base del hijo: ${e.message}")
@@ -265,12 +280,14 @@ class PacienteExpedienteViewModel : ViewModel() {
                 weightKg             = basePeso,
                 heightCm             = baseTalla,
                 hasAllergies         = hasAllergiesVal,
+                sexo                 = sexoVal,
                 edadMeses            = meses,
                 nivelIngreso         = nivelIngreso,
                 region               = region,
                 planSemanal          = planResumen,
                 recetasSugeridas     = recetasSug
             )
+            recalcularDiagnosticoPreventivo()
         }
     }
 
@@ -305,6 +322,7 @@ class PacienteExpedienteViewModel : ViewModel() {
                 }?.sortedByDescending { it.fechaMs } ?: emptyList()
 
                 _ui.value = _ui.value.copy(alimentosIntrod = solidosMapeados)
+                recalcularDiagnosticoPreventivo()
 
                 sharedViewModel?.actualizarDesdeExpediente(
                     solidosMapeados.filter { it.estado == "Aceptado" }.map { it.nombre }
@@ -655,7 +673,68 @@ class PacienteExpedienteViewModel : ViewModel() {
                     heightCm = ultTalla,
                     ultimaMedicionCrec = ultMedicionStr
                 )
+                recalcularDiagnosticoPreventivo()
             }
+    }
+
+    private fun recalcularDiagnosticoPreventivo() {
+        val s = _ui.value
+        val diag = AlertaPreventivaEngine.evaluarPaciente(
+            meses = s.edadMeses,
+            sexo = s.sexo,
+            pesoActualKg = s.weightKg,
+            tallaActualCm = s.heightCm,
+            historialCrecimiento = s.historialCrecimiento,
+            alimentos = s.alimentosIntrod,
+            nutrientes = emptyList()
+        )
+        _ui.value = _ui.value.copy(diagnosticoPreventivo = diag)
+    }
+
+    fun emitirAlertaPreventiva(alerta: AlertaPreventivaNutriologo) {
+        val currentUser = auth.currentUser ?: return
+        viewModelScope.launch {
+            _ui.value = _ui.value.copy(guardandoAlertaPreventiva = true)
+            try {
+                val docId = db.collection("usuarios").document(_ownerUid)
+                    .collection("hijos").document(_childId)
+                    .collection("consultas").document().id
+
+                val data = mapOf(
+                    "id"                  to docId,
+                    "titulo"              to alerta.titulo,
+                    "texto"               to alerta.recomendacionPadres,
+                    "contenido"           to alerta.recomendacionPadres,
+                    "hallazgoClinico"     to alerta.hallazgoClinico,
+                    "glosaLSM"            to alerta.glosaLSM,
+                    "categoria"           to alerta.categoria.name,
+                    "severidad"           to alerta.severidad.name,
+                    "metricaClave"        to alerta.metricaClave,
+                    "autorUid"            to currentUser.uid,
+                    "autorNombre"         to (currentUser.displayName ?: "Nutriólogo"),
+                    "tipo"                to "alerta_preventiva",
+                    "creadoEn"            to com.google.firebase.Timestamp.now()
+                )
+
+                val task = db.collection("usuarios").document(_ownerUid)
+                    .collection("hijos").document(_childId)
+                    .collection("consultas").document(docId).set(data)
+
+                if (OfflineManager.hayConexion()) {
+                    task.await()
+                }
+
+                _ui.value = _ui.value.copy(
+                    guardandoAlertaPreventiva = false,
+                    exito = "Recomendación preventiva emitida al expediente familiar"
+                )
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(
+                    guardandoAlertaPreventiva = false,
+                    error = "No se pudo emitir la recomendación preventiva"
+                )
+            }
+        }
     }
 
     /**

@@ -333,12 +333,25 @@ fun AlertasScreen(
                 visible = visible,
                 enter   = slideInVertically(tween(400, easing = EaseOutCubic)) { -it / 2 } + fadeIn(tween(400))
             ) {
-                AlertasTopBar(childName ?: "Mi Embarazo", alertas.size, onNavigateBack)
+                AlertasTopBar(
+                    childName = childName ?: "Mi Embarazo",
+                    totalAlertas = alertas.size,
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    idioma = idiomaActual,
+                    onBack = onNavigateBack
+                )
             }
 
             // Tabs
             AnimatedVisibility(visible = visible, enter = fadeIn(tween(360, 80))) {
-                AlertasTabs(tabSeleccionada, alertas) { 
+                AlertasTabs(
+                    seleccionada = tabSeleccionada,
+                    alertas = alertas,
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    idioma = idiomaActual
+                ) { 
                     tabSeleccionada = it 
                     if (esBlind) {
                         val label = it?.label ?: loc("Todas", "All")
@@ -546,7 +559,14 @@ private fun MascotBanner(
 // TOP BAR — mismo patrón que SolidosScreen / NutrientesScreen
 // ═══════════════════════════════════════════════════════════════════════════════
 @Composable
-private fun AlertasTopBar(childName: String, totalAlertas: Int, onBack: () -> Unit) {
+private fun AlertasTopBar(
+    childName: String,
+    totalAlertas: Int,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onBack: () -> Unit
+) {
     val gradient = Brush.verticalGradient(listOf(Sol.IndigoLight, Sol.Bg))
     Box(
         Modifier.fillMaxWidth().background(gradient)
@@ -555,6 +575,14 @@ private fun AlertasTopBar(childName: String, totalAlertas: Int, onBack: () -> Un
         IconButton(
             onClick  = onBack,
             modifier = Modifier.size(40.dp).clip(CircleShape).background(Sol.White.copy(.8f)).align(Alignment.CenterStart)
+                .exploracionTactil(
+                    elemento = if (idioma == IdiomaVoz.INGLES) "Back button" else "Botón regresar",
+                    ubicacion = if (idioma == IdiomaVoz.INGLES) "top left corner" else "la esquina superior izquierda",
+                    modulo = "Alertas",
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    idioma = idioma
+                )
         ) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, null, tint = Sol.Indigo)
         }
@@ -593,6 +621,9 @@ private fun AlertasTopBar(childName: String, totalAlertas: Int, onBack: () -> Un
 private fun AlertasTabs(
     seleccionada: TipoAlerta?,
     alertas:      List<Alerta>,
+    esBlind:      Boolean = false,
+    a11yVm:       AccessibilityViewModel? = null,
+    idioma:       IdiomaVoz = IdiomaVoz.ESPANOL_MX,
     onSelect:     (TipoAlerta?) -> Unit
 ) {
     val tabs: List<TipoAlerta?> = listOf(null) + TipoAlerta.entries
@@ -614,12 +645,31 @@ private fun AlertasTabs(
             },
             divider = {}
         ) {
-            tabs.forEach { tipo ->
+            tabs.forEachIndexed { index, tipo ->
                 val isSelected = seleccionada == tipo
                 val count      = if (tipo == null) alertas.size else alertas.count { it.tipo == tipo }
                 val color      = tipo?.color ?: Sol.Indigo
+                val label      = tipo?.label ?: if (idioma == IdiomaVoz.INGLES) "All" else "Todas"
+                val desc = if (isSelected) {
+                    if (idioma == IdiomaVoz.INGLES) "Tab $label, currently selected, $count alerts" else "Pestaña $label, actualmente seleccionada, $count alertas"
+                } else {
+                    if (idioma == IdiomaVoz.INGLES) "Tab $label, $count alerts. Double tap to select" else "Pestaña $label, $count alertas. Toca dos veces para seleccionar"
+                }
 
-                Tab(selected = isSelected, onClick = { onSelect(tipo) }, modifier = Modifier.padding(horizontal = 4.dp)) {
+                Tab(
+                    selected = isSelected,
+                    onClick = { onSelect(tipo) },
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .exploracionTactil(
+                            elemento = desc,
+                            ubicacion = "la barra superior de filtros",
+                            modulo = "Alertas",
+                            esBlind = esBlind,
+                            a11yVm = a11yVm,
+                            idioma = idioma
+                        )
+                ) {
                     Row(
                         modifier              = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
                         verticalAlignment     = Alignment.CenterVertically,

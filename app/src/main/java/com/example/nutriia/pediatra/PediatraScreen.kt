@@ -349,7 +349,7 @@ fun PediatraScreen(
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
 
-            item { PediatraHeader(childNombre = childNombre, onBack = onBack) }
+            item { PediatraHeader(childNombre = childNombre, esBlind = esBlind, a11yVm = a11yVm, idioma = idiomaActual, onBack = onBack) }
 
             // ── Especialistas activos: mostramos info + llamar directamente ────
             if (activas.isNotEmpty()) {
@@ -404,6 +404,9 @@ fun PediatraScreen(
             item {
                 SelectorModoBusqueda(
                     modoActual = modoBusqueda,
+                    esBlind = esBlind,
+                    a11yVm = a11yVm,
+                    idioma = idiomaActual,
                     onSeleccionar = { modoBusqueda = it }
                 )
                 Spacer(Modifier.height(16.dp))
@@ -536,14 +539,30 @@ fun PediatraScreen(
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PediatraHeader(childNombre: String, onBack: () -> Unit) {
+private fun PediatraHeader(
+    childNombre: String,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onBack: () -> Unit
+) {
     Row(
-        modifier = Modifier
+        modifier          = Modifier
             .fillMaxWidth()
             .padding(start = 8.dp, end = 20.dp, top = 48.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.exploracionTactil(
+                elemento = if (idioma == IdiomaVoz.INGLES) "Back button" else "Botón Regresar",
+                ubicacion = if (idioma == IdiomaVoz.INGLES) "top left bar" else "la barra superior izquierda",
+                modulo = if (idioma == IdiomaVoz.INGLES) "Pediatrician" else "Pediatra",
+                esBlind = esBlind,
+                a11yVm = a11yVm,
+                idioma = idioma
+            )
+        ) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Volver", tint = PDarkGreen)
         }
         Spacer(Modifier.width(4.dp))
@@ -579,7 +598,13 @@ private fun SeccionTitulo(
 // ─── Selector de modo ─────────────────────────────────────────────────────────
 
 @Composable
-private fun SelectorModoBusqueda(modoActual: ModoBusqueda, onSeleccionar: (ModoBusqueda) -> Unit) {
+private fun SelectorModoBusqueda(
+    modoActual: ModoBusqueda,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null,
+    idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
+    onSeleccionar: (ModoBusqueda) -> Unit
+) {
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val modos = listOf(
@@ -600,7 +625,17 @@ private fun SelectorModoBusqueda(modoActual: ModoBusqueda, onSeleccionar: (ModoB
                     triggerFeedbackAccesible(haptic, view)
                     onSeleccionar(modo)
                 },
-                modifier        = Modifier.weight(1f).semantics { contentDescription = posDesc },
+                modifier        = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = posDesc }
+                    .exploracionTactil(
+                        elemento = if (idioma == IdiomaVoz.INGLES) "Option $label, ${if (selected) "selected" else "not selected"}" else "Opción $label, ${if (selected) "seleccionada" else "no seleccionada"}",
+                        ubicacion = if (idioma == IdiomaVoz.INGLES) "mode selector row" else "fila selectora de modo de búsqueda",
+                        modulo = if (idioma == IdiomaVoz.INGLES) "Pediatrician" else "Pediatra",
+                        esBlind = esBlind,
+                        a11yVm = a11yVm,
+                        idioma = idioma
+                    ),
                 shape           = RoundedCornerShape(16.dp),
                 color           = if (selected) PGreen else PCardWhite,
                 shadowElevation = if (selected) 4.dp else 1.dp
