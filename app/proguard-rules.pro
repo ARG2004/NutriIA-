@@ -85,7 +85,27 @@
 -keepclassmembers class com.example.nutriia.expediente.** { *; }
 -keep class com.example.nutriia.chatbot.** { *; }
 -keepclassmembers class com.example.nutriia.chatbot.** { *; }
+-keep class com.example.nutriia.vinculacion.** { *; }
+-keepclassmembers class com.example.nutriia.vinculacion.** { *; }
+-keep class com.example.nutriia.payment.** { *; }
+-keepclassmembers class com.example.nutriia.payment.** { *; }
+-keep class com.example.nutriia.teleconsulta.** { *; }
+-keepclassmembers class com.example.nutriia.teleconsulta.** { *; }
 -keep class com.example.nutriia.ui.theme.** { *; }
 -keepclassmembers class com.example.nutriia.ui.theme.** { *; }
 -keep class com.example.nutriia.accesibilidad.** { *; }
 -keepclassmembers class com.example.nutriia.accesibilidad.** { *; }
+
+# KotlinX Serialization rules para builds firmados / minificados (R8)
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-keepclassmembers class * {
+    @kotlinx.serialization.Serializable <fields>;
+    @kotlinx.serialization.Serializable <methods>;
+}
+-keep class * implements kotlinx.serialization.KSerializer { *; }
+-keepclassmembers class * {
+    public static final **$Companion Companion;
+}
+-keepclassmembers class * {
+    public static final kotlinx.serialization.KSerializer serializer(...);
+}

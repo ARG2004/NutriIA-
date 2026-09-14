@@ -58,7 +58,11 @@ data class Alerta(
     val diasSemana:  List<DiasSemana> = DiasSemana.entries.toList(),
     val fechaUnica:  String?          = null,                 // "DD/MM/YYYY"
     val activa:      Boolean          = true,
-    val creadaEn:    Long             = System.currentTimeMillis()
+    val creadaEn:    Long             = System.currentTimeMillis(),
+    val autorUid:    String           = "",
+    val autorNombre: String           = "",
+    val esCitaDoctor: Boolean         = false,
+    val consultaId:  String           = ""
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id"          to id,
@@ -72,8 +76,13 @@ data class Alerta(
         "fechaUnica"  to fechaUnica,
         "activa"      to activa,
         "creadaEn"    to creadaEn,
+        "creadoEn"    to creadaEn,
         "fechaCreacion" to com.example.nutriia.utils.FechaUtils.formatearFecha(java.util.Date(creadaEn)),
-        "horaCreacion"  to com.example.nutriia.utils.FechaUtils.formatearHora(java.util.Date(creadaEn))
+        "horaCreacion"  to com.example.nutriia.utils.FechaUtils.formatearHora(java.util.Date(creadaEn)),
+        "autorUid"    to autorUid,
+        "autorNombre" to autorNombre,
+        "esCitaDoctor" to esCitaDoctor,
+        "consultaId"  to consultaId
     )
 
     companion object {
@@ -81,17 +90,23 @@ data class Alerta(
             @Suppress("UNCHECKED_CAST")
             val diasRaw = map["diasSemana"] as? List<String> ?: emptyList()
             return Alerta(
-                id          = map["id"]          as? String ?: UUID.randomUUID().toString(),
-                childId     = map["childId"]     as? String ?: "",
-                childName   = map["childName"]   as? String ?: "",
-                tipo        = TipoAlerta.entries.find { it.name == map["tipo"] } ?: TipoAlerta.TOMA_COMIDA,
-                titulo      = map["titulo"]      as? String ?: "",
-                descripcion = map["descripcion"] as? String ?: "",
-                hora        = map["hora"]        as? String ?: "08:00",
-                diasSemana  = diasRaw.mapNotNull { n -> DiasSemana.entries.find { it.name == n } },
-                fechaUnica  = map["fechaUnica"]  as? String,
-                activa      = map["activa"]      as? Boolean ?: true,
-                creadaEn    = map["creadaEn"]    as? Long ?: System.currentTimeMillis()
+                id           = map["id"]           as? String ?: UUID.randomUUID().toString(),
+                childId      = map["childId"]      as? String ?: "",
+                childName    = map["childName"]    as? String ?: "",
+                tipo         = TipoAlerta.entries.find { it.name == map["tipo"] } ?: TipoAlerta.TOMA_COMIDA,
+                titulo       = map["titulo"]       as? String ?: "",
+                descripcion  = map["descripcion"]  as? String ?: "",
+                hora         = map["hora"]         as? String ?: "08:00",
+                diasSemana   = diasRaw.mapNotNull { n -> DiasSemana.entries.find { it.name == n } },
+                fechaUnica   = map["fechaUnica"]   as? String,
+                activa       = map["activa"]       as? Boolean ?: true,
+                creadaEn     = (map["creadaEn"] as? Number)?.toLong()
+                    ?: (map["creadoEn"] as? Number)?.toLong()
+                    ?: System.currentTimeMillis(),
+                autorUid     = map["autorUid"]     as? String ?: "",
+                autorNombre  = map["autorNombre"]  as? String ?: "",
+                esCitaDoctor = map["esCitaDoctor"] as? Boolean ?: (map["autorUid"] as? String)?.isNotBlank() ?: false,
+                consultaId   = map["consultaId"]   as? String ?: ""
             )
         }
     }

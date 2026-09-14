@@ -196,12 +196,47 @@ private fun SeccionLabel(texto: String, icon: ImageVector) =
     }
 
 @Composable
-private fun ComidaRow(tipo: String, desc: String, icon: ImageVector, color: Color) =
+private fun ComidaRow(
+    tipo:        String,
+    desc:        String,
+    icon:        ImageVector,
+    color:       Color,
+    esDoctor:    Boolean = false,
+    autorDoctor: String = ""
+) =
     Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
         IconBox(icon, color, color.copy(.12f), 26.dp, 13.dp, RoundedCornerShape(8.dp))
         Spacer(Modifier.width(10.dp))
-        Column {
-            Text(tipo, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = color, letterSpacing = 0.3.sp)
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(tipo, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = color, letterSpacing = 0.3.sp)
+                if (esDoctor) {
+                    Surface(
+                        shape = RoundedCornerShape(50.dp),
+                        color = Color(0xFFE8F5E9)
+                    ) {
+                        Row(Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.MedicalServices, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(10.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                if (autorDoctor.isNotBlank()) autorDoctor else "Doctor",
+                                fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(50.dp),
+                        color = Color(0xFFFFF3E0)
+                    ) {
+                        Row(Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.AutoAwesome, null, tint = Color(0xFFE65100), modifier = Modifier.size(10.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text("NutrIA", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                        }
+                    }
+                }
+            }
             Text(desc, fontSize = 13.sp, color = Color(0xFF424242), lineHeight = 18.sp)
         }
     }
@@ -276,6 +311,7 @@ fun SolidosScreen(
     val recetasFiltradas      by viewModel.recetasFiltradas.collectAsState()
     val alimentosConAlergia   by viewModel.alimentosConAlergiaNino.collectAsState()
     val planSemanal           by viewModel.planSemanalDesdeRegistrados.collectAsState()
+    val modoPlan              by viewModel.modoPlan.collectAsState()
     val alertasAlergenos      by viewModel.alertasAlergenos.collectAsState()
     val uiState               by viewModel.uiState.collectAsState()
     val busquedaReceta        by viewModel.busquedaReceta.collectAsState()
@@ -486,7 +522,25 @@ fun SolidosScreen(
                     onReaccion = { aReaccion = it }
                 )
                 1 -> tabPlanSemanal(
-                    visible, ageMonths, perfilSalud, alimentosIntroducidos, planSemanal,
+                    visible              = visible,
+                    ageMonths            = ageMonths,
+                    perfilSalud          = perfilSalud,
+                    lista                = alimentosIntroducidos,
+                    plan                 = planSemanal,
+                    modoPlan             = modoPlan,
+                    onModoPlanChange     = { m ->
+                        viewModel.setModoPlan(m)
+                        if (esBlind) {
+                            val msg = when (m) {
+                                com.example.nutriia.sueldo.ModoPlanAlimentario.SOLO_NUTRIOLOGO -> loc("Modo activado: Menú personalizado del doctor.", "Mode activated: Doctor's prescribed menu.")
+                                com.example.nutriia.sueldo.ModoPlanAlimentario.SOLO_MOTOR -> loc("Modo activado: Menú inteligente NutrIA.", "Mode activated: NutrIA smart engine menu.")
+                                com.example.nutriia.sueldo.ModoPlanAlimentario.MIXTO -> loc("Modo activado: Menú mixto combinado.", "Mode activated: Mixed combined menu.")
+                            }
+                            ttsManager?.hablar(msg)
+                        }
+                    },
+                    esBlind              = esBlind,
+                    esMute               = a11yMode == AccessibilityMode.MUTE,
                     onAgregar            = { tab = 0; showAgregar = true },
                     onExportarPlan       = onExportarPlan,
                     onExportarCalendario = onExportarCalendario
@@ -859,7 +913,7 @@ private fun AlimentoCard(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TAB 1 — PLAN SEMANAL — sin cambios
+// TAB 1 — PLAN SEMANAL
 // ═══════════════════════════════════════════════════════════════════════════════
 private fun LazyListScope.tabPlanSemanal(
     visible:              Boolean,
@@ -867,11 +921,27 @@ private fun LazyListScope.tabPlanSemanal(
     perfilSalud:          PerfilSaludNino,
     lista:                List<AlimentoIntroducido>,
     plan:                 List<PlanSemanalSolidos>,
+    modoPlan:             com.example.nutriia.sueldo.ModoPlanAlimentario,
+    onModoPlanChange:     (com.example.nutriia.sueldo.ModoPlanAlimentario) -> Unit,
+    esBlind:              Boolean,
+    esMute:               Boolean,
     onAgregar:            () -> Unit,
     onExportarPlan:       () -> Unit,
     onExportarCalendario: () -> Unit
 ) {
     val guia = guiaParaEdad(ageMonths)
+
+    item {
+        AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
+            ModoPlanSelectorCard(
+                modoActual   = modoPlan,
+                onModoChange = onModoPlanChange,
+                esBlind      = esBlind,
+                esMute       = esMute
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+    }
 
     item {
         AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
@@ -964,6 +1034,90 @@ private fun LazyListScope.tabPlanSemanal(
     }
 
     items(plan, key = { it.diaSemana }) { dia -> PlanDiaCard(dia, plan.indexOf(dia)) }
+}
+
+@Composable
+private fun ModoPlanSelectorCard(
+    modoActual:   com.example.nutriia.sueldo.ModoPlanAlimentario,
+    onModoChange: (com.example.nutriia.sueldo.ModoPlanAlimentario) -> Unit,
+    esBlind:      Boolean = false,
+    esMute:       Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(16.dp),
+        colors   = CardDefaults.cardColors(containerColor = Sol.White),
+        border   = BorderStroke(1.dp, Sol.Border)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconBox(Icons.Rounded.Tune, Sol.Orange, Sol.Orange.copy(.1f), 28.dp, 16.dp, RoundedCornerShape(8.dp))
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Origen del menú", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Sol.TextPrimary)
+                    Text(modoActual.descripcion, fontSize = 11.sp, color = Sol.TextSecondary)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                com.example.nutriia.sueldo.ModoPlanAlimentario.entries.forEach { modo ->
+                    val seleccionado = modoActual == modo
+                    val bg = if (seleccionado) Sol.Orange else Sol.Orange.copy(0.06f)
+                    val fg = if (seleccionado) Sol.White else Sol.Orange
+                    val icon = when (modo) {
+                        com.example.nutriia.sueldo.ModoPlanAlimentario.SOLO_NUTRIOLOGO -> Icons.Rounded.MedicalServices
+                        com.example.nutriia.sueldo.ModoPlanAlimentario.SOLO_MOTOR -> Icons.Rounded.AutoAwesome
+                        com.example.nutriia.sueldo.ModoPlanAlimentario.MIXTO -> Icons.Rounded.Shuffle
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onModoChange(modo) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = bg,
+                        border = BorderStroke(1.dp, if (seleccionado) Sol.Orange else Color.Transparent)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(icon, null, tint = fg, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = when (modo) {
+                                    com.example.nutriia.sueldo.ModoPlanAlimentario.SOLO_NUTRIOLOGO -> "Doctor"
+                                    com.example.nutriia.sueldo.ModoPlanAlimentario.SOLO_MOTOR -> "NutrIA"
+                                    com.example.nutriia.sueldo.ModoPlanAlimentario.MIXTO -> "Mixto"
+                                },
+                                fontSize = 11.sp,
+                                fontWeight = if (seleccionado) FontWeight.ExtraBold else FontWeight.Medium,
+                                color = fg
+                            )
+                        }
+                    }
+                }
+            }
+            if (esMute) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFF5F5F5)).padding(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.SignLanguage, null, tint = Color(0xFF616161), modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "GLOSA LSM: PLAN ACTIVO ${modoActual.name}. SEGUIR MENÚ DIARIO.",
+                        fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF616161)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -1085,11 +1239,11 @@ private fun PlanDiaCard(plan: PlanSemanalSolidos, index: Int) {
                                 if (plan.texturaLabel.isNotBlank()) Chip(Icons.Rounded.Blender, plan.texturaLabel, Sol.Purple)
                             }
                         }
-                        ComidaRow("Desayuno",      plan.desayuno,  Icons.Rounded.WbSunny,          Color(0xFFFFB300))
-                        ComidaRow("Almuerzo",      plan.almuerzo,  Icons.Rounded.Restaurant,        Sol.Orange)
-                        ComidaRow("Merienda",      plan.merienda,  Icons.Rounded.EmojiFoodBeverage, Sol.Green)
-                        if (plan.colacion2.isNotBlank()) ComidaRow("Colación tarde", plan.colacion2, Icons.Rounded.Coffee, Sol.Brown)
-                        ComidaRow("Cena",          plan.cena,      Icons.Rounded.Nightlight,        Color(0xFF7986CB))
+                        ComidaRow("Desayuno",      plan.desayuno,  Icons.Rounded.WbSunny,          Color(0xFFFFB300), plan.desayunoEsDoctor,  plan.autorDoctor)
+                        ComidaRow("Almuerzo",      plan.almuerzo,  Icons.Rounded.Restaurant,        Sol.Orange,       plan.almuerzoEsDoctor,  plan.autorDoctor)
+                        ComidaRow("Merienda",      plan.merienda,  Icons.Rounded.EmojiFoodBeverage, Sol.Green,        plan.meriendaEsDoctor,  plan.autorDoctor)
+                        if (plan.colacion2.isNotBlank()) ComidaRow("Colación tarde", plan.colacion2, Icons.Rounded.Coffee, Sol.Brown, plan.colacion2EsDoctor, plan.autorDoctor)
+                        ComidaRow("Cena",          plan.cena,      Icons.Rounded.Nightlight,        Color(0xFF7986CB), plan.cenaEsDoctor,      plan.autorDoctor)
                     }
                 }
             }
@@ -1207,7 +1361,11 @@ private fun RecetaCard(receta: RecetaMexicana, alergenosNino: List<Alergeno>, in
                         Spacer(Modifier.height(5.dp))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             Chip(tipoIcon, tipoLabel, tipoColor)
-                            Chip(Icons.Rounded.ChildCare, "desde ${receta.edadMinMeses}m", Sol.TextMuted)
+                            if (receta.fuente.startsWith("Nutriólogo", ignoreCase = true)) {
+                                Chip(Icons.Rounded.MedicalServices, "Especialista", Sol.Orange)
+                            } else {
+                                Chip(Icons.Rounded.ChildCare, "desde ${receta.edadMinMeses}m", Sol.TextMuted)
+                            }
                             if (tieneAlergia) Chip(Icons.Rounded.Warning, "Alérgeno", Sol.Orange)
                         }
                     }

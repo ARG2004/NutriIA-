@@ -71,10 +71,12 @@ private val C_BlueLight  = Color(0xFFE3F2FD)
 // Semáforo IMC → color + microcopy humano
 private data class ImcStyle(val color: Color, val light: Color, val icon: ImageVector, val mensaje: String)
 private fun imcStyle(categoria: String): ImcStyle = when {
-    categoria.contains("Bajo")   -> ImcStyle(C_Teal,  C_TealLight,  Icons.AutoMirrored.Rounded.TrendingDown, "Está por debajo del peso esperado")
-    categoria.contains("Normal") -> ImcStyle(C_Green, C_GreenLight, Icons.Rounded.CheckCircle,  "¡Crecimiento saludable!")
-    categoria.contains("Riesgo") -> ImcStyle(C_Amber, C_AmberLight, Icons.Rounded.Warning,                    "Puede ser momento de consultar al pediatra")
-    else                         -> ImcStyle(C_Red,   C_RedLight,   Icons.AutoMirrored.Rounded.TrendingUp,   "Te recomendamos hablar con el pediatra")
+    categoria.contains("Bajo") || categoria.contains("Delgadez") -> ImcStyle(C_Teal,  C_TealLight,  Icons.AutoMirrored.Rounded.TrendingDown, "Está por debajo del rango esperado")
+    categoria.contains("Normal")                                -> ImcStyle(C_Green, C_GreenLight, Icons.Rounded.CheckCircle,               "¡Crecimiento saludable y adecuado!")
+    categoria.contains("Riesgo")                                -> ImcStyle(C_Amber, C_AmberLight, Icons.Rounded.Warning,                    "Riesgo de sobrepeso — monitorear curva")
+    categoria.contains("Sobrepeso")                             -> ImcStyle(C_Amber, C_AmberLight, Icons.AutoMirrored.Rounded.TrendingUp,   "Sobrepeso — valoración de hábitos y curva")
+    categoria.contains("Obesidad")                              -> ImcStyle(C_Red,   C_RedLight,   Icons.AutoMirrored.Rounded.TrendingUp,   "Obesidad — valoración pediátrica recomendada")
+    else                                                        -> ImcStyle(C_Red,   C_RedLight,   Icons.AutoMirrored.Rounded.TrendingUp,   "Te recomendamos hablar con el pediatra")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -120,22 +122,23 @@ fun CrecimientoScreen(
     LaunchedEffect(Unit) { visible = true }
 
     // Anuncio inicial de accesibilidad
-    LaunchedEffect(esBlind, idiomaActual) {
+    LaunchedEffect(Unit) {
         if (esBlind) {
-            val orientacionBoton = orientacionBotonInferior(
-                accion = if (idiomaActual == IdiomaVoz.INGLES) "register a measurement" else "registrar una medición",
-                idioma = idiomaActual
-            )
+            val indicadorVoz = when {
+                ageMonths < 24  -> loc("Peso para la longitud según norma OMS 2006", "Weight-for-length according to WHO 2006 standards")
+                ageMonths <= 60 -> loc("IMC para la edad preescolar según norma OMS 2006", "Preschool BMI-for-age according to WHO 2006 standards")
+                else            -> loc("IMC para la edad escolar según referencia OMS 2007", "School BMI-for-age according to WHO 2007 reference")
+            }
             a11yVm.hablar(
                 loc(
-                    "Módulo de crecimiento para $childName. " +
-                            "Aquí puedes registrar y ver la evolución de peso, talla e IMC. " +
-                            "$orientacionBoton " +
-                            "Las tres secciones son: Resumen e IMC, Historial y Gráficas OMS.",
-                    "Growth module for $childName. " +
-                            "Here you can log and view the evolution of weight, height, and BMI. " +
-                            "$orientacionBoton " +
-                            "The three sections are: Summary and BMI, History, and WHO Charts."
+                    "Módulo de crecimiento para $childName. Indicador activo: $indicadorVoz. " +
+                            "Aquí puedes registrar y ver la evolución de mediciones. " +
+                            "El botón Registrar medición está en la parte inferior central. " +
+                            "Las tres secciones son: Resumen, Historial y Gráficas OMS.",
+                    "Growth module for $childName. Active indicator: $indicadorVoz. " +
+                            "Here you can log and view the evolution of measurements. " +
+                            "The Register measurement button is at the bottom center. " +
+                            "The three sections are: Summary, History, and WHO Charts."
                 )
             )
         }
@@ -229,6 +232,7 @@ fun CrecimientoScreen(
                     Spacer(Modifier.height(20.dp))
                     Tabs(
                         selected = tab,
+                        ageMonths = ageMonths,
                         esBlind = esBlind,
                         a11yVm = a11yVm,
                         idioma = idiomaActual
@@ -253,11 +257,11 @@ fun CrecimientoScreen(
                         0 -> Column {
                             GaugeIMC(ultima, ageMonths, interpretacion)
                             Spacer(Modifier.height(16.dp))
-                            EvolucionIMC(historial, ageMonths)
+                            EvolucionIMC(historial, ageMonths, sexoRegistrado)
                         }
                         1 -> Column {
                             if (historial.isEmpty()) HistorialVacio()
-                            else TimelineHistorial(historial, ageMonths) { eliminar = it }
+                            else TimelineHistorial(historial, ageMonths, sexoRegistrado) { eliminar = it }
                         }
                         2 -> Column {
                             GraficaPeso(historial, viewModel.puntosOmsPeso, sexoRegistrado, ageMonths)
@@ -474,7 +478,12 @@ private fun ResumenCard(m: MedicionCrecimiento?, meses: Int, interp: Interpretac
                     Box(Modifier.width(1.dp).height(60.dp).background(C_Divider))
                     StatCol(Icons.Rounded.Height,        C_Teal,             C_TealLight,             "${"%.0f".format(animTalla)} cm", "Talla")
                     Box(Modifier.width(1.dp).height(60.dp).background(C_Divider))
-                    StatCol(Icons.Rounded.Analytics,     style?.color ?: C_Green, style?.light ?: C_GreenLight, "${"%.1f".format(animImc)}", "IMC")
+                    if (meses < 24) {
+                        val ratioWfl = if (m.tallaCm > 0) m.pesoKg / (m.tallaCm / 100.0) else 0.0
+                        StatCol(Icons.Rounded.Analytics, style?.color ?: C_Green, style?.light ?: C_GreenLight, "%.1f".format(ratioWfl), "kg/m (WFL)")
+                    } else {
+                        StatCol(Icons.Rounded.Analytics, style?.color ?: C_Green, style?.light ?: C_GreenLight, "${"%.1f".format(animImc)}", "IMC")
+                    }
                 }
 
                 Spacer(Modifier.height(14.dp))
@@ -486,14 +495,17 @@ private fun ResumenCard(m: MedicionCrecimiento?, meses: Int, interp: Interpretac
                     Spacer(Modifier.width(5.dp))
                     Text("Última: ${m.fecha}", fontSize = 11.sp, color = C_TextSub)
                     Spacer(Modifier.weight(1f))
-                    if (meses < 24) {
-                        Surface(shape = RoundedCornerShape(50.dp), color = C_TealLight) {
-                            Text(
-                                "< 2 años: usar peso/longitud",
-                                Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                fontSize = 9.sp, color = C_Teal, fontWeight = FontWeight.Medium
-                            )
-                        }
+                    val tagTexto = when {
+                        meses < 24  -> "< 2 años: Peso/Longitud OMS 2006"
+                        meses <= 60 -> "2–5 años: IMC/Edad OMS 2006"
+                        else        -> "5–12 años: IMC/Edad WHO 2007"
+                    }
+                    Surface(shape = RoundedCornerShape(50.dp), color = C_TealLight) {
+                        Text(
+                            tagTexto,
+                            Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            fontSize = 9.sp, color = C_Teal, fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
@@ -520,13 +532,15 @@ private fun StatCol(icon: ImageVector, color: Color, bg: Color, value: String, l
 @Composable
 private fun Tabs(
     selected: Int,
+    ageMonths: Int = 0,
     esBlind: Boolean = false,
     a11yVm: AccessibilityViewModel? = null,
     idioma: IdiomaVoz = IdiomaVoz.ESPANOL_MX,
     onSelect: (Int) -> Unit
 ) {
+    val labelTab0 = if (ageMonths < 24) "P/L" else "IMC"
     val items = listOf(
-        Icons.Rounded.Analytics to "IMC",
+        Icons.Rounded.Analytics to labelTab0,
         Icons.Rounded.Timeline  to "Historial",
         Icons.AutoMirrored.Rounded.ShowChart to "Gráficas"
     )
@@ -823,6 +837,7 @@ private fun LeyendaDot(color: Color, label: String) {
 private fun TimelineHistorial(
     historial: List<MedicionCrecimiento>,
     ageMonths: Int,
+    sexo: Sexo? = null,
     onDelete: (MedicionCrecimiento) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
@@ -834,7 +849,7 @@ private fun TimelineHistorial(
                 .thenByDescending { it.creadoEn?.seconds ?: 0L }
         )
         sorted.forEachIndexed { idx, m ->
-            val interp = interpretarIMC(m.imc, ageMonths)
+            val interp = interpretarIMC(m.imc, ageMonths, sexo, m.pesoKg, m.tallaCm)
             val style  = imcStyle(interp.categoria)
 
             // FIX 2: usar m.id como key en lugar de Unit para que cada nueva
@@ -876,10 +891,20 @@ private fun TimelineHistorial(
                                     }
                                 }
                                 Spacer(Modifier.height(6.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                     MiniStat(Icons.Rounded.MonitorWeight, "${m.pesoKg} kg", C_Amber)
                                     MiniStat(Icons.Rounded.Height, "${m.tallaCm} cm", C_Teal)
-                                    if (m.imc > 0) MiniStat(style.icon, "${"%.1f".format(m.imc)}", style.color)
+                                    if (ageMonths < 24) {
+                                        val ratioWfl = if (m.tallaCm > 0) m.pesoKg / (m.tallaCm / 100.0) else 0.0
+                                        MiniStat(style.icon, "${"%.1f".format(ratioWfl)} kg/m", style.color)
+                                    } else if (m.imc > 0) {
+                                        MiniStat(style.icon, "${"%.1f".format(m.imc)}", style.color)
+                                    }
+                                    Spacer(Modifier.width(2.dp))
+                                    Surface(shape = RoundedCornerShape(50.dp), color = style.light) {
+                                        Text(interp.categoria, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            fontSize = 9.sp, color = style.color, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                                 if (m.notas.isNotBlank()) {
                                     Spacer(Modifier.height(4.dp))
@@ -927,11 +952,22 @@ private fun HistorialVacio() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// IMC — Gauge circular + evolución
+// IMC / PESO-LONGITUD — Gauge circular + evolución
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
 private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: InterpretacionIMC?) {
+    val tituloHeader = when {
+        meses < 24  -> "Peso para la Talla / Longitud"
+        meses <= 60 -> "IMC para la Edad (Preescolar)"
+        else        -> "IMC para la Edad (Escolar)"
+    }
+    val subtituloHeader = when {
+        meses < 24  -> "Relación peso/longitud según OMS 2006 (WFL)"
+        meses <= 60 -> "Norma OMS 2006 (2–5 años / BFA)"
+        else        -> "WHO Reference 2007 (5–12 años / LMS)"
+    }
+
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(C_GreenLight), Alignment.Center) {
@@ -939,16 +975,16 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
             }
             Spacer(Modifier.width(9.dp))
             Column {
-                Text("Índice de Masa Corporal", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = C_Text)
-                Text("Calculado con peso y talla actuales", fontSize = 11.sp, color = C_TextSub)
+                Text(tituloHeader, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = C_Text)
+                Text(subtituloHeader, fontSize = 11.sp, color = C_TextSub)
             }
         }
         Spacer(Modifier.height(8.dp))
 
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(22.dp), CardDefaults.cardColors(C_Card), CardDefaults.cardElevation(1.dp)) {
-            if (m == null || m.imc == 0.0) {
+            if (m == null || (meses >= 24 && m.imc == 0.0) || (meses < 24 && m.pesoKg == 0.0)) {
                 Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
-                    Text("Registra peso y talla para ver el IMC", color = C_TextSub, textAlign = TextAlign.Center)
+                    Text("Registra peso y talla para ver la evaluación", color = C_TextSub, textAlign = TextAlign.Center)
                 }
                 return@Card
             }
@@ -956,7 +992,7 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
             val style = interp?.let { imcStyle(it.categoria) }
             val animImc   by animateFloatAsState(m.imc.toFloat(),   tween(900, easing = EaseOutCubic), label = "imc")
             val arcProgress by animateFloatAsState(
-                ((m.imc.toFloat() - 10f) / 22f).coerceIn(0f, 1f),
+                if (meses < 24) 0.65f else ((m.imc.toFloat() - 10f) / 22f).coerceIn(0f, 1f),
                 tween(1000, easing = EaseOutCubic), label = "arc"
             )
 
@@ -973,9 +1009,15 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
                             style = Stroke(stroke, cap = StrokeCap.Round))
                     }
                     Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${"%.1f".format(animImc)}", fontSize = 40.sp, fontWeight = FontWeight.Black,
-                            color = style?.color ?: C_Green)
-                        Text("kg/m²", fontSize = 12.sp, color = C_TextSub)
+                        if (meses < 24) {
+                            Text("${"%.1f".format(m.pesoKg)}", fontSize = 36.sp, fontWeight = FontWeight.Black,
+                                color = style?.color ?: C_Green)
+                            Text("kg · ${"%.0f".format(m.tallaCm)} cm", fontSize = 12.sp, color = C_TextSub)
+                        } else {
+                            Text("${"%.1f".format(animImc)}", fontSize = 40.sp, fontWeight = FontWeight.Black,
+                                color = style?.color ?: C_Green)
+                            Text("kg/m²", fontSize = 12.sp, color = C_TextSub)
+                        }
                     }
                 }
 
@@ -999,6 +1041,7 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
 
                 if (meses < 24) {
                     Spacer(Modifier.height(10.dp))
+                    val ratioWfl = if (m.tallaCm > 0) m.pesoKg / (m.tallaCm / 100.0) else 0.0
                     Row(
                         Modifier.clip(RoundedCornerShape(10.dp)).background(C_TealLight)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1006,21 +1049,26 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
                     ) {
                         Icon(Icons.Rounded.Info, null, tint = C_Teal, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("La OMS recomienda peso-para-longitud en menores de 2 años.",
+                        Text("Relación peso/talla: ${"%.1f".format(ratioWfl)} kg/m · Clasificación WFL OMS 2006.",
                             fontSize = 11.sp, color = C_Teal)
                     }
                 }
 
                 Spacer(Modifier.height(18.dp))
+                val leyendaItems = if (meses >= 61) {
+                    listOf("Delgadez\nsevera" to C_Red, "Delgadez" to C_Teal, "Normal" to C_Green, "Sobre-\npeso" to C_Amber, "Obesidad" to C_Red)
+                } else {
+                    listOf("Bajo\npeso" to C_Teal, "Normal" to C_Green, "Riesgo\nsobrepeso" to C_Amber, "Sobre-\npeso" to C_Red)
+                }
+
                 Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(4.dp)) {
-                    listOf("Bajo\npeso" to C_Teal, "Normal" to C_Green, "Sobre-\npeso" to C_Amber, "Obesidad" to C_Red)
-                        .forEach { (label, color) ->
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(color))
-                                Spacer(Modifier.height(4.dp))
-                                Text(label, fontSize = 9.sp, color = color, textAlign = TextAlign.Center, lineHeight = 12.sp)
-                            }
+                    leyendaItems.forEach { (label, color) ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(color))
+                            Spacer(Modifier.height(4.dp))
+                            Text(label, fontSize = 9.sp, color = color, textAlign = TextAlign.Center, lineHeight = 12.sp)
                         }
+                    }
                 }
             }
         }
@@ -1028,20 +1076,25 @@ private fun GaugeIMC(m: MedicionCrecimiento?, meses: Int, interp: Interpretacion
 }
 
 @Composable
-private fun EvolucionIMC(historial: List<MedicionCrecimiento>, meses: Int) {
-    val conIMC = historial.filter { it.imc > 0 }.take(6)
-    if (conIMC.isEmpty()) return
+private fun EvolucionIMC(historial: List<MedicionCrecimiento>, meses: Int, sexo: Sexo? = null) {
+    val conDatos = historial.filter { it.pesoKg > 0 && it.tallaCm > 0 }.take(6)
+    if (conDatos.isEmpty()) return
+
+    val tituloEvolucion = when {
+        meses < 24  -> "Evolución del Peso para la Talla / Longitud"
+        meses <= 60 -> "Evolución del IMC para la Edad (Preescolar)"
+        else        -> "Evolución del IMC para la Edad (Escolar)"
+    }
 
     Spacer(Modifier.height(4.dp))
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-        Text("Evolución del IMC", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = C_Text)
+        Text(tituloEvolucion, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = C_Text)
         Spacer(Modifier.height(8.dp))
         Card(Modifier.fillMaxWidth(), RoundedCornerShape(20.dp), CardDefaults.cardColors(C_Card), CardDefaults.cardElevation(1.dp)) {
             Column(Modifier.padding(16.dp)) {
-                conIMC.reversed().forEachIndexed { idx, m ->
-                    val interp = interpretarIMC(m.imc, meses)
+                conDatos.reversed().forEachIndexed { idx, m ->
+                    val interp = interpretarIMC(m.imc, meses, sexo, m.pesoKg, m.tallaCm)
                     val style  = imcStyle(interp.categoria)
-                    // FIX 3: misma corrección que en TimelineHistorial — key por id
                     var vis by remember(m.id) { mutableStateOf(false) }
                     LaunchedEffect(m.id) { kotlinx.coroutines.delay(idx * 70L); vis = true }
 
@@ -1054,7 +1107,12 @@ private fun EvolucionIMC(historial: List<MedicionCrecimiento>, meses: Int) {
                             Icon(style.icon, null, tint = style.color, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(10.dp))
                             Text(m.fecha, fontSize = 12.sp, color = C_TextSub, modifier = Modifier.weight(1f))
-                            Text("${"%.2f".format(m.imc)}", fontWeight = FontWeight.Bold, color = style.color, fontSize = 14.sp)
+                            if (meses < 24) {
+                                val ratioWfl = if (m.tallaCm > 0) m.pesoKg / (m.tallaCm / 100.0) else 0.0
+                                Text("${m.pesoKg}kg (${"%.1f".format(ratioWfl)} kg/m)", fontWeight = FontWeight.Bold, color = style.color, fontSize = 13.sp)
+                            } else {
+                                Text("${"%.2f".format(m.imc)}", fontWeight = FontWeight.Bold, color = style.color, fontSize = 14.sp)
+                            }
                             Spacer(Modifier.width(8.dp))
                             Surface(shape = RoundedCornerShape(50.dp), color = style.light) {
                                 Text(interp.categoria, Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -1062,7 +1120,7 @@ private fun EvolucionIMC(historial: List<MedicionCrecimiento>, meses: Int) {
                             }
                         }
                     }
-                    if (m != conIMC.first()) HorizontalDivider(color = C_Divider, thickness = 0.5.dp)
+                    if (m != conDatos.first()) HorizontalDivider(color = C_Divider, thickness = 0.5.dp)
                 }
             }
         }
@@ -1340,6 +1398,25 @@ private val FUENTES = listOf(
         url         = "https://www.who.int/tools/child-growth-standards",
         cita        = "WHO Multicentre Growth Reference Study Group. " +
                 "WHO Child Growth Standards. Geneva: WHO; 2006."
+    ),
+    FuenteInfo(
+        titulo      = "WHO Child Growth Standards 2006 — Peso/longitud (0–2 años)",
+        descripcion = "Tablas bidimensionales oficiales de peso-para-la-longitud (WFL) para 45–110 cm. " +
+                "Indicador de referencia de la OMS para evaluar proporción corporal, emaciación y exceso de peso en lactantes.",
+        rango       = "0–24 meses (45–110 cm)",
+        indicadores = "Peso/longitud (WFL)",
+        url         = "https://www.who.int/tools/child-growth-standards/standards/weight-for-length-height",
+        urlPdf      = "https://cdn.who.int/media/docs/default-source/child-growth/child-growth-standards/indicators/weight-for-length-height/wfl-girls-0-2-zscores.pdf",
+        labelPdf    = "PDF oficial — wfl-girls-0-2-zscores.pdf",
+        cita        = "WHO Child Growth Standards: Length/height-for-age, weight-for-age, weight-for-length. Geneva: WHO; 2006."
+    ),
+    FuenteInfo(
+        titulo      = "WHO Guidelines — Evaluación en atención primaria",
+        descripcion = "Guía oficial para la evaluación y manejo de la malnutrición y crecimiento en instalaciones de atención primaria.",
+        rango       = "0–19 años",
+        indicadores = "Criterios clínicos de atención",
+        url         = "https://www.who.int/publications/i/item/9789241550123",
+        cita        = "WHO. Guideline: assessing and managing children at primary health-care facilities. Geneva: WHO; 2023."
     ),
     FuenteInfo(
         titulo      = "WHO Growth Reference 2007 — Peso/edad",

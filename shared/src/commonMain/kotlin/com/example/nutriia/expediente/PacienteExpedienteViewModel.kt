@@ -32,16 +32,21 @@ import com.example.nutriia.utils.FechaUtils
 // ═══════════════════════════════════════════════════════════════════════════
 
 data class NotaConsulta(
-    val id:          String = "",
-    val texto:       String = "",
-    val autorNombre: String = "Nutriólogo",
-    val fechaMs:     Long   = 0L
+    val id:          String  = "",
+    val texto:       String  = "",
+    val autorNombre: String  = "Nutriólogo",
+    val fechaMs:     Long    = 0L,
+    val esCita:      Boolean = false,
+    val fechaCita:   String  = "",
+    val horaCita:    String  = "",
+    val tituloCita:  String  = ""
 ) {
     val fechaStr: String get() {
         if (fechaMs == 0L) return "Reciente"
         return FechaUtils.formatearFecha(fechaMs)
     }
 }
+
 
 data class AlimentoIntroducido(
     val nombre:  String = "",
@@ -99,7 +104,11 @@ data class ExpedienteUiState(
 
     // ── Telemetría & Alertas Preventivas (Rol Nutriólogo / Pediatra) ──────
     val diagnosticoPreventivo: DiagnosticoPreventivoPaciente? = null,
-    val guardandoAlertaPreventiva: Boolean = false
+    val guardandoAlertaPreventiva: Boolean = false,
+
+    // ── Citas Médicas Agendadas ───────────────────────────────────────────
+    val mostrarFormaCita:      Boolean                   = false,
+    val guardandoCita:         Boolean                   = false
 )
 
 // Modelo ligero para mostrar el plan en el expediente
@@ -232,11 +241,9 @@ class PacienteExpedienteViewModel : ViewModel() {
                 nombresTolerados.none { tol -> tol.contains(ex, ignoreCase = true) || ex.contains(tol, ignoreCase = true) }
             } + nombresConReaccion).distinct()
 
-            val edadParaMotor = meses.coerceAtLeast(6)
-
             val planDieta = try {
                 DietaEngine.generarPlanSemanal(
-                    meses                = edadParaMotor,
+                    meses                = meses,
                     nivel                = nivelIngreso,
                     region               = region,
                     alergenosNiño        = alergenosNino,
@@ -256,10 +263,10 @@ class PacienteExpedienteViewModel : ViewModel() {
                 )
             }
 
-            val recetasSug = try {
+            val recetasSug = if (meses < 6) emptyList() else try {
                 TipoComida.entries.flatMap { tipo ->
                     DietaEngine.recetasPorPerfil(
-                        meses                = edadParaMotor,
+                        meses                = meses,
                         nivel                = nivelIngreso,
                         tipo                 = tipo,
                         region               = region,
@@ -419,6 +426,101 @@ class PacienteExpedienteViewModel : ViewModel() {
                 _ui.value = _ui.value.copy(
                     guardandoNota = false,
                     error         = "No se pudo guardar la nota"
+                )
+            }
+        }
+    }
+
+    // ── Programar Cita Médica para el Paciente ─────────────────────────────
+
+    fun mostrarFormaCita() { _ui.value = _ui.value.copy(mostrarFormaCita = true, exito = null) }
+    fun ocultarFormaCita() { _ui.value = _ui.value.copy(mostrarFormaCita = false) }
+
+    fun guardarCitaPaciente(
+        ownerUid:    String,
+        childId:     String,
+        titulo:      String,
+        descripcion: String,
+        fecha:       String,
+        hora:        String
+    ) {
+        val currentUser = auth.currentUser ?: return
+        if (titulo.isBlank() || fecha.isBlank() || hora.isBlank()) return
+
+        viewModelScope.launch {
+            _ui.value = _ui.value.copy(guardandoCita = true)
+            try {
+                val alertaId = com.example.nutriia.platform.generateUUID()
+                val alerta = com.example.nutriia.alerta.Alerta(
+                    id           = alertaId,
+                    childId      = childId,
+                    childName    = _ui.value.childNombre,
+                    tipo         = com.example.nutriia.alerta.TipoAlerta.CITA_MEDICA,
+                    titulo       = titulo.trim(),
+                    descripcion  = descripcion.trim(),
+                    hora         = hora.trim(),
+                    diasSemana   = emptyList(),
+                    fechaUnica   = fecha.trim(),
+                    activa       = true,
+                    autorUid     = currentUser.uid,
+                    autorNombre  = currentUser.displayName ?: "Nutriólogo",
+                    esCitaDoctor = true
+                )
+
+                // 1. Guardar en usuarios/{ownerUid}/hijos/{childId}/alertas/{alertaId} (donde el módulo Alertas del paciente escucha)
+                val task1 = db.collection("usuarios").document(ownerUid)
+                    .collection("hijos").document(childId)
+                    .collection("alertas").document(alertaId)
+                    .set(alerta.toMap())
+
+                // 2. Guardar también en usuarios/{ownerUid}/alertas/{alertaId} (backup global)
+                val task2 = db.collection("usuarios").document(ownerUid)
+                    .collection("alertas").document(alertaId)
+                    .set(alerta.toMap())
+
+                if (OfflineManager.hayConexion()) {
+                    task1.await()
+                    task2.await()
+                }
+
+                // 3. Registrar como nota/consulta clínica en el expediente
+                val consultaDocId = db.collection("usuarios").document(ownerUid)
+                    .collection("hijos").document(childId)
+                    .collection("consultas").document().id
+
+                val consultaData = mapOf(
+                    "id"               to consultaDocId,
+                    "titulo"           to titulo.trim(),
+                    "texto"            to "Cita médica agendada: ${titulo.trim()} para el $fecha a las $hora. Motivo: ${descripcion.trim()}",
+                    "contenido"        to "Cita médica agendada: ${titulo.trim()} para el $fecha a las $hora. Motivo: ${descripcion.trim()}",
+                    "autorUid"         to currentUser.uid,
+                    "autorNombre"      to (currentUser.displayName ?: "Nutriólogo"),
+                    "tipo"             to "cita_doctor",
+                    "proximaCita"      to "$fecha $hora",
+                    "proximaCitaFecha" to fecha.trim(),
+                    "proximaCitaHora"  to hora.trim(),
+                    "proximaCitaMotivo" to descripcion.trim(),
+                    "creadoEn"         to com.example.nutriia.shared.Timestamp.now()
+                )
+
+                val task3 = db.collection("usuarios").document(ownerUid)
+                    .collection("hijos").document(childId)
+                    .collection("consultas").document(consultaDocId).set(consultaData)
+
+                if (OfflineManager.hayConexion()) {
+                    task3.await()
+                }
+
+
+                _ui.value = _ui.value.copy(
+                    guardandoCita    = false,
+                    mostrarFormaCita = false,
+                    exito            = "Cita programada con éxito en las alertas del paciente"
+                )
+            } catch (e: Exception) {
+                _ui.value = _ui.value.copy(
+                    guardandoCita = false,
+                    error         = "No se pudo agendar la cita: ${e.message}"
                 )
             }
         }

@@ -82,6 +82,20 @@ data class GuiaEdad(
 
 fun guiaParaEdad(meses: Int): GuiaEdad = when {
 
+    meses < 6 -> GuiaEdad(
+        rangoLabel         = "0-5 meses — Lactancia Exclusiva",
+        texturaLabel       = "Lactancia materna exclusiva (o fórmula infantil)",
+        texturaDescripcion = "No se recomiendan alimentos sólidos ni agua antes de los 6 meses (OMS/AAP/IMSS). La leche materna o fórmula infantil cubre el 100% de los requerimientos nutricionales e hídricos.",
+        texturaEjemplos    = "Leche materna a libre demanda · Fórmula infantil de inicio",
+        porcionMl          = 0,
+        porcionLabel       = "Sin sólidos — Solo leche materna o fórmula",
+        porcionProgresion  = "La alimentación complementaria inicia a partir de los 6 meses cumplidos.",
+        comidasPorDia      = 0,
+        snacksPorDia       = 0,
+        frecuenciaLabel    = "Lactancia exclusiva a demanda (mínimo 8-12 tomas/día)",
+        lactanciaLabel     = "Lactancia materna exclusiva recomendada por la OMS hasta los 6 meses cumplidos"
+    )
+
     meses == 6 -> GuiaEdad(
         rangoLabel         = "6 meses — inicio de complementaria",
         texturaLabel       = "Puré muy liso",
@@ -242,15 +256,21 @@ fun guiaParaEdad(meses: Int): GuiaEdad = when {
 
 @Serializable
 data class PlanSemanalSolidos(
-    val diaSemana:       String,
-    val desayuno:        String,
-    val almuerzo:        String,
-    val merienda:        String,            // colacion1 (mañana)
-    val colacion2:       String = "",       // FIX v2.3: colacion2 (tarde)
-    val cena:            String,
-    val porcionLabel:    String = "",
-    val texturaLabel:    String = "",
-    val frecuenciaLabel: String = ""
+    val diaSemana:         String,
+    val desayuno:          String,
+    val almuerzo:          String,
+    val merienda:          String,            // colacion1 (mañana)
+    val colacion2:         String = "",       // colacion2 (tarde)
+    val cena:              String,
+    val porcionLabel:      String = "",
+    val texturaLabel:      String = "",
+    val frecuenciaLabel:   String = "",
+    val desayunoEsDoctor:  Boolean = false,
+    val meriendaEsDoctor:  Boolean = false,
+    val almuerzoEsDoctor:  Boolean = false,
+    val colacion2EsDoctor: Boolean = false,
+    val cenaEsDoctor:      Boolean = false,
+    val autorDoctor:       String = ""
 )
 
 object FuentesSolidos {
@@ -349,6 +369,22 @@ fun generarPlanSemanal(
     val cereales = mutableListOf("arroz","papilla de maíz")
     if (Alergeno.TRIGO !in alergenosNino) cereales.add("avena")
     if (Alergeno.MAIZ  !in alergenosNino) cereales.addAll(listOf("tortilla de maíz","papilla de maíz"))
+
+    if (meses < 6) {
+        return dias.map { dia ->
+            PlanSemanalSolidos(
+                diaSemana       = dia,
+                desayuno        = "Lactancia materna a demanda (o fórmula)",
+                almuerzo        = "Lactancia materna a demanda (o fórmula)",
+                merienda        = "Lactancia materna a demanda (o fórmula)",
+                colacion2       = "Lactancia materna a demanda",
+                cena            = "Lactancia materna a demanda (o fórmula)",
+                porcionLabel    = guia.porcionLabel,
+                texturaLabel    = guia.texturaLabel,
+                frecuenciaLabel = guia.frecuenciaLabel
+            )
+        }
+    }
 
     return when {
 

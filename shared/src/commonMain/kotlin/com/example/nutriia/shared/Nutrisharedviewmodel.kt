@@ -7,12 +7,15 @@ import com.example.nutriia.crecimiento.Sexo
 import com.example.nutriia.platform.generateUUID
 import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.DietaEngine
+import com.example.nutriia.sueldo.ModoPlanAlimentario
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.PerfilSaludNino
 import com.example.nutriia.sueldo.PlanDietaSemanal
 import com.example.nutriia.sueldo.RecetaMexicana
 import com.example.nutriia.sueldo.RegionMexico
 import com.example.nutriia.sueldo.TipoComida
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.firestore.firestore
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
@@ -149,19 +152,26 @@ fun etapaParaMeses(meses: Int): EtapaInfo = when {
 // ═══════════════════════════════════════════════════════════════════════════
 
 fun calcularEdadMeses(birthDate: String): Int {
-    if (birthDate.length != 10) return 0
+    val b = birthDate.trim()
+    if (b.isBlank()) return 0
     return try {
-        val (dia, mes, anio) = if (birthDate.contains("/")) {
-            val p = birthDate.split("/").map { it.toInt() }
-            Triple(p[0], p[1], p[2])
-        } else {
-            val p = birthDate.split("-").map { it.toInt() }
-            Triple(p[2], p[1], p[0])
-        }
+        val (dia, mes, anio) = if (b.contains("/")) {
+            val p = b.split("/").mapNotNull { it.trim().toIntOrNull() }
+            if (p.size == 3) Triple(p[0], p[1], p[2]) else return 0
+        } else if (b.contains("-")) {
+            val p = b.split("-").mapNotNull { it.trim().toIntOrNull() }
+            if (p.size == 3) {
+                if (p[0] > 1000) Triple(p[2], p[1], p[0])
+                else Triple(p[0], p[1], p[2])
+            } else return 0
+        } else return 0
+
         val hoy = kotlinx.datetime.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-        val anios = hoy.year - anio
-        val meses = hoy.monthNumber - mes
-        (anios * 12 + meses).coerceAtLeast(0)
+        var m = (hoy.year - anio) * 12 + (hoy.monthNumber - mes)
+        if (hoy.dayOfMonth < dia) {
+            m -= 1
+        }
+        m.coerceAtLeast(0)
     } catch (_: Exception) { 0 }
 }
 
@@ -301,6 +311,20 @@ class NutriSharedViewModel : ViewModel() {
     private val _recetasPersonalizadas = MutableStateFlow<List<RecetaMexicana>>(emptyList())
     val recetasPersonalizadas: StateFlow<List<RecetaMexicana>> = _recetasPersonalizadas.asStateFlow()
 
+    // ── Modo de Plan Alimentario (Doctor / Motor / Mixto) ─────────────────
+    private val _modoPlanAlimentario = MutableStateFlow(ModoPlanAlimentario.MIXTO)
+    val modoPlanAlimentario: StateFlow<ModoPlanAlimentario> = _modoPlanAlimentario.asStateFlow()
+
+    fun setModoPlanAlimentario(modo: ModoPlanAlimentario) {
+        if (_modoPlanAlimentario.value != modo) {
+            _modoPlanAlimentario.value = modo
+            _childProfile.value?.let { p ->
+                val m = calcularEdadMeses(p.birthDate)
+                generarPlan(m, _nivelIngreso.value, _region.value)
+            }
+        }
+    }
+
     fun setPerfil(perfil: ChildProfile?) {
         _childProfile.value = perfil
         perfil?.let {
@@ -380,16 +404,72 @@ class NutriSharedViewModel : ViewModel() {
             alergenosNiño        = perfilSalud.alergenos,
             alimentosRegistrados = tolerados,
             recetasCustom        = _recetasPersonalizadas.value,
-            alimentosExcluidos   = excluidosFinales
+            alimentosExcluidos   = excluidosFinales,
+            modoPlan             = _modoPlanAlimentario.value
         )
     }
 
+    private var recetasJob: kotlinx.coroutines.Job? = null
+
     fun cargarPerfil(uid: String, childId: String) {
         if (uid.isBlank() || childId.isBlank()) return
-        // Carga el perfil si se requiere
+        recetasJob?.cancel()
+        recetasJob = viewModelScope.launch {
+            try {
+                Firebase.firestore.collection("usuarios").document(uid)
+                    .collection("hijos").document(childId)
+                    .collection("recetas_nutriologo")
+                    .snapshots
+                    .collect { snapshot ->
+                        val recetas = snapshot.documents.mapNotNull { d ->
+                            val nombre = runCatching { d.get<String?>("nombre") }.getOrNull()
+                                ?: runCatching { d.get<String?>("titulo") }.getOrNull() ?: return@mapNotNull null
+                            val ingredientes = runCatching { d.get<List<String>?>("ingredientes") }.getOrNull()
+                                ?: runCatching { d.get<String?>("texto") ?: d.get<String?>("contenido") }.getOrNull()
+                                    ?.lines()
+                                    ?.firstOrNull { it.startsWith("Ingredientes:", ignoreCase = true) }
+                                    ?.removePrefix("Ingredientes:")?.removePrefix("ingredientes:")
+                                    ?.split(",", ";")?.map { it.trim() }?.filter { it.isNotBlank() }
+                                ?: emptyList()
+                            val preparacion = runCatching { d.get<String?>("preparacion") }.getOrNull()
+                                ?: runCatching { d.get<String?>("texto") ?: d.get<String?>("contenido") }.getOrNull()
+                                    ?.lines()
+                                    ?.filterNot { it.startsWith("Ingredientes:", ignoreCase = true) }
+                                    ?.joinToString("\n")?.trim()
+                                ?: ""
+                            val kcal = runCatching { d.get<Int?>("kcal") }.getOrNull()
+                                ?: runCatching { d.get<Long?>("kcal")?.toInt() }.getOrNull() ?: 0
+                            val tipoStr = runCatching { d.get<String?>("tipoComida") }.getOrNull() ?: TipoComida.COMIDA.name
+                            val tipo = runCatching { TipoComida.valueOf(tipoStr) }.getOrDefault(TipoComida.COMIDA)
+                            val edadMin = runCatching { d.get<Int?>("edadMeses") }.getOrNull()
+                                ?: runCatching { d.get<Long?>("edadMeses")?.toInt() }.getOrNull() ?: 0
+                            val autor = runCatching { d.get<String?>("autorNombre") }.getOrNull() ?: "Nutriólogo"
+
+                            RecetaMexicana(
+                                nombre       = nombre,
+                                ingredientes = ingredientes,
+                                preparacion  = preparacion,
+                                kcal         = kcal,
+                                tipoComida   = tipo,
+                                nivelMinimo  = NivelIngreso.BASICO,
+                                edadMinMeses = edadMin.coerceAtLeast(0),
+                                fuente       = "Nutriólogo: $autor",
+                                regiones     = listOf(RegionMexico.GENERAL),
+                                alergenos    = emptyList()
+                            )
+                        }
+                        _recetasPersonalizadas.value = recetas
+                        _childProfile.value?.let { p ->
+                            val m = calcularEdadMeses(p.birthDate)
+                            generarPlan(m, _nivelIngreso.value, _region.value)
+                        }
+                    }
+            } catch (_: Exception) {}
+        }
     }
 
     fun limpiarPerfil() {
+        recetasJob?.cancel()
         _childProfile.value = null
         _alimentosTolerados.value = emptyList()
         _planSemanal.value = emptyList()
@@ -397,3 +477,4 @@ class NutriSharedViewModel : ViewModel() {
         _recetasPersonalizadas.value = emptyList()
     }
 }
+

@@ -212,7 +212,7 @@ private class CameraVisionSessionHolder(
                 request.maximumHandCount = 1u
 
                 val handler = VNImageRequestHandler(
-                    cvPixelBuffer = pixelBuffer,
+                    cVPixelBuffer = pixelBuffer,
                     options = emptyMap<Any?, Any?>()
                 )
 
@@ -308,11 +308,7 @@ private class CameraVisionSessionHolder(
                 position = AVCaptureDevicePositionFront
             )
             val frontCamera = discovery.devices.firstOrNull() as? AVCaptureDevice
-                ?: AVCaptureDevice.defaultDeviceWithDeviceType(
-                    AVCaptureDeviceTypeBuiltInWideAngleCamera,
-                    AVMediaTypeVideo,
-                    AVCaptureDevicePositionFront
-                )
+                ?: AVCaptureDevice.defaultDeviceWithMediaType(AVMediaTypeVideo)
 
             if (frontCamera != null) {
                 val input = AVCaptureDeviceInput.deviceInputWithDevice(frontCamera, null) as? AVCaptureDeviceInput
@@ -372,7 +368,7 @@ private class CameraVisionSessionHolder(
     }
 }
 
-private class CameraPreviewUIView : UIView(platform.CoreGraphics.CGRectZero.readValue()) {
+private class CameraPreviewUIView : UIView(frame = platform.CoreGraphics.CGRectMake(0.0, 0.0, 0.0, 0.0)) {
     private var previewLayer: AVCaptureVideoPreviewLayer? = null
 
     fun setPreviewLayer(layer: AVCaptureVideoPreviewLayer) {

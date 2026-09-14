@@ -61,6 +61,12 @@ data class RecetaMexicana(
 
 // ── Plan semanal ───────────────────────────────────────────────────────────
 
+enum class ModoPlanAlimentario(val label: String, val descripcion: String) {
+    SOLO_NUTRIOLOGO("Menú del Doctor", "Recetas prescritas por tu especialista"),
+    SOLO_MOTOR("Menú NutrIA", "Recetario oficial de guías pediátricas"),
+    MIXTO("Menú Mixto", "Combinación balanceada de doctor y motor")
+}
+
 data class ComidasDiarias(
     val desayuno:         String,
     val colacion1:        String,
@@ -79,7 +85,14 @@ data class ComidasDiarias(
     val calcioEstimado:     Double = 0.0,
     val vitaminaAEstimada:  Double = 0.0,
     val vitaminaCEstimada:  Double = 0.0,
-    val zincEstimado:       Double = 0.0
+    val zincEstimado:       Double = 0.0,
+    // ── Origen de recetas (Doctor vs Motor) ────────────────────────────────
+    val desayunoEsDoctor:   Boolean = false,
+    val colacion1EsDoctor:  Boolean = false,
+    val almuerzoEsDoctor:   Boolean = false,
+    val colacion2EsDoctor:  Boolean = false,
+    val cenaEsDoctor:       Boolean = false,
+    val autorPrescripcion:  String  = ""
 )
 
 data class PlanDietaSemanal(

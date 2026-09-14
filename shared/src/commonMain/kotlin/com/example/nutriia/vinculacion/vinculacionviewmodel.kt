@@ -48,6 +48,15 @@ class VinculacionViewModel : ViewModel() {
     private val _nutriologoSeleccionado = MutableStateFlow<NutriologoPublico?>(null)
     val nutriologoSeleccionado: StateFlow<NutriologoPublico?> = _nutriologoSeleccionado
 
+    // ── Recomendaciones preventivas y Citas del especialista para el hijo ──────
+    private val _recomendacionesEspecialista = MutableStateFlow<List<RecomendacionEspecialista>>(emptyList())
+    val recomendacionesEspecialista: StateFlow<List<RecomendacionEspecialista>> = _recomendacionesEspecialista
+
+    private val _citasEspecialista = MutableStateFlow<List<CitaEspecialista>>(emptyList())
+    val citasEspecialista: StateFlow<List<CitaEspecialista>> = _citasEspecialista
+
+    private var consultasObserverJob: Job? = null
+
     // ═════════════════════════════════════════════════════════════════════════
     // INIT
     // ═════════════════════════════════════════════════════════════════════════
@@ -67,11 +76,68 @@ class VinculacionViewModel : ViewModel() {
             .launchIn(viewModelScope)
     }
 
+    fun observarConsultasDelHijo(padreUid: String, childId: String) {
+        if (padreUid.isBlank() || childId.isBlank()) return
+        consultasObserverJob?.cancel()
+        consultasObserverJob = repo.observarConsultasEspecialista(padreUid, childId)
+            .onEach { listaMapas ->
+                val recs = listaMapas.filter {
+                    val tipo = it["tipo"] as? String ?: ""
+                    tipo == "alerta_preventiva"
+                }.map { m ->
+                    val creadoVal = m["creadoEn"]
+                    val ms = when (creadoVal) {
+                        is Long -> creadoVal
+                        is Number -> creadoVal.toLong()
+                        is String -> creadoVal.toLongOrNull() ?: 0L
+                        else -> 0L
+                    }
+                    RecomendacionEspecialista(
+                        id              = m["id"] as? String ?: "",
+                        titulo          = (m["titulo"] ?: m["nombre"]) as? String ?: "Recomendación preventiva",
+                        texto           = (m["texto"] ?: m["contenido"]) as? String ?: "",
+                        hallazgoClinico = m["hallazgoClinico"] as? String ?: "",
+                        glosaLSM        = m["glosaLSM"] as? String ?: "",
+                        categoria       = m["categoria"] as? String ?: "",
+                        severidad       = m["severidad"] as? String ?: "",
+                        metricaClave    = m["metricaClave"] as? String ?: "",
+                        autorNombre     = m["autorNombre"] as? String ?: "Nutriólogo",
+                        tipo            = "alerta_preventiva",
+                        fechaMs         = ms
+                    )
+                }.sortedByDescending { it.fechaMs }
+
+                val citas = listaMapas.filter {
+                    val tipo = it["tipo"] as? String ?: ""
+                    tipo == "cita_doctor" || it.containsKey("proximaCitaFecha") || (it["texto"] as? String ?: "").startsWith("Cita médica agendada")
+                }.map { m ->
+                    val fecha = (m["proximaCitaFecha"] as? String) ?: (m["proximaCita"] as? String)?.split(" ")?.getOrNull(0) ?: ""
+                    val hora = (m["proximaCitaHora"] as? String) ?: (m["proximaCita"] as? String)?.split(" ")?.getOrNull(1) ?: ""
+                    val titulo = (m["titulo"] as? String) ?: "Control de Crecimiento y Nutrición"
+                    val motivo = (m["proximaCitaMotivo"] as? String) ?: (m["texto"] as? String) ?: ""
+                    CitaEspecialista(
+                        id          = m["id"] as? String ?: "",
+                        titulo      = titulo,
+                        motivo      = motivo,
+                        fecha       = fecha,
+                        hora        = hora,
+                        autorNombre = m["autorNombre"] as? String ?: "Especialista",
+                        activa      = true
+                    )
+                }.sortedByDescending { it.fecha }
+
+                _recomendacionesEspecialista.value = recs
+                _citasEspecialista.value = citas
+            }
+            .launchIn(viewModelScope)
+    }
+
     /** Fuerza re-suscripción al Flow del padre — útil al regresar del directorio en iOS */
     fun recargarVinculaciones() {
         initComoPadre()
         cargarDirectorio()
     }
+
 
     // ═════════════════════════════════════════════════════════════════════════
     // NUTRIÓLOGO — Acciones

@@ -127,12 +127,23 @@ fun SignLanguageLabScreen(
 
             // Vista de Cámara / Interacción
             item {
-                Text(
-                    text = "📹 Prueba Interactiva",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Videocam,
+                        contentDescription = null,
+                        tint = LabGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Prueba Interactiva",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
 
                 SignLanguageCameraView(
@@ -142,7 +153,7 @@ fun SignLanguageLabScreen(
                     },
                     colorPrimario = LabGreen,
                     onSenaComunicativaDetectada = { sena ->
-                        senaReconocidaReciente = "${sena.emoji} ${sena.nombre}"
+                        senaReconocidaReciente = sena.nombre
                     }
                 )
             }
@@ -183,7 +194,7 @@ fun SignLanguageLabScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "📖 Catálogo Oficial de Señas LSM",
+                            text = "Catálogo Oficial de Señas LSM",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
@@ -218,10 +229,10 @@ fun SignLanguageLabScreen(
                         }
                         items(CategoriaSena.values()) { cat ->
                             val label = when (cat) {
-                                CategoriaSena.ALIMENTACION -> "🍼 Alimentación"
-                                CategoriaSena.SALUD_ALERTA -> "🚨 Salud y Alertas"
-                                CategoriaSena.CLINICA -> "🩺 Clínica"
-                                CategoriaSena.CONTROL -> "⚙️ Control"
+                                CategoriaSena.ALIMENTACION -> "Alimentación"
+                                CategoriaSena.SALUD_ALERTA -> "Salud y Alertas"
+                                CategoriaSena.CLINICA -> "Clínica"
+                                CategoriaSena.CONTROL -> "Control"
                             }
                             FilterChip(
                                 selected = categoriaFiltro == cat,
@@ -265,7 +276,20 @@ fun SignLanguageLabScreen(
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(sena.emoji, fontSize = 28.sp)
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(LabGreen.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = obtenerIconoSena(sena.id),
+                                    contentDescription = null,
+                                    tint = LabGreen,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(

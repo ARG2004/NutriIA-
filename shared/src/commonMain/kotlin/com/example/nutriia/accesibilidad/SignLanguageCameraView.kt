@@ -31,10 +31,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Keyboard
-import androidx.compose.material.icons.rounded.SpaceBar
-import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -85,19 +83,35 @@ data class ResultadoSenaComunicativa(
 )
 
 val CATALOGO_SENAS_COMUNICATIVAS = listOf(
-    SenaLSMInfo("LECHE", "Leche / Lactancia", "🍼", "Mano en 'S'/'C' con movimiento rítmico de ordeño frente al pecho.", "Registrar toma de leche materna", CategoriaSena.ALIMENTACION),
-    SenaLSMInfo("COMIDA", "Comida / Papilla", "🥣", "Mano en 'O' aplanada (yemas unidas) llevada repetidamente hacia la boca.", "Registrar comida de sólidos", CategoriaSena.ALIMENTACION),
-    SenaLSMInfo("AGUA", "Agua", "💧", "Letra 'W' tocando suavemente la barbilla dos veces con el costado del índice.", "Registrar toma de agua", CategoriaSena.ALIMENTACION),
-    SenaLSMInfo("BEBE", "Bebé / Hijo", "👶", "Brazos cruzados al pecho con balanceo de vaivén meciendo al bebé.", "Seleccionar perfil de mi bebé", CategoriaSena.CLINICA),
-    SenaLSMInfo("FIEBRE", "Fiebre / Temperatura", "🤒", "Letra 'F' (variante formal) o palma/dorso colocados sobre la frente.", "Alerta: Mi bebé tiene fiebre", CategoriaSena.SALUD_ALERTA),
-    SenaLSMInfo("DOCTOR", "Doctor / Pediatra", "🩺", "Letra 'D' o 'M' tocando el pulso radial en la muñeca opuesta.", "Contactar pediatra de guardia", CategoriaSena.CLINICA),
-    SenaLSMInfo("MEDICINA", "Medicina / Tratamiento", "💊", "Dedo medio frotando en círculo el centro de la palma contraria.", "Registrar dosis de medicamento", CategoriaSena.SALUD_ALERTA),
-    SenaLSMInfo("PESO", "Peso / Medición", "⚖️", "Ambas manos palmas arriba alternando movimiento vertical de balanza.", "Registrar nuevo peso y talla", CategoriaSena.CLINICA),
-    SenaLSMInfo("SI_CONFIRMAR", "Sí / Guardar", "👍", "Puño cerrado con pulgar hacia arriba en movimiento afirmativo.", "Confirmar y Guardar", CategoriaSena.CONTROL),
-    SenaLSMInfo("NO_CANCELAR", "No / Cancelar", "👎", "Dedo índice oscilando lateralmente o pulgar hacia abajo.", "Cancelar / Borrar", CategoriaSena.CONTROL),
-    SenaLSMInfo("AYUDA", "Ayuda / Tutorial", "✋", "Pulgar arriba apoyado sobre palma opuesta elevándose hacia adelante.", "Abrir centro de ayuda", CategoriaSena.CONTROL),
-    SenaLSMInfo("GRACIAS", "Gracias", "🙏", "Dedo medio tocando barbilla y proyectándose hacia el frente.", "Muchas gracias", CategoriaSena.CONTROL)
+    SenaLSMInfo("LECHE", "Leche / Lactancia", "", "Mano en 'S'/'C' con movimiento rítmico de ordeño frente al pecho.", "Registrar toma de leche materna", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("COMIDA", "Comida / Papilla", "", "Mano en 'O' aplanada (yemas unidas) llevada repetidamente hacia la boca.", "Registrar comida de sólidos", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("AGUA", "Agua", "", "Letra 'W' tocando suavemente la barbilla dos veces con el costado del índice.", "Registrar toma de agua", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("BEBE", "Bebé / Hijo", "", "Brazos cruzados al pecho con balanceo de vaivén meciendo al bebé.", "Seleccionar perfil de mi bebé", CategoriaSena.CLINICA),
+    SenaLSMInfo("FIEBRE", "Fiebre / Temperatura", "", "Letra 'F' (variante formal) o palma/dorso colocados sobre la frente.", "Alerta: Mi bebé tiene fiebre", CategoriaSena.SALUD_ALERTA),
+    SenaLSMInfo("DOCTOR", "Doctor / Pediatra", "", "Letra 'D' o 'M' tocando el pulso radial en la muñeca opuesta.", "Contactar pediatra de guardia", CategoriaSena.CLINICA),
+    SenaLSMInfo("MEDICINA", "Medicina / Tratamiento", "", "Dedo medio frotando en círculo el centro de la palma contraria.", "Registrar dosis de medicamento", CategoriaSena.SALUD_ALERTA),
+    SenaLSMInfo("PESO", "Peso / Medición", "", "Ambas manos palmas arriba alternando movimiento vertical de balanza.", "Registrar nuevo peso y talla", CategoriaSena.CLINICA),
+    SenaLSMInfo("SI_CONFIRMAR", "Sí / Guardar", "", "Puño cerrado con pulgar hacia arriba en movimiento afirmativo.", "Confirmar y Guardar", CategoriaSena.CONTROL),
+    SenaLSMInfo("NO_CANCELAR", "No / Cancelar", "", "Dedo índice oscilando lateralmente o pulgar hacia abajo.", "Cancelar / Borrar", CategoriaSena.CONTROL),
+    SenaLSMInfo("AYUDA", "Ayuda / Tutorial", "", "Pulgar arriba apoyado sobre palma opuesta elevándose hacia adelante.", "Abrir centro de ayuda", CategoriaSena.CONTROL),
+    SenaLSMInfo("GRACIAS", "Gracias", "", "Dedo medio tocando barbilla y proyectándose hacia el frente.", "Muchas gracias", CategoriaSena.CONTROL)
 )
+
+fun obtenerIconoSena(senaId: String): ImageVector = when (senaId.trim().uppercase()) {
+    "LECHE" -> Icons.Rounded.WaterDrop
+    "COMIDA" -> Icons.Rounded.Restaurant
+    "AGUA" -> Icons.Rounded.Opacity
+    "BEBE" -> Icons.Rounded.ChildCare
+    "FIEBRE" -> Icons.Rounded.Thermostat
+    "DOCTOR" -> Icons.Rounded.MedicalServices
+    "MEDICINA" -> Icons.Rounded.Medication
+    "PESO" -> Icons.Rounded.Scale
+    "SI_CONFIRMAR" -> Icons.Rounded.CheckCircle
+    "NO_CANCELAR" -> Icons.Rounded.Cancel
+    "AYUDA" -> Icons.Rounded.Help
+    "GRACIAS" -> Icons.Rounded.VolunteerActivism
+    else -> Icons.Rounded.FrontHand
+}
 
 enum class ModoSeñaLSM {
     ABECEDARIO, COMUNICATIVO
@@ -199,7 +213,7 @@ fun SignLanguageCameraView(
                 .padding(cardPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Selector de Modo: 🔤 Abecedario vs 💬 Señas LSM
+            // Selector de Modo: Abecedario vs Señas LSM
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -220,12 +234,23 @@ fun SignLanguageCameraView(
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "🔤 Abecedario (A-Z)",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) FontWeight.Bold else FontWeight.Normal
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "Abecedario (A-Z)",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
                 }
 
                 Box(
@@ -240,12 +265,23 @@ fun SignLanguageCameraView(
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "💬 Señas LSM",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) FontWeight.Bold else FontWeight.Normal
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.VolunteerActivism,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "Señas LSM",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
                 }
             }
 
@@ -264,7 +300,7 @@ fun SignLanguageCameraView(
                     Text(
                         text = textoActual.ifEmpty {
                             if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) "Haz señas frente a la cámara para escribir..."
-                            else "Haz una seña comunicativa (ej. 🍼 Leche, 🥣 Comida, 💧 Agua)..."
+                            else "Haz una seña comunicativa (ej. Leche, Comida, Agua)..."
                         },
                         color = if (textoActual.isEmpty()) Color.Gray else Color.White,
                         fontSize = 14.sp,
@@ -327,7 +363,7 @@ fun SignLanguageCameraView(
                                 esCampoFecha = esCampoFecha,
                                 historialPuntos = landmarksHistory
                             )
-                            val rawLetra = if (res != null && res.confianza >= 0.65f) res.letra else ""
+                            val rawLetra = if (res != null && res.confianza >= 0.55f) res.letra else ""
                             val esLetraDinamica = rawLetra in setOf("j", "ll", "rr", "ñ", "x", "q", "z")
 
                             if (esLetraDinamica) {
@@ -335,11 +371,11 @@ fun SignLanguageCameraView(
                                 letraDetectada = rawLetra
                                 confianzaDetectada = res?.confianza ?: 0.65f
                             } else {
-                                classificationBuffer = (classificationBuffer + rawLetra).takeLast(4)
+                                classificationBuffer = (classificationBuffer + rawLetra).takeLast(3)
                                 val counts = classificationBuffer.groupingBy { it }.eachCount()
                                 val dominant = counts.maxByOrNull { it.value }
 
-                                if (dominant != null && dominant.value >= 3 && dominant.key.isNotEmpty()) {
+                                if (dominant != null && dominant.value >= 2 && dominant.key.isNotEmpty()) {
                                     letraDetectada = dominant.key
                                     confianzaDetectada = res?.confianza ?: 0.65f
                                 } else {
@@ -494,7 +530,20 @@ fun SignLanguageCameraView(
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(resCom.sena.emoji, fontSize = 24.sp)
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(colorPrimario.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = obtenerIconoSena(resCom.sena.id),
+                                                contentDescription = null,
+                                                tint = colorPrimario,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
                                         Spacer(Modifier.width(8.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
@@ -535,12 +584,23 @@ fun SignLanguageCameraView(
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth().height(36.dp)
                                     ) {
-                                        Text(
-                                            text = "✨ Insertar: ${resCom.sena.sugerenciaFrase}",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.CheckCircle,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Text(
+                                                text = "Insertar: ${resCom.sena.sugerenciaFrase}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -630,7 +690,12 @@ fun SignLanguageCameraView(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(sena.emoji, fontSize = 18.sp)
+                                    Icon(
+                                        imageVector = obtenerIconoSena(sena.id),
+                                        contentDescription = null,
+                                        tint = colorPrimario,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                     Spacer(Modifier.width(8.dp))
                                     Text(sena.nombre, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }

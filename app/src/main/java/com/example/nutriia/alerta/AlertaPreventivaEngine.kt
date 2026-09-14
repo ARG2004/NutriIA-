@@ -68,6 +68,10 @@ object AlertaPreventivaEngine {
         // ── 1. EVALUACIÓN DE TRAYECTORIA PONDERAL OMS ────────────────────────
         val tablaOMS = omsPesoPorSexo(sexo)
         val pOMS = interpolarPuntoOMS(tablaOMS, meses.coerceIn(0, 144))
+        val p3Fmt  = ((pOMS.p3  * 10.0).toInt()) / 10.0
+        val p15Fmt = ((pOMS.p15 * 10.0).toInt()) / 10.0
+        val p97Fmt = ((pOMS.p97 * 10.0).toInt()) / 10.0
+        val pesoFmt = ((pesoActualKg * 10.0).toInt()) / 10.0
 
         if (pesoActualKg > 0.0) {
             when {
@@ -77,12 +81,12 @@ object AlertaPreventivaEngine {
                             id = "peso_p3_critico",
                             categoria = CategoriaAlertaPreventiva.CRECIMIENTO_OMS,
                             titulo = "Desaceleración Ponderal por debajo de Percentil 3",
-                            hallazgoClinico = "Peso actual (${pesoActualKg} kg) ubicado bajo P3 OMS (${pOMS.p3} kg) a los $meses meses.",
+                            hallazgoClinico = "Peso actual (${pesoFmt} kg) ubicado bajo P3 OMS (${p3Fmt} kg) a los $meses meses.",
                             recomendacionPadres = "Aumentar densidad energética en tomas/comidas y programar valoración pediátrica de absorción.",
                             glosaLSM = "AVISO MEDICO: PESO BEBE BAJO PERCENTIL 3. COMER MAS CALORIAS Y REVISAR DOCTOR.",
                             severidad = NivelSeveridadAlerta.ATENCION_REQUERIDA,
                             icon = Icons.AutoMirrored.Rounded.TrendingDown,
-                            metricaClave = "${pesoActualKg} kg (P < 3)"
+                            metricaClave = "${pesoFmt} kg (P < 3)"
                         )
                     )
                 }
@@ -92,12 +96,12 @@ object AlertaPreventivaEngine {
                             id = "peso_p15_observacion",
                             categoria = CategoriaAlertaPreventiva.CRECIMIENTO_OMS,
                             titulo = "Monitoreo de Curva Ponderal (Percentil 3 a 15)",
-                            hallazgoClinico = "Peso actual (${pesoActualKg} kg) en rango P3-P15 OMS a los $meses meses.",
+                            hallazgoClinico = "Peso actual (${pesoFmt} kg) en rango P3-P15 OMS a los $meses meses.",
                             recomendacionPadres = "Mantener frecuencia de tomas y asegurar aporte de proteínas de alto valor biológico.",
                             glosaLSM = "AVISO MEDICO: PESO BEBE RANGO BAJO. CUIDAR COMIDA PROTEINA DIARIA.",
                             severidad = NivelSeveridadAlerta.OBSERVACION,
                             icon = Icons.Rounded.Scale,
-                            metricaClave = "${pesoActualKg} kg (P 3-15)"
+                            metricaClave = "${pesoFmt} kg (P 3-15)"
                         )
                     )
                 }
@@ -107,12 +111,12 @@ object AlertaPreventivaEngine {
                             id = "peso_p97_exceso",
                             categoria = CategoriaAlertaPreventiva.CRECIMIENTO_OMS,
                             titulo = "Velocidad de Ganancia Acelerada (> P97)",
-                            hallazgoClinico = "Peso actual (${pesoActualKg} kg) superior a P97 OMS (${pOMS.p97} kg) a los $meses meses.",
+                            hallazgoClinico = "Peso actual (${pesoFmt} kg) superior a P97 OMS (${p97Fmt} kg) a los $meses meses.",
                             recomendacionPadres = "Priorizar lactancia a demanda o porciones reguladas según apetito; evitar azúcares o harinas refinadas.",
                             glosaLSM = "AVISO MEDICO: PESO BEBE ALTO PERCENTIL 97. CUIDAR PORCION COMIDA Y EVITAR AZUCAR.",
                             severidad = NivelSeveridadAlerta.OBSERVACION,
                             icon = Icons.AutoMirrored.Rounded.TrendingUp,
-                            metricaClave = "${pesoActualKg} kg (P > 97)"
+                            metricaClave = "${pesoFmt} kg (P > 97)"
                         )
                     )
                 }

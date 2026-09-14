@@ -360,22 +360,55 @@ fun AlertasScreen(
                 }
             }
 
+            val proximaCita = remember(alertas) {
+                alertas.filter { it.activa && (it.tipo == TipoAlerta.CITA_MEDICA || it.esCitaDoctor) }
+                    .minByOrNull { alerta ->
+                        alerta.fechaUnica ?: "9999"
+                    } ?: alertas.firstOrNull { it.tipo == TipoAlerta.CITA_MEDICA || it.esCitaDoctor }
+            }
+
             // Lista
             LazyColumn(
                 modifier       = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 120.dp, top = 8.dp)
             ) {
-                // Mascota
-                item {
-                    AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
-                        MascotBanner(
-                            drawableRes = R.drawable.ic_notificacion,
-                            titulo      = "Alertas y recordatorios",
-                            subtitulo   = "Programa notificaciones para comidas,\nvacunas, citas y mediciones",
-                            accentColor = Sol.Indigo
-                        )
+                // Banner Hero de Próxima Cita Médica
+                if (proximaCita != null) {
+                    item {
+                        AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
+                            ProximaCitaHeroCard(
+                                cita = proximaCita,
+                                onToggle = {
+                                    checkAndRun {
+                                        viewModel.toggleActiva(proximaCita)
+                                    }
+                                },
+                                onEditar = {
+                                    if (esBlind) a11yVm.hablar(loc("Editando ${proximaCita.titulo}", "Editing ${proximaCita.titulo}"))
+                                    checkAndRun {
+                                        alertaAEditar = proximaCita
+                                        showDialog = true
+                                    }
+                                },
+                                esBlind = esBlind,
+                                a11yVm = a11yVm
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
                     }
-                    Spacer(Modifier.height(4.dp))
+                } else {
+                    // Mascota
+                    item {
+                        AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
+                            MascotBanner(
+                                drawableRes = R.drawable.ic_notificacion,
+                                titulo      = "Alertas y recordatorios",
+                                subtitulo   = "Programa notificaciones para comidas,\nvacunas, citas y mediciones",
+                                accentColor = Sol.Indigo
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
                 }
                 if (alertasFiltradas.isEmpty()) {
                     item {
@@ -755,6 +788,22 @@ private fun AlertaCard(
 
             // Contenido
             Column(Modifier.weight(1f)) {
+                if (alerta.esCitaDoctor) {
+                    Surface(
+                        shape = RoundedCornerShape(50.dp),
+                        color = Color(0xFFE8F5E9)
+                    ) {
+                        Row(Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.MedicalServices, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(11.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                if (alerta.autorNombre.isNotBlank()) "Dr(a). ${alerta.autorNombre}" else "Cita Especialista",
+                                fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
                 Text(alerta.titulo, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                     color = Sol.TextPrimary.copy(alpha = alpha), maxLines = 1)
                 Spacer(Modifier.height(5.dp))
@@ -786,6 +835,196 @@ private fun AlertaCard(
                 Row {
                     IconButton(onEditar,   Modifier.size(30.dp)) { Icon(Icons.Rounded.Edit,          null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(15.dp)) }
                     IconButton(onEliminar, Modifier.size(30.dp)) { Icon(Icons.Rounded.DeleteOutline, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(15.dp)) }
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HERO CARD: PRÓXIMA CITA MÉDICA
+// ═══════════════════════════════════════════════════════════════════════════════
+@Composable
+private fun ProximaCitaHeroCard(
+    cita: Alerta,
+    onToggle: () -> Unit,
+    onEditar: () -> Unit,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null
+) {
+    val alpha by animateFloatAsState(
+        targetValue   = if (cita.activa) 1f else 0.5f,
+        animationSpec = tween(300),
+        label         = "alpha_hero_${cita.id}"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Sol.White),
+        border = BorderStroke(1.5.dp, Color(0xFFFF9800).copy(alpha = 0.45f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFFFFF8E1).copy(alpha = 0.6f), Sol.White)
+                    )
+                )
+                .padding(16.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFFFF9800).copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.EventAvailable,
+                            contentDescription = null,
+                            tint = Color(0xFFE65100),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = RoundedCornerShape(50.dp),
+                                color = Color(0xFFFF9800)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = "PRÓXIMA CITA MÉDICA",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = if (cita.autorNombre.isNotBlank()) "Con: ${cita.autorNombre}" else "Cita con Especialista",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF33691E)
+                        )
+                    }
+                    Switch(
+                        checked = cita.activa,
+                        onCheckedChange = { onToggle() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = Color(0xFFE65100),
+                            checkedThumbColor = Sol.White
+                        ),
+                        modifier = Modifier.scale(0.8f)
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Titulo
+                Text(
+                    text = cita.titulo,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Sol.TextPrimary.copy(alpha = alpha),
+                    lineHeight = 20.sp
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                // Pills de Fecha y Hora
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFF1F8E9),
+                        border = BorderStroke(1.dp, Color(0xFF689F38).copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = Color(0xFF33691E), modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = cita.fechaUnica ?: "Fecha por definir",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF33691E)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFFFF3E0),
+                        border = BorderStroke(1.dp, Color(0xFFFF9800).copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Rounded.AccessTime, contentDescription = null, tint = Color(0xFFE65100), modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = formatHora12h(cita.hora),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFE65100)
+                            )
+                        }
+                    }
+                }
+
+                if (cita.descripcion.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFFAFAFA),
+                        border = BorderStroke(0.5.dp, Color(0xFFE0E0E0)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(Icons.Rounded.Info, contentDescription = null, tint = Color(0xFF757575), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = cita.descripcion,
+                                fontSize = 11.sp,
+                                color = Sol.TextMuted,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
                 }
             }
         }

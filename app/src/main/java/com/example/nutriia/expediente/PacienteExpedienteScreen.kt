@@ -29,6 +29,7 @@ import com.example.nutriia.alerta.CategoriaAlertaPreventiva
 import com.example.nutriia.alerta.DiagnosticoPreventivoPaciente
 import com.example.nutriia.alerta.NivelSeveridadAlerta
 import com.example.nutriia.crecimiento.MedicionCrecimiento
+import com.example.nutriia.crecimiento.Sexo
 import com.example.nutriia.crecimiento.interpretarIMC
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -231,7 +232,8 @@ fun PacienteExpedienteScreen(
                     Spacer(Modifier.height(12.dp))
                     HistorialCrecimientoExpediente(
                         historial = ui.historialCrecimiento,
-                        meses = ui.edadMeses
+                        meses = ui.edadMeses,
+                        sexo = ui.sexo
                     )
                 }
 
@@ -265,16 +267,31 @@ fun PacienteExpedienteScreen(
 
                 item {
                     Spacer(Modifier.height(20.dp))
-                    AnimatedVisibility(!ui.mostrarFormaNota) {
-                        Button(
-                            onClick  = { viewModel.mostrarFormaNota() },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(52.dp),
-                            colors   = ButtonDefaults.buttonColors(containerColor = EGreen),
-                            shape    = RoundedCornerShape(14.dp)
+                    AnimatedVisibility(!ui.mostrarFormaNota && !ui.mostrarFormaCita) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Rounded.Add, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Nueva Nota", fontWeight = FontWeight.Bold)
+                            Button(
+                                onClick  = { viewModel.mostrarFormaNota() },
+                                modifier = Modifier.weight(1f).height(52.dp),
+                                colors   = ButtonDefaults.buttonColors(containerColor = EGreen),
+                                shape    = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(Icons.Rounded.Add, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Nueva Nota", fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick  = { viewModel.mostrarFormaCita() },
+                                modifier = Modifier.weight(1f).height(52.dp),
+                                colors   = ButtonDefaults.buttonColors(containerColor = EOrange),
+                                shape    = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(Icons.Rounded.EventAvailable, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Agendar Cita", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -285,6 +302,17 @@ fun PacienteExpedienteScreen(
                             guardando  = ui.guardandoNota,
                             onGuardar  = { texto -> viewModel.guardarNota(ownerUid, childId, texto) },
                             onCancelar = { viewModel.ocultarFormaNota() }
+                        )
+                    }
+                }
+
+                item {
+                    AnimatedVisibility(ui.mostrarFormaCita) {
+                        FormaAgendarCita(
+                            guardando  = ui.guardandoCita,
+                            childName  = ui.childNombre,
+                            onGuardar  = { tit, desc, f, h -> viewModel.guardarCitaPaciente(ownerUid, childId, tit, desc, f, h) },
+                            onCancelar = { viewModel.ocultarFormaCita() }
                         )
                     }
                 }
@@ -300,12 +328,36 @@ fun PacienteExpedienteScreen(
                     EtapaBanner(meses = meses, etapa = etapaLabel)
                 }
 
+                if (meses < 6) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                            border = BorderStroke(1.dp, EOrange.copy(alpha = 0.5f))
+                        ) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Info, null, tint = EOrange, modifier = Modifier.size(24.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text("Etapa de Lactancia Exclusiva ($meses meses)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = EOrange)
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        "De acuerdo con OMS/AAP/IMSS, no se recomienda introducir alimentos sólidos antes de los 6 meses cumplidos. La leche materna o fórmula cubre 100% de los requerimientos.",
+                                        fontSize = 11.sp, color = Color.DarkGray
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 item {
                     Spacer(Modifier.height(20.dp))
                     SeccionTituloNaranja(Icons.Rounded.CalendarMonth, "Plan Semanal del Motor")
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "Generado por DietaEngine según alimentos tolerados y edad.",
+                        if (meses < 6) "Lactancia a demanda según lineamientos pediátricos." else "Generado por DietaEngine según alimentos tolerados y edad.",
                         fontSize = 11.sp, color = Color.Gray,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
                     )
@@ -323,7 +375,7 @@ fun PacienteExpedienteScreen(
                     SeccionTituloNaranja(Icons.AutoMirrored.Rounded.MenuBook, "Recetas Sugeridas para ${meses}m")
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "Filtradas por edad, región Puebla y alimentos disponibles.",
+                        if (meses < 6) "Etapa de lactancia exclusiva — sin recetas de sólidos antes de los 6 meses." else "Filtradas por edad, región Puebla y alimentos disponibles.",
                         fontSize = 11.sp, color = Color.Gray,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
                     )
@@ -331,7 +383,12 @@ fun PacienteExpedienteScreen(
                 }
 
                 if (ui.recetasSugeridas.isEmpty()) {
-                    item { EmptyState("No hay recetas disponibles para esta etapa.") }
+                    item {
+                        EmptyState(
+                            if (meses < 6) "Lactancia materna exclusiva (0-5 meses). No se indican recetas sólidas antes de los 6 meses (OMS/AAP/IMSS)."
+                            else "No hay recetas disponibles para esta etapa."
+                        )
+                    }
                 } else {
                     items(ui.recetasSugeridas, key = { it.nombre }) { receta -> RecetaSugeridaCard(receta) }
                 }
@@ -882,7 +939,8 @@ private fun BiometriaCard(
 @Composable
 private fun HistorialCrecimientoExpediente(
     historial: List<MedicionCrecimiento>,
-    meses: Int
+    meses: Int,
+    sexo: Sexo? = null
 ) {
     if (historial.isEmpty()) {
         Card(
@@ -921,7 +979,9 @@ private fun HistorialCrecimientoExpediente(
             )
             Spacer(Modifier.height(10.dp))
             ultimas.forEachIndexed { idx, m ->
-                val interp = remember(m.imc) { interpretarIMC(m.imc, meses) }
+                val interp = remember(m.imc, m.pesoKg, m.tallaCm, sexo) {
+                    interpretarIMC(m.imc, meses, sexo, m.pesoKg, m.tallaCm)
+                }
                 val style = remember(interp.categoria) {
                     when {
                         interp.categoria.contains("Bajo")   -> Triple(ETeal, Color(0xFFE0F2F1), Icons.AutoMirrored.Rounded.TrendingDown)
@@ -1107,38 +1167,146 @@ private fun NotaCard(nota: NotaConsulta) {
         if (nota.fechaMs == 0L) ""
         else FechaUtils.formatearFecha(Date(nota.fechaMs))
     }
-    Card(
-        modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
-        shape     = RoundedCornerShape(24.dp),
-        colors    = CardDefaults.cardColors(containerColor = ECardWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            // Barra lateral izquierda decorativa
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .height(96.dp)
-                    .background(EDarkGreen)
-            )
-            Column(Modifier.padding(16.dp).weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        nota.autorNombre,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize   = 14.sp,
-                        color      = EDarkGreen,
-                        modifier   = Modifier.weight(1f)
-                    )
-                    Text(fecha, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+
+    if (nota.esCita) {
+        Card(
+            modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            shape     = RoundedCornerShape(20.dp),
+            colors    = CardDefaults.cardColors(containerColor = EOrange.copy(alpha = 0.06f)),
+            border    = BorderStroke(1.dp, EOrange.copy(alpha = 0.35f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier.size(40.dp).clip(CircleShape).background(EOrange.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.EventAvailable, null, tint = EOrange, modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            nota.tituloCita.ifBlank { "Control de Crecimiento y Nutrición" },
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize   = 14.sp,
+                            color      = EDarkGreen
+                        )
+                        Text(
+                            "Agendada por ${nota.autorNombre}",
+                            fontSize = 11.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = EOrange.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            "CITA AGENDADA",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = EOrange
+                        )
+                    }
                 }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (nota.fechaCita.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, EOrange.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Rounded.CalendarToday, null, tint = EOrange, modifier = Modifier.size(13.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(nota.fechaCita, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = EDarkGreen)
+                            }
+                        }
+                    }
+                    if (nota.horaCita.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, EOrange.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Rounded.Schedule, null, tint = EOrange, modifier = Modifier.size(13.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(nota.horaCita, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = EDarkGreen)
+                            }
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(8.dp))
                 Text(
                     nota.texto,
-                    fontSize = 13.sp,
-                    color    = Color(0xFF424242),
-                    lineHeight = 18.sp
+                    fontSize = 12.sp,
+                    color = Color(0xFF37474F),
+                    lineHeight = 16.sp
                 )
+            }
+        }
+    } else {
+        Card(
+            modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            shape     = RoundedCornerShape(20.dp),
+            colors    = CardDefaults.cardColors(containerColor = ECardWhite),
+            border    = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    modifier = Modifier.size(38.dp).clip(CircleShape).background(EGreen.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Description, null, tint = EGreen, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            nota.autorNombre,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize   = 14.sp,
+                            color      = EDarkGreen
+                        )
+                        if (fecha.isNotBlank()) {
+                            Text(fecha, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        nota.texto,
+                        fontSize = 13.sp,
+                        color    = Color(0xFF37474F),
+                        lineHeight = 18.sp
+                    )
+                }
             }
         }
     }
@@ -1217,6 +1385,193 @@ private fun FormaNota(guardando: Boolean, onGuardar: (String) -> Unit, onCancela
         }
     }
 }
+
+@Composable
+private fun FormaAgendarCita(
+    guardando:  Boolean,
+    childName:  String,
+    onGuardar:  (titulo: String, descripcion: String, fecha: String, hora: String) -> Unit,
+    onCancelar: () -> Unit
+) {
+    var titulo      by remember { mutableStateOf("Control de Crecimiento y Nutrición") }
+    var descripcion by remember { mutableStateOf("") }
+    var fecha       by remember { mutableStateOf("14/09/2026") }
+    var hora        by remember { mutableStateOf("10:00") }
+
+    val presetsFecha = listOf(
+        "Hoy (13/09)" to "13/09/2026",
+        "Mañana (14/09)" to "14/09/2026",
+        "En 1 sem (20/09)" to "20/09/2026",
+        "En 1 mes (13/10)" to "13/10/2026"
+    )
+
+    val presetsHora = listOf(
+        "09:00", "10:00", "11:30", "16:00", "18:00"
+    )
+
+    Card(
+        modifier  = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        shape     = RoundedCornerShape(28.dp),
+        colors    = CardDefaults.cardColors(containerColor = ECardWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+        border    = BorderStroke(1.dp, EOrange.copy(0.35f))
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(42.dp).clip(CircleShape).background(EOrange.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.EventAvailable, null, tint = EOrange, modifier = Modifier.size(24.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("Agendar Cita / Control", fontWeight = FontWeight.Black, fontSize = 16.sp, color = EOrange)
+                    Text("Se programará un recordatorio automático para $childName", fontSize = 11.sp, color = Color.Gray)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value         = titulo,
+                onValueChange = { titulo = it },
+                label         = { Text("Motivo / Título de la cita") },
+                modifier      = Modifier.fillMaxWidth(),
+                singleLine    = true,
+                shape         = RoundedCornerShape(14.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = EOrange, unfocusedBorderColor = Color(0xFFDDDDDD), cursorColor = EOrange
+                )
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // Selector interactivo de Fecha con chips rápidos
+            Text("Fecha de la cita", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EDarkGreen)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                presetsFecha.forEach { (label, valFecha) ->
+                    val sel = fecha == valFecha
+                    Surface(
+                        onClick = { fecha = valFecha },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (sel) EOrange else EOrange.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, if (sel) EOrange else EOrange.copy(alpha = 0.25f))
+                    ) {
+                        Text(
+                            label,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            fontSize = 11.sp,
+                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                            color = if (sel) Color.White else EDarkGreen
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value         = fecha,
+                onValueChange = { fecha = it },
+                label         = { Text("Fecha (DD/MM/AAAA)") },
+                placeholder   = { Text("DD/MM/AAAA") },
+                leadingIcon   = { Icon(Icons.Rounded.CalendarToday, null, tint = EOrange, modifier = Modifier.size(18.dp)) },
+                modifier      = Modifier.fillMaxWidth(),
+                singleLine    = true,
+                shape         = RoundedCornerShape(14.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = EOrange, unfocusedBorderColor = Color(0xFFDDDDDD), cursorColor = EOrange
+                )
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // Selector interactivo de Hora con chips rápidos
+            Text("Hora de la cita", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EDarkGreen)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                presetsHora.forEach { valHora ->
+                    val sel = hora == valHora
+                    Surface(
+                        onClick = { hora = valHora },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (sel) EOrange else EOrange.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, if (sel) EOrange else EOrange.copy(alpha = 0.25f))
+                    ) {
+                        Text(
+                            valHora,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            fontSize = 11.sp,
+                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                            color = if (sel) Color.White else EDarkGreen
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value         = hora,
+                onValueChange = { hora = it },
+                label         = { Text("Hora (HH:mm)") },
+                placeholder   = { Text("10:00") },
+                leadingIcon   = { Icon(Icons.Rounded.Schedule, null, tint = EOrange, modifier = Modifier.size(18.dp)) },
+                modifier      = Modifier.fillMaxWidth(),
+                singleLine    = true,
+                shape         = RoundedCornerShape(14.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = EOrange, unfocusedBorderColor = Color(0xFFDDDDDD), cursorColor = EOrange
+                )
+            )
+
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value         = descripcion,
+                onValueChange = { descripcion = it },
+                label         = { Text("Indicaciones clínicas para los padres") },
+                placeholder   = { Text("Revisión de peso, talla y respuesta al plan...") },
+                modifier      = Modifier.fillMaxWidth(),
+                minLines      = 3,
+                shape         = RoundedCornerShape(14.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = EOrange, unfocusedBorderColor = Color(0xFFDDDDDD), cursorColor = EOrange
+                )
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick  = onCancelar,
+                    modifier = Modifier.weight(1f),
+                    shape    = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Cancelar", color = Color.Gray, fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick  = { onGuardar(titulo, descripcion, fecha, hora) },
+                    enabled  = titulo.isNotBlank() && fecha.isNotBlank() && hora.isNotBlank() && !guardando,
+                    modifier = Modifier.weight(1.3f).height(48.dp),
+                    colors   = ButtonDefaults.buttonColors(containerColor = EOrange),
+                    shape    = RoundedCornerShape(16.dp)
+                ) {
+                    if (guardando) {
+                        CircularProgressIndicator(Modifier.size(16.dp), color = Color.White)
+                    } else {
+                        Icon(Icons.Rounded.Check, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Agendar Cita", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun EmptyState(msg: String) {
@@ -1917,7 +2272,10 @@ private fun DiagnosticoPreventivoCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                ) {
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -1933,17 +2291,21 @@ private fun DiagnosticoPreventivoCard(
                         )
                     }
                     Spacer(Modifier.width(12.dp))
-                    Column {
+                    Column(Modifier.weight(1f, fill = false)) {
                         Text(
                             "Telemetría Preventiva",
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
-                            color = EDarkGreen
+                            color = EDarkGreen,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             "Estándares OMS & Balance Pediátrico",
                             fontSize = 11.sp,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -1957,6 +2319,8 @@ private fun DiagnosticoPreventivoCard(
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         color = headerColor,
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
@@ -2028,7 +2392,10 @@ private fun AlertaPreventivaItemCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                ) {
                     Icon(
                         imageVector = alerta.icon,
                         contentDescription = null,
@@ -2040,7 +2407,9 @@ private fun AlertaPreventivaItemCard(
                         text = alerta.categoria.label,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = chipColor
+                        color = chipColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -2054,11 +2423,14 @@ private fun AlertaPreventivaItemCard(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = chipColor,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
             }
+
 
             Spacer(Modifier.height(8.dp))
 

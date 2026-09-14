@@ -194,3 +194,31 @@ data class ComidaPlan(
         )
     }
 }
+
+// ─── Recomendación preventiva del especialista ────────────────────────────────
+@Serializable
+data class RecomendacionEspecialista(
+    val id:              String = "",
+    val titulo:          String = "",
+    val texto:           String = "",
+    val hallazgoClinico: String = "",
+    val glosaLSM:        String = "",
+    val categoria:       String = "",
+    val severidad:       String = "",
+    val metricaClave:    String = "",
+    val autorNombre:     String = "Nutriólogo",
+    val tipo:            String = "alerta_preventiva",
+    val fechaMs:         Long   = 0L
+)
+
+// ─── Cita médica agendada por el especialista ─────────────────────────────────
+@Serializable
+data class CitaEspecialista(
+    val id:          String  = "",
+    val titulo:      String  = "",
+    val motivo:      String  = "",
+    val fecha:       String  = "",
+    val hora:        String  = "",
+    val autorNombre: String  = "Especialista",
+    val activa:      Boolean = true
+)

@@ -304,4 +304,29 @@ class VinculacionRepository {
         val sufijo  = UUID.randomUUID().toString().take(5).uppercase()
         return "NUT-$prefijo-$sufijo"
     }
-}
+
+    fun observarConsultasEspecialista(padreUid: String, childId: String): Flow<List<Map<String, Any?>>> = callbackFlow {
+        if (padreUid.isBlank() || childId.isBlank()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val ref = db.collection("usuarios")
+            .document(padreUid)
+            .collection("hijos")
+            .document(childId)
+            .collection("consultas")
+
+        val listener = ref.addSnapshotListener { snap, err ->
+            if (err != null) {
+                trySend(emptyList())
+                return@addSnapshotListener
+            }
+            val docs = snap?.documents?.mapNotNull { doc ->
+                doc.data?.let { it + ("id" to doc.id) }
+            } ?: emptyList()
+            trySend(docs)
+        }
+        awaitClose { listener.remove() }
+    }.catch { emit(emptyList()) }
+}

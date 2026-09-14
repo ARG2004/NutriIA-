@@ -92,7 +92,7 @@ class CrecimientoViewModel : ViewModel() {
         combine(_ultimaMedicion, _edadMeses, _sexo) { ultima, meses, sexo ->
             val m = ultima ?: return@combine null
             if (m.imc == 0.0) return@combine null
-            interpretarIMC(m.imc, meses, sexo)
+            interpretarIMC(m.imc, meses, sexo, m.pesoKg, m.tallaCm)
         }.stateIn(
             scope        = viewModelScope,
             started      = SharingStarted.WhileSubscribed(5_000),

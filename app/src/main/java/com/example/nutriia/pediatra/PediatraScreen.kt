@@ -30,6 +30,8 @@ import com.example.nutriia.vinculacion.EstadoVinculacion
 import com.example.nutriia.vinculacion.NutriologoPublico
 import com.example.nutriia.vinculacion.Vinculacion
 import com.example.nutriia.vinculacion.VinculacionViewModel
+import com.example.nutriia.vinculacion.RecomendacionEspecialista
+import com.example.nutriia.vinculacion.CitaEspecialista
 import com.example.nutriia.util.PermissionHelper
 import com.example.nutriia.util.PermissionType
 import com.example.nutriia.util.rememberPermissionState
@@ -107,10 +109,18 @@ fun PediatraScreen(
     val error                by vinculacionViewModel.error.collectAsStateWithLifecycle()
     val exito                by vinculacionViewModel.exito.collectAsStateWithLifecycle()
     val nutriologoSel        by vinculacionViewModel.nutriologoSeleccionado.collectAsStateWithLifecycle()
+    val recomendaciones      by vinculacionViewModel.recomendacionesEspecialista.collectAsStateWithLifecycle()
+    val citasDoctor          by vinculacionViewModel.citasEspecialista.collectAsStateWithLifecycle()
 
     val vinculacionesHijo = vinculaciones.filter { it.childId == childId || it.childId.isBlank() }
     val activas           = vinculacionesHijo.filter { it.estado == EstadoVinculacion.ACTIVO }
     val pendientes        = vinculacionesHijo.filter { it.estado == EstadoVinculacion.PENDIENTE }
+
+    LaunchedEffect(padreUid, childId) {
+        if (padreUid.isNotBlank() && childId.isNotBlank()) {
+            vinculacionViewModel.observarConsultasDelHijo(padreUid, childId)
+        }
+    }
 
     // ── Aviso Automático de Estado de Especialista en Modo Blind ─────────────
     LaunchedEffect(activas, pendientes, esBlind) {
@@ -369,6 +379,36 @@ fun PediatraScreen(
                             onAbrirPago(nutriologoUid, nutriologoNombre, tipo)
                         },
                         onRevocar             = { vinculacionViewModel.revocarVinculacion(vinc.id) }
+                    )
+                }
+            }
+
+            // ── Citas Médicas Agendadas por el Especialista ─────────────────────
+            if (citasDoctor.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(18.dp))
+                    SeccionTitulo(icono = Icons.Rounded.EventAvailable, titulo = "Próximas citas agendadas", color = POrange)
+                }
+                items(citasDoctor, key = { it.id }) { cita ->
+                    CitaEspecialistaItemCard(
+                        cita    = cita,
+                        esBlind = esBlind,
+                        a11yVm  = a11yVm
+                    )
+                }
+            }
+
+            // ── Recomendaciones y Diagnóstico Preventivo ───────────────────────
+            if (recomendaciones.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(18.dp))
+                    SeccionTitulo(icono = Icons.Rounded.MedicalServices, titulo = "Telemetría y Diagnóstico Preventivo", color = PGreen)
+                }
+                items(recomendaciones, key = { it.id }) { rec ->
+                    RecomendacionEspecialistaCard(
+                        rec     = rec,
+                        esBlind = esBlind,
+                        a11yVm  = a11yVm
                     )
                 }
             }
@@ -1445,6 +1485,280 @@ private fun SheetInfoRow(
         Column {
             Text(label, fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Medium)
             Text(value, fontSize = 14.sp, color = PDarkGreen, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// ─── Cards para el Padre: Citas y Recomendaciones del Especialista ─────────────
+
+@Composable
+private fun CitaEspecialistaItemCard(
+    cita: CitaEspecialista,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = PCardWhite),
+        border = BorderStroke(1.dp, POrange.copy(alpha = 0.35f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(POrange.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.EventAvailable, contentDescription = null, tint = POrange, modifier = Modifier.size(22.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Cita Médica Agendada",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.sp,
+                        color = PDarkGreen
+                    )
+                    if (cita.autorNombre.isNotBlank()) {
+                        Text(
+                            text = "Por: ${cita.autorNombre}",
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = POrange.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = "PROGRAMADA",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = POrange
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Titulo / Motivo
+            Text(
+                text = cita.titulo.ifBlank { "Control de Crecimiento y Nutrición" },
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = PDarkGreen
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            // Pills con Fecha y Hora
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFF1F8E9),
+                    border = BorderStroke(1.dp, PGreen.copy(alpha = 0.25f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.CalendarToday, contentDescription = null, tint = PGreen, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = cita.fecha.ifBlank { "Por definir" },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PDarkGreen
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFFFF8E1),
+                    border = BorderStroke(1.dp, POrange.copy(alpha = 0.25f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.AccessTime, contentDescription = null, tint = POrange, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = cita.hora.ifBlank { "Por definir" },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PDarkGreen
+                        )
+                    }
+                }
+            }
+
+            if (cita.motivo.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFF9FBE7),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(Icons.Rounded.Info, contentDescription = null, tint = PGreen, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Indicaciones: ${cita.motivo}",
+                            fontSize = 11.sp,
+                            color = PDarkGreen,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecomendacionEspecialistaCard(
+    rec: RecomendacionEspecialista,
+    esBlind: Boolean = false,
+    a11yVm: AccessibilityViewModel? = null
+) {
+    val severidadUpper = rec.severidad.uppercase()
+    val badgeColor = when {
+        severidadUpper.contains("ATENCIÓN") || severidadUpper.contains("ATENCION") || severidadUpper.contains("ALERTA") -> PRed
+        severidadUpper.contains("OBSERV") -> POrange
+        else -> PGreen
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = PCardWhite),
+        border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.35f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(badgeColor.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.MedicalServices,
+                        contentDescription = null,
+                        tint = badgeColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    val catLabel = when (rec.categoria.trim().uppercase()) {
+                        "CRECIMIENTO_OMS" -> "Trayectoria de Crecimiento OMS"
+                        "MICRONUTRIENTES" -> "Balance de Micronutrientes"
+                        "INMUNOTOLERANCIA_ALERGENOS" -> "Ventana de Inmunotolerancia"
+                        "ADHERENCIA_PLAN" -> "Consistencia de Registros"
+                        else -> rec.categoria.replace("_", " ").lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                    }
+                    Text(
+                        text = catLabel.ifBlank { "Telemetría y Diagnóstico Preventivo" },
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 13.sp,
+                        color = PDarkGreen,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Por: ${rec.autorNombre.ifBlank { "Especialista" }}",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = badgeColor.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = rec.severidad.ifBlank { "RECOMENDACIÓN" },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = badgeColor,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
+
+            if (rec.hallazgoClinico.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "Hallazgo Clínico:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
+                )
+                Text(
+                    text = rec.hallazgoClinico,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = PDarkGreen,
+                    lineHeight = 17.sp
+                )
+            }
+
+            if (rec.texto.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF1F8E9),
+                    border = BorderStroke(0.5.dp, PGreen.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.Lightbulb, contentDescription = null, tint = PGreen, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "Indicaciones para casa:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PDarkGreen
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = rec.texto,
+                            fontSize = 12.sp,
+                            color = PDarkGreen,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }

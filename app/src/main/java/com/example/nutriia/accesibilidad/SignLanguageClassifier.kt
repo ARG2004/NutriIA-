@@ -3,6 +3,9 @@ package com.example.nutriia.accesibilidad
 import android.content.Context
 import android.util.Log
 import androidx.annotation.Keep
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.mediapipe.tasks.components.containers.Landmark
@@ -55,19 +58,35 @@ data class LsmDataset(
  * Catálogo Oficial de Señas Léxicas LSM para NutrIA (DIELSEME / CONADIS / SEP).
  */
 val CATALOGO_SENAS_COMUNICATIVAS = listOf(
-    SenaLSMInfo("LECHE", "Leche / Lactancia", "🍼", "Mano en 'S'/'C' con movimiento rítmico de ordeño frente al pecho.", "Registrar toma de leche materna", CategoriaSena.ALIMENTACION),
-    SenaLSMInfo("COMIDA", "Comida / Papilla", "🥣", "Mano en 'O' aplanada (yemas unidas) llevada repetidamente hacia la boca.", "Registrar comida de sólidos", CategoriaSena.ALIMENTACION),
-    SenaLSMInfo("AGUA", "Agua", "💧", "Letra 'W' tocando suavemente la barbilla dos veces con el costado del índice.", "Registrar toma de agua", CategoriaSena.ALIMENTACION),
-    SenaLSMInfo("BEBE", "Bebé / Hijo", "👶", "Brazos cruzados al pecho con balanceo de vaivén meciendo al bebé.", "Seleccionar perfil de mi bebé", CategoriaSena.CLINICA),
-    SenaLSMInfo("FIEBRE", "Fiebre / Temperatura", "🤒", "Letra 'F' (variante formal) o palma/dorso colocados sobre la frente.", "Alerta: Mi bebé tiene fiebre", CategoriaSena.SALUD_ALERTA),
-    SenaLSMInfo("DOCTOR", "Doctor / Pediatra", "🩺", "Letra 'D' o 'M' tocando el pulso radial en la muñeca opuesta.", "Contactar pediatra de guardia", CategoriaSena.CLINICA),
-    SenaLSMInfo("MEDICINA", "Medicina / Tratamiento", "💊", "Dedo medio frotando en círculo el centro de la palma contraria.", "Registrar dosis de medicamento", CategoriaSena.SALUD_ALERTA),
-    SenaLSMInfo("PESO", "Peso / Medición", "⚖️", "Ambas manos palmas arriba alternando movimiento vertical de balanza.", "Registrar nuevo peso y talla", CategoriaSena.CLINICA),
-    SenaLSMInfo("SI_CONFIRMAR", "Sí / Guardar", "👍", "Puño cerrado con pulgar hacia arriba en movimiento afirmativo.", "Confirmar y Guardar", CategoriaSena.CONTROL),
-    SenaLSMInfo("NO_CANCELAR", "No / Cancelar", "👎", "Dedo índice oscilando lateralmente o pulgar hacia abajo.", "Cancelar / Borrar", CategoriaSena.CONTROL),
-    SenaLSMInfo("AYUDA", "Ayuda / Tutorial", "✋", "Pulgar arriba apoyado sobre palma opuesta elevándose hacia adelante.", "Abrir centro de ayuda", CategoriaSena.CONTROL),
-    SenaLSMInfo("GRACIAS", "Gracias", "🙏", "Dedo medio tocando barbilla y proyectándose hacia el frente.", "Muchas gracias", CategoriaSena.CONTROL)
+    SenaLSMInfo("LECHE", "Leche / Lactancia", "", "Mano en 'S'/'C' con movimiento rítmico de ordeño frente al pecho.", "Registrar toma de leche materna", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("COMIDA", "Comida / Papilla", "", "Mano en 'O' aplanada (yemas unidas) llevada repetidamente hacia la boca.", "Registrar comida de sólidos", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("AGUA", "Agua", "", "Letra 'W' tocando suavemente la barbilla dos veces con el costado del índice.", "Registrar toma de agua", CategoriaSena.ALIMENTACION),
+    SenaLSMInfo("BEBE", "Bebé / Hijo", "", "Brazos cruzados al pecho con balanceo de vaivén meciendo al bebé.", "Seleccionar perfil de mi bebé", CategoriaSena.CLINICA),
+    SenaLSMInfo("FIEBRE", "Fiebre / Temperatura", "", "Letra 'F' (variante formal) o palma/dorso colocados sobre la frente.", "Alerta: Mi bebé tiene fiebre", CategoriaSena.SALUD_ALERTA),
+    SenaLSMInfo("DOCTOR", "Doctor / Pediatra", "", "Letra 'D' o 'M' tocando el pulso radial en la muñeca opuesta.", "Contactar pediatra de guardia", CategoriaSena.CLINICA),
+    SenaLSMInfo("MEDICINA", "Medicina / Tratamiento", "", "Dedo medio frotando en círculo el centro de la palma contraria.", "Registrar dosis de medicamento", CategoriaSena.SALUD_ALERTA),
+    SenaLSMInfo("PESO", "Peso / Medición", "", "Ambas manos palmas arriba alternando movimiento vertical de balanza.", "Registrar nuevo peso y talla", CategoriaSena.CLINICA),
+    SenaLSMInfo("SI_CONFIRMAR", "Sí / Guardar", "", "Puño cerrado con pulgar hacia arriba en movimiento afirmativo.", "Confirmar y Guardar", CategoriaSena.CONTROL),
+    SenaLSMInfo("NO_CANCELAR", "No / Cancelar", "", "Dedo índice oscilando lateralmente o pulgar hacia abajo.", "Cancelar / Borrar", CategoriaSena.CONTROL),
+    SenaLSMInfo("AYUDA", "Ayuda / Tutorial", "", "Pulgar arriba apoyado sobre palma opuesta elevándose hacia adelante.", "Abrir centro de ayuda", CategoriaSena.CONTROL),
+    SenaLSMInfo("GRACIAS", "Gracias", "", "Dedo medio tocando barbilla y proyectándose hacia el frente.", "Muchas gracias", CategoriaSena.CONTROL)
 )
+
+fun obtenerIconoSena(senaId: String): ImageVector = when (senaId.trim().uppercase()) {
+    "LECHE" -> Icons.Rounded.WaterDrop
+    "COMIDA" -> Icons.Rounded.Restaurant
+    "AGUA" -> Icons.Rounded.Opacity
+    "BEBE" -> Icons.Rounded.ChildCare
+    "FIEBRE" -> Icons.Rounded.Thermostat
+    "DOCTOR" -> Icons.Rounded.MedicalServices
+    "MEDICINA" -> Icons.Rounded.Medication
+    "PESO" -> Icons.Rounded.Scale
+    "SI_CONFIRMAR" -> Icons.Rounded.CheckCircle
+    "NO_CANCELAR" -> Icons.Rounded.Cancel
+    "AYUDA" -> Icons.Rounded.Help
+    "GRACIAS" -> Icons.Rounded.VolunteerActivism
+    else -> Icons.Rounded.FrontHand
+}
 
 /**
  * Clasificador Anatómico Relacional 3D Riguroso LSM (Abecedario Completo A-Z + Señas Comunicativas Oficiales).
@@ -433,7 +452,7 @@ object SignLanguageClassifier {
             }
         }
 
-        // ── 2.5 CLASIFICACIÓN KNN PARA SEÑAS ESTÁTICAS ──
+        // ── 2.5 CALIBRACIÓN PERSONALIZADA (KNN solo para muestras customizadas de alta precisión) ──
         val samples = lazyLoadDataset(context)
         if (samples.isNotEmpty()) {
             val currentVector = obtenerVectorHibrido(landmarks2D)
@@ -456,68 +475,15 @@ object SignLanguageClassifier {
                     }
                 }
 
-                val threshold = 1.15f
+                val threshold = 0.45f // Umbral estricto para no secuestrar la clasificación anatómica
                 if (bestSample != null && minDistance < threshold) {
-                    var finalLabel = bestSample.label
-                    
-                    // Salvaguarda I vs Y (Pulgar abierto vs cerrado)
-                    val thumbDistance = nDist(4, 5)
-                    if (finalLabel == "y" && thumbDistance <= 0.75f) {
-                        finalLabel = "i"
-                    } else if (finalLabel == "i" && thumbDistance > 0.75f) {
-                        finalLabel = "y"
-                    }
-
-                    // Salvaguarda U vs V (Dedos juntos vs separados)
-                    val indexMiddleDist = nDist(8, 12)
-                    if (finalLabel == "u" && indexMiddleDist >= 0.22f) {
-                        finalLabel = "v"
-                    } else if (finalLabel == "v" && indexMiddleDist < 0.18f) {
-                        finalLabel = "u"
-                    }
-
-                    // Salvaguarda O (Círculo cerrado vs abierto/puño)
-                    val esManoO = thumbIndexDist < 0.38f && thumbMiddleDist < 0.38f && ratioExt(8, 5) > 1.10f && ratioExt(12, 9) > 1.10f && !indexHorizontal
-                    if (esManoO) {
-                        finalLabel = "o"
-                    } else if (finalLabel == "o") {
-                        finalLabel = "c"
-                    }
-
-                    // Salvaguarda M vs N (Tres dedos drapeados vs dos dedos drapeados)
-                    val ringTipKnuckleDist = nDist(16, 13)
-                    if (finalLabel == "m" && ringTipKnuckleDist <= 0.30f) {
-                        finalLabel = "n"
-                    } else if (finalLabel == "n" && ringTipKnuckleDist > 0.30f) {
-                        finalLabel = "m"
-                    }
-
-                    // Salvaguarda P vs K (Orientación hacia abajo vs hacia arriba)
-                    // P exige que el dedo medio apunte claramente hacia abajo en la pantalla (tip.y > pip.y).
-                    // K exige que el dedo medio apunte hacia el costado o arriba (tip.y <= pip.y).
-                    val isPointingDown = mTip2d.y() > mPip2d.y() - 0.02f
-
-                    if (finalLabel == "k" && isPointingDown) {
-                        finalLabel = "p"
-                    } else if (finalLabel == "p" && !isPointingDown) {
-                        finalLabel = "k"
-                    }
-
-                    // Salvaguarda R (Dedos cruzados y base R completa = R, de lo contrario No R)
-                    if (esPoseRBase) {
-                        finalLabel = "r"
-                    } else if (finalLabel == "r") {
-                        finalLabel = "u"
-                    }
-
+                    val finalLabel = bestSample.label
                     val confianza = (1.0f - (minDistance / threshold)).coerceIn(0.0f, 1.0f)
-                    val confianzaEscalada = 0.65f + (confianza * 0.33f)
+                    val confianzaEscalada = 0.75f + (confianza * 0.24f)
                     if (debug) {
-                        Log.d("LSM_KNN", "Seña detectada por KNN: '$finalLabel' (original: '${bestSample.label}') con distancia $minDistance (Confianza: $confianzaEscalada)")
+                        Log.d("LSM_KNN", "Muestra calibrada detectada: '$finalLabel' distancia $minDistance (Confianza: $confianzaEscalada)")
                     }
                     return ResultadoClasificacion(finalLabel, confianzaEscalada)
-                } else if (debug && bestSample != null) {
-                    Log.d("LSM_KNN", "Seña más cercana '${bestSample.label}' pero distancia $minDistance supera umbral $threshold")
                 }
             }
         }

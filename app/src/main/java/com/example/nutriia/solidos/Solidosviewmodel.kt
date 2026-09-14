@@ -61,13 +61,15 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
     private val _nivelIngreso = MutableStateFlow(NivelIngreso.BASICO)
     private val _region = MutableStateFlow(RegionMexico.CENTRO)
     private val _recetasPersonalizadas = MutableStateFlow<List<RecetaMexicana>>(emptyList())
+    private val _modoPlan = MutableStateFlow(com.example.nutriia.sueldo.ModoPlanAlimentario.MIXTO)
 
     val alergenosNino: StateFlow<List<Alergeno>> = _alergenosNino.asStateFlow()
+    val modoPlan: StateFlow<com.example.nutriia.sueldo.ModoPlanAlimentario> = _modoPlan.asStateFlow()
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
     fun init(uid: String, childId: String, meses: Int, sharedVm: NutriSharedViewModel) {
-        _edadMeses.value = meses.coerceAtLeast(6)
+        _edadMeses.value = meses.coerceAtLeast(0)
         shared           = sharedVm
         sharedVm.cargarPerfil(uid, childId)
 
@@ -81,6 +83,7 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
             launch { sharedVm.nivelIngreso.collect { _nivelIngreso.value = it } }
             launch { sharedVm.region.collect { _region.value = it } }
             launch { sharedVm.recetasPersonalizadas.collect { _recetasPersonalizadas.value = it } }
+            launch { sharedVm.modoPlanAlimentario.collect { _modoPlan.value = it } }
 
             repo.observarAlimentos(childId)
                 .catch { e ->
@@ -108,6 +111,10 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
     fun setFiltroTipoReceta(f: FiltroTipoReceta) { _filtroTipoReceta.value = f }
     fun setBusqueda(q: String)                   { _busqueda.value = q }
     fun setGrupoFiltro(g: GrupoAlimento?)        { _grupoFiltro.value = g }
+    fun setModoPlan(modo: com.example.nutriia.sueldo.ModoPlanAlimentario) {
+        _modoPlan.value = modo
+        shared?.setModoPlanAlimentario(modo)
+    }
 
     // ── Recetas filtradas ─────────────────────────────────────────────────────
 
@@ -200,7 +207,8 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
         _alergenosNino,
         _nivelIngreso,
         _region,
-        _recetasPersonalizadas
+        _recetasPersonalizadas,
+        _modoPlan
     ) { args ->
         val lista            = args[0] as List<AlimentoIntroducido>
         val meses            = args[1] as Int
@@ -208,6 +216,7 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
         val nivel            = args[3] as NivelIngreso
         val region           = args[4] as RegionMexico
         val recetasCustom    = args[5] as List<RecetaMexicana>
+        val modo             = args[6] as com.example.nutriia.sueldo.ModoPlanAlimentario
 
         if (lista.isEmpty()) {
             shared?.resetPlanAlimentacion()
@@ -237,22 +246,29 @@ class AlimentacionViewModel(application: Application) : AndroidViewModel(applica
             alergenosNiño        = alergenos,
             alimentosRegistrados = nombresTolerados,
             recetasCustom        = recetasCustom,
-            alimentosExcluidos   = alimentosExcluidosFinales
+            alimentosExcluidos   = alimentosExcluidosFinales,
+            modoPlan             = modo
         )
 
         shared?.setPlanSemanalAlimentacion(planDieta)
 
         planDieta.map { diaDieta ->
             PlanSemanalSolidos(
-                diaSemana       = diaDieta.diaSemana,
-                desayuno        = diaDieta.comidas.desayuno,
-                almuerzo        = diaDieta.comidas.almuerzo,
-                merienda        = diaDieta.comidas.colacion1,
-                colacion2       = diaDieta.comidas.colacion2,
-                cena            = diaDieta.comidas.cena,
-                porcionLabel    = guia.porcionLabel,
-                texturaLabel    = guia.texturaLabel,
-                frecuenciaLabel = guia.frecuenciaLabel
+                diaSemana         = diaDieta.diaSemana,
+                desayuno          = diaDieta.comidas.desayuno,
+                almuerzo          = diaDieta.comidas.almuerzo,
+                merienda          = diaDieta.comidas.colacion1,
+                colacion2         = diaDieta.comidas.colacion2,
+                cena              = diaDieta.comidas.cena,
+                porcionLabel      = guia.porcionLabel,
+                texturaLabel      = guia.texturaLabel,
+                frecuenciaLabel   = guia.frecuenciaLabel,
+                desayunoEsDoctor  = diaDieta.comidas.desayunoEsDoctor,
+                meriendaEsDoctor  = diaDieta.comidas.colacion1EsDoctor,
+                almuerzoEsDoctor  = diaDieta.comidas.almuerzoEsDoctor,
+                colacion2EsDoctor = diaDieta.comidas.colacion2EsDoctor,
+                cenaEsDoctor      = diaDieta.comidas.cenaEsDoctor,
+                autorDoctor       = diaDieta.comidas.autorPrescripcion
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

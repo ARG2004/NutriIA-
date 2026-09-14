@@ -2079,11 +2079,13 @@ object DietaEngine {
 
         if (alimentosRegistrados.isEmpty()) return candidatas
 
-        val conIngredientes = candidatas.filter { receta ->
+        val customDelDoctor = candidatas.filter { it.fuente.startsWith("Nutriólogo", ignoreCase = true) }
+
+        val conIngredientes = (customDelDoctor + candidatas.filter { receta ->
             alimentosRegistrados.any { nombreRegistrado ->
                 receta.contieneIngrediente(nombreRegistrado)
             }
-        }
+        }).distinctBy { it.nombre }
 
         // Fallback: si ninguna receta usa los ingredientes registrados,
         // devolver todas las candidatas (que ya están libres de alimentos excluidos).
@@ -2101,30 +2103,62 @@ object DietaEngine {
         alergenosNiño:        List<Alergeno> = emptyList(),
         alimentosRegistrados: List<String>   = emptyList(),
         recetasCustom:        List<RecetaMexicana> = emptyList(),
-        alimentosExcluidos:   List<String>   = emptyList()
+        alimentosExcluidos:   List<String>   = emptyList(),
+        modoPlan:             ModoPlanAlimentario = ModoPlanAlimentario.MIXTO
     ): List<PlanDietaSemanal> {
         val dias   = listOf("Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo")
         val macros = macrosPorEdad(meses)
 
-        val desayunos  = recetasPorPerfil(meses, nivel, TipoComida.DESAYUNO,  region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
-            .ifEmpty { listOf(fallback(TipoComida.DESAYUNO,  meses)) }
-        val comidas    = recetasPorPerfil(meses, nivel, TipoComida.COMIDA,    region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
-            .ifEmpty { listOf(fallback(TipoComida.COMIDA,    meses)) }
-        val cenas      = recetasPorPerfil(meses, nivel, TipoComida.CENA,      region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
-            .ifEmpty { listOf(fallback(TipoComida.CENA,      meses)) }
-        val colaciones = recetasPorPerfil(meses, nivel, TipoComida.COLACION,  region, alergenosNiño, alimentosRegistrados, recetasCustom, alimentosExcluidos)
-            .ifEmpty { listOf(fallback(TipoComida.COLACION,  meses)) }
+        val customParaModo = when (modoPlan) {
+            ModoPlanAlimentario.SOLO_MOTOR -> emptyList()
+            ModoPlanAlimentario.SOLO_NUTRIOLOGO,
+            ModoPlanAlimentario.MIXTO -> recetasCustom
+        }
+
+        fun obtenerParaTipo(tipo: TipoComida): List<RecetaMexicana> {
+            if (meses < 6) {
+                return listOf(fallback(tipo, meses))
+            }
+            if (modoPlan == ModoPlanAlimentario.SOLO_NUTRIOLOGO) {
+                val soloDoc = customParaModo.filter { it.tipoComida == tipo && it.esSegurasParaPerfil(alergenosNiño) && meses >= it.edadMinMeses }
+                if (soloDoc.isNotEmpty()) return soloDoc
+            }
+            return recetasPorPerfil(meses, nivel, tipo, region, alergenosNiño, alimentosRegistrados, customParaModo, alimentosExcluidos)
+                .ifEmpty { listOf(fallback(tipo, meses)) }
+        }
+
+        val desayunos  = obtenerParaTipo(TipoComida.DESAYUNO)
+        val comidas    = obtenerParaTipo(TipoComida.COMIDA)
+        val cenas      = obtenerParaTipo(TipoComida.CENA)
+        val colaciones = obtenerParaTipo(TipoComida.COLACION)
+
+        fun esDoctor(r: RecetaMexicana): Boolean =
+            customParaModo.any { it.nombre.equals(r.nombre, ignoreCase = true) } || r.fuente.startsWith("Nutriólogo", ignoreCase = true)
+
+        val autorDoc = customParaModo.firstOrNull()?.fuente?.removePrefix("Nutriólogo: ") ?: "Nutriólogo"
 
         return dias.mapIndexed { i, dia ->
+            val des  = desayunos[i  % desayunos.size]
+            val col1 = colaciones[i % colaciones.size]
+            val alm  = comidas[i    % comidas.size]
+            val col2 = colaciones[(i + 1) % colaciones.size]
+            val cen  = cenas[i      % cenas.size]
+
             PlanDietaSemanal(
                 diaSemana    = dia,
                 comidas      = ComidasDiarias(
-                    desayuno         = desayunos[i  % desayunos.size].nombre,
-                    colacion1        = colaciones[i % colaciones.size].nombre,
-                    almuerzo         = comidas[i    % comidas.size].nombre,
-                    colacion2        = colaciones[(i + 1) % colaciones.size].nombre,
-                    cena             = cenas[i      % cenas.size].nombre,
-                    costoEstimadoDia = costoEstimadoPorNivelEtapa(nivel, etapaIndex(meses))
+                    desayuno          = des.nombre,
+                    colacion1         = col1.nombre,
+                    almuerzo          = alm.nombre,
+                    colacion2         = col2.nombre,
+                    cena              = cen.nombre,
+                    costoEstimadoDia  = costoEstimadoPorNivelEtapa(nivel, etapaIndex(meses)),
+                    desayunoEsDoctor  = esDoctor(des),
+                    colacion1EsDoctor = esDoctor(col1),
+                    almuerzoEsDoctor  = esDoctor(alm),
+                    colacion2EsDoctor = esDoctor(col2),
+                    cenaEsDoctor      = esDoctor(cen),
+                    autorPrescripcion = autorDoc
                 ),
                 macros       = macros,
                 nivelIngreso = nivel,
@@ -2135,7 +2169,7 @@ object DietaEngine {
 
     private fun fallback(tipo: TipoComida, meses: Int): RecetaMexicana {
         val nombre = when {
-            meses < 6  -> "Leche materna a demanda"
+            meses < 6  -> "Lactancia materna exclusiva (o fórmula)"
             meses < 12 -> when (tipo) {
                 TipoComida.DESAYUNO  -> "Puré de avena con puré de fruta y lactancia"
                 TipoComida.COMIDA    -> "Puré de verdura con proteína y lactancia"
@@ -2145,10 +2179,10 @@ object DietaEngine {
             else -> "Comida balanceada con agua simple"
         }
         return RecetaMexicana(
-            nombre, listOf("Según edad y tolerancia"),
-            "Seguir recomendaciones OMS/IMSS para la etapa",
-            0, tipo, NivelIngreso.BASICO, 0,
-            "OMS / IMSS 2020"
+            nombre, listOf(if (meses < 6) "Leche materna o fórmula infantil" else "Según edad y tolerancia"),
+            if (meses < 6) "Lactancia materna exclusiva recomendada por la OMS/AAP/IMSS hasta los 6 meses" else "Seguir recomendaciones OMS/IMSS para la etapa",
+            0, tipo, NivelIngreso.BASICO, if (meses < 6) 0 else 6,
+            "OMS / IMSS 2023"
         )
     }
 

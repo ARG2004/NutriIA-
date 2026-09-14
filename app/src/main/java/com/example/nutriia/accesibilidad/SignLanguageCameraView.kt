@@ -29,8 +29,10 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.SpaceBar
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.VolunteerActivism
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -242,7 +244,7 @@ fun SignLanguageCameraView(
                                 debug = true,
                                 context = context
                             )
-                            val rawLetra = if (res != null && res.confianza >= 0.65f) res.letra else ""
+                            val rawLetra = if (res != null && res.confianza >= 0.55f) res.letra else ""
                             val esLetraDinamica = rawLetra in setOf("j", "ll", "rr", "ñ", "x", "q", "z")
 
                             if (esLetraDinamica) {
@@ -250,12 +252,12 @@ fun SignLanguageCameraView(
                                 letraDetectada = rawLetra
                                 confianzaDetectada = res?.confianza ?: 0.65f
                             } else {
-                                classificationBuffer = (classificationBuffer + rawLetra).takeLast(4)
+                                classificationBuffer = (classificationBuffer + rawLetra).takeLast(3)
 
                                 val counts = classificationBuffer.groupingBy { it }.eachCount()
                                 val dominant = counts.maxByOrNull { it.value }
 
-                                if (dominant != null && dominant.value >= 3 && dominant.key.isNotEmpty()) {
+                                if (dominant != null && dominant.value >= 2 && dominant.key.isNotEmpty()) {
                                     letraDetectada = dominant.key
                                     confianzaDetectada = res?.confianza ?: 0.65f
                                 } else {
@@ -382,7 +384,7 @@ fun SignLanguageCameraView(
                 .padding(cardPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-        // Selector de Modo: 🔤 Abecedario vs 💬 Señas Comunicativas
+        // Selector de Modo: Abecedario vs Señas LSM
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -403,12 +405,23 @@ fun SignLanguageCameraView(
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "🔤 Abecedario (A-Z)",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) FontWeight.Bold else FontWeight.Normal
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = "Abecedario (A-Z)",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             }
 
             Box(
@@ -423,12 +436,23 @@ fun SignLanguageCameraView(
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "💬 Señas LSM",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) FontWeight.Bold else FontWeight.Normal
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.VolunteerActivism,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = "Señas LSM",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = if (modoSeleccionado == ModoSeñaLSM.COMUNICATIVO) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
             }
         }
 
@@ -447,7 +471,7 @@ fun SignLanguageCameraView(
                 Text(
                     text = textoActual.ifEmpty {
                         if (modoSeleccionado == ModoSeñaLSM.ABECEDARIO) "Haz señas para escribir letra por letra..."
-                        else "Haz una seña comunicativa (ej. 🍼 Leche, 🥣 Comida, 💧 Agua)..."
+                        else "Haz una seña comunicativa (ej. Leche, Comida, Agua)..."
                     },
                     color = if (textoActual.isEmpty()) Color.Gray else Color.White,
                     fontSize = 14.sp,
@@ -708,7 +732,20 @@ fun SignLanguageCameraView(
                                     ) {
                                         Column(modifier = Modifier.padding(12.dp)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(resCom.sena.emoji, fontSize = 24.sp)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(36.dp)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .background(colorPrimario.copy(alpha = 0.15f)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        imageVector = obtenerIconoSena(resCom.sena.id),
+                                                        contentDescription = null,
+                                                        tint = colorPrimario,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
                                                 Spacer(Modifier.width(8.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
@@ -749,12 +786,23 @@ fun SignLanguageCameraView(
                                                 shape = RoundedCornerShape(10.dp),
                                                 modifier = Modifier.fillMaxWidth().height(36.dp)
                                             ) {
-                                                Text(
-                                                    text = "✨ Insertar: ${resCom.sena.sugerenciaFrase}",
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    maxLines = 1
-                                                )
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.CheckCircle,
+                                                        contentDescription = null,
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                    Text(
+                                                        text = "Insertar: ${resCom.sena.sugerenciaFrase}",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        maxLines = 1
+                                                    )
+                                                }
                                             }
                                         }
                                     }

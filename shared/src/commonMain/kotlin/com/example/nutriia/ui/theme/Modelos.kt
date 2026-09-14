@@ -6,6 +6,7 @@ import com.example.nutriia.sueldo.Alergeno
 import com.example.nutriia.sueldo.PerfilSaludNino
 import com.example.nutriia.sueldo.NivelIngreso
 import com.example.nutriia.sueldo.RegionMexico
+import kotlinx.datetime.*
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PERFIL DEL NIÑO
@@ -129,16 +130,27 @@ fun etapaParaMeses(meses: Int): EtapaInfo = when {
 // ═══════════════════════════════════════════════════════════════════════════
 
 fun calcularEdadMeses(birthDate: String): Int {
-    if (birthDate.length != 10) return 0
+    val b = birthDate.trim()
+    if (b.isBlank()) return 0
     return try {
-        val parts = birthDate.split("/")
-        val d = parts[0].toInt(); val m = parts[1].toInt(); val y = parts[2].toInt()
-        val currentYear = 2026
-        val currentMonth = 8
-        val anios = currentYear - y
-        val meses = currentMonth - m
-        (anios * 12 + meses).coerceAtLeast(0)
-    } catch (e: Exception) { 0 }
+        val (dia, mes, anio) = if (b.contains("/")) {
+            val p = b.split("/").mapNotNull { it.trim().toIntOrNull() }
+            if (p.size == 3) Triple(p[0], p[1], p[2]) else return 0
+        } else if (b.contains("-")) {
+            val p = b.split("-").mapNotNull { it.trim().toIntOrNull() }
+            if (p.size == 3) {
+                if (p[0] > 1000) Triple(p[2], p[1], p[0])
+                else Triple(p[0], p[1], p[2])
+            } else return 0
+        } else return 0
+
+        val hoy = kotlinx.datetime.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+        var m = (hoy.year - anio) * 12 + (hoy.monthNumber - mes)
+        if (hoy.dayOfMonth < dia) {
+            m -= 1
+        }
+        m.coerceAtLeast(0)
+    } catch (_: Exception) { 0 }
 }
 
 fun calcularEdadAnios(birthDate: String): Int = calcularEdadMeses(birthDate) / 12

@@ -131,15 +131,31 @@ fun etapaParaMeses(meses: Int): EtapaInfo = when {
 // ═══════════════════════════════════════════════════════════════════════════
 
 fun calcularEdadMeses(birthDate: String): Int {
-    if (birthDate.length != 10) return 0
+    val b = birthDate.trim()
+    if (b.isBlank()) return 0
     return try {
-        val fmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        val fecha = fmt.parse(birthDate) ?: return 0
+        val (dia, mes, anio) = if (b.contains("/")) {
+            val p = b.split("/").mapNotNull { it.trim().toIntOrNull() }
+            if (p.size == 3) Triple(p[0], p[1], p[2]) else return 0
+        } else if (b.contains("-")) {
+            val p = b.split("-").mapNotNull { it.trim().toIntOrNull() }
+            if (p.size == 3) {
+                if (p[0] > 1000) Triple(p[2], p[1], p[0])
+                else Triple(p[0], p[1], p[2])
+            } else return 0
+        } else return 0
+
         val hoy = Calendar.getInstance()
-        val nac = Calendar.getInstance().apply { time = fecha }
-        val anios = hoy.get(Calendar.YEAR)  - nac.get(Calendar.YEAR)
-        val meses = hoy.get(Calendar.MONTH) - nac.get(Calendar.MONTH)
-        (anios * 12 + meses).coerceAtLeast(0)
+        val nac = Calendar.getInstance().apply {
+            set(Calendar.YEAR, anio)
+            set(Calendar.MONTH, mes - 1)
+            set(Calendar.DAY_OF_MONTH, dia)
+        }
+        var m = (hoy.get(Calendar.YEAR) - nac.get(Calendar.YEAR)) * 12 + (hoy.get(Calendar.MONTH) - nac.get(Calendar.MONTH))
+        if (hoy.get(Calendar.DAY_OF_MONTH) < nac.get(Calendar.DAY_OF_MONTH)) {
+            m -= 1
+        }
+        m.coerceAtLeast(0)
     } catch (e: Exception) { 0 }
 }
 

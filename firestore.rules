@@ -13,8 +13,10 @@ service cloud.firestore {
     }
 
     function esNutriologo() {
-      return request.auth != null &&
-        exists(/databases/$(database)/documents/nutriologos_publicos/$(request.auth.uid));
+      return request.auth != null && (
+        exists(/databases/$(database)/documents/nutriologos_publicos/$(request.auth.uid)) ||
+        exists(/databases/$(database)/documents/pediatras_publicos/$(request.auth.uid))
+      );
     }
 
     // ✅ Soporta tanto el ID nuevo (con childId) como el antiguo (retrocompatibilidad)
@@ -64,7 +66,7 @@ service cloud.firestore {
         match /consultas/{docId} {
           allow create: if esNutriologo() && estaVinculadoConPadre(uid, childId)
             && request.resource.data.autorUid == request.auth.uid
-            && request.resource.data.tipo in ["nota_nutriologo", "receta_nutriologo", "observacion_alimentacion", "alerta_preventiva"];
+            && request.resource.data.tipo in ["nota_nutriologo", "receta_nutriologo", "observacion_alimentacion", "alerta_preventiva", "cita_doctor"];
           allow read: if request.auth != null && (
             esDueno(uid) || 
             (esNutriologo() && estaVinculadoConPadre(uid, childId))
@@ -73,6 +75,15 @@ service cloud.firestore {
             && resource.data.autorUid == request.auth.uid;
           allow delete: if esNutriologo() && estaVinculadoConPadre(uid, childId)
             && resource.data.autorUid == request.auth.uid;
+        }
+
+        // Reglas para alertas médicas del hijo (agendadas por doctor o padre)
+        match /alertas/{alertaId} {
+          allow read, write: if esDueno(uid);
+          allow create: if esNutriologo() && estaVinculadoConPadre(uid, childId)
+            && request.resource.data.tipo == "CITA_MEDICA"
+            && request.resource.data.autorUid == request.auth.uid;
+          allow update, delete: if (esDueno(uid) || (esNutriologo() && estaVinculadoConPadre(uid, childId) && resource.data.autorUid == request.auth.uid));
         }
 
         // Reglas para recetas personalizadas
@@ -97,7 +108,7 @@ service cloud.firestore {
           allow create, update: if esNutriologo() && estaVinculadoConPadre(uid, childId)
             && request.resource.data.nutriologoUid == request.auth.uid;
           allow delete: if esNutriologo() && estaVinculadoConPadre(uid, childId)
-            && request.resource.data.nutriologoUid == request.auth.uid;
+            && resource.data.nutriologoUid == request.auth.uid;
         }
       }
 
@@ -107,6 +118,15 @@ service cloud.firestore {
 
       match /alertas/{alertaId} {
         allow read, write: if esDueno(uid);
+        allow create: if esNutriologo()
+          && request.resource.data.tipo == "CITA_MEDICA"
+          && request.resource.data.autorUid == request.auth.uid
+          && ('childId' in request.resource.data && estaVinculadoConPadre(uid, request.resource.data.childId));
+        allow update: if esNutriologo()
+          && resource.data.autorUid == request.auth.uid
+          && request.resource.data.autorUid == request.auth.uid;
+        allow delete: if esNutriologo()
+          && resource.data.autorUid == request.auth.uid;
       }
 
       // ── perfilEmbarazo (mamá primeriza) ─────────────────────────────────

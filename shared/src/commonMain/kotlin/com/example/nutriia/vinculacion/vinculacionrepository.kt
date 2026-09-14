@@ -500,4 +500,25 @@ class VinculacionRepository {
             }
         }
     }
+
+    fun observarConsultasEspecialista(padreUid: String, childId: String): Flow<List<Map<String, Any?>>> {
+        if (padreUid.isBlank() || childId.isBlank()) return flowOf(emptyList())
+        return try {
+            db.collection("usuarios")
+                .document(padreUid)
+                .collection("hijos")
+                .document(childId)
+                .collection("consultas")
+                .snapshots
+                .map { snap ->
+                    snap.documents.mapNotNull { doc ->
+                        runCatching {
+                            doc.data<Map<String, Any?>>() + ("id" to doc.id)
+                        }.getOrNull()
+                    }
+                }
+        } catch (e: Exception) {
+            flowOf(emptyList())
+        }
+    }
 }

@@ -308,8 +308,6 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
     private val _recetasPersonalizadas = MutableStateFlow<List<RecetaMexicana>>(emptyList())
     val recetasPersonalizadas: StateFlow<List<RecetaMexicana>> = _recetasPersonalizadas.asStateFlow()
 
-    private var recetasListener: ListenerRegistration? = null
-
     /**
      * Sincronización desde el expediente del Nutriólogo.
      * Recibe la lista de nombres de alimentos marcados como "Aceptados".
@@ -368,6 +366,20 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
         _planSemanal.value = emptyList()
     }
 
+    // ── Modo de Plan Alimentario (Doctor / Motor / Mixto) ─────────────────
+    private val _modoPlanAlimentario = MutableStateFlow(com.example.nutriia.sueldo.ModoPlanAlimentario.MIXTO)
+    val modoPlanAlimentario: StateFlow<com.example.nutriia.sueldo.ModoPlanAlimentario> = _modoPlanAlimentario.asStateFlow()
+
+    fun setModoPlanAlimentario(modo: com.example.nutriia.sueldo.ModoPlanAlimentario) {
+        if (_modoPlanAlimentario.value != modo) {
+            _modoPlanAlimentario.value = modo
+            _childProfile.value?.let { p ->
+                val m = calcularEdadMeses(p.birthDate)
+                generarPlan(m, _nivelIngreso.value, _region.value)
+            }
+        }
+    }
+
     /**
      * Invoca al motor de dietas para generar sugerencias basadas en perfil.
      */
@@ -390,12 +402,17 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
             alergenosNiño        = perfilSalud.alergenos,
             alimentosRegistrados = tolerados,
             recetasCustom        = _recetasPersonalizadas.value,
-            alimentosExcluidos   = excluidosFinales
+            alimentosExcluidos   = excluidosFinales,
+            modoPlan             = _modoPlanAlimentario.value
         )
     }
 
     // ── Carga y Persistencia (Cloud) ──────────────────────────────────────
     private var childCargadoKey: String? = null // Almacena "uid/childId"
+    private var recetasListener: ListenerRegistration? = null
+    private var consultasRecetasListener: ListenerRegistration? = null
+    private var recetasFromColeccion: List<Pair<Long, RecetaMexicana>> = emptyList()
+    private var recetasFromConsultas: List<Pair<Long, RecetaMexicana>> = emptyList()
 
     fun cargarPerfil(uid: String, childId: String) {
         // Guardia: evitar crash si uid o childId están vacíos (e.g. registro nuevo sin sesión en LoginViewModel)
@@ -436,58 +453,124 @@ class NutriSharedViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    private fun sincronizarRecetasCombinadas() {
+        val combinadas = (recetasFromColeccion + recetasFromConsultas)
+            .sortedByDescending { it.first }
+            .map { it.second }
+            .distinctBy { it.nombre.lowercase().trim() }
+
+        _recetasPersonalizadas.value = combinadas
+
+        _childProfile.value?.let { p ->
+            val m = calcularEdadMeses(p.birthDate)
+            generarPlan(m, _nivelIngreso.value, _region.value)
+        }
+    }
+
     private fun iniciarListenerRecetasPersonalizadas(uid: String, childId: String) {
         recetasListener?.remove()
+        consultasRecetasListener?.remove()
+
+        // 1. Escuchar subcolección recetas_nutriologo
         recetasListener = Firebase.firestore
             .collection("usuarios").document(uid)
             .collection("hijos").document(childId)
             .collection("recetas_nutriologo")
             .addSnapshotListener { snap, err ->
                 if (err != null) {
-                    _recetasPersonalizadas.value = emptyList()
-                    return@addSnapshotListener
-                }
-                val recetas = snap?.documents?.mapNotNull { d ->
-                    val nombre = d.getString("nombre") ?: return@mapNotNull null
-                    val creadoMs = d.getTimestamp("creadoEn")?.toDate()?.time ?: 0L
-                    val ingredientes = (d.get("ingredientes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
-                    val preparacion = d.getString("preparacion") ?: ""
-                    val kcal = (d.getLong("kcal") ?: 0L).toInt()
-                    val tipoStr = d.getString("tipoComida") ?: TipoComida.COMIDA.name
-                    val tipo = runCatching { TipoComida.valueOf(tipoStr) }.getOrDefault(TipoComida.COMIDA)
-                    val edadMin = (d.getLong("edadMeses") ?: 6L).toInt()
-                    val autor = d.getString("autorNombre") ?: "Nutriólogo"
+                    recetasFromColeccion = emptyList()
+                } else {
+                    recetasFromColeccion = snap?.documents?.mapNotNull { d ->
+                        val nombre = d.getString("nombre") ?: return@mapNotNull null
+                        val creadoMs = d.getTimestamp("creadoEn")?.toDate()?.time ?: 0L
+                        val ingredientes = (d.get("ingredientes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                        val preparacion = d.getString("preparacion") ?: ""
+                        val kcal = (d.getLong("kcal") ?: 0L).toInt()
+                        val tipoStr = d.getString("tipoComida") ?: TipoComida.COMIDA.name
+                        val tipo = runCatching { TipoComida.valueOf(tipoStr) }.getOrDefault(TipoComida.COMIDA)
+                        val edadMin = (d.getLong("edadMeses") ?: 0L).toInt()
+                        val autor = d.getString("autorNombre") ?: "Nutriólogo"
 
-                    creadoMs to RecetaMexicana(
-                        nombre       = nombre,
-                        ingredientes = ingredientes,
-                        preparacion  = preparacion,
-                        kcal         = kcal,
-                        tipoComida   = tipo,
-                        nivelMinimo  = NivelIngreso.BASICO,
-                        edadMinMeses = edadMin.coerceAtLeast(6),
-                        fuente       = "Nutriólogo: $autor",
-                        regiones     = listOf(RegionMexico.GENERAL),
-                        alergenos    = emptyList()
-                    )
-                }?.sortedByDescending { it.first }?.map { it.second } ?: emptyList()
-                _recetasPersonalizadas.value = recetas
-                
-                // Recalcular plan semanal para integrar/remover recetas personalizadas reactivamente
-                _childProfile.value?.let { p ->
-                    val m = calcularEdadMeses(p.birthDate)
-                    generarPlan(m, _nivelIngreso.value, _region.value)
+                        creadoMs to RecetaMexicana(
+                            nombre       = nombre,
+                            ingredientes = ingredientes,
+                            preparacion  = preparacion,
+                            kcal         = kcal,
+                            tipoComida   = tipo,
+                            nivelMinimo  = NivelIngreso.BASICO,
+                            edadMinMeses = edadMin.coerceAtLeast(0),
+                            fuente       = "Nutriólogo: $autor",
+                            regiones     = listOf(RegionMexico.GENERAL),
+                            alergenos    = emptyList()
+                        )
+                    } ?: emptyList()
                 }
+                sincronizarRecetasCombinadas()
+            }
+
+        // 2. Escuchar subcolección consultas (para recetas guardadas en historial clínico)
+        consultasRecetasListener = Firebase.firestore
+            .collection("usuarios").document(uid)
+            .collection("hijos").document(childId)
+            .collection("consultas")
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    recetasFromConsultas = emptyList()
+                } else {
+                    recetasFromConsultas = snap?.documents?.mapNotNull { d ->
+                        val tipo = d.getString("tipo") ?: ""
+                        if (tipo != "receta_nutriologo") return@mapNotNull null
+                        val nombre = d.getString("titulo") ?: d.getString("nombre") ?: return@mapNotNull null
+                        val creadoMs = d.getTimestamp("creadoEn")?.toDate()?.time ?: 0L
+                        val texto = d.getString("texto") ?: d.getString("contenido") ?: ""
+
+                        val ingredientes = (d.get("ingredientes") as? List<*>)?.mapNotNull { it?.toString() }
+                            ?: texto.lines()
+                                .firstOrNull { it.startsWith("Ingredientes:", ignoreCase = true) }
+                                ?.removePrefix("Ingredientes:")?.removePrefix("ingredientes:")
+                                ?.split(",", ";")?.map { it.trim() }?.filter { it.isNotBlank() }
+                            ?: emptyList()
+
+                        val preparacion = d.getString("preparacion")
+                            ?: texto.lines()
+                                .filterNot { it.startsWith("Ingredientes:", ignoreCase = true) }
+                                .joinToString("\n").trim()
+
+                        val kcal = (d.getLong("kcal") ?: 0L).toInt()
+                        val tipoStr = d.getString("tipoComida") ?: TipoComida.COMIDA.name
+                        val tipoComida = runCatching { TipoComida.valueOf(tipoStr) }.getOrDefault(TipoComida.COMIDA)
+                        val edadMin = (d.getLong("edadMeses") ?: 0L).toInt()
+                        val autor = d.getString("autorNombre") ?: "Nutriólogo"
+
+                        creadoMs to RecetaMexicana(
+                            nombre       = nombre,
+                            ingredientes = ingredientes,
+                            preparacion  = preparacion,
+                            kcal         = kcal,
+                            tipoComida   = tipoComida,
+                            nivelMinimo  = NivelIngreso.BASICO,
+                            edadMinMeses = edadMin.coerceAtLeast(0),
+                            fuente       = "Nutriólogo: $autor",
+                            regiones     = listOf(RegionMexico.GENERAL),
+                            alergenos    = emptyList()
+                        )
+                    } ?: emptyList()
+                }
+                sincronizarRecetasCombinadas()
             }
     }
 
     fun limpiarPerfil() {
         childCargadoKey = null
+        recetasListener?.remove()
+        consultasRecetasListener?.remove()
+        recetasFromColeccion = emptyList()
+        recetasFromConsultas = emptyList()
         _childProfile.value = null
         _alimentosTolerados.value = emptyList()
         _planSemanal.value = emptyList()
         _planAlimentacionActivo.value = false
         _recetasPersonalizadas.value = emptyList()
-        recetasListener?.remove()
     }
 }
+
